@@ -1,3 +1,5 @@
+import type { FileTreeNode, FileNode, DirectoryNode } from '../types/fileTree'
+
 export interface OpenedFile {
   handle: FileSystemFileHandle
   name: string
@@ -34,4 +36,66 @@ export async function writeFile(
   const writable = await handle.createWritable()
   await writable.write(content)
   await writable.close()
+}
+
+// ── Folder support ────────────────────────────────────────────
+
+const IGNORE = new Set(['node_modules', '.git', '.markreview'])
+const MD_EXT = new Set(['.md', '.markdown'])
+
+function isIgnored(name: string): boolean {
+  return name.startsWith('.') || IGNORE.has(name)
+}
+
+function isMdFile(name: string): boolean {
+  const dot = name.lastIndexOf('.')
+  return dot !== -1 && MD_EXT.has(name.slice(dot))
+}
+
+export async function buildFileTree(
+  dirHandle: FileSystemDirectoryHandle,
+  basePath = '',
+): Promise<FileTreeNode[]> {
+  const dirs: DirectoryNode[] = []
+  const files: FileNode[] = []
+
+  for await (const entry of dirHandle.values()) {
+    if (isIgnored(entry.name)) continue
+    const entryPath = basePath ? `${basePath}/${entry.name}` : entry.name
+
+    if (entry.kind === 'directory') {
+      const children = await buildFileTree(
+        entry as FileSystemDirectoryHandle,
+        entryPath,
+      )
+      if (children.length > 0) {
+        dirs.push({ kind: 'directory', name: entry.name, path: entryPath, children })
+      }
+    } else if (isMdFile(entry.name)) {
+      files.push({
+        kind: 'file',
+        name: entry.name,
+        path: entryPath,
+        handle: entry as FileSystemFileHandle,
+      })
+    }
+  }
+
+  dirs.sort((a, b) => a.name.localeCompare(b.name))
+  files.sort((a, b) => a.name.localeCompare(b.name))
+
+  return [...dirs, ...files]
+}
+
+export async function openDirectory(): Promise<{
+  handle: FileSystemDirectoryHandle
+  name: string
+} | null> {
+  try {
+    const handle = await window.showDirectoryPicker({ mode: 'readwrite' })
+    return { handle, name: handle.name }
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') return null
+    throw err
+  }
 }

@@ -3,27 +3,56 @@ import { useAppStore } from './store'
 import { FilePicker } from './components/FilePicker'
 import { Header } from './components/Header'
 import { MarkdownRenderer } from './components/MarkdownRenderer'
+import { FileTreeSidebar } from './components/FileTreeSidebar'
+
+function NoFileSelected() {
+  return (
+    <div className="content-empty">
+      <p className="content-empty__text">Select a file from the sidebar to start reading</p>
+    </div>
+  )
+}
 
 function App() {
   const fileName = useAppStore((s) => s.fileName)
+  const fileTree = useAppStore((s) => s.fileTree)
   const theme = useAppStore((s) => s.theme)
   const focusMode = useAppStore((s) => s.focusMode)
+  const sidebarOpen = useAppStore((s) => s.sidebarOpen)
   const toggleFocusMode = useAppStore((s) => s.toggleFocusMode)
+  const toggleSidebar = useAppStore((s) => s.toggleSidebar)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
   }, [theme])
 
-  if (!fileName) {
+  // Cmd+B / Ctrl+B toggles sidebar
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
+        e.preventDefault()
+        toggleSidebar()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [toggleSidebar])
+
+  const hasFolderOpen = fileTree.length > 0
+
+  if (!fileName && !hasFolderOpen) {
     return <FilePicker />
   }
 
   return (
     <div className="app-layout">
       {!focusMode && <Header />}
-      <main className="app-main">
-        <MarkdownRenderer />
-      </main>
+      <div className="app-body">
+        {hasFolderOpen && sidebarOpen && !focusMode && <FileTreeSidebar />}
+        <main className="app-main">
+          {fileName ? <MarkdownRenderer /> : <NoFileSelected />}
+        </main>
+      </div>
       {focusMode && (
         <button
           onClick={toggleFocusMode}
