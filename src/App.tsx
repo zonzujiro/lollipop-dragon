@@ -21,10 +21,16 @@ function App() {
   const sidebarOpen = useAppStore((s) => s.sidebarOpen)
   const toggleFocusMode = useAppStore((s) => s.toggleFocusMode)
   const toggleSidebar = useAppStore((s) => s.toggleSidebar)
+  const restoreSession = useAppStore((s) => s.restoreSession)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
   }, [theme])
+
+  useEffect(() => {
+    restoreSession()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Cmd+B / Ctrl+B toggles sidebar
   useEffect(() => {
