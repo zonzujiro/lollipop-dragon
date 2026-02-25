@@ -21,8 +21,14 @@ function resetStore() {
     fileTree: [],
     activeFilePath: null,
     sidebarOpen: true,
+    comments: [],
+    resolvedComments: [],
+    activeCommentId: null,
+    commentPanelOpen: false,
+    commentFilter: 'all',
     theme: 'light',
     focusMode: false,
+    writeAllowed: true,
     restoreDirectory: vi.fn().mockResolvedValue(undefined),
   })
   localStorage.clear()

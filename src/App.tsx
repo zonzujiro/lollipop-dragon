@@ -4,6 +4,8 @@ import { FilePicker } from './components/FilePicker'
 import { Header } from './components/Header'
 import { MarkdownRenderer } from './components/MarkdownRenderer'
 import { FileTreeSidebar } from './components/FileTreeSidebar'
+import { CommentPanel } from './components/CommentPanel'
+import { UndoToast } from './components/UndoToast'
 
 function NoFileSelected() {
   return (
@@ -22,6 +24,7 @@ function App() {
   const sidebarOpen = useAppStore((s) => s.sidebarOpen)
   const toggleFocusMode = useAppStore((s) => s.toggleFocusMode)
   const toggleSidebar = useAppStore((s) => s.toggleSidebar)
+  const commentPanelOpen = useAppStore((s) => s.commentPanelOpen)
   const restoreDirectory = useAppStore((s) => s.restoreDirectory)
 
   useEffect(() => {
@@ -63,7 +66,9 @@ function App() {
         <main className="app-main">
           {fileName ? <MarkdownRenderer /> : <NoFileSelected />}
         </main>
+        {commentPanelOpen && !focusMode && <CommentPanel />}
       </div>
+      <UndoToast />
       {focusMode && (
         <button
           onClick={toggleFocusMode}

@@ -8,7 +8,7 @@ function setContent(raw: string) {
 }
 
 beforeEach(() => {
-  useAppStore.setState({ fileHandle: null, fileName: null, rawContent: '' })
+  useAppStore.setState({ fileHandle: null, fileName: null, rawContent: '', comments: [], writeAllowed: true })
 })
 
 describe('MarkdownRenderer — CommonMark', () => {
@@ -137,5 +137,22 @@ describe('MarkdownRenderer — GFM extras', () => {
     const { container } = render(<MarkdownRenderer />)
     expect(container.querySelector('sup')).toBeInTheDocument()
     expect(screen.getByText('Footnote content here.')).toBeInTheDocument()
+  })
+})
+
+describe('MarkdownRenderer — read-only banner', () => {
+  it('does not show the banner when writeAllowed is true', () => {
+    useAppStore.setState({ writeAllowed: true })
+    setContent('Hello.')
+    render(<MarkdownRenderer />)
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('shows the read-only banner when writeAllowed is false', () => {
+    useAppStore.setState({ writeAllowed: false })
+    setContent('Hello.')
+    render(<MarkdownRenderer />)
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('status').textContent).toMatch(/read-only/i)
   })
 })

@@ -45,6 +45,11 @@ export function Header() {
   const toggleFocusMode = useAppStore((s) => s.toggleFocusMode)
   const toggleSidebar = useAppStore((s) => s.toggleSidebar)
   const sidebarOpen = useAppStore((s) => s.sidebarOpen)
+  const comments = useAppStore((s) => s.comments)
+  const commentPanelOpen = useAppStore((s) => s.commentPanelOpen)
+  const toggleCommentPanel = useAppStore((s) => s.toggleCommentPanel)
+  const refreshFile = useAppStore((s) => s.refreshFile)
+  const fileHandle = useAppStore((s) => s.fileHandle)
 
   const isDark = theme === 'dark'
   const hasFolderOpen = fileTree.length > 0
@@ -86,6 +91,26 @@ export function Header() {
           className="app-header__btn app-header__btn--icon"
         >
           {isDark ? <SunIcon /> : <MoonIcon />}
+        </button>
+
+        {fileHandle && (
+          <button
+            onClick={refreshFile}
+            aria-label="Refresh file"
+            title="Refresh file from disk"
+            className="app-header__btn app-header__btn--text"
+          >
+            Refresh
+          </button>
+        )}
+
+        <button
+          onClick={toggleCommentPanel}
+          aria-label={commentPanelOpen ? 'Close comments panel' : 'Open comments panel'}
+          title={commentPanelOpen ? 'Close comments panel' : 'Open comments panel'}
+          className={`app-header__btn app-header__btn--text${commentPanelOpen ? ' app-header__btn--active' : ''}`}
+        >
+          Comments{comments.length > 0 && <span className="app-header__badge">{comments.length}</span>}
         </button>
 
         <button

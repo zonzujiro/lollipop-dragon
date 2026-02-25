@@ -123,6 +123,70 @@ body {
   padding: 2.5rem 2rem;
 }
 
+.readonly-banner {
+  width: 90%;
+  margin: 0 auto 1rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--c-orange, #f59e0b);
+  color: #fff;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+/* ── Undo toast ──────────────────────────────────────────────── */
+.undo-toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  font-size: 0.85rem;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.undo-toast__message {
+  flex: 1;
+}
+
+.undo-toast__btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.undo-toast__btn:hover {
+  opacity: 0.85;
+}
+
+.undo-toast__dismiss {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 1rem;
+  padding: 0 0.1rem;
+  line-height: 1;
+}
+
+.undo-toast__dismiss:hover {
+  color: var(--text);
+}
+
 /* ── UI chrome ───────────────────────────────────────────────── */
 .app-header {
   display: flex;
@@ -298,6 +362,226 @@ body {
   opacity: 1;
 }
 
+/* ── Header badge ────────────────────────────────────────────── */
+.app-header__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.1em;
+  height: 1.1em;
+  padding: 0 0.25em;
+  margin-left: 0.35rem;
+  border-radius: 99px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background-color: var(--accent);
+  color: #fff;
+  line-height: 1;
+}
+
+.app-header__btn--active {
+  background-color: var(--accent-bg);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ── Comment panel ───────────────────────────────────────────── */
+.comment-panel {
+  width: 280px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--surface);
+  border-left: 1px solid var(--border-light);
+  overflow: hidden;
+}
+
+.comment-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+  gap: 0.5rem;
+}
+
+.comment-panel__title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.comment-panel__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.2em;
+  padding: 0 0.3em;
+  height: 1.2em;
+  background-color: var(--surface-alt);
+  border: 1px solid var(--border-light);
+  border-radius: 99px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.comment-panel__close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--text-muted);
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.comment-panel__close:hover {
+  color: var(--text);
+  background-color: var(--surface-alt);
+}
+
+.comment-panel__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border-light);
+  flex-shrink: 0;
+}
+
+.comment-panel__filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: border-color 0.1s, color 0.1s, background-color 0.1s;
+}
+
+.comment-panel__filter:hover {
+  background-color: var(--surface-alt);
+}
+
+.comment-panel__filter--active {
+  background-color: var(--surface-alt);
+  font-weight: 600;
+}
+
+.comment-panel__filter-count {
+  opacity: 0.7;
+}
+
+.comment-panel__filter-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  margin: 0 0.1rem;
+  flex-shrink: 0;
+}
+
+.comment-panel__list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.375rem 0;
+}
+
+.comment-panel__empty {
+  padding: 1rem 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.comment-panel__resolved-label {
+  padding: 0.5rem 0.75rem 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0;
+  border-top: 1px solid var(--border);
+  margin-top: 0.25rem;
+}
+
+.comment-panel__entry--resolved {
+  opacity: 0.5;
+  cursor: default;
+  pointer-events: none;
+}
+
+.comment-panel__text--resolved {
+  text-decoration: line-through;
+}
+
+.comment-panel__entry {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  gap: 0.4rem;
+  padding: 0.45rem 0.75rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.1s;
+}
+
+.comment-panel__entry:hover {
+  background-color: var(--surface-alt);
+}
+
+.comment-panel__entry--active {
+  background-color: var(--accent-bg);
+}
+
+.comment-panel__badge {
+  display: inline-block;
+  flex-shrink: 0;
+  padding: 0.1rem 0.4rem;
+  border-radius: 99px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 0.1rem;
+}
+
+.comment-panel__text {
+  flex: 1;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.comment-panel__entry--active .comment-panel__text {
+  color: var(--text);
+}
+
+.comment-panel__ref {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  margin-top: 0.15rem;
+}
+
 /* ── File tree sidebar ───────────────────────────────────────── */
 .file-tree-sidebar {
   width: 240px;
@@ -398,10 +682,329 @@ body {
   white-space: nowrap;
 }
 
+/* ── Markdown viewer (flex row: margin column + body) ────────── */
+.markdown-viewer {
+  display: flex;
+  position: relative;
+  width: 90%;
+  margin: 0 auto;
+}
+
+/* ── Comment margin column ───────────────────────────────────── */
+.comment-margin {
+  width: 2.5rem;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.comment-margin__dots {
+  position: absolute;
+  right: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.comment-margin__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.comment-margin__dot:hover {
+  transform: scale(1.4);
+}
+
+.comment-margin__dot--active {
+  transform: scale(1.4);
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px currentColor;
+}
+
+.comment-margin__add-wrapper {
+  position: absolute;
+  right: 0.5rem;
+}
+
+.comment-margin__add {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px dashed var(--text-muted);
+  background: transparent;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.comment-margin__add:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── Add comment form ────────────────────────────────────────── */
+.comment-add-form {
+  position: absolute;
+  left: calc(100% + 0.75rem);
+  z-index: 60;
+  width: 280px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.comment-add-form__types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.comment-add-form__type {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+
+.comment-add-form__type:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.comment-add-form__type--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.comment-add-form__input {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  font-size: 0.8rem;
+  font-family: inherit;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+}
+
+.comment-add-form__input:focus {
+  border-color: var(--accent);
+}
+
+.comment-add-form__actions {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+
+.comment-add-form__save,
+.comment-add-form__cancel {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.comment-add-form__save {
+  background: var(--accent);
+  color: #fff;
+}
+
+.comment-add-form__save:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.comment-add-form__cancel {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+
+.comment-add-form__cancel:hover {
+  border-color: var(--text-muted);
+}
+
+/* ── Comment card ────────────────────────────────────────────── */
+.comment-card {
+  position: absolute;
+  left: calc(100% + 0.75rem);
+  z-index: 50;
+  width: 280px;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: 0.75rem;
+  font-size: 0.825rem;
+  line-height: 1.5;
+}
+
+.comment-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.comment-card__badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 99px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.comment-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.comment-card__edit {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  padding: 0 0.25rem;
+}
+
+.comment-card__edit:hover {
+  color: var(--accent);
+}
+
+.comment-card__delete {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  padding: 0 0.25rem;
+}
+
+.comment-card__delete:hover {
+  color: var(--c-red, #ef4444);
+}
+
+.comment-card__confirm {
+  padding: 0.5rem 0;
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.comment-card__confirm p {
+  margin: 0 0 0.4rem;
+}
+
+.comment-card__confirm-yes {
+  background: var(--c-red, #ef4444);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.comment-card__confirm-yes:hover {
+  opacity: 0.85;
+}
+
+.comment-card__edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.25rem;
+}
+
+.comment-card__close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--text-muted);
+  padding: 0 0.25rem;
+}
+
+.comment-card__close:hover {
+  color: var(--text);
+}
+
+.comment-card__highlight {
+  margin: 0 0 0.4rem;
+  padding: 0.3rem 0.5rem;
+  border-left: 3px solid var(--border);
+  font-style: italic;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.comment-card__content {
+  margin: 0;
+  color: var(--text);
+}
+
+.comment-card__content--add {
+  color: var(--c-green);
+}
+
+.comment-card__content--del {
+  color: var(--c-red);
+  text-decoration: line-through;
+}
+
+.comment-card__sub {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.comment-card__sub-from {
+  color: var(--c-red);
+  text-decoration: line-through;
+}
+
+.comment-card__sub-arrow {
+  color: var(--text-muted);
+}
+
+.comment-card__sub-to {
+  color: var(--c-green);
+}
+
 /* ── Markdown body ───────────────────────────────────────────── */
 .markdown-body {
-  margin: 0 auto;
-  width: 90%;
+  flex: 1;
+  min-width: 0;
   color: var(--text);
   font-size: var(--text-body);
   line-height: var(--leading);
