@@ -95,9 +95,10 @@ describe('App — single file open', () => {
     expect(screen.getByTestId('markdown-renderer')).toBeInTheDocument()
   })
 
-  it('shows "Open another file" button in the header', () => {
+  it('shows "Open file" and "Open folder" buttons in the header', () => {
     render(<App />)
-    expect(screen.getByRole('button', { name: 'Open another file' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open file' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open folder' })).toBeInTheDocument()
   })
 })
 
@@ -141,9 +142,10 @@ describe('App — folder open', () => {
     expect(screen.getByText('my-docs / readme.md')).toBeInTheDocument()
   })
 
-  it('does not show "Open another file" button in folder mode', () => {
+  it('shows "Open file" and "Open folder" buttons in folder mode', () => {
     render(<App />)
-    expect(screen.queryByRole('button', { name: 'Open another file' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open file' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open folder' })).toBeInTheDocument()
   })
 
   it('hides the sidebar when sidebar toggle is clicked', async () => {

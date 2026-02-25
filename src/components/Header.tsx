@@ -39,6 +39,7 @@ export function Header() {
   const directoryName = useAppStore((s) => s.directoryName)
   const fileTree = useAppStore((s) => s.fileTree)
   const openFile = useAppStore((s) => s.openFile)
+  const openDirectory = useAppStore((s) => s.openDirectory)
   const theme = useAppStore((s) => s.theme)
   const setTheme = useAppStore((s) => s.setTheme)
   const toggleFocusMode = useAppStore((s) => s.toggleFocusMode)
@@ -69,11 +70,12 @@ export function Header() {
       </div>
 
       <div className="app-header__actions">
-        {!hasFolderOpen && (
-          <button onClick={openFile} className="app-header__btn app-header__btn--text">
-            Open another file
-          </button>
-        )}
+        <button onClick={openFile} className="app-header__btn app-header__btn--text">
+          Open file
+        </button>
+        <button onClick={openDirectory} className="app-header__btn app-header__btn--text">
+          Open folder
+        </button>
 
         <div className="app-header__divider" aria-hidden="true" />
 
