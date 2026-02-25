@@ -6,7 +6,6 @@ import {
   readFile,
   buildFileTree,
 } from '../services/fileSystem'
-import { saveHandle, getHandle, removeHandle } from '../services/handleStore'
 import type { FileTreeNode, FileNode } from '../types/fileTree'
 
 interface AppState {
@@ -34,7 +33,6 @@ interface AppState {
   toggleSidebar: () => void
   setTheme: (theme: 'light' | 'dark') => void
   toggleFocusMode: () => void
-  restoreSession: () => Promise<void>
 }
 
 export const useAppStore = create<AppState>()(
@@ -55,8 +53,6 @@ export const useAppStore = create<AppState>()(
         const result = await fsOpenFile()
         if (!result) return
         const raw = await readFile(result.handle)
-        await saveHandle('file', result.handle)
-        await removeHandle('directory')
         set({
           fileHandle: result.handle,
           fileName: result.name,
@@ -71,10 +67,8 @@ export const useAppStore = create<AppState>()(
       openDirectory: async () => {
         const result = await fsOpenDirectory()
         if (!result) return
-        await saveHandle('directory', result.handle)
-        await removeHandle('file')
-        // Clear immediately — before the async buildFileTree — so a refresh
-        // doesn't restore the previously open single file.
+        // Clear state immediately after the picker resolves — before the async
+        // buildFileTree — so a refresh during scanning doesn't restore the old file.
         set({
           fileHandle: null,
           fileName: null,
@@ -91,7 +85,6 @@ export const useAppStore = create<AppState>()(
 
       selectFile: async (node: FileNode) => {
         const raw = await readFile(node.handle)
-        await saveHandle('file', node.handle)
         set({
           fileHandle: node.handle,
           fileName: node.name,
@@ -100,9 +93,7 @@ export const useAppStore = create<AppState>()(
         })
       },
 
-      clearFile: () => {
-        void removeHandle('file')
-        void removeHandle('directory')
+      clearFile: () =>
         set({
           fileHandle: null,
           fileName: null,
@@ -111,53 +102,11 @@ export const useAppStore = create<AppState>()(
           directoryName: null,
           fileTree: [],
           activeFilePath: null,
-        })
-      },
+        }),
 
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
       setTheme: (theme) => set({ theme }),
       toggleFocusMode: () => set((s) => ({ focusMode: !s.focusMode })),
-
-      restoreSession: async () => {
-        try {
-          // Try to restore directory first
-          const dirHandle = await getHandle<FileSystemDirectoryHandle>('directory')
-          if (dirHandle) {
-            const perm = await dirHandle.queryPermission({ mode: 'read' })
-            if (perm === 'granted') {
-              const tree = await buildFileTree(dirHandle)
-              set({
-                directoryHandle: dirHandle,
-                directoryName: dirHandle.name,
-                fileTree: tree,
-                sidebarOpen: true,
-              })
-              // Restore the active file within the directory if we have a handle
-              const fileHandle = await getHandle<FileSystemFileHandle>('file')
-              if (fileHandle) {
-                const filePerm = await fileHandle.queryPermission({ mode: 'read' })
-                if (filePerm === 'granted') {
-                  const raw = await readFile(fileHandle)
-                  set({ fileHandle, fileName: fileHandle.name, rawContent: raw })
-                }
-              }
-              return
-            }
-          }
-
-          // Fall back to single file
-          const fileHandle = await getHandle<FileSystemFileHandle>('file')
-          if (fileHandle) {
-            const perm = await fileHandle.queryPermission({ mode: 'read' })
-            if (perm === 'granted') {
-              const raw = await readFile(fileHandle)
-              set({ fileHandle, fileName: fileHandle.name, rawContent: raw })
-            }
-          }
-        } catch {
-          // IndexedDB unavailable (e.g. private browsing, test env) — silent fail
-        }
-      },
     }),
     {
       name: 'markreview-store',
