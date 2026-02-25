@@ -26,8 +26,8 @@ vi.mock('shiki', () => ({
   }),
 }))
 
-vi.mock('@shikijs/rehype', () => ({
-  rehypeShikiFromHighlighter: vi.fn(() => () => {}),
+vi.mock('@shikijs/rehype/core', () => ({
+  default: vi.fn(() => () => {}),
 }))
 
 beforeEach(() => {
@@ -54,7 +54,7 @@ describe('MarkdownRenderer — Shiki integration', () => {
   })
 
   it('applies rehypeShikiFromHighlighter once the highlighter is ready', async () => {
-    const { rehypeShikiFromHighlighter } = await import('@shikijs/rehype')
+    const { default: rehypeShikiFromHighlighter } = await import('@shikijs/rehype/core')
     useAppStore.setState({ rawContent: '```ts\nconst y: number = 2\n```' })
 
     const { MarkdownRenderer } = await import('../components/MarkdownRenderer')

@@ -1,7 +1,7 @@
 import { type ComponentPropsWithoutRef, useEffect, useState, Children, isValidElement } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { rehypeShikiFromHighlighter } from '@shikijs/rehype'
+import rehypeShikiFromHighlighter from '@shikijs/rehype/core'
 import { createHighlighter, type Highlighter } from 'shiki'
 import { MermaidBlock } from './MermaidBlock'
 import { useAppStore } from '../store'

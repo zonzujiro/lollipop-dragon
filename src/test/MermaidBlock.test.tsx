@@ -14,8 +14,8 @@ vi.mock('shiki', () => ({
   createHighlighter: vi.fn().mockResolvedValue({}),
 }))
 
-vi.mock('@shikijs/rehype', () => ({
-  rehypeShikiFromHighlighter: vi.fn(() => () => {}),
+vi.mock('@shikijs/rehype/core', () => ({
+  default: vi.fn(() => () => {}),
 }))
 
 describe('MermaidBlock', () => {
