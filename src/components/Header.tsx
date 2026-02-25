@@ -1,18 +1,71 @@
 import { useAppStore } from '../store'
 
+function SunIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+    </svg>
+  )
+}
+
+function MoonIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+    </svg>
+  )
+}
+
+function FocusIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+      <path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+    </svg>
+  )
+}
+
 export function Header() {
   const fileName = useAppStore((s) => s.fileName)
   const openFile = useAppStore((s) => s.openFile)
+  const theme = useAppStore((s) => s.theme)
+  const setTheme = useAppStore((s) => s.setTheme)
+  const toggleFocusMode = useAppStore((s) => s.toggleFocusMode)
+
+  const isDark = theme === 'dark'
 
   return (
-    <header className="flex h-12 items-center justify-between border-b border-stone-200 bg-white px-4">
-      <span className="text-sm font-medium text-stone-900">{fileName}</span>
-      <button
-        onClick={openFile}
-        className="text-sm text-stone-500 hover:text-stone-800 focus:outline-none"
-      >
-        Open another file
-      </button>
+    <header className="flex h-12 shrink-0 items-center justify-between border-b border-stone-200 bg-white px-4 dark:border-stone-700 dark:bg-stone-900">
+      <span className="text-sm font-medium text-stone-900 dark:text-stone-50">{fileName}</span>
+
+      <div className="flex items-center gap-1">
+        <button
+          onClick={openFile}
+          className="rounded px-2 py-1 text-sm text-stone-500 hover:text-stone-900 focus:outline-none dark:text-stone-400 dark:hover:text-stone-50"
+        >
+          Open another file
+        </button>
+
+        <div className="mx-1 h-4 w-px bg-stone-200 dark:bg-stone-700" aria-hidden="true" />
+
+        <button
+          onClick={() => setTheme(isDark ? 'light' : 'dark')}
+          aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          className="rounded p-1.5 text-stone-500 hover:bg-stone-100 hover:text-stone-900 focus:outline-none dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-50"
+        >
+          {isDark ? <SunIcon /> : <MoonIcon />}
+        </button>
+
+        <button
+          onClick={toggleFocusMode}
+          aria-label="Enter focus mode"
+          title="Enter focus mode"
+          className="rounded p-1.5 text-stone-500 hover:bg-stone-100 hover:text-stone-900 focus:outline-none dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-50"
+        >
+          <FocusIcon />
+        </button>
+      </div>
     </header>
   )
 }

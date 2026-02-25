@@ -1,14 +1,27 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+// Mock MarkdownRenderer — rendering pipeline is tested in MarkdownRenderer.test.tsx
+vi.mock('../components/MarkdownRenderer', () => ({
+  MarkdownRenderer: () => <div data-testid="markdown-renderer" />,
+}))
+
 import App from '../App'
 import { useAppStore } from '../store'
 
 function resetStore() {
-  useAppStore.setState({ fileHandle: null, fileName: null, rawContent: '' })
+  useAppStore.setState({
+    fileHandle: null,
+    fileName: null,
+    rawContent: '',
+    theme: 'light',
+    focusMode: false,
+  })
 }
 
 beforeEach(() => {
+  document.documentElement.classList.remove('dark')
   resetStore()
   vi.restoreAllMocks()
 })
@@ -46,16 +59,88 @@ describe('App — file open', () => {
     expect(screen.getByText('research.md')).toBeInTheDocument()
   })
 
-  it('renders the file content as markdown', () => {
+  it('renders the MarkdownRenderer', () => {
     render(<App />)
-    expect(screen.getByRole('heading', { level: 1, name: 'Hello' })).toBeInTheDocument()
-    expect(screen.getByText('This is a test.')).toBeInTheDocument()
+    expect(screen.getByTestId('markdown-renderer')).toBeInTheDocument()
   })
 
   it('shows "Open another file" button in the header', () => {
     render(<App />)
-    expect(
-      screen.getByRole('button', { name: 'Open another file' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open another file' })).toBeInTheDocument()
+  })
+})
+
+describe('App — theme toggle', () => {
+  beforeEach(() => {
+    useAppStore.setState({
+      fileHandle: {} as FileSystemFileHandle,
+      fileName: 'doc.md',
+      rawContent: '',
+      theme: 'light',
+    })
+  })
+
+  it('adds dark class to <html> when theme is dark', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    expect(document.documentElement.classList.contains('dark')).toBe(false)
+
+    await user.click(screen.getByRole('button', { name: 'Switch to dark mode' }))
+
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
+  })
+
+  it('removes dark class when switching back to light', async () => {
+    useAppStore.setState({ theme: 'dark' })
+    const user = userEvent.setup()
+    render(<App />)
+
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
+
+    await user.click(screen.getByRole('button', { name: 'Switch to light mode' }))
+
+    expect(document.documentElement.classList.contains('dark')).toBe(false)
+  })
+})
+
+describe('App — focus mode', () => {
+  beforeEach(() => {
+    useAppStore.setState({
+      fileHandle: {} as FileSystemFileHandle,
+      fileName: 'doc.md',
+      rawContent: '',
+      focusMode: false,
+    })
+  })
+
+  it('hides the header in focus mode', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    expect(screen.getByRole('banner')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Enter focus mode' }))
+
+    expect(screen.queryByRole('banner')).not.toBeInTheDocument()
+  })
+
+  it('shows an exit button in focus mode', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: 'Enter focus mode' }))
+
+    expect(screen.getByRole('button', { name: 'Exit focus mode' })).toBeInTheDocument()
+  })
+
+  it('restores the header when exiting focus mode', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: 'Enter focus mode' }))
+    await user.click(screen.getByRole('button', { name: 'Exit focus mode' }))
+
+    expect(screen.getByRole('banner')).toBeInTheDocument()
   })
 })

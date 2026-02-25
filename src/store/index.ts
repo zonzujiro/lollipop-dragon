@@ -7,15 +7,23 @@ interface AppState {
   fileName: string | null
   rawContent: string
 
+  // UI
+  theme: 'light' | 'dark'
+  focusMode: boolean
+
   // Actions
   openFile: () => Promise<void>
   clearFile: () => void
+  setTheme: (theme: 'light' | 'dark') => void
+  toggleFocusMode: () => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
   fileHandle: null,
   fileName: null,
   rawContent: '',
+  theme: 'light',
+  focusMode: false,
 
   openFile: async () => {
     const result = await openFile()
@@ -29,4 +37,6 @@ export const useAppStore = create<AppState>((set) => ({
   },
 
   clearFile: () => set({ fileHandle: null, fileName: null, rawContent: '' }),
+  setTheme: (theme) => set({ theme }),
+  toggleFocusMode: () => set((s) => ({ focusMode: !s.focusMode })),
 }))

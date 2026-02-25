@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Enable class-based dark mode for Tailwind v4 */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ── Design tokens ────────────────────────────────────────────── */
 :root {
   --color-bg:         #FAFAF9;
@@ -15,6 +18,16 @@
   --text-body:   1rem;       /* 16px */
   --leading:     1.7;
   --content-max: 720px;
+}
+
+/* ── Dark mode token overrides ───────────────────────────────── */
+.dark {
+  --color-bg:         #1C1917;
+  --color-surface:    #292524;
+  --color-text:       #FAFAF9;
+  --color-text-muted: #A8A29E;
+  --color-border:     #44403C;
+  --color-accent:     #60A5FA;
 }
 
 /* ── Base ────────────────────────────────────────────────────── */
