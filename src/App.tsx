@@ -11,7 +11,7 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-stone-50">
+    <div className="flex h-screen flex-col">
       <Header />
       <main className="flex-1 overflow-hidden">
         <MarkdownRenderer />
