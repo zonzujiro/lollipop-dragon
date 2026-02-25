@@ -20,6 +20,14 @@ describe('MarkdownRenderer — CommonMark', () => {
     expect(screen.getByRole('heading', { level: 3, name: 'H3' })).toBeInTheDocument()
   })
 
+  it('renders headings h4–h6', () => {
+    setContent('#### H4\n##### H5\n###### H6')
+    render(<MarkdownRenderer />)
+    expect(screen.getByRole('heading', { level: 4, name: 'H4' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 5, name: 'H5' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 6, name: 'H6' })).toBeInTheDocument()
+  })
+
   it('renders paragraphs', () => {
     setContent('First paragraph.\n\nSecond paragraph.')
     render(<MarkdownRenderer />)
@@ -73,6 +81,30 @@ describe('MarkdownRenderer — CommonMark', () => {
     expect(screen.getByRole('list')).toBeInTheDocument()
     expect(screen.getByText('First')).toBeInTheDocument()
   })
+
+  it('renders nested lists', () => {
+    setContent('- Top\n  - Nested A\n  - Nested B\n- Bottom')
+    render(<MarkdownRenderer />)
+    const lists = screen.getAllByRole('list')
+    expect(lists.length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByText('Nested A')).toBeInTheDocument()
+    expect(screen.getByText('Nested B')).toBeInTheDocument()
+  })
+
+  it('renders horizontal rules', () => {
+    setContent('Above\n\n---\n\nBelow')
+    const { container } = render(<MarkdownRenderer />)
+    expect(container.querySelector('hr')).toBeInTheDocument()
+  })
+
+  it('renders images', () => {
+    setContent('![Alt text](https://example.com/image.png)')
+    const { container } = render(<MarkdownRenderer />)
+    const img = container.querySelector('img')
+    expect(img).toBeInTheDocument()
+    expect(img).toHaveAttribute('alt', 'Alt text')
+    expect(img).toHaveAttribute('src', 'https://example.com/image.png')
+  })
 })
 
 describe('MarkdownRenderer — GFM extras', () => {
@@ -98,5 +130,12 @@ describe('MarkdownRenderer — GFM extras', () => {
     render(<MarkdownRenderer />)
     const el = screen.getByText('deleted text')
     expect(el.tagName).toBe('DEL')
+  })
+
+  it('renders footnotes', () => {
+    setContent('Text with a note[^1].\n\n[^1]: Footnote content here.')
+    const { container } = render(<MarkdownRenderer />)
+    expect(container.querySelector('sup')).toBeInTheDocument()
+    expect(screen.getByText('Footnote content here.')).toBeInTheDocument()
   })
 })
