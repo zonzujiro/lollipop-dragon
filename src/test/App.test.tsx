@@ -23,6 +23,7 @@ function resetStore() {
     sidebarOpen: true,
     theme: 'light',
     focusMode: false,
+    restoreDirectory: vi.fn().mockResolvedValue(undefined),
   })
   localStorage.clear()
 }

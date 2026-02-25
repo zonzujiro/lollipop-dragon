@@ -15,16 +15,24 @@ function NoFileSelected() {
 
 function App() {
   const fileName = useAppStore((s) => s.fileName)
+  const directoryName = useAppStore((s) => s.directoryName)
   const fileTree = useAppStore((s) => s.fileTree)
   const theme = useAppStore((s) => s.theme)
   const focusMode = useAppStore((s) => s.focusMode)
   const sidebarOpen = useAppStore((s) => s.sidebarOpen)
   const toggleFocusMode = useAppStore((s) => s.toggleFocusMode)
   const toggleSidebar = useAppStore((s) => s.toggleSidebar)
+  const restoreDirectory = useAppStore((s) => s.restoreDirectory)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
   }, [theme])
+
+  // Try to rebuild the file tree from the stored directory handle on mount
+  useEffect(() => {
+    restoreDirectory()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Cmd+B / Ctrl+B toggles sidebar
   useEffect(() => {
@@ -39,8 +47,11 @@ function App() {
   }, [toggleSidebar])
 
   const hasFolderOpen = fileTree.length > 0
+  // directoryName is persisted — use it to avoid flashing the FilePicker
+  // while restoreDirectory is rebuilding the tree in the background.
+  const hasContent = !!fileName || !!directoryName
 
-  if (!fileName && !hasFolderOpen) {
+  if (!hasContent) {
     return <FilePicker />
   }
 

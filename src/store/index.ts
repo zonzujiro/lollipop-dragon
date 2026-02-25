@@ -6,6 +6,7 @@ import {
   readFile,
   buildFileTree,
 } from '../services/fileSystem'
+import { saveHandle, getHandle, removeHandle } from '../services/handleStore'
 import type { FileTreeNode, FileNode } from '../types/fileTree'
 
 interface AppState {
@@ -33,6 +34,7 @@ interface AppState {
   toggleSidebar: () => void
   setTheme: (theme: 'light' | 'dark') => void
   toggleFocusMode: () => void
+  restoreDirectory: () => Promise<void>
 }
 
 export const useAppStore = create<AppState>()(
@@ -53,6 +55,7 @@ export const useAppStore = create<AppState>()(
         const result = await fsOpenFile()
         if (!result) return
         const raw = await readFile(result.handle)
+        await removeHandle('directory')
         set({
           fileHandle: result.handle,
           fileName: result.name,
@@ -67,8 +70,9 @@ export const useAppStore = create<AppState>()(
       openDirectory: async () => {
         const result = await fsOpenDirectory()
         if (!result) return
-        // Clear state immediately after the picker resolves — before the async
-        // buildFileTree — so a refresh during scanning doesn't restore the old file.
+        await saveHandle('directory', result.handle)
+        // Clear file state immediately — before the async buildFileTree — so a
+        // refresh during scanning doesn't restore the previously open single file.
         set({
           fileHandle: null,
           fileName: null,
@@ -107,6 +111,24 @@ export const useAppStore = create<AppState>()(
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
       setTheme: (theme) => set({ theme }),
       toggleFocusMode: () => set((s) => ({ focusMode: !s.focusMode })),
+
+      restoreDirectory: async () => {
+        try {
+          const handle = await getHandle<FileSystemDirectoryHandle>('directory')
+          if (!handle) return
+          const perm = await handle.queryPermission({ mode: 'read' })
+          if (perm !== 'granted') return
+          const tree = await buildFileTree(handle)
+          set({
+            directoryHandle: handle,
+            directoryName: handle.name,
+            fileTree: tree,
+            sidebarOpen: true,
+          })
+        } catch {
+          // IndexedDB unavailable (private browsing, test env) — silent fail
+        }
+      },
     }),
     {
       name: 'markreview-store',
