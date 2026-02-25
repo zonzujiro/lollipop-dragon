@@ -1,7 +1,7 @@
 import { useAppStore } from './store'
 import { FilePicker } from './components/FilePicker'
 import { Header } from './components/Header'
-import { RawViewer } from './components/RawViewer'
+import { MarkdownRenderer } from './components/MarkdownRenderer'
 
 function App() {
   const fileHandle = useAppStore((s) => s.fileHandle)
@@ -14,7 +14,7 @@ function App() {
     <div className="flex h-screen flex-col bg-stone-50">
       <Header />
       <main className="flex-1 overflow-hidden">
-        <RawViewer />
+        <MarkdownRenderer />
       </main>
     </div>
   )

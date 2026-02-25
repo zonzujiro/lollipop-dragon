@@ -46,9 +46,10 @@ describe('App — file open', () => {
     expect(screen.getByText('research.md')).toBeInTheDocument()
   })
 
-  it('shows the raw file content', () => {
+  it('renders the file content as markdown', () => {
     render(<App />)
-    expect(screen.getByText(/# Hello/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Hello' })).toBeInTheDocument()
+    expect(screen.getByText('This is a test.')).toBeInTheDocument()
   })
 
   it('shows "Open another file" button in the header', () => {
