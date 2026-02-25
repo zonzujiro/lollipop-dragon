@@ -569,12 +569,40 @@ body {
 .markdown-body .mermaid-diagram {
   margin: 1rem 0;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   border-radius: var(--radius);
   overflow: hidden;
+  position: relative;
 }
 
 .markdown-body .mermaid-diagram svg { max-width: 100%; height: auto; }
+
+.mermaid-dir-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  background-color: var(--surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.markdown-body .mermaid-diagram:hover .mermaid-dir-btn {
+  opacity: 1;
+}
+
+.mermaid-dir-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
 
 .markdown-body .mermaid-error {
   border: 1px solid var(--c-red);

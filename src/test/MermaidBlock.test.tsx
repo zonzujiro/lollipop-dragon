@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock mermaid before importing the component
@@ -58,6 +59,87 @@ describe('MermaidBlock', () => {
     // Nothing rendered yet — no SVG, no error
     expect(container.querySelector('.mermaid-diagram')).toBeNull()
     expect(container.querySelector('.mermaid-error')).toBeNull()
+  })
+
+  it('shows a direction toggle button for graph/flowchart diagrams', async () => {
+    const mermaid = (await import('mermaid')).default
+    vi.mocked(mermaid.render).mockResolvedValue({ svg: '<svg></svg>', bindFunctions: undefined })
+
+    const { MermaidBlock } = await import('../components/MermaidBlock')
+    render(<MermaidBlock code="graph TD; A-->B" />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Switch to LR layout' })).toBeInTheDocument()
+    })
+  })
+
+  it('does not show a direction button for non-directional diagrams', async () => {
+    const mermaid = (await import('mermaid')).default
+    vi.mocked(mermaid.render).mockResolvedValue({ svg: '<svg></svg>', bindFunctions: undefined })
+
+    const { MermaidBlock } = await import('../components/MermaidBlock')
+    render(<MermaidBlock code="sequenceDiagram\nA->>B: Hello" />)
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /Switch to/ })).not.toBeInTheDocument()
+    })
+  })
+
+  it('re-renders with LR direction when toggle button is clicked', async () => {
+    const mermaid = (await import('mermaid')).default
+    vi.mocked(mermaid.render)
+      .mockResolvedValueOnce({ svg: '<svg data-testid="td"></svg>', bindFunctions: undefined })
+      .mockResolvedValueOnce({ svg: '<svg data-testid="lr"></svg>', bindFunctions: undefined })
+
+    const { MermaidBlock } = await import('../components/MermaidBlock')
+    render(<MermaidBlock code="graph TD; A-->B" />)
+
+    await waitFor(() => screen.getByTestId('td'))
+
+    const [, lastCall] = vi.mocked(mermaid.render).mock.calls
+    expect(lastCall).toBeUndefined() // only one render so far
+
+    await userEvent.click(screen.getByRole('button', { name: 'Switch to LR layout' }))
+
+    await waitFor(() => screen.getByTestId('lr'))
+
+    const lrCode = vi.mocked(mermaid.render).mock.calls[1][1]
+    expect(lrCode).toMatch(/graph LR/i)
+  })
+
+  it('button label flips to TD after switching to LR', async () => {
+    const mermaid = (await import('mermaid')).default
+    vi.mocked(mermaid.render)
+      .mockResolvedValue({ svg: '<svg></svg>', bindFunctions: undefined })
+
+    const { MermaidBlock } = await import('../components/MermaidBlock')
+    render(<MermaidBlock code="graph TD; A-->B" />)
+
+    await waitFor(() => screen.getByRole('button', { name: 'Switch to LR layout' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Switch to LR layout' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Switch to TD layout' })).toBeInTheDocument()
+    })
+  })
+
+  it('resets direction override when code prop changes', async () => {
+    const mermaid = (await import('mermaid')).default
+    vi.mocked(mermaid.render)
+      .mockResolvedValue({ svg: '<svg></svg>', bindFunctions: undefined })
+
+    const { MermaidBlock } = await import('../components/MermaidBlock')
+    const { rerender } = render(<MermaidBlock code="graph TD; A-->B" />)
+
+    await waitFor(() => screen.getByRole('button', { name: 'Switch to LR layout' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Switch to LR layout' }))
+    await waitFor(() => screen.getByRole('button', { name: 'Switch to TD layout' }))
+
+    rerender(<MermaidBlock code="graph TD; B-->C" />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Switch to LR layout' })).toBeInTheDocument()
+    })
   })
 
   it('re-renders when code prop changes', async () => {
