@@ -1,36 +1,52 @@
-@import "tailwindcss";
-
-/* Enable class-based dark mode for Tailwind v4 */
-@custom-variant dark (&:where(.dark, .dark *));
-
-/* ── Design tokens ────────────────────────────────────────────── */
+/* ── Design tokens — light ───────────────────────────────────── */
 :root {
-  --color-bg:         #FAFAF9;
-  --color-surface:    #FFFFFF;
-  --color-text:       #1C1917;
-  --color-text-muted: #78716C;
-  --color-border:     #E7E5E4;
-  --color-accent:     #2563EB;
+  --bg:             #f8f9fa;
+  --surface:        #ffffff;
+  --surface-alt:    #f1f3f5;
+  --border:         #dee2e6;
+  --border-light:   #e9ecef;
+  --text:           #212529;
+  --text-secondary: #495057;
+  --text-muted:     #868e96;
+  --accent:         #4263eb;
+  --accent-light:   #5c7cfa;
+  --accent-bg:      rgba(66, 99, 235, 0.06);
 
-  --font-body:   system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono:   'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
+  --c-green:  #2b8a3e;
+  --c-red:    #e03131;
+  --c-orange: #e67700;
+  --c-purple: #7048e8;
+  --c-cyan:   #1098ad;
 
-  --text-body:   1rem;       /* 16px */
-  --leading:     1.7;
-  --content-max: 720px;
+  --font-body: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
+
+  --text-body: 1rem;
+  --leading:   1.7;
 }
 
-/* ── Dark mode token overrides ───────────────────────────────── */
+/* ── Design tokens — dark ────────────────────────────────────── */
 .dark {
-  --color-bg:         #1C1917;
-  --color-surface:    #292524;
-  --color-text:       #FAFAF9;
-  --color-text-muted: #A8A29E;
-  --color-border:     #44403C;
-  --color-accent:     #60A5FA;
+  --bg:             #2d2a2e;
+  --surface:        #363337;
+  --surface-alt:    #403e41;
+  --border:         #525053;
+  --border-light:   #46444a;
+  --text:           #fcfcfa;
+  --text-secondary: #c1c0c0;
+  --text-muted:     #727072;
+  --accent:         #78dce8;
+  --accent-light:   #a0e7f0;
+  --accent-bg:      rgba(120, 220, 232, 0.1);
+
+  --c-green:  #a9dc76;
+  --c-red:    #ff6188;
+  --c-orange: #fc9867;
+  --c-purple: #ab9df2;
+  --c-cyan:   #78dce8;
 }
 
-/* ── Base ────────────────────────────────────────────────────── */
+/* ── Reset & base ────────────────────────────────────────────── */
 *,
 *::before,
 *::after {
@@ -41,8 +57,8 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: var(--color-bg);
-  color: var(--color-text);
+  background-color: var(--bg);
+  color: var(--text);
   font-family: var(--font-body);
   font-size: var(--text-body);
   line-height: var(--leading);
@@ -55,64 +71,193 @@ body {
   flex-direction: column;
 }
 
+/* ── App layout ──────────────────────────────────────────────── */
+.app-layout {
+  display: flex;
+  height: 100vh;
+  flex-direction: column;
+}
+
+.app-main {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Markdown scroll area ────────────────────────────────────── */
+.markdown-scroll-area {
+  height: 100%;
+  overflow-y: auto;
+  padding: 2.5rem 2rem;
+}
+
+/* ── UI chrome ───────────────────────────────────────────────── */
+.app-header {
+  display: flex;
+  height: 3rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+  background-color: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.app-header__filename {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.app-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.app-header__divider {
+  width: 1px;
+  height: 1rem;
+  background-color: var(--border);
+  margin: 0 0.25rem;
+}
+
+.app-header__btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  transition: background-color 0.1s, color 0.1s;
+}
+
+.app-header__btn:hover {
+  background-color: var(--surface-alt);
+  color: var(--text);
+}
+
+.app-header__btn--text {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+.app-header__btn--icon {
+  padding: 0.375rem;
+}
+
+.focus-exit-btn {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.5rem;
+  border-radius: 9999px;
+  background-color: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  opacity: 0.4;
+  transition: opacity 0.15s;
+  display: flex;
+  align-items: center;
+}
+
+.focus-exit-btn:hover {
+  opacity: 1;
+}
+
+/* ── File picker ─────────────────────────────────────────────── */
+.file-picker {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  background-color: var(--bg);
+}
+
+.file-picker__title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.file-picker__subtitle {
+  margin: 0.5rem 0 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.file-picker__btn {
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #fff;
+  background-color: var(--accent);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.file-picker__btn:hover { opacity: 0.88; }
+
+.file-picker__btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* ── Markdown body ───────────────────────────────────────────── */
 .markdown-body {
-  color: var(--color-text);
+  margin: 0 auto;
+  width: 90%;
+  color: var(--text);
   font-size: var(--text-body);
   line-height: var(--leading);
 }
 
-/* Headings */
 .markdown-body h1,
 .markdown-body h2,
 .markdown-body h3,
 .markdown-body h4,
 .markdown-body h5,
 .markdown-body h6 {
-  color: var(--color-text);
-  font-weight: 700;
+  color: var(--text);
   line-height: 1.3;
   margin-top: 2em;
   margin-bottom: 0.5em;
 }
 
-.markdown-body h1 { font-size: 2rem;    font-weight: 700; }
-.markdown-body h2 { font-size: 1.5rem;  font-weight: 600; }
-.markdown-body h3 { font-size: 1.25rem; font-weight: 600; }
+.markdown-body h1 { font-size: 2rem;     font-weight: 700; }
+.markdown-body h2 { font-size: 1.5rem;   font-weight: 600; }
+.markdown-body h3 { font-size: 1.25rem;  font-weight: 600; }
 .markdown-body h4 { font-size: 1.125rem; font-weight: 600; }
-.markdown-body h5 { font-size: 1rem;    font-weight: 600; }
-.markdown-body h6 { font-size: 0.875rem; font-weight: 600; color: var(--color-text-muted); }
+.markdown-body h5 { font-size: 1rem;     font-weight: 600; }
+.markdown-body h6 { font-size: 0.875rem; font-weight: 600; color: var(--text-muted); }
 
-/* First heading needs no top margin */
 .markdown-body > :first-child,
 .markdown-body > h1:first-child,
-.markdown-body > h2:first-child {
-  margin-top: 0;
-}
+.markdown-body > h2:first-child { margin-top: 0; }
 
-/* Paragraphs */
-.markdown-body p {
-  margin-top: 0;
-  margin-bottom: 1.25em;
-}
+.markdown-body p { margin-top: 0; margin-bottom: 1.25em; }
 
-/* Links */
 .markdown-body a {
-  color: var(--color-accent);
+  color: var(--accent);
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
 }
 
 .markdown-body a:hover {
+  color: var(--accent-light);
   text-decoration-thickness: 2px;
 }
 
-/* Bold / italic */
 .markdown-body strong { font-weight: 700; }
 .markdown-body em     { font-style: italic; }
 
-/* Lists */
 .markdown-body ul,
 .markdown-body ol {
   margin-top: 0;
@@ -120,50 +265,41 @@ body {
   padding-left: 1.75em;
 }
 
-.markdown-body li {
-  margin-bottom: 0.35em;
-}
+.markdown-body li { margin-bottom: 0.35em; }
+.markdown-body li > p { margin-bottom: 0.5em; }
 
-.markdown-body li > p {
-  margin-bottom: 0.5em;
-}
-
-/* Task lists */
 .markdown-body input[type="checkbox"] {
   margin-right: 0.4em;
-  accent-color: var(--color-accent);
+  accent-color: var(--accent);
 }
 
-/* Blockquotes */
 .markdown-body blockquote {
-  border-left: 3px solid var(--color-border);
+  border-left: 3px solid var(--border);
   margin: 1.5em 0;
   padding: 0.5em 1.25em;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-style: italic;
+  background-color: var(--accent-bg);
 }
 
-.markdown-body blockquote > p {
-  margin-bottom: 0;
-}
+.markdown-body blockquote > p { margin-bottom: 0; }
 
-/* Inline code */
 .markdown-body :not(pre) > code {
   font-family: var(--font-mono);
   font-size: 0.875em;
-  background-color: var(--color-border);
+  background-color: var(--surface-alt);
+  border: 1px solid var(--border-light);
   border-radius: 4px;
   padding: 0.15em 0.4em;
-  color: var(--color-text);
+  color: var(--text);
 }
 
-/* Code blocks — Shiki sets background & token colours via inline styles */
 .markdown-body pre {
   font-family: var(--font-mono);
-  font-size: 0.875rem;   /* 14px */
+  font-size: 0.875rem;
   line-height: 1.6;
   border-radius: 8px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--border);
   padding: 1.25em 1.5em;
   overflow-x: auto;
   margin: 1.5em 0;
@@ -177,7 +313,6 @@ body {
   border-radius: 0;
 }
 
-/* Tables */
 .markdown-body table {
   width: 100%;
   border-collapse: collapse;
@@ -185,30 +320,25 @@ body {
   font-size: 0.9375rem;
 }
 
-.markdown-body thead {
-  background-color: color-mix(in srgb, var(--color-border) 40%, transparent);
-}
+.markdown-body thead { background-color: var(--surface-alt); }
 
 .markdown-body th,
 .markdown-body td {
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--border);
   padding: 0.6em 0.9em;
   text-align: left;
 }
 
-.markdown-body th {
-  font-weight: 600;
-  color: var(--color-text);
-}
+.markdown-body th { font-weight: 600; color: var(--text); }
 
-/* Horizontal rule */
+.markdown-body tr:nth-child(even) td { background-color: var(--surface-alt); }
+
 .markdown-body hr {
   border: none;
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--border);
   margin: 2.5em 0;
 }
 
-/* Images */
 .markdown-body img {
   max-width: 100%;
   height: auto;
@@ -217,33 +347,26 @@ body {
   margin: 1.5em auto;
 }
 
-/* Strikethrough */
-.markdown-body del {
-  color: var(--color-text-muted);
-}
+.markdown-body del { color: var(--text-muted); }
 
-/* Mermaid diagrams */
 .markdown-body .mermaid-diagram {
   margin: 1.5em 0;
   display: flex;
   justify-content: center;
 }
 
-.markdown-body .mermaid-diagram svg {
-  max-width: 100%;
-  height: auto;
-}
+.markdown-body .mermaid-diagram svg { max-width: 100%; height: auto; }
 
 .markdown-body .mermaid-error {
-  border: 1px solid #FCA5A5;
-  background-color: #FEF2F2;
+  border: 1px solid var(--c-red);
+  background-color: var(--accent-bg);
   border-radius: 8px;
   padding: 1em 1.25em;
   margin: 1.5em 0;
 }
 
 .markdown-body .mermaid-error-msg {
-  color: #DC2626;
+  color: var(--c-red);
   font-size: 0.875rem;
   margin: 0.5em 0 0;
   font-style: italic;
@@ -255,14 +378,5 @@ body {
   .markdown-body h2 { font-size: 1.25rem; }
   .markdown-body h3 { font-size: 1.125rem; }
 
-  .markdown-body pre {
-    font-size: 0.8125rem;
-    padding: 1em;
-  }
-
-  .markdown-body table {
-    display: block;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
+  .markdown-body pre { font-size: 0.8125rem; padding: 1em; }
 }

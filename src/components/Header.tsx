@@ -35,24 +35,21 @@ export function Header() {
   const isDark = theme === 'dark'
 
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between border-b border-stone-200 bg-white px-4 dark:border-stone-700 dark:bg-stone-900">
-      <span className="text-sm font-medium text-stone-900 dark:text-stone-50">{fileName}</span>
+    <header className="app-header">
+      <span className="app-header__filename">{fileName}</span>
 
-      <div className="flex items-center gap-1">
-        <button
-          onClick={openFile}
-          className="rounded px-2 py-1 text-sm text-stone-500 hover:text-stone-900 focus:outline-none dark:text-stone-400 dark:hover:text-stone-50"
-        >
+      <div className="app-header__actions">
+        <button onClick={openFile} className="app-header__btn app-header__btn--text">
           Open another file
         </button>
 
-        <div className="mx-1 h-4 w-px bg-stone-200 dark:bg-stone-700" aria-hidden="true" />
+        <div className="app-header__divider" aria-hidden="true" />
 
         <button
           onClick={() => setTheme(isDark ? 'light' : 'dark')}
           aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
           title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-          className="rounded p-1.5 text-stone-500 hover:bg-stone-100 hover:text-stone-900 focus:outline-none dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-50"
+          className="app-header__btn app-header__btn--icon"
         >
           {isDark ? <SunIcon /> : <MoonIcon />}
         </button>
@@ -61,7 +58,7 @@ export function Header() {
           onClick={toggleFocusMode}
           aria-label="Enter focus mode"
           title="Enter focus mode"
-          className="rounded p-1.5 text-stone-500 hover:bg-stone-100 hover:text-stone-900 focus:outline-none dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-50"
+          className="app-header__btn app-header__btn--icon"
         >
           <FocusIcon />
         </button>

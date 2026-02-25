@@ -55,8 +55,8 @@ export function MarkdownRenderer() {
     : []
 
   return (
-    <div className="h-full overflow-auto px-8 py-10">
-      <div className="markdown-body mx-auto max-w-[720px]">
+    <div className="markdown-scroll-area">
+      <div className="markdown-body">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           rehypePlugins={rehypePlugins}
