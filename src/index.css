@@ -12,11 +12,19 @@
   --accent-light:   #5c7cfa;
   --accent-bg:      rgba(66, 99, 235, 0.06);
 
-  --c-green:  #2b8a3e;
-  --c-red:    #e03131;
-  --c-orange: #e67700;
-  --c-purple: #7048e8;
-  --c-cyan:   #1098ad;
+  --c-green:    #2b8a3e;
+  --c-green-bg: #d3f9d8;
+  --c-red:      #e03131;
+  --c-orange:   #e67700;
+  --c-purple:   #7048e8;
+  --c-cyan:     #1098ad;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.12);
+
+  --radius:    8px;
+  --radius-lg: 12px;
 
   --font-body: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
@@ -25,13 +33,13 @@
   --leading:   1.7;
 }
 
-/* ── Design tokens — dark ────────────────────────────────────── */
+/* ── Design tokens — dark (Monokai Pro) ──────────────────────── */
 .dark {
   --bg:             #2d2a2e;
   --surface:        #363337;
   --surface-alt:    #403e41;
   --border:         #525053;
-  --border-light:   #46444a;
+  --border-light:   #403e41;
   --text:           #fcfcfa;
   --text-secondary: #c1c0c0;
   --text-muted:     #727072;
@@ -39,11 +47,16 @@
   --accent-light:   #a0e7f0;
   --accent-bg:      rgba(120, 220, 232, 0.1);
 
-  --c-green:  #a9dc76;
-  --c-red:    #ff6188;
-  --c-orange: #fc9867;
-  --c-purple: #ab9df2;
-  --c-cyan:   #78dce8;
+  --c-green:    #a9dc76;
+  --c-green-bg: rgba(169, 220, 118, 0.15);
+  --c-red:      #ff6188;
+  --c-orange:   #fc9867;
+  --c-purple:   #ab9df2;
+  --c-cyan:     #78dce8;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.6);
 }
 
 /* ── Reset & base ────────────────────────────────────────────── */
@@ -63,6 +76,7 @@ body {
   font-size: var(--text-body);
   line-height: var(--leading);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
@@ -99,13 +113,18 @@ body {
   justify-content: space-between;
   padding: 0 1rem;
   background-color: var(--surface);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-light);
+  box-shadow: var(--shadow-sm);
 }
 
 .app-header__filename {
-  font-size: 0.875rem;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
   font-weight: 500;
-  color: var(--text);
+  color: var(--accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-header__actions {
@@ -117,33 +136,38 @@ body {
 .app-header__divider {
   width: 1px;
   height: 1rem;
-  background-color: var(--border);
+  background-color: var(--border-light);
   margin: 0 0.25rem;
 }
 
 .app-header__btn {
-  background: none;
-  border: none;
+  background-color: var(--surface-alt);
+  border: 1px solid var(--border-light);
   cursor: pointer;
-  border-radius: 4px;
-  color: var(--text-muted);
-  display: flex;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  display: inline-flex;
   align-items: center;
-  transition: background-color 0.1s, color 0.1s;
+  gap: 0.35rem;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .app-header__btn:hover {
-  background-color: var(--surface-alt);
-  color: var(--text);
+  background-color: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
 }
 
 .app-header__btn--text {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.875rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 500;
 }
 
 .app-header__btn--icon {
-  padding: 0.375rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 500;
 }
 
 .focus-exit-btn {
@@ -160,6 +184,7 @@ body {
   transition: opacity 0.15s;
   display: flex;
   align-items: center;
+  box-shadow: var(--shadow-md);
 }
 
 .focus-exit-btn:hover {
@@ -177,27 +202,46 @@ body {
   background-color: var(--bg);
 }
 
+.file-picker__card {
+  text-align: center;
+  background: var(--surface);
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-lg);
+  padding: 3rem 2.5rem;
+  max-width: 480px;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+
+.file-picker__card:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
 .file-picker__title {
   font-size: 1.5rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
-  margin: 0;
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.02em;
 }
 
 .file-picker__subtitle {
-  margin: 0.5rem 0 0;
-  font-size: 0.875rem;
+  margin: 0;
+  font-size: 0.95rem;
   color: var(--text-muted);
+  line-height: 1.5;
 }
 
 .file-picker__btn {
+  margin-top: 1.5rem;
   padding: 0.625rem 1.25rem;
   font-size: 0.875rem;
   font-weight: 500;
   color: #fff;
   background-color: var(--accent);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius);
   cursor: pointer;
   transition: opacity 0.15s;
 }
@@ -230,43 +274,56 @@ body {
   margin-bottom: 0.5em;
 }
 
-.markdown-body h1 { font-size: 2rem;     font-weight: 700; }
-.markdown-body h2 { font-size: 1.5rem;   font-weight: 600; }
-.markdown-body h3 { font-size: 1.25rem;  font-weight: 600; }
-.markdown-body h4 { font-size: 1.125rem; font-weight: 600; }
-.markdown-body h5 { font-size: 1rem;     font-weight: 600; }
+.markdown-body h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.markdown-body h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.markdown-body h3 { font-size: 1.25rem; font-weight: 600; }
+.markdown-body h4 { font-size: 1rem;    font-weight: 600; color: var(--text-secondary); }
+.markdown-body h5 { font-size: 1rem;    font-weight: 600; }
 .markdown-body h6 { font-size: 0.875rem; font-weight: 600; color: var(--text-muted); }
 
 .markdown-body > :first-child,
 .markdown-body > h1:first-child,
 .markdown-body > h2:first-child { margin-top: 0; }
 
-.markdown-body p { margin-top: 0; margin-bottom: 1.25em; }
+.markdown-body p { margin: 0 0 1rem; }
 
 .markdown-body a {
   color: var(--accent);
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 2px;
+  text-decoration: none;
+  font-weight: 500;
 }
 
 .markdown-body a:hover {
-  color: var(--accent-light);
-  text-decoration-thickness: 2px;
+  text-decoration: underline;
 }
 
-.markdown-body strong { font-weight: 700; }
+.markdown-body strong { font-weight: 600; color: var(--text); }
 .markdown-body em     { font-style: italic; }
 
 .markdown-body ul,
 .markdown-body ol {
-  margin-top: 0;
-  margin-bottom: 1.25em;
+  margin: 0 0 1rem;
   padding-left: 1.75em;
 }
 
-.markdown-body li { margin-bottom: 0.35em; }
-.markdown-body li > p { margin-bottom: 0.5em; }
+.markdown-body li { margin: 0.25rem 0; line-height: var(--leading); }
+.markdown-body li > ul,
+.markdown-body li > ol { margin-bottom: 0; }
+.markdown-body li::marker { color: var(--text-muted); }
 
 .markdown-body input[type="checkbox"] {
   margin-right: 0.4em;
@@ -274,15 +331,16 @@ body {
 }
 
 .markdown-body blockquote {
-  border-left: 3px solid var(--border);
-  margin: 1.5em 0;
-  padding: 0.5em 1.25em;
-  color: var(--text-muted);
-  font-style: italic;
+  border-left: 4px solid var(--accent);
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
   background-color: var(--accent-bg);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  color: var(--text-secondary);
 }
 
-.markdown-body blockquote > p { margin-bottom: 0; }
+.markdown-body blockquote > p:last-child { margin-bottom: 0; }
+.markdown-body blockquote strong { color: var(--text); }
 
 .markdown-body :not(pre) > code {
   font-family: var(--font-mono);
@@ -290,19 +348,19 @@ body {
   background-color: var(--surface-alt);
   border: 1px solid var(--border-light);
   border-radius: 4px;
-  padding: 0.15em 0.4em;
-  color: var(--text);
+  padding: 0.15rem 0.4rem;
+  color: var(--c-red);
 }
 
 .markdown-body pre {
   font-family: var(--font-mono);
   font-size: 0.875rem;
   line-height: 1.6;
-  border-radius: 8px;
+  border-radius: var(--radius);
   border: 1px solid var(--border);
   padding: 1.25em 1.5em;
   overflow-x: auto;
-  margin: 1.5em 0;
+  margin: 1rem 0;
 }
 
 .markdown-body pre code {
@@ -311,38 +369,52 @@ body {
   background: none;
   padding: 0;
   border-radius: 0;
+  color: inherit;
+  border: none;
 }
 
 .markdown-body table {
   width: 100%;
   border-collapse: collapse;
-  margin: 1.5em 0;
-  font-size: 0.9375rem;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
 }
 
 .markdown-body thead { background-color: var(--surface-alt); }
 
-.markdown-body th,
-.markdown-body td {
-  border: 1px solid var(--border);
-  padding: 0.6em 0.9em;
+.markdown-body th {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text);
   text-align: left;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--border);
+  background-color: var(--surface-alt);
 }
 
-.markdown-body th { font-weight: 600; color: var(--text); }
+.markdown-body td {
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--border-light);
+  vertical-align: top;
+  color: var(--text-secondary);
+}
 
 .markdown-body tr:nth-child(even) td { background-color: var(--surface-alt); }
+.markdown-body tr:hover td           { background-color: var(--accent-bg); }
 
 .markdown-body hr {
   border: none;
-  border-top: 1px solid var(--border);
-  margin: 2.5em 0;
+  border-top: 1px solid var(--border-light);
+  margin: 2rem 0;
 }
 
 .markdown-body img {
   max-width: 100%;
   height: auto;
-  border-radius: 6px;
+  border-radius: var(--radius);
   display: block;
   margin: 1.5em auto;
 }
@@ -350,9 +422,11 @@ body {
 .markdown-body del { color: var(--text-muted); }
 
 .markdown-body .mermaid-diagram {
-  margin: 1.5em 0;
+  margin: 1rem 0;
   display: flex;
   justify-content: center;
+  border-radius: var(--radius);
+  overflow: hidden;
 }
 
 .markdown-body .mermaid-diagram svg { max-width: 100%; height: auto; }
@@ -360,9 +434,9 @@ body {
 .markdown-body .mermaid-error {
   border: 1px solid var(--c-red);
   background-color: var(--accent-bg);
-  border-radius: 8px;
+  border-radius: var(--radius);
   padding: 1em 1.25em;
-  margin: 1.5em 0;
+  margin: 1rem 0;
 }
 
 .markdown-body .mermaid-error-msg {
@@ -377,6 +451,6 @@ body {
   .markdown-body h1 { font-size: 1.625rem; }
   .markdown-body h2 { font-size: 1.25rem; }
   .markdown-body h3 { font-size: 1.125rem; }
-
   .markdown-body pre { font-size: 0.8125rem; padding: 1em; }
+  .file-picker__card { padding: 2rem 1.5rem; max-width: 100%; }
 }

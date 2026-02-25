@@ -5,13 +5,13 @@ export function FilePicker() {
 
   return (
     <div className="file-picker">
-      <div style={{ textAlign: 'center' }}>
+      <div className="file-picker__card">
         <h1 className="file-picker__title">MarkReview</h1>
         <p className="file-picker__subtitle">Open a markdown file to start reviewing</p>
+        <button onClick={openFile} className="file-picker__btn">
+          Open File
+        </button>
       </div>
-      <button onClick={openFile} className="file-picker__btn">
-        Open File
-      </button>
     </div>
   )
 }
