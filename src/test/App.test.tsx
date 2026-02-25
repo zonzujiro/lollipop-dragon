@@ -18,6 +18,7 @@ function resetStore() {
     theme: 'light',
     focusMode: false,
   })
+  localStorage.clear()
 }
 
 beforeEach(() => {

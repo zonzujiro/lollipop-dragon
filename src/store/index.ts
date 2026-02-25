@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import { openFile, readFile } from '../services/fileSystem'
 
 interface AppState {
@@ -18,25 +19,37 @@ interface AppState {
   toggleFocusMode: () => void
 }
 
-export const useAppStore = create<AppState>((set) => ({
-  fileHandle: null,
-  fileName: null,
-  rawContent: '',
-  theme: 'light',
-  focusMode: false,
+export const useAppStore = create<AppState>()(
+  persist(
+    (set) => ({
+      fileHandle: null,
+      fileName: null,
+      rawContent: '',
+      theme: 'light',
+      focusMode: false,
 
-  openFile: async () => {
-    const result = await openFile()
-    if (!result) return
-    const raw = await readFile(result.handle)
-    set({
-      fileHandle: result.handle,
-      fileName: result.name,
-      rawContent: raw,
-    })
-  },
+      openFile: async () => {
+        const result = await openFile()
+        if (!result) return
+        const raw = await readFile(result.handle)
+        set({
+          fileHandle: result.handle,
+          fileName: result.name,
+          rawContent: raw,
+        })
+      },
 
-  clearFile: () => set({ fileHandle: null, fileName: null, rawContent: '' }),
-  setTheme: (theme) => set({ theme }),
-  toggleFocusMode: () => set((s) => ({ focusMode: !s.focusMode })),
-}))
+      clearFile: () => set({ fileHandle: null, fileName: null, rawContent: '' }),
+      setTheme: (theme) => set({ theme }),
+      toggleFocusMode: () => set((s) => ({ focusMode: !s.focusMode })),
+    }),
+    {
+      name: 'markreview-store',
+      partialize: (s) => ({
+        fileName: s.fileName,
+        rawContent: s.rawContent,
+        theme: s.theme,
+      }),
+    },
+  ),
+)

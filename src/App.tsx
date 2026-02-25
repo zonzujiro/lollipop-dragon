@@ -5,7 +5,7 @@ import { Header } from './components/Header'
 import { MarkdownRenderer } from './components/MarkdownRenderer'
 
 function App() {
-  const fileHandle = useAppStore((s) => s.fileHandle)
+  const fileName = useAppStore((s) => s.fileName)
   const theme = useAppStore((s) => s.theme)
   const focusMode = useAppStore((s) => s.focusMode)
   const toggleFocusMode = useAppStore((s) => s.toggleFocusMode)
@@ -14,7 +14,7 @@ function App() {
     document.documentElement.classList.toggle('dark', theme === 'dark')
   }, [theme])
 
-  if (!fileHandle) {
+  if (!fileName) {
     return <FilePicker />
   }
 
