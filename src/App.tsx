@@ -26,10 +26,31 @@ function App() {
   const toggleSidebar = useAppStore((s) => s.toggleSidebar)
   const commentPanelOpen = useAppStore((s) => s.commentPanelOpen)
   const restoreDirectory = useAppStore((s) => s.restoreDirectory)
+  const fileHandle = useAppStore((s) => s.fileHandle)
+  const refreshFile = useAppStore((s) => s.refreshFile)
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
   }, [theme])
+
+  // Watch the open file for external changes (e.g. LLM edits) using FileSystemObserver
+  useEffect(() => {
+    if (!fileHandle || !('FileSystemObserver' in window)) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const observer = new (window as any).FileSystemObserver((records: any[]) => {
+      if (records.some((r) => r.type === 'modified' || r.type === 'appeared')) {
+        refreshFile()
+      }
+    })
+    ;(async () => {
+      try {
+        await observer.observe(fileHandle)
+      } catch {
+        // observation not supported for this handle
+      }
+    })()
+    return () => observer.disconnect()
+  }, [fileHandle, refreshFile])
 
   // Try to rebuild the file tree from the stored directory handle on mount
   useEffect(() => {
