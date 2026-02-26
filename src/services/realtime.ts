@@ -204,7 +204,7 @@ export class RealtimeSession {
     const [sendSync, onSync] = this.room.makeAction<Uint8Array>('yjs-sync')
     const [sendUpdate, onUpdate] = this.room.makeAction<Uint8Array>('yjs-update')
     const [sendAwareness, onAwareness] = this.room.makeAction<Record<string, unknown>>('awareness')
-    const [sendContentUpdated, onContentUpdated] = this.room.makeAction<string>('content-updated')
+    const [sendContentUpdated, onContentUpdated] = this.room.makeAction<string>('doc-updated')
 
     this.sendYjsSync = sendSync
     this.sendYjsUpdate = sendUpdate

@@ -19,10 +19,11 @@ export function SharedPanel() {
   const fetchPendingComments = useAppStore((s) => s.fetchPendingComments)
   const pendingComments = useAppStore((s) => s.pendingComments)
 
+  const showToast = useAppStore((s) => s.showToast)
+
   const [expandedDocId, setExpandedDocId] = useState<string | null>(null)
   const [loadingDocId, setLoadingDocId] = useState<string | null>(null)
-  const [updatedLink, setUpdatedLink] = useState<Record<string, string>>({})
-  const [copied, setCopied] = useState<string | null>(null)
+  const [updated, setUpdated] = useState<string | null>(null)
 
   async function handleFetch(docId: string) {
     setLoadingDocId(docId)
@@ -37,13 +38,10 @@ export function SharedPanel() {
   async function handleUpdate(docId: string) {
     setLoadingDocId(docId)
     try {
-      const url = await updateShare(docId) as unknown as string
-      if (url) {
-        setUpdatedLink((prev) => ({ ...prev, [docId]: url }))
-        await navigator.clipboard.writeText(url)
-        setCopied(docId)
-        setTimeout(() => setCopied(null), 2000)
-      }
+      await updateShare(docId)
+      setUpdated(docId)
+      showToast('Share updated')
+      setTimeout(() => setUpdated(null), 2000)
     } finally {
       setLoadingDocId(null)
     }
@@ -100,9 +98,9 @@ export function SharedPanel() {
                     className="shared-panel__btn"
                     onClick={() => handleUpdate(share.docId)}
                     disabled={isLoading}
-                    title="Re-encrypt current file state and update the shared link"
+                    title="Re-encrypt current file state and update the shared content"
                   >
-                    {copied === share.docId ? 'Link copied!' : 'Update'}
+                    {updated === share.docId ? 'Updated!' : 'Update'}
                   </button>
 
                   <button
@@ -114,18 +112,6 @@ export function SharedPanel() {
                     Revoke
                   </button>
                 </div>
-
-                {updatedLink[share.docId] && copied !== share.docId && (
-                  <div className="shared-panel__new-link">
-                    <input
-                      className="shared-panel__link-input"
-                      value={updatedLink[share.docId]}
-                      readOnly
-                      aria-label="Updated link"
-                      onFocus={(e) => e.target.select()}
-                    />
-                  </div>
-                )}
 
                 {isExpanded && (
                   <div className="shared-panel__comments">

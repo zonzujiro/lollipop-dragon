@@ -41,6 +41,22 @@ export class ShareStorage {
     return deserializePayload(decrypted)
   }
 
+  async updateContent(
+    docId: string,
+    hostSecret: string,
+    tree: Record<string, string>,
+    key: CryptoKey,
+  ): Promise<void> {
+    const compressed = await serializePayload(tree)
+    const blob = await encrypt(compressed, key)
+    const res = await fetch(`${this.workerUrl}/share/${docId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/octet-stream', 'X-Host-Secret': hostSecret },
+      body: blob,
+    })
+    if (!res.ok) throw new Error(`Update failed: ${res.status}`)
+  }
+
   async deleteContent(docId: string, hostSecret: string): Promise<void> {
     const res = await fetch(`${this.workerUrl}/share/${docId}`, {
       method: 'DELETE',

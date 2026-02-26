@@ -416,21 +416,40 @@ export const useAppStore = create<AppState>()(
       updateShare: async (docId) => {
         const storage = getStorage()
         if (!storage) throw new Error('Worker URL not configured')
-        const { shares, rtSession } = get()
+        const { shares, shareKeys, rtSession, fileName, rawContent, fileTree, activeFilePath } = get()
         const record = shares.find((s) => s.docId === docId)
         if (!record) throw new Error('Share not found')
+        const key = shareKeys[docId]
+        if (!key) throw new Error('Encryption key not available (session may have expired)')
 
-        // Revoke old share silently
-        try { await storage.deleteContent(docId, record.hostSecret) } catch { /* ignore */ }
+        // Build content tree from current file state
+        const tree: Record<string, string> = {}
+        if (fileTree.length > 0) {
+          const readNode = async (items: FileTreeNode[]) => {
+            for (const node of items) {
+              if (node.kind === 'file') {
+                const path = node.path
+                if (path === activeFilePath && rawContent) {
+                  tree[path] = rawContent
+                } else {
+                  try { tree[path] = await readFile((node as FileNode).handle) } catch { /* skip */ }
+                }
+              } else if (node.kind === 'directory') {
+                await readNode((node as DirectoryNode).children)
+              }
+            }
+          }
+          await readNode(fileTree)
+        }
+        if (Object.keys(tree).length === 0 && rawContent) {
+          tree[activeFilePath ?? fileName ?? 'document.md'] = rawContent
+        }
 
-        // Re-share with a new key/docId using same TTL
-        const ttl = Math.round((new Date(record.expiresAt).getTime() - Date.now()) / 1000)
-        const url = await get().shareContent({ ttl: Math.max(ttl, 3600) })
+        // Overwrite content at the same docId with the same key
+        await storage.updateContent(docId, record.hostSecret, tree, key)
 
         // Notify connected peers that content was updated
         if (rtSession) rtSession.notifyContentUpdated()
-
-        return url
       },
 
       fetchPendingComments: async (docId) => {

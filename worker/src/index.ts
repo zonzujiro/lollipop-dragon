@@ -15,7 +15,7 @@ interface ShareMeta {
 function corsHeaders(origin: string) {
   return {
     'Access-Control-Allow-Origin': origin,
-    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, X-Host-Secret',
   }
 }
@@ -91,6 +91,18 @@ export default {
         return new Response(blob, {
           headers: { ...cors, 'Content-Type': 'application/octet-stream' },
         })
+      }
+
+      // PUT /share/:docId  — update content in-place
+      if (req.method === 'PUT' && docId) {
+        if (!await verifySecret(req, env, docId)) return errRes(403, 'Forbidden', cors)
+        const meta = await getMeta(env, docId)
+        if (!meta) return errRes(404, 'Not found', cors)
+        const blob = await req.arrayBuffer()
+        if (blob.byteLength > 25 * 1024 * 1024) return errRes(413, 'Blob too large', cors)
+        const remainingTtl = Math.max(meta.ttl - Math.round((Date.now() - new Date(meta.createdAt).getTime()) / 1000), 3600)
+        await env.LOLLIPOP_DRAGON.put(`share:${docId}`, blob, { expirationTtl: remainingTtl })
+        return jsonRes({ ok: true }, cors)
       }
 
       // DELETE /share/:docId  — revoke share
