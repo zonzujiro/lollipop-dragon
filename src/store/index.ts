@@ -1,132 +1,156 @@
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import {
   openFile as fsOpenFile,
   openDirectory as fsOpenDirectory,
   readFile,
   buildFileTree,
-} from '../services/fileSystem'
-import { saveHandle, getHandle, removeHandle } from '../services/handleStore'
-import { parseCriticMarkup } from '../services/criticmarkup'
-import { insertComment as insertCommentService } from '../services/insertComment'
-import { applyEdit } from '../services/editComment'
-import { applyDelete } from '../services/deleteComment'
-import { ShareStorage } from '../services/shareStorage'
-import { generateKey, keyToBase64url, base64urlToKey } from '../services/crypto'
+} from "../services/fileSystem";
+import { saveHandle, getHandle, removeHandle } from "../services/handleStore";
+import { parseCriticMarkup } from "../services/criticmarkup";
+import { insertComment as insertCommentService } from "../services/insertComment";
+import { applyEdit } from "../services/editComment";
+import { applyDelete } from "../services/deleteComment";
+import { ShareStorage } from "../services/shareStorage";
+import {
+  generateKey,
+  keyToBase64url,
+  base64urlToKey,
+} from "../services/crypto";
 import {
   RealtimeSession,
   docIdToRoomId,
   generateRoomPassword,
-} from '../services/realtime'
-import type { ConnectionStatus, PeerInfo } from '../services/realtime'
-import type { FileTreeNode, FileNode, DirectoryNode } from '../types/fileTree'
-import type { Comment, CommentType } from '../types/criticmarkup'
-import type { ShareRecord, SharePayload, PeerComment } from '../types/share'
+} from "../services/realtime";
+import type { ConnectionStatus, PeerInfo } from "../services/realtime";
+import type { FileTreeNode, FileNode, DirectoryNode } from "../types/fileTree";
+import type { Comment, CommentType } from "../types/criticmarkup";
+import type { ShareRecord, SharePayload, PeerComment } from "../types/share";
 
-const WORKER_URL = import.meta.env.VITE_WORKER_URL as string | undefined
-const SHARES_KEY = 'markreview-shares'
+const WORKER_URL = import.meta.env.VITE_WORKER_URL as string | undefined;
+const SHARES_KEY = "markreview-shares";
 
 function loadShares(): ShareRecord[] {
-  try { return JSON.parse(localStorage.getItem(SHARES_KEY) ?? '[]') } catch { return [] }
+  try {
+    return JSON.parse(localStorage.getItem(SHARES_KEY) ?? "[]");
+  } catch {
+    return [];
+  }
 }
 function saveShares(shares: ShareRecord[]) {
-  localStorage.setItem(SHARES_KEY, JSON.stringify(shares))
+  localStorage.setItem(SHARES_KEY, JSON.stringify(shares));
 }
 
 interface AppState {
   // Single file
-  fileHandle: FileSystemFileHandle | null
-  fileName: string | null
-  rawContent: string
+  fileHandle: FileSystemFileHandle | null;
+  fileName: string | null;
+  rawContent: string;
 
   // Folder
-  directoryHandle: FileSystemDirectoryHandle | null
-  directoryName: string | null
-  fileTree: FileTreeNode[]
-  activeFilePath: string | null
-  sidebarOpen: boolean
+  directoryHandle: FileSystemDirectoryHandle | null;
+  directoryName: string | null;
+  fileTree: FileTreeNode[];
+  activeFilePath: string | null;
+  sidebarOpen: boolean;
 
   // Comments (derived from rawContent by MarkdownRenderer)
-  comments: Comment[]
-  resolvedComments: Comment[]
-  activeCommentId: string | null
-  commentPanelOpen: boolean
-  commentFilter: CommentType | 'all' | 'pending' | 'resolved'
+  comments: Comment[];
+  resolvedComments: Comment[];
+  activeCommentId: string | null;
+  commentPanelOpen: boolean;
+  commentFilter: CommentType | "all" | "pending" | "resolved";
 
   // UI
-  theme: 'light' | 'dark'
-  focusMode: boolean
-  writeAllowed: boolean
-  undoState: { rawContent: string } | null
-  toast: string | null
+  theme: "light" | "dark";
+  focusMode: boolean;
+  writeAllowed: boolean;
+  undoState: { rawContent: string } | null;
+  toast: string | null;
 
   // Sharing (v2)
-  shares: ShareRecord[]
-  sharedPanelOpen: boolean
-  isPeerMode: boolean
-  peerName: string | null
-  sharedContent: SharePayload | null
+  shares: ShareRecord[];
+  sharedPanelOpen: boolean;
+  isPeerMode: boolean;
+  peerName: string | null;
+  sharedContent: SharePayload | null;
   // Peer's own submitted comments (peer mode only)
-  myPeerComments: PeerComment[]
+  myPeerComments: PeerComment[];
   // docId → decrypted comments fetched from Worker
-  pendingComments: Record<string, PeerComment[]>
+  pendingComments: Record<string, PeerComment[]>;
   // docId → CryptoKey (in-memory only, not persisted)
-  shareKeys: Record<string, CryptoKey>
+  shareKeys: Record<string, CryptoKey>;
 
   // Real-time (v3)
-  rtStatus: ConnectionStatus
-  rtPeers: PeerInfo[]
-  rtSession: RealtimeSession | null
-  rtDocId: string | null
-  contentUpdateAvailable: boolean
+  rtStatus: ConnectionStatus;
+  rtPeers: PeerInfo[];
+  rtSession: RealtimeSession | null;
+  rtDocId: string | null;
+  contentUpdateAvailable: boolean;
 
   // v1 Actions
-  openFile: () => Promise<void>
-  openDirectory: () => Promise<void>
-  selectFile: (node: FileNode) => Promise<void>
-  clearFile: () => void
-  setComments: (comments: Comment[]) => void
-  setActiveCommentId: (id: string | null) => void
-  toggleCommentPanel: () => void
-  setCommentFilter: (f: CommentType | 'all' | 'pending' | 'resolved') => void
-  toggleSidebar: () => void
-  setTheme: (theme: 'light' | 'dark') => void
-  toggleFocusMode: () => void
-  restoreDirectory: () => Promise<void>
-  refreshFile: () => Promise<void>
-  addComment: (blockIndex: number, type: CommentType, text: string) => Promise<void>
-  editComment: (id: string, type: CommentType, text: string) => Promise<void>
-  deleteComment: (id: string) => Promise<void>
-  undo: () => Promise<void>
-  clearUndo: () => void
-  showToast: (msg: string) => void
-  dismissToast: () => void
+  openFile: () => Promise<void>;
+  openDirectory: () => Promise<void>;
+  selectFile: (node: FileNode) => Promise<void>;
+  clearFile: () => void;
+  setComments: (comments: Comment[]) => void;
+  setActiveCommentId: (id: string | null) => void;
+  toggleCommentPanel: () => void;
+  setCommentFilter: (f: CommentType | "all" | "pending" | "resolved") => void;
+  toggleSidebar: () => void;
+  setTheme: (theme: "light" | "dark") => void;
+  toggleFocusMode: () => void;
+  restoreDirectory: () => Promise<void>;
+  refreshFile: () => Promise<void>;
+  addComment: (
+    blockIndex: number,
+    type: CommentType,
+    text: string,
+  ) => Promise<void>;
+  editComment: (id: string, type: CommentType, text: string) => Promise<void>;
+  deleteComment: (id: string) => Promise<void>;
+  undo: () => Promise<void>;
+  clearUndo: () => void;
+  showToast: (msg: string) => void;
+  dismissToast: () => void;
 
   // v2 Sharing actions
-  shareContent: (opts: { ttl: number; nodes?: FileTreeNode[]; label?: string }) => Promise<string>
-  revokeShare: (docId: string) => Promise<void>
-  updateShare: (docId: string) => Promise<void>
-  fetchPendingComments: (docId: string) => Promise<void>
-  mergeComment: (docId: string, comment: PeerComment) => Promise<void>
-  dismissComment: (docId: string, cmtId: string) => void
-  clearPendingComments: (docId: string) => Promise<void>
-  toggleSharedPanel: () => void
+  shareContent: (opts: {
+    ttl: number;
+    nodes?: FileTreeNode[];
+    label?: string;
+  }) => Promise<string>;
+  revokeShare: (docId: string) => Promise<void>;
+  updateShare: (docId: string) => Promise<void>;
+  fetchPendingComments: (docId: string) => Promise<void>;
+  mergeComment: (docId: string, comment: PeerComment) => Promise<void>;
+  dismissComment: (docId: string, cmtId: string) => void;
+  clearPendingComments: (docId: string) => Promise<void>;
+  toggleSharedPanel: () => void;
 
   // v2 Peer actions
-  setPeerName: (name: string) => void
-  loadSharedContent: () => Promise<void>
-  selectPeerFile: (path: string) => void
-  postPeerComment: (blockIndex: number, type: CommentType, text: string, path: string) => Promise<void>
+  setPeerName: (name: string) => void;
+  loadSharedContent: () => Promise<void>;
+  selectPeerFile: (path: string) => void;
+  postPeerComment: (
+    blockIndex: number,
+    type: CommentType,
+    text: string,
+    path: string,
+  ) => Promise<void>;
 
   // v3 Real-time actions
-  connectRealtime: (docId: string, roomPassword: string) => void
-  disconnectRealtime: () => void
-  setRealtimeAwareness: (activeFile: string | null, focusedBlock: number | null) => void
-  dismissContentUpdate: () => void
+  connectRealtime: (docId: string, roomPassword: string) => void;
+  disconnectRealtime: () => void;
+  setRealtimeAwareness: (
+    activeFile: string | null,
+    focusedBlock: number | null,
+  ) => void;
+  dismissContentUpdate: () => void;
 }
 
 function getStorage(): ShareStorage | null {
-  return WORKER_URL ? new ShareStorage(WORKER_URL) : null
+  return WORKER_URL ? new ShareStorage(WORKER_URL) : null;
 }
 
 export const useAppStore = create<AppState>()(
@@ -134,7 +158,7 @@ export const useAppStore = create<AppState>()(
     (set, get) => ({
       fileHandle: null,
       fileName: null,
-      rawContent: '',
+      rawContent: "",
       directoryHandle: null,
       directoryName: null,
       fileTree: [],
@@ -144,8 +168,8 @@ export const useAppStore = create<AppState>()(
       resolvedComments: [],
       activeCommentId: null,
       commentPanelOpen: false,
-      commentFilter: 'all',
-      theme: 'light',
+      commentFilter: "all",
+      theme: "light",
       focusMode: false,
       writeAllowed: true,
       undoState: null,
@@ -158,7 +182,7 @@ export const useAppStore = create<AppState>()(
       myPeerComments: [],
       pendingComments: {},
       shareKeys: {},
-      rtStatus: 'disconnected' as ConnectionStatus,
+      rtStatus: "disconnected" as ConnectionStatus,
       rtPeers: [],
       rtSession: null,
       rtDocId: null,
@@ -167,10 +191,10 @@ export const useAppStore = create<AppState>()(
       // ── v1 actions ──────────────────────────────────────────────────────
 
       openFile: async () => {
-        const result = await fsOpenFile()
-        if (!result) return
-        const raw = await readFile(result.handle)
-        await removeHandle('directory')
+        const result = await fsOpenFile();
+        if (!result) return;
+        const raw = await readFile(result.handle);
+        await removeHandle("directory");
         set({
           fileHandle: result.handle,
           fileName: result.name,
@@ -180,124 +204,161 @@ export const useAppStore = create<AppState>()(
           fileTree: [],
           activeFilePath: null,
           resolvedComments: [],
-        })
+        });
       },
 
       openDirectory: async () => {
-        const result = await fsOpenDirectory()
-        if (!result) return
-        await saveHandle('directory', result.handle)
+        const result = await fsOpenDirectory();
+        if (!result) return;
+        await saveHandle("directory", result.handle);
         set({
           fileHandle: null,
           fileName: null,
-          rawContent: '',
+          rawContent: "",
           activeFilePath: null,
           directoryHandle: result.handle,
           directoryName: result.name,
           fileTree: [],
           sidebarOpen: true,
-        })
-        const tree = await buildFileTree(result.handle)
-        set({ fileTree: tree })
+        });
+        const tree = await buildFileTree(result.handle);
+        set({ fileTree: tree });
       },
 
       selectFile: async (node: FileNode) => {
-        const raw = await readFile(node.handle)
+        const raw = await readFile(node.handle);
         set({
           fileHandle: node.handle,
           fileName: node.name,
           rawContent: raw,
           activeFilePath: node.path,
           resolvedComments: [],
-        })
+        });
       },
 
       clearFile: () =>
         set({
           fileHandle: null,
           fileName: null,
-          rawContent: '',
+          rawContent: "",
           directoryHandle: null,
           directoryName: null,
           fileTree: [],
           activeFilePath: null,
         }),
 
-      setComments: (comments) => set({ comments, activeCommentId: null, commentFilter: 'all' }),
+      setComments: (comments) =>
+        set({ comments, activeCommentId: null, commentFilter: "all" }),
       setActiveCommentId: (id) => set({ activeCommentId: id }),
-      toggleCommentPanel: () => set((s) => ({
-        commentPanelOpen: !s.commentPanelOpen,
-        sharedPanelOpen: !s.commentPanelOpen ? false : s.sharedPanelOpen,
-      })),
+      toggleCommentPanel: () =>
+        set((s) => ({
+          commentPanelOpen: !s.commentPanelOpen,
+          sharedPanelOpen: !s.commentPanelOpen ? false : s.sharedPanelOpen,
+        })),
       setCommentFilter: (f) => set({ commentFilter: f, activeCommentId: null }),
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
       setTheme: (theme) => set({ theme }),
       toggleFocusMode: () => set((s) => ({ focusMode: !s.focusMode })),
 
       deleteComment: async (id) => {
-        const { rawContent, fileHandle, comments } = get()
-        if (!fileHandle) return
-        const comment = comments.find((c) => c.id === id)
-        if (!comment) return
-        const newRaw = applyDelete(rawContent, comment)
+        const { rawContent, fileHandle, comments } = get();
+        if (!fileHandle) return;
+        const comment = comments.find((c) => c.id === id);
+        if (!comment) return;
+        const newRaw = applyDelete(rawContent, comment);
         try {
-          const writable = await fileHandle.createWritable()
-          await writable.write(newRaw)
-          await writable.close()
-          set({ rawContent: newRaw, writeAllowed: true, undoState: { rawContent } })
+          const writable = await fileHandle.createWritable();
+          await writable.write(newRaw);
+          await writable.close();
+          set({
+            rawContent: newRaw,
+            writeAllowed: true,
+            undoState: { rawContent },
+          });
         } catch (e) {
-          if (e instanceof Error && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) {
-            set({ writeAllowed: false })
+          if (
+            e instanceof Error &&
+            (e.name === "NotAllowedError" || e.name === "SecurityError")
+          ) {
+            set({ writeAllowed: false });
           }
         }
       },
 
       editComment: async (id, type, text) => {
-        const { rawContent, fileHandle, comments } = get()
-        if (!fileHandle) return
-        const comment = comments.find((c) => c.id === id)
-        if (!comment) return
-        const newRaw = applyEdit(rawContent, comment, type, text)
+        const { rawContent, fileHandle, comments } = get();
+        if (!fileHandle) return;
+        const comment = comments.find((c) => c.id === id);
+        if (!comment) return;
+        const newRaw = applyEdit(rawContent, comment, type, text);
         try {
-          const writable = await fileHandle.createWritable()
-          await writable.write(newRaw)
-          await writable.close()
-          set({ rawContent: newRaw, writeAllowed: true, undoState: { rawContent } })
+          const writable = await fileHandle.createWritable();
+          await writable.write(newRaw);
+          await writable.close();
+          set({
+            rawContent: newRaw,
+            writeAllowed: true,
+            undoState: { rawContent },
+          });
         } catch (e) {
-          if (e instanceof Error && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) {
-            set({ writeAllowed: false })
+          if (
+            e instanceof Error &&
+            (e.name === "NotAllowedError" || e.name === "SecurityError")
+          ) {
+            set({ writeAllowed: false });
           }
         }
       },
 
       addComment: async (blockIndex, type, text) => {
-        const { rawContent, fileHandle, comments } = get()
-        if (!fileHandle) return
-        const { cleanMarkdown } = parseCriticMarkup(rawContent)
-        const newRaw = insertCommentService(rawContent, comments, cleanMarkdown, blockIndex, type, text)
+        const { rawContent, fileHandle, comments } = get();
+        if (!fileHandle) return;
+        const { cleanMarkdown } = parseCriticMarkup(rawContent);
+        const newRaw = insertCommentService(
+          rawContent,
+          comments,
+          cleanMarkdown,
+          blockIndex,
+          type,
+          text,
+        );
         try {
-          const writable = await fileHandle.createWritable()
-          await writable.write(newRaw)
-          await writable.close()
-          set({ rawContent: newRaw, writeAllowed: true, undoState: { rawContent } })
+          const writable = await fileHandle.createWritable();
+          await writable.write(newRaw);
+          await writable.close();
+          set({
+            rawContent: newRaw,
+            writeAllowed: true,
+            undoState: { rawContent },
+          });
         } catch (e) {
-          if (e instanceof Error && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) {
-            set({ writeAllowed: false })
+          if (
+            e instanceof Error &&
+            (e.name === "NotAllowedError" || e.name === "SecurityError")
+          ) {
+            set({ writeAllowed: false });
           }
         }
       },
 
       undo: async () => {
-        const { undoState, fileHandle } = get()
-        if (!undoState || !fileHandle) return
+        const { undoState, fileHandle } = get();
+        if (!undoState || !fileHandle) return;
         try {
-          const writable = await fileHandle.createWritable()
-          await writable.write(undoState.rawContent)
-          await writable.close()
-          set({ rawContent: undoState.rawContent, undoState: null, writeAllowed: true })
+          const writable = await fileHandle.createWritable();
+          await writable.write(undoState.rawContent);
+          await writable.close();
+          set({
+            rawContent: undoState.rawContent,
+            undoState: null,
+            writeAllowed: true,
+          });
         } catch (e) {
-          if (e instanceof Error && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) {
-            set({ writeAllowed: false })
+          if (
+            e instanceof Error &&
+            (e.name === "NotAllowedError" || e.name === "SecurityError")
+          ) {
+            set({ writeAllowed: false });
           }
         }
       },
@@ -307,12 +368,12 @@ export const useAppStore = create<AppState>()(
       dismissToast: () => set({ toast: null }),
 
       refreshFile: async () => {
-        const { fileHandle, comments } = get()
-        if (!fileHandle) return
+        const { fileHandle, comments } = get();
+        if (!fileHandle) return;
         try {
-          const newRaw = await readFile(fileHandle)
-          const newlyResolved = comments.filter((c) => !newRaw.includes(c.raw))
-          set({ rawContent: newRaw, resolvedComments: newlyResolved })
+          const newRaw = await readFile(fileHandle);
+          const newlyResolved = comments.filter((c) => !newRaw.includes(c.raw));
+          set({ rawContent: newRaw, resolvedComments: newlyResolved });
         } catch {
           // file read failed — silent
         }
@@ -320,17 +381,18 @@ export const useAppStore = create<AppState>()(
 
       restoreDirectory: async () => {
         try {
-          const handle = await getHandle<FileSystemDirectoryHandle>('directory')
-          if (!handle) return
-          const perm = await handle.queryPermission({ mode: 'read' })
-          if (perm !== 'granted') return
-          const tree = await buildFileTree(handle)
+          const handle =
+            await getHandle<FileSystemDirectoryHandle>("directory");
+          if (!handle) return;
+          const perm = await handle.queryPermission({ mode: "read" });
+          if (perm !== "granted") return;
+          const tree = await buildFileTree(handle);
           set({
             directoryHandle: handle,
             directoryName: handle.name,
             fileTree: tree,
             sidebarOpen: true,
-          })
+          });
         } catch {
           // IndexedDB unavailable (private browsing, test env) — silent fail
         }
@@ -339,49 +401,59 @@ export const useAppStore = create<AppState>()(
       // ── v2 Sharing actions ───────────────────────────────────────────────
 
       shareContent: async ({ ttl, nodes, label: scopeLabel }) => {
-        const storage = getStorage()
-        if (!storage) throw new Error('Worker URL not configured')
-        const { fileName, directoryName, rawContent, fileTree, activeFilePath } = get()
-        const label = scopeLabel ?? directoryName ?? fileName ?? 'document'
+        const storage = getStorage();
+        if (!storage) throw new Error("Worker URL not configured");
+        const {
+          fileName,
+          directoryName,
+          rawContent,
+          fileTree,
+          activeFilePath,
+        } = get();
+        const label = scopeLabel ?? directoryName ?? fileName ?? "document";
 
         // Build tree: either the single open file or all files in memory
-        const tree: Record<string, string> = {}
-        const sourceNodes = nodes ?? (directoryName && fileTree.length > 0 ? fileTree : null)
+        const tree: Record<string, string> = {};
+        const sourceNodes =
+          nodes ?? (directoryName && fileTree.length > 0 ? fileTree : null);
         if (sourceNodes) {
           // Read all markdown files from the specified nodes
           const readNode = async (items: FileTreeNode[]) => {
             for (const node of items) {
-              if (node.kind === 'file') {
-                const path = node.path
+              if (node.kind === "file") {
+                const path = node.path;
                 // Use in-memory rawContent for the currently open file (always available),
                 // and try reading other files from their handles
                 if (path === activeFilePath && rawContent) {
-                  tree[path] = rawContent
+                  tree[path] = rawContent;
                 } else {
                   try {
-                    tree[path] = await readFile((node as FileNode).handle)
+                    tree[path] = await readFile((node as FileNode).handle);
                   } catch (e) {
-                    console.warn('[share] failed to read', path, e)
+                    console.warn("[share] failed to read", path, e);
                   }
                 }
-              } else if (node.kind === 'directory') {
-                await readNode((node as DirectoryNode).children)
+              } else if (node.kind === "directory") {
+                await readNode((node as DirectoryNode).children);
               }
             }
-          }
-          await readNode(sourceNodes)
+          };
+          await readNode(sourceNodes);
         }
         // Fallback: if no files were read (handles expired) or single-file mode, use rawContent
         if (Object.keys(tree).length === 0 && rawContent) {
-          const path = activeFilePath ?? fileName ?? 'document.md'
-          tree[path] = rawContent
+          const path = activeFilePath ?? fileName ?? "document.md";
+          tree[path] = rawContent;
         }
 
-        const key = await generateKey()
-        const { docId, hostSecret } = await storage.uploadContent(tree, key, { ttl, label })
-        const keyB64 = await keyToBase64url(key)
+        const key = await generateKey();
+        const { docId, hostSecret } = await storage.uploadContent(tree, key, {
+          ttl,
+          label,
+        });
+        const keyB64 = await keyToBase64url(key);
 
-        const now = new Date()
+        const now = new Date();
         const record: ShareRecord = {
           docId,
           hostSecret,
@@ -389,99 +461,130 @@ export const useAppStore = create<AppState>()(
           createdAt: now.toISOString(),
           expiresAt: new Date(now.getTime() + ttl * 1000).toISOString(),
           pendingCommentCount: 0,
-        }
-        const shares = [...get().shares, record]
-        saveShares(shares)
-        set({ shares, shareKeys: { ...get().shareKeys, [docId]: key } })
+        };
+        const shares = [...get().shares, record];
+        saveShares(shares);
+        set({ shares, shareKeys: { ...get().shareKeys, [docId]: key } });
 
-        const roomPwd = generateRoomPassword()
-        const roomId = docIdToRoomId(docId)
+        const roomPwd = generateRoomPassword();
+        const roomId = docIdToRoomId(docId);
 
-        const base = window.location.origin + window.location.pathname
-        return `${base}#share=${docId}&key=${keyB64}&room=${roomId}&pwd=${roomPwd}`
+        // Auto-connect host to the realtime room
+        get().connectRealtime(docId, roomPwd);
+
+        const base = window.location.origin + window.location.pathname;
+        return `${base}#share=${docId}&key=${keyB64}&room=${roomId}&pwd=${roomPwd}`;
       },
 
       revokeShare: async (docId) => {
-        const storage = getStorage()
-        const { shares } = get()
-        const record = shares.find((s) => s.docId === docId)
-        if (!record) return
-        try { await storage?.deleteContent(docId, record.hostSecret) } catch { /* ignore if already gone */ }
-        try { await storage?.deleteComments(docId, record.hostSecret) } catch { /* ignore */ }
-        const updated = shares.filter((s) => s.docId !== docId)
-        saveShares(updated)
-        const { pendingComments, shareKeys } = get()
-        const pc = { ...pendingComments }; delete pc[docId]
-        const sk = { ...shareKeys }; delete sk[docId]
-        set({ shares: updated, pendingComments: pc, shareKeys: sk })
+        const storage = getStorage();
+        const { shares } = get();
+        const record = shares.find((s) => s.docId === docId);
+        if (!record) return;
+        try {
+          await storage?.deleteContent(docId, record.hostSecret);
+        } catch {
+          /* ignore if already gone */
+        }
+        try {
+          await storage?.deleteComments(docId, record.hostSecret);
+        } catch {
+          /* ignore */
+        }
+        const updated = shares.filter((s) => s.docId !== docId);
+        saveShares(updated);
+        const { pendingComments, shareKeys } = get();
+        const pc = { ...pendingComments };
+        delete pc[docId];
+        const sk = { ...shareKeys };
+        delete sk[docId];
+        set({ shares: updated, pendingComments: pc, shareKeys: sk });
       },
 
       updateShare: async (docId) => {
-        const storage = getStorage()
-        if (!storage) throw new Error('Worker URL not configured')
-        const { shares, shareKeys, rtSession, fileName, rawContent, fileTree, activeFilePath } = get()
-        const record = shares.find((s) => s.docId === docId)
-        if (!record) throw new Error('Share not found')
-        const key = shareKeys[docId]
-        if (!key) throw new Error('Encryption key not available (session may have expired)')
+        const storage = getStorage();
+        if (!storage) throw new Error("Worker URL not configured");
+        const {
+          shares,
+          shareKeys,
+          rtSession,
+          fileName,
+          rawContent,
+          fileTree,
+          activeFilePath,
+        } = get();
+        const record = shares.find((s) => s.docId === docId);
+        if (!record) throw new Error("Share not found");
+        const key = shareKeys[docId];
+        if (!key)
+          throw new Error(
+            "Encryption key not available (session may have expired)",
+          );
 
         // Build content tree from current file state
-        const tree: Record<string, string> = {}
+        const tree: Record<string, string> = {};
         if (fileTree.length > 0) {
           const readNode = async (items: FileTreeNode[]) => {
             for (const node of items) {
-              if (node.kind === 'file') {
-                const path = node.path
+              if (node.kind === "file") {
+                const path = node.path;
                 if (path === activeFilePath && rawContent) {
-                  tree[path] = rawContent
+                  tree[path] = rawContent;
                 } else {
-                  try { tree[path] = await readFile((node as FileNode).handle) } catch { /* skip */ }
+                  try {
+                    tree[path] = await readFile((node as FileNode).handle);
+                  } catch {
+                    /* skip */
+                  }
                 }
-              } else if (node.kind === 'directory') {
-                await readNode((node as DirectoryNode).children)
+              } else if (node.kind === "directory") {
+                await readNode((node as DirectoryNode).children);
               }
             }
-          }
-          await readNode(fileTree)
+          };
+          await readNode(fileTree);
         }
         if (Object.keys(tree).length === 0 && rawContent) {
-          tree[activeFilePath ?? fileName ?? 'document.md'] = rawContent
+          tree[activeFilePath ?? fileName ?? "document.md"] = rawContent;
         }
 
         // Overwrite content at the same docId with the same key
-        await storage.updateContent(docId, record.hostSecret, tree, key)
+        await storage.updateContent(docId, record.hostSecret, tree, key);
 
         // Notify connected peers that content was updated
-        if (rtSession) rtSession.notifyContentUpdated()
+        if (rtSession) rtSession.notifyContentUpdated();
       },
 
       fetchPendingComments: async (docId) => {
-        const storage = getStorage()
-        if (!storage) return
-        let key = get().shareKeys[docId]
+        const storage = getStorage();
+        if (!storage) return;
+        let key = get().shareKeys[docId];
         if (!key) {
           // Try to recover from shares list — not possible without the base64 key
           // The key is only stored in-memory during the session; if lost, can't decrypt
-          return
+          return;
         }
-        const comments = await storage.fetchComments(docId, key)
-        const pc = { ...get().pendingComments, [docId]: comments }
+        const comments = await storage.fetchComments(docId, key);
+        const pc = { ...get().pendingComments, [docId]: comments };
         const shares = get().shares.map((s) =>
-          s.docId === docId ? { ...s, pendingCommentCount: comments.length } : s,
-        )
-        saveShares(shares)
-        set({ pendingComments: pc, shares })
+          s.docId === docId
+            ? { ...s, pendingCommentCount: comments.length }
+            : s,
+        );
+        saveShares(shares);
+        set({ pendingComments: pc, shares });
       },
 
       mergeComment: async (docId, comment) => {
-        const { rawContent, fileHandle, comments, activeFilePath, fileName } = get()
-        if (!fileHandle) return
+        const { rawContent, fileHandle, comments, activeFilePath, fileName } =
+          get();
+        if (!fileHandle) return;
         // Find the right file — use rawContent if it's the right path
-        const currentPath = activeFilePath ?? fileName ?? ''
-        if (comment.path !== currentPath) return  // only merge into the currently open file
+        const currentPath = activeFilePath ?? fileName ?? "";
+        if (comment.path !== currentPath) return; // only merge into the currently open file
 
-        const { cleanMarkdown } = parseCriticMarkup(rawContent)
-        const attribution = ` — ${comment.peerName}`
+        const { cleanMarkdown } = parseCriticMarkup(rawContent);
+        const attribution = ` — ${comment.peerName}`;
         const newRaw = insertCommentService(
           rawContent,
           comments,
@@ -489,196 +592,217 @@ export const useAppStore = create<AppState>()(
           comment.blockRef.blockIndex,
           comment.commentType,
           comment.text + attribution,
-        )
+        );
         try {
-          const writable = await fileHandle.createWritable()
-          await writable.write(newRaw)
-          await writable.close()
-          set({ rawContent: newRaw, writeAllowed: true, undoState: { rawContent } })
+          const writable = await fileHandle.createWritable();
+          await writable.write(newRaw);
+          await writable.close();
+          set({
+            rawContent: newRaw,
+            writeAllowed: true,
+            undoState: { rawContent },
+          });
         } catch (e) {
-          if (e instanceof Error && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) {
-            set({ writeAllowed: false })
+          if (
+            e instanceof Error &&
+            (e.name === "NotAllowedError" || e.name === "SecurityError")
+          ) {
+            set({ writeAllowed: false });
           }
         }
         // Remove from pending
-        get().dismissComment(docId, comment.id)
+        get().dismissComment(docId, comment.id);
       },
 
       dismissComment: (docId, cmtId) => {
-        const pc = { ...get().pendingComments }
-        pc[docId] = (pc[docId] ?? []).filter((c) => c.id !== cmtId)
+        const pc = { ...get().pendingComments };
+        pc[docId] = (pc[docId] ?? []).filter((c) => c.id !== cmtId);
         const shares = get().shares.map((s) =>
-          s.docId === docId ? { ...s, pendingCommentCount: pc[docId].length } : s,
-        )
-        saveShares(shares)
-        set({ pendingComments: pc, shares })
+          s.docId === docId
+            ? { ...s, pendingCommentCount: pc[docId].length }
+            : s,
+        );
+        saveShares(shares);
+        set({ pendingComments: pc, shares });
       },
 
       clearPendingComments: async (docId) => {
-        const storage = getStorage()
-        const record = get().shares.find((s) => s.docId === docId)
+        const storage = getStorage();
+        const record = get().shares.find((s) => s.docId === docId);
         if (record && storage) {
-          try { await storage.deleteComments(docId, record.hostSecret) } catch { /* ignore */ }
+          try {
+            await storage.deleteComments(docId, record.hostSecret);
+          } catch {
+            /* ignore */
+          }
         }
-        const pc = { ...get().pendingComments }
-        delete pc[docId]
+        const pc = { ...get().pendingComments };
+        delete pc[docId];
         const shares = get().shares.map((s) =>
           s.docId === docId ? { ...s, pendingCommentCount: 0 } : s,
-        )
-        saveShares(shares)
-        set({ pendingComments: pc, shares })
+        );
+        saveShares(shares);
+        set({ pendingComments: pc, shares });
       },
 
-      toggleSharedPanel: () => set((s) => ({
-        sharedPanelOpen: !s.sharedPanelOpen,
-        commentPanelOpen: !s.sharedPanelOpen ? false : s.commentPanelOpen,
-      })),
+      toggleSharedPanel: () =>
+        set((s) => ({
+          sharedPanelOpen: !s.sharedPanelOpen,
+          commentPanelOpen: !s.sharedPanelOpen ? false : s.commentPanelOpen,
+        })),
 
       // ── v2 Peer actions ──────────────────────────────────────────────────
 
       setPeerName: (name) => set({ peerName: name }),
 
       selectPeerFile: (path) => {
-        const { sharedContent } = get()
-        if (!sharedContent) return
-        const content = sharedContent.tree[path]
-        if (content === undefined) return
+        const { sharedContent } = get();
+        if (!sharedContent) return;
+        const content = sharedContent.tree[path];
+        if (content === undefined) return;
         set({
           rawContent: content,
           fileName: path,
           activeFilePath: path,
           resolvedComments: [],
-        })
+        });
       },
 
       loadSharedContent: async () => {
-        const hash = window.location.hash.slice(1)
-        const params = new URLSearchParams(hash)
-        const docId = params.get('share')
-        const keyB64 = params.get('key')
-        if (!docId || !keyB64) return
-        const storage = getStorage()
-        if (!storage) return
+        const hash = window.location.hash.slice(1);
+        const params = new URLSearchParams(hash);
+        const docId = params.get("share");
+        const keyB64 = params.get("key");
+        if (!docId || !keyB64) return;
+        const storage = getStorage();
+        if (!storage) return;
         try {
-          const key = await base64urlToKey(keyB64)
-          const payload = await storage.fetchContent(docId, key)
-          const firstPath = Object.keys(payload.tree)[0]
+          const key = await base64urlToKey(keyB64);
+          const payload = await storage.fetchContent(docId, key);
+          const firstPath = Object.keys(payload.tree)[0];
           set({
             isPeerMode: true,
             sharedContent: payload,
             shareKeys: { ...get().shareKeys, [docId]: key },
-            rawContent: firstPath ? payload.tree[firstPath] : '',
+            rawContent: firstPath ? payload.tree[firstPath] : "",
             fileName: firstPath ?? null,
             activeFilePath: firstPath ?? null,
-          })
+          });
           // Auto-connect to realtime room if room params present
-          const roomId = params.get('room')
-          const roomPwd = params.get('pwd')
+          const roomId = params.get("room");
+          const roomPwd = params.get("pwd");
           if (roomId && roomPwd) {
             // Defer connect until peerName is set (handled by connectRealtime)
-            set({ rtDocId: docId })
+            set({ rtDocId: docId });
           }
         } catch (e) {
-          set({ isPeerMode: true, sharedContent: null })
-          console.error('[share] Failed to load shared content:', e)
+          set({ isPeerMode: true, sharedContent: null });
+          console.error("[share] Failed to load shared content:", e);
         }
       },
 
       postPeerComment: async (blockIndex, type, text, path) => {
-        const hash = window.location.hash.slice(1)
-        const params = new URLSearchParams(hash)
-        const docId = params.get('share')
-        const keyB64 = params.get('key')
-        if (!docId || !keyB64) return
-        const { peerName, rtSession } = get()
+        const hash = window.location.hash.slice(1);
+        const params = new URLSearchParams(hash);
+        const docId = params.get("share");
+        const keyB64 = params.get("key");
+        if (!docId || !keyB64) return;
+        const { peerName, rtSession } = get();
         const comment: PeerComment = {
           id: `c_${crypto.randomUUID()}`,
-          peerName: peerName ?? 'Anonymous',
+          peerName: peerName ?? "Anonymous",
           path,
-          blockRef: { blockIndex, contentPreview: '' },
+          blockRef: { blockIndex, contentPreview: "" },
           commentType: type,
           text,
           createdAt: new Date().toISOString(),
-        }
+        };
 
         // Track locally so peer can see their own comments
-        set({ myPeerComments: [comment, ...get().myPeerComments] })
+        set({ myPeerComments: [comment, ...get().myPeerComments] });
 
         // Send via WebRTC if connected
         if (rtSession) {
-          rtSession.addComment(comment)
+          rtSession.addComment(comment);
         }
 
         // Always also send to Worker as async backup
-        const storage = getStorage()
+        const storage = getStorage();
         if (storage) {
-          const key = get().shareKeys[docId] ?? await base64urlToKey(keyB64)
-          await storage.postComment(docId, comment, key)
+          const key = get().shareKeys[docId] ?? (await base64urlToKey(keyB64));
+          await storage.postComment(docId, comment, key);
         }
       },
 
       // ── v3 Real-time actions ────────────────────────────────────────────
 
       connectRealtime: (docId, roomPassword) => {
-        const { rtSession: existing, peerName } = get()
-        if (existing) existing.disconnect()
+        const { rtSession: existing, peerName } = get();
+        if (existing) existing.disconnect();
 
         const session = new RealtimeSession(
           docIdToRoomId(docId),
           roomPassword,
-          peerName ?? 'Anonymous',
+          peerName ?? "Anonymous",
           {
             onConnectionChange: (status, peers) => {
-              set({ rtStatus: status, rtPeers: peers })
+              set({ rtStatus: status, rtPeers: peers });
             },
             onRemoteComment: (comment) => {
               // Dedup: check if we already have this comment from the Worker
-              const { pendingComments } = get()
-              const docComments = Object.values(pendingComments).flat()
-              if (docComments.some((c) => c.id === comment.id)) return
+              const { pendingComments } = get();
+              const docComments = Object.values(pendingComments).flat();
+              if (docComments.some((c) => c.id === comment.id)) return;
               // Add to pending comments under the active docId
-              const activeDocId = get().rtDocId
-              if (!activeDocId) return
-              const pc = { ...get().pendingComments }
-              pc[activeDocId] = [...(pc[activeDocId] ?? []), comment]
+              const activeDocId = get().rtDocId;
+              if (!activeDocId) return;
+              const pc = { ...get().pendingComments };
+              pc[activeDocId] = [...(pc[activeDocId] ?? []), comment];
               const shares = get().shares.map((s) =>
-                s.docId === activeDocId ? { ...s, pendingCommentCount: pc[activeDocId].length } : s,
-              )
-              saveShares(shares)
-              set({ pendingComments: pc, shares })
-              get().showToast(`New comment from ${comment.peerName}`)
+                s.docId === activeDocId
+                  ? { ...s, pendingCommentCount: pc[activeDocId].length }
+                  : s,
+              );
+              saveShares(shares);
+              set({ pendingComments: pc, shares });
+              get().showToast(`New comment from ${comment.peerName}`);
             },
             onCommentRemoved: (commentId) => {
-              const activeDocId = get().rtDocId
-              if (!activeDocId) return
-              get().dismissComment(activeDocId, commentId)
+              const activeDocId = get().rtDocId;
+              if (!activeDocId) return;
+              get().dismissComment(activeDocId, commentId);
             },
             onDocumentUpdated: () => {
-              set({ contentUpdateAvailable: true })
-              get().showToast('Document has been updated by the host')
+              set({ contentUpdateAvailable: true });
+              get().showToast("Document has been updated by the host");
             },
           },
-        )
+        );
 
-        set({ rtSession: session, rtDocId: docId, rtStatus: 'connecting' })
-        session.connect()
+        set({ rtSession: session, rtDocId: docId, rtStatus: "connecting" });
+        session.connect();
       },
 
       disconnectRealtime: () => {
-        const { rtSession } = get()
-        if (rtSession) rtSession.disconnect()
-        set({ rtSession: null, rtDocId: null, rtStatus: 'disconnected', rtPeers: [] })
+        const { rtSession } = get();
+        if (rtSession) rtSession.disconnect();
+        set({
+          rtSession: null,
+          rtDocId: null,
+          rtStatus: "disconnected",
+          rtPeers: [],
+        });
       },
 
       setRealtimeAwareness: (activeFile, focusedBlock) => {
-        const { rtSession } = get()
-        if (rtSession) rtSession.setLocalAwareness(activeFile, focusedBlock)
+        const { rtSession } = get();
+        if (rtSession) rtSession.setLocalAwareness(activeFile, focusedBlock);
       },
 
       dismissContentUpdate: () => set({ contentUpdateAvailable: false }),
     }),
     {
-      name: 'markreview-store',
+      name: "markreview-store",
       partialize: (s) => ({
         fileName: s.fileName,
         rawContent: s.rawContent,
@@ -690,4 +814,4 @@ export const useAppStore = create<AppState>()(
       }),
     },
   ),
-)
+);
