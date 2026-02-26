@@ -13,7 +13,7 @@ import { applyEdit } from '../services/editComment'
 import { applyDelete } from '../services/deleteComment'
 import { ShareStorage } from '../services/shareStorage'
 import { generateKey, keyToBase64url, base64urlToKey } from '../services/crypto'
-import type { FileTreeNode, FileNode } from '../types/fileTree'
+import type { FileTreeNode, FileNode, DirectoryNode } from '../types/fileTree'
 import type { Comment, CommentType } from '../types/criticmarkup'
 import type { ShareRecord, SharePayload, PeerComment } from '../types/share'
 
@@ -316,7 +316,7 @@ export const useAppStore = create<AppState>()(
           // Read all markdown files from the folder
           const readNode = async (nodes: FileTreeNode[]) => {
             for (const node of nodes) {
-              if (node.type === 'file') {
+              if (node.kind === 'file') {
                 const path = node.path
                 // Use in-memory rawContent for the currently open file (always available),
                 // and try reading other files from their handles
@@ -329,8 +329,8 @@ export const useAppStore = create<AppState>()(
                     console.warn('[share] failed to read', path, e)
                   }
                 }
-              } else if (node.type === 'directory' && 'children' in node) {
-                await readNode((node as { children: FileTreeNode[] }).children)
+              } else if (node.kind === 'directory') {
+                await readNode((node as DirectoryNode).children)
               }
             }
           }
