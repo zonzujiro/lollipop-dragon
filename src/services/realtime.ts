@@ -34,7 +34,7 @@ export interface RealtimeCallbacks {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const APP_ID = "markreview-v3";
+const APP_ID = "lollipop-dragon";
 const RECONNECT_DELAY_MS = 3000;
 const AWARENESS_INTERVAL_MS = 5000;
 const MAX_RETRIES = 3;
