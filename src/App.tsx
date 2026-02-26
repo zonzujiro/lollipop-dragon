@@ -9,6 +9,7 @@ import { SharedPanel } from './components/SharedPanel'
 import { UndoToast } from './components/UndoToast'
 import { Toast } from './components/Toast'
 import { PeerNamePrompt } from './components/PeerNamePrompt'
+import { PeerFileTreeSidebar } from './components/PeerFileTreeSidebar'
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL as string | undefined
 
@@ -174,6 +175,7 @@ function App() {
           </div>
         )}
         <div className="app-body">
+          <PeerFileTreeSidebar />
           <main className="app-main">
             <PeerViewer />
           </main>

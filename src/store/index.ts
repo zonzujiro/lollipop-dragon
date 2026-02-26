@@ -113,6 +113,7 @@ interface AppState {
   // v2 Peer actions
   setPeerName: (name: string) => void
   loadSharedContent: () => Promise<void>
+  selectPeerFile: (path: string) => void
   postPeerComment: (blockIndex: number, type: CommentType, text: string, path: string) => Promise<void>
 
   // v3 Real-time actions
@@ -515,6 +516,19 @@ export const useAppStore = create<AppState>()(
 
       setPeerName: (name) => set({ peerName: name }),
 
+      selectPeerFile: (path) => {
+        const { sharedContent } = get()
+        if (!sharedContent) return
+        const content = sharedContent.tree[path]
+        if (content === undefined) return
+        set({
+          rawContent: content,
+          fileName: path,
+          activeFilePath: path,
+          resolvedComments: [],
+        })
+      },
+
       loadSharedContent: async () => {
         const hash = window.location.hash.slice(1)
         const params = new URLSearchParams(hash)
@@ -533,6 +547,7 @@ export const useAppStore = create<AppState>()(
             shareKeys: { ...get().shareKeys, [docId]: key },
             rawContent: firstPath ? payload.tree[firstPath] : '',
             fileName: firstPath ?? null,
+            activeFilePath: firstPath ?? null,
           })
           // Auto-connect to realtime room if room params present
           const roomId = params.get('room')
