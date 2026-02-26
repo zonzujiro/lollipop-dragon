@@ -1872,7 +1872,17 @@ body {
   flex-shrink: 0;
 }
 
-.shared-panel__expiry {
+.shared-panel__file-count {
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.shared-panel__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
   font-size: 0.7rem;
   color: var(--text-muted);
   margin-bottom: 0.4rem;

@@ -90,6 +90,11 @@ export function SharedPanel() {
               <li key={share.docId} className="shared-panel__entry">
                 <div className="shared-panel__entry-header">
                   <span className="shared-panel__label">{share.label}</span>
+                  {share.fileCount > 0 && (
+                    <span className="shared-panel__file-count">
+                      {formatFileCount(share.fileCount)}
+                    </span>
+                  )}
                   {badge > 0 && (
                     <span
                       className="shared-panel__badge"
@@ -101,11 +106,6 @@ export function SharedPanel() {
                 </div>
 
                 <div className="shared-panel__meta">
-                  {share.fileCount > 0 && (
-                    <span className="shared-panel__file-count">
-                      {formatFileCount(share.fileCount)}
-                    </span>
-                  )}
                   <span className="shared-panel__created">
                     {formatCreatedAt(share.createdAt)}
                   </span>
