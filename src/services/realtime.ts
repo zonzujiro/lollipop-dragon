@@ -35,6 +35,15 @@ const RECONNECT_DELAY_MS = 3000
 const AWARENESS_INTERVAL_MS = 5000
 const MAX_RETRIES = 3
 
+// Curated relays that don't require auth and aren't aggressively rate-limited
+const RELAY_URLS = [
+  'wss://nos.lol',
+  'wss://relay.fountain.fm',
+  'wss://nostr.data.haus',
+  'wss://relay.nostrdice.com',
+  'wss://relay.nostromo.social',
+]
+
 // ── RealtimeSession ──────────────────────────────────────────────────────────
 
 export class RealtimeSession {
@@ -193,7 +202,7 @@ export class RealtimeSession {
   private joinTrysteroRoom(): void {
     try {
       this.room = trysteroJoinRoom(
-        { appId: APP_ID, password: this.roomPassword },
+        { appId: APP_ID, password: this.roomPassword, relayUrls: RELAY_URLS },
         this.roomId,
       )
     } catch (err) {
