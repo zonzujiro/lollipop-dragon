@@ -1,4 +1,8 @@
+import { useState } from 'react'
 import { useAppStore } from '../store'
+import { ShareDialog } from './ShareDialog'
+
+const WORKER_URL = import.meta.env.VITE_WORKER_URL as string | undefined
 
 function SunIcon() {
   return (
@@ -34,7 +38,11 @@ function SidebarIcon() {
   )
 }
 
-export function Header() {
+interface Props {
+  peerMode?: boolean
+}
+
+export function Header({ peerMode = false }: Props) {
   const fileName = useAppStore((s) => s.fileName)
   const directoryName = useAppStore((s) => s.directoryName)
   const fileTree = useAppStore((s) => s.fileTree)
@@ -50,78 +58,122 @@ export function Header() {
   const toggleCommentPanel = useAppStore((s) => s.toggleCommentPanel)
   const refreshFile = useAppStore((s) => s.refreshFile)
   const fileHandle = useAppStore((s) => s.fileHandle)
+  const shares = useAppStore((s) => s.shares)
+  const sharedPanelOpen = useAppStore((s) => s.sharedPanelOpen)
+  const toggleSharedPanel = useAppStore((s) => s.toggleSharedPanel)
+
+  const [shareDialogOpen, setShareDialogOpen] = useState(false)
 
   const isDark = theme === 'dark'
   const hasFolderOpen = fileTree.length > 0
+  const hasContent = !!(fileName || directoryName)
+  const totalPending = shares.reduce((n, s) => n + s.pendingCommentCount, 0)
 
-  const displayName = hasFolderOpen && fileName
-    ? `${directoryName} / ${fileName}`
-    : (fileName ?? directoryName ?? '')
+  const displayName = peerMode
+    ? (fileName ?? 'Shared document')
+    : hasFolderOpen && fileName
+      ? `${directoryName} / ${fileName}`
+      : (fileName ?? directoryName ?? '')
 
   return (
-    <header className="app-header">
-      <div className="app-header__left">
-        {hasFolderOpen && (
+    <>
+      <header className="app-header">
+        <div className="app-header__left">
+          {hasFolderOpen && !peerMode && (
+            <button
+              onClick={toggleSidebar}
+              aria-label={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
+              title={sidebarOpen ? 'Hide sidebar (⌘B)' : 'Show sidebar (⌘B)'}
+              className="app-header__btn app-header__btn--icon"
+            >
+              <SidebarIcon />
+            </button>
+          )}
+          <span className="app-header__filename">{displayName}</span>
+          {peerMode && <span className="app-header__peer-badge">Reviewing</span>}
+        </div>
+
+        <div className="app-header__actions">
+          {!peerMode && (
+            <>
+              <button onClick={openFile} className="app-header__btn app-header__btn--text">
+                Open file
+              </button>
+              <button onClick={openDirectory} className="app-header__btn app-header__btn--text">
+                Open folder
+              </button>
+
+              {WORKER_URL && hasContent && (
+                <>
+                  <div className="app-header__divider" aria-hidden="true" />
+                  <button
+                    className="app-header__btn app-header__btn--text"
+                    onClick={() => setShareDialogOpen(true)}
+                    title="Encrypt and share this document"
+                  >
+                    Share
+                  </button>
+                  <button
+                    className={`app-header__btn app-header__btn--text${sharedPanelOpen ? ' app-header__btn--active' : ''}`}
+                    onClick={toggleSharedPanel}
+                    title="Manage shared documents"
+                  >
+                    Shared{totalPending > 0 && (
+                      <span className="app-header__badge">{totalPending}</span>
+                    )}
+                  </button>
+                </>
+              )}
+
+              <div className="app-header__divider" aria-hidden="true" />
+            </>
+          )}
+
           <button
-            onClick={toggleSidebar}
-            aria-label={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
-            title={sidebarOpen ? 'Hide sidebar (⌘B)' : 'Show sidebar (⌘B)'}
+            onClick={() => setTheme(isDark ? 'light' : 'dark')}
+            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
             className="app-header__btn app-header__btn--icon"
           >
-            <SidebarIcon />
+            {isDark ? <SunIcon /> : <MoonIcon />}
           </button>
-        )}
-        <span className="app-header__filename">{displayName}</span>
-      </div>
 
-      <div className="app-header__actions">
-        <button onClick={openFile} className="app-header__btn app-header__btn--text">
-          Open file
-        </button>
-        <button onClick={openDirectory} className="app-header__btn app-header__btn--text">
-          Open folder
-        </button>
+          {!peerMode && fileHandle && (
+            <button
+              onClick={refreshFile}
+              aria-label="Refresh file"
+              title="Refresh file from disk"
+              className="app-header__btn app-header__btn--text"
+            >
+              Refresh
+            </button>
+          )}
 
-        <div className="app-header__divider" aria-hidden="true" />
+          {!peerMode && (
+            <>
+              <button
+                onClick={toggleCommentPanel}
+                aria-label={commentPanelOpen ? 'Close comments panel' : 'Open comments panel'}
+                title={commentPanelOpen ? 'Close comments panel' : 'Open comments panel'}
+                className={`app-header__btn app-header__btn--text${commentPanelOpen ? ' app-header__btn--active' : ''}`}
+              >
+                Comments{comments.length > 0 && <span className="app-header__badge">{comments.length}</span>}
+              </button>
 
-        <button
-          onClick={() => setTheme(isDark ? 'light' : 'dark')}
-          aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-          title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-          className="app-header__btn app-header__btn--icon"
-        >
-          {isDark ? <SunIcon /> : <MoonIcon />}
-        </button>
+              <button
+                onClick={toggleFocusMode}
+                aria-label="Enter focus mode"
+                title="Enter focus mode"
+                className="app-header__btn app-header__btn--icon"
+              >
+                <FocusIcon />
+              </button>
+            </>
+          )}
+        </div>
+      </header>
 
-        {fileHandle && (
-          <button
-            onClick={refreshFile}
-            aria-label="Refresh file"
-            title="Refresh file from disk"
-            className="app-header__btn app-header__btn--text"
-          >
-            Refresh
-          </button>
-        )}
-
-        <button
-          onClick={toggleCommentPanel}
-          aria-label={commentPanelOpen ? 'Close comments panel' : 'Open comments panel'}
-          title={commentPanelOpen ? 'Close comments panel' : 'Open comments panel'}
-          className={`app-header__btn app-header__btn--text${commentPanelOpen ? ' app-header__btn--active' : ''}`}
-        >
-          Comments{comments.length > 0 && <span className="app-header__badge">{comments.length}</span>}
-        </button>
-
-        <button
-          onClick={toggleFocusMode}
-          aria-label="Enter focus mode"
-          title="Enter focus mode"
-          className="app-header__btn app-header__btn--icon"
-        >
-          <FocusIcon />
-        </button>
-      </div>
-    </header>
+      {shareDialogOpen && <ShareDialog onClose={() => setShareDialogOpen(false)} />}
+    </>
   )
 }
