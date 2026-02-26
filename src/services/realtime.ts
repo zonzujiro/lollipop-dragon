@@ -205,6 +205,14 @@ export class RealtimeSession {
   // ── Private ──────────────────────────────────────────────────────────────
 
   private joinTrysteroRoom(): void {
+    console.log(
+      "[markreview] Joining room:",
+      this.roomId,
+      "appId:",
+      APP_ID,
+      "selfId:",
+      selfId,
+    );
     try {
       this.room = trysteroJoinRoom(
         { appId: APP_ID, password: this.roomPassword, relayUrls: TRACKER_URLS },
