@@ -1,5 +1,5 @@
 interface Env {
-  KV: KVNamespace
+  LOLLIPOP_DRAGON: KVNamespace
   ALLOWED_ORIGIN: string
 }
 
@@ -37,7 +37,7 @@ async function sha256hex(text: string): Promise<string> {
 }
 
 async function getMeta(env: Env, docId: string): Promise<ShareMeta | null> {
-  const raw = await env.KV.get(`share:${docId}:meta`)
+  const raw = await env.LOLLIPOP_DRAGON.get(`share:${docId}:meta`)
   if (!raw) return null
   return JSON.parse(raw) as ShareMeta
 }
@@ -74,8 +74,8 @@ export default {
         const hostSecret = req.headers.get('X-Host-Secret') ?? ''
         if (!hostSecret) return errRes(400, 'X-Host-Secret required', cors)
         const hostSecretHash = await sha256hex(hostSecret)
-        await env.KV.put(`share:${id}`, blob, { expirationTtl: ttl })
-        await env.KV.put(`share:${id}:meta`, JSON.stringify({
+        await env.LOLLIPOP_DRAGON.put(`share:${id}`, blob, { expirationTtl: ttl })
+        await env.LOLLIPOP_DRAGON.put(`share:${id}:meta`, JSON.stringify({
           hostSecretHash,
           createdAt: new Date().toISOString(),
           ttl,
@@ -86,7 +86,7 @@ export default {
 
       // GET /share/:docId  — fetch content
       if (req.method === 'GET' && docId) {
-        const blob = await env.KV.get(`share:${docId}`, 'arrayBuffer')
+        const blob = await env.LOLLIPOP_DRAGON.get(`share:${docId}`, 'arrayBuffer')
         if (!blob) return errRes(404, 'Not found', cors)
         return new Response(blob, {
           headers: { ...cors, 'Content-Type': 'application/octet-stream' },
@@ -96,8 +96,8 @@ export default {
       // DELETE /share/:docId  — revoke share
       if (req.method === 'DELETE' && docId) {
         if (!await verifySecret(req, env, docId)) return errRes(403, 'Forbidden', cors)
-        await env.KV.delete(`share:${docId}`)
-        await env.KV.delete(`share:${docId}:meta`)
+        await env.LOLLIPOP_DRAGON.delete(`share:${docId}`)
+        await env.LOLLIPOP_DRAGON.delete(`share:${docId}:meta`)
         return jsonRes({ ok: true }, cors)
       }
     }
@@ -111,15 +111,15 @@ export default {
         const blob = await req.arrayBuffer()
         if (blob.byteLength > 1024 * 1024) return errRes(413, 'Comment too large', cors)
         const cmtId = crypto.randomUUID()
-        await env.KV.put(`comments:${docId}:${cmtId}`, blob, { expirationTtl: meta.ttl })
+        await env.LOLLIPOP_DRAGON.put(`comments:${docId}:${cmtId}`, blob, { expirationTtl: meta.ttl })
         return jsonRes({ cmtId }, cors)
       }
 
       // GET /comments/:docId  — list comments
       if (req.method === 'GET') {
-        const list = await env.KV.list({ prefix: `comments:${docId}:` })
+        const list = await env.LOLLIPOP_DRAGON.list({ prefix: `comments:${docId}:` })
         const blobs = await Promise.all(
-          list.keys.map((k) => env.KV.get(k.name, 'arrayBuffer')),
+          list.keys.map((k) => env.LOLLIPOP_DRAGON.get(k.name, 'arrayBuffer')),
         )
         const encoded = blobs
           .filter((b): b is ArrayBuffer => b !== null)
@@ -130,8 +130,8 @@ export default {
       // DELETE /comments/:docId  — clear all comments for a share
       if (req.method === 'DELETE') {
         if (!await verifySecret(req, env, docId)) return errRes(403, 'Forbidden', cors)
-        const list = await env.KV.list({ prefix: `comments:${docId}:` })
-        await Promise.all(list.keys.map((k) => env.KV.delete(k.name)))
+        const list = await env.LOLLIPOP_DRAGON.list({ prefix: `comments:${docId}:` })
+        await Promise.all(list.keys.map((k) => env.LOLLIPOP_DRAGON.delete(k.name)))
         return jsonRes({ ok: true }, cors)
       }
     }

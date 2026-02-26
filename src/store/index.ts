@@ -193,7 +193,10 @@ export const useAppStore = create<AppState>()(
 
       setComments: (comments) => set({ comments, activeCommentId: null, commentFilter: 'all' }),
       setActiveCommentId: (id) => set({ activeCommentId: id }),
-      toggleCommentPanel: () => set((s) => ({ commentPanelOpen: !s.commentPanelOpen })),
+      toggleCommentPanel: () => set((s) => ({
+        commentPanelOpen: !s.commentPanelOpen,
+        sharedPanelOpen: !s.commentPanelOpen ? false : s.sharedPanelOpen,
+      })),
       setCommentFilter: (f) => set({ commentFilter: f, activeCommentId: null }),
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
       setTheme: (theme) => set({ theme }),
@@ -453,7 +456,10 @@ export const useAppStore = create<AppState>()(
         set({ pendingComments: pc, shares })
       },
 
-      toggleSharedPanel: () => set((s) => ({ sharedPanelOpen: !s.sharedPanelOpen })),
+      toggleSharedPanel: () => set((s) => ({
+        sharedPanelOpen: !s.sharedPanelOpen,
+        commentPanelOpen: !s.sharedPanelOpen ? false : s.commentPanelOpen,
+      })),
 
       // ── v2 Peer actions ──────────────────────────────────────────────────
 

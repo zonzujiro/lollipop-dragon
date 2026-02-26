@@ -3,7 +3,7 @@ main = "src/index.ts"
 compatibility_date = "2024-09-01"
 
 [[kv_namespaces]]
-binding = "KV"
+binding = "LOLLIPOP_DRAGON"
 id = "d1299f23b0084de49ddd80728cc1b3bc"
 
 [vars]
