@@ -453,6 +453,7 @@ export const useAppStore = create<AppState>()(
         });
         const keyB64 = await keyToBase64url(key);
 
+        const roomPwd = generateRoomPassword();
         const now = new Date();
         const record: ShareRecord = {
           docId,
@@ -461,12 +462,13 @@ export const useAppStore = create<AppState>()(
           createdAt: now.toISOString(),
           expiresAt: new Date(now.getTime() + ttl * 1000).toISOString(),
           pendingCommentCount: 0,
+          keyB64,
+          roomPassword: roomPwd,
+          fileCount: Object.keys(tree).length,
         };
         const shares = [...get().shares, record];
         saveShares(shares);
         set({ shares, shareKeys: { ...get().shareKeys, [docId]: key } });
-
-        const roomPwd = generateRoomPassword();
         const roomId = docIdToRoomId(docId);
 
         // Auto-connect host to the realtime room
