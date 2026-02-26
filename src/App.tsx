@@ -7,6 +7,7 @@ import { FileTreeSidebar } from './components/FileTreeSidebar'
 import { CommentPanel } from './components/CommentPanel'
 import { SharedPanel } from './components/SharedPanel'
 import { UndoToast } from './components/UndoToast'
+import { Toast } from './components/Toast'
 import { PeerNamePrompt } from './components/PeerNamePrompt'
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL as string | undefined
@@ -151,6 +152,7 @@ function App() {
         {sharedPanelOpen && !focusMode && <SharedPanel />}
       </div>
       <UndoToast />
+      <Toast />
       {focusMode && (
         <button
           onClick={toggleFocusMode}

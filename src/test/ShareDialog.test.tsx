@@ -100,17 +100,17 @@ describe('ShareDialog — share flow', () => {
     })
   })
 
-  it('copies link to clipboard on Copy button click', async () => {
+  it('copies link to clipboard and closes dialog on Copy button click', async () => {
     const shareContent = vi.fn().mockResolvedValue('https://example.com/#share=abc&key=xyz')
     useAppStore.setState({ shareContent })
+    const onClose = vi.fn()
     const user = userEvent.setup()
-    render(<ShareDialog onClose={vi.fn()} />)
+    render(<ShareDialog onClose={onClose} />)
     await user.click(screen.getByRole('button', { name: 'Generate link' }))
     await waitFor(() => screen.getByRole('button', { name: 'Copy' }))
     await user.click(screen.getByRole('button', { name: 'Copy' }))
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('https://example.com/#share=abc&key=xyz')
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Copied!' })).toBeInTheDocument()
-    })
+    expect(onClose).toHaveBeenCalledOnce()
+    expect(useAppStore.getState().toast).toBe('Link copied to clipboard')
   })
 })

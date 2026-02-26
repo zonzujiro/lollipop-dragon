@@ -18,12 +18,12 @@ export function ShareDialog({ onClose, scope, scopeLabel }: Props) {
   const fileName = useAppStore((s) => s.fileName)
   const directoryName = useAppStore((s) => s.directoryName)
   const shareContent = useAppStore((s) => s.shareContent)
+  const showToast = useAppStore((s) => s.showToast)
 
   const [ttl, setTtl] = useState(604800)
   const [link, setLink] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
 
   const label = scopeLabel ?? directoryName ?? fileName ?? 'document'
 
@@ -33,6 +33,7 @@ export function ShareDialog({ onClose, scope, scopeLabel }: Props) {
     try {
       const url = await shareContent({ ttl, nodes: scope, label: scopeLabel })
       setLink(url)
+      showToast('Share link created')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Share failed')
     } finally {
@@ -43,8 +44,8 @@ export function ShareDialog({ onClose, scope, scopeLabel }: Props) {
   async function handleCopy() {
     if (!link) return
     await navigator.clipboard.writeText(link)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    showToast('Link copied to clipboard')
+    onClose()
   }
 
   return (
@@ -108,7 +109,7 @@ export function ShareDialog({ onClose, scope, scopeLabel }: Props) {
                 className="share-dialog__btn share-dialog__btn--copy"
                 onClick={handleCopy}
               >
-                {copied ? 'Copied!' : 'Copy'}
+                Copy
               </button>
             </div>
 

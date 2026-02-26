@@ -52,6 +52,7 @@ interface AppState {
   focusMode: boolean
   writeAllowed: boolean
   undoState: { rawContent: string } | null
+  toast: string | null
 
   // Sharing (v2)
   shares: ShareRecord[]
@@ -83,6 +84,8 @@ interface AppState {
   deleteComment: (id: string) => Promise<void>
   undo: () => Promise<void>
   clearUndo: () => void
+  showToast: (msg: string) => void
+  dismissToast: () => void
 
   // v2 Sharing actions
   shareContent: (opts: { ttl: number; nodes?: FileTreeNode[]; label?: string }) => Promise<string>
@@ -124,6 +127,7 @@ export const useAppStore = create<AppState>()(
       focusMode: false,
       writeAllowed: true,
       undoState: null,
+      toast: null,
       shares: loadShares(),
       sharedPanelOpen: false,
       isPeerMode: false,
@@ -271,6 +275,8 @@ export const useAppStore = create<AppState>()(
       },
 
       clearUndo: () => set({ undoState: null }),
+      showToast: (msg) => set({ toast: msg }),
+      dismissToast: () => set({ toast: null }),
 
       refreshFile: async () => {
         const { fileHandle, comments } = get()
