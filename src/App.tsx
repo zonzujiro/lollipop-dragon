@@ -308,7 +308,13 @@ function App() {
 
   return (
     <div className="app-layout">
-      {!focusMode && <Header />}
+      {!focusMode && (
+        <Header
+          onShare={() =>
+            setShareScope({ nodes: [], label: fileName ?? "document" })
+          }
+        />
+      )}
       <div className="app-body">
         {hasFolderOpen && sidebarOpen && !focusMode && (
           <FileTreeSidebar

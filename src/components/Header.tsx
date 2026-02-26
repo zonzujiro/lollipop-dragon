@@ -87,9 +87,10 @@ function SidebarIcon() {
 
 interface Props {
   peerMode?: boolean;
+  onShare?: () => void;
 }
 
-export function Header({ peerMode = false }: Props) {
+export function Header({ peerMode = false, onShare }: Props) {
   const fileName = useAppStore((s) => s.fileName);
   const directoryName = useAppStore((s) => s.directoryName);
   const fileTree = useAppStore((s) => s.fileTree);
@@ -166,6 +167,13 @@ export function Header({ peerMode = false }: Props) {
               {WORKER_URL && hasContent && (
                 <>
                   <div className="app-header__divider" aria-hidden="true" />
+                  <button
+                    className="app-header__btn app-header__btn--text"
+                    onClick={onShare}
+                    title="Share current file"
+                  >
+                    Share
+                  </button>
                   <button
                     className={`app-header__btn app-header__btn--text${sharedPanelOpen ? " app-header__btn--active" : ""}`}
                     onClick={toggleSharedPanel}
