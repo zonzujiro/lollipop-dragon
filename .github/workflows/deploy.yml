@@ -27,6 +27,8 @@ jobs:
       - run: npm install --registry https://registry.npmjs.org
 
       - run: npx vite build
+        env:
+          VITE_WORKER_URL: ${{ secrets.VITE_WORKER_URL }}
 
       - uses: actions/upload-pages-artifact@v3
         with:
