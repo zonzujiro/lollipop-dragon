@@ -13,3 +13,19 @@ export interface DirectoryNode {
 }
 
 export type FileTreeNode = FileNode | DirectoryNode
+
+// Sidebar-specific types (no handle field) for the unified presentational sidebar
+export interface SidebarFileNode {
+  kind: 'file'
+  name: string
+  path: string
+}
+
+export interface SidebarDirectoryNode {
+  kind: 'directory'
+  name: string
+  path: string
+  children: SidebarTreeNode[]
+}
+
+export type SidebarTreeNode = SidebarFileNode | SidebarDirectoryNode

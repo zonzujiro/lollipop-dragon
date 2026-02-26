@@ -1,4 +1,4 @@
-import type { FileTreeNode, FileNode, DirectoryNode } from '../types/fileTree'
+import type { FileTreeNode, FileNode, DirectoryNode, SidebarTreeNode, SidebarDirectoryNode } from '../types/fileTree'
 
 export interface OpenedFile {
   handle: FileSystemFileHandle
@@ -85,6 +85,44 @@ export async function buildFileTree(
   files.sort((a, b) => a.name.localeCompare(b.name))
 
   return [...dirs, ...files]
+}
+
+/** Build a nested tree from flat path keys like "folder/sub/file.md" */
+export function buildVirtualTree(paths: string[]): SidebarTreeNode[] {
+  const root: SidebarDirectoryNode = { kind: 'directory', name: '', path: '', children: [] }
+
+  for (const path of paths) {
+    const parts = path.split('/')
+    let current = root
+    for (let i = 0; i < parts.length; i++) {
+      const name = parts[i]
+      const subPath = parts.slice(0, i + 1).join('/')
+      if (i === parts.length - 1) {
+        current.children.push({ kind: 'file', name, path })
+      } else {
+        let dir = current.children.find(
+          (c) => c.kind === 'directory' && c.name === name,
+        ) as SidebarDirectoryNode | undefined
+        if (!dir) {
+          dir = { kind: 'directory', name, path: subPath, children: [] }
+          current.children.push(dir)
+        }
+        current = dir
+      }
+    }
+  }
+
+  function sortNodes(nodes: SidebarTreeNode[]): SidebarTreeNode[] {
+    return nodes.sort((a, b) => {
+      if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1
+      return a.name.localeCompare(b.name)
+    }).map((n) => {
+      if (n.kind === 'directory') return { ...n, children: sortNodes(n.children) }
+      return n
+    })
+  }
+
+  return sortNodes(root.children)
 }
 
 export async function openDirectory(): Promise<{

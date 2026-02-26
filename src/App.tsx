@@ -1,17 +1,36 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAppStore } from './store'
 import { FilePicker } from './components/FilePicker'
 import { Header } from './components/Header'
 import { MarkdownRenderer } from './components/MarkdownRenderer'
 import { FileTreeSidebar } from './components/FileTreeSidebar'
+import { ShareDialog } from './components/ShareDialog'
 import { CommentPanel } from './components/CommentPanel'
 import { SharedPanel } from './components/SharedPanel'
 import { UndoToast } from './components/UndoToast'
 import { Toast } from './components/Toast'
 import { PeerNamePrompt } from './components/PeerNamePrompt'
-import { PeerFileTreeSidebar } from './components/PeerFileTreeSidebar'
+import { buildVirtualTree } from './services/fileSystem'
+import type { FileTreeNode, FileNode, DirectoryNode, SidebarTreeNode } from './types/fileTree'
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL as string | undefined
+
+function findFileNode(tree: FileTreeNode[], path: string): FileNode | null {
+  for (const node of tree) {
+    if (node.kind === 'file' && node.path === path) return node
+    if (node.kind === 'directory') {
+      const found = findFileNode(node.children, path)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+const folderIcon = (
+  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
+  </svg>
+)
 
 function NoFileSelected() {
   return (
@@ -62,11 +81,15 @@ function App() {
   const restoreDirectory = useAppStore((s) => s.restoreDirectory)
   const fileHandle = useAppStore((s) => s.fileHandle)
   const refreshFile = useAppStore((s) => s.refreshFile)
+  const selectFile = useAppStore((s) => s.selectFile)
+  const openDirectory = useAppStore((s) => s.openDirectory)
 
   // v2 peer mode
   const isPeerMode = useAppStore((s) => s.isPeerMode)
   const peerName = useAppStore((s) => s.peerName)
   const loadSharedContent = useAppStore((s) => s.loadSharedContent)
+  const sharedContent = useAppStore((s) => s.sharedContent)
+  const selectPeerFile = useAppStore((s) => s.selectPeerFile)
 
   // v3 realtime
   const connectRealtime = useAppStore((s) => s.connectRealtime)
@@ -77,6 +100,28 @@ function App() {
   const activeFilePath = useAppStore((s) => s.activeFilePath)
 
   const [peerModeChecked, setPeerModeChecked] = useState(false)
+  const [shareScope, setShareScope] = useState<{ nodes: FileTreeNode[]; label: string } | null>(null)
+
+  const handleHostSelect = useCallback((path: string) => {
+    const node = findFileNode(fileTree, path)
+    if (node) selectFile(node)
+  }, [fileTree, selectFile])
+
+  const handleHostShare = useCallback((nodes: SidebarTreeNode[], label: string) => {
+    setShareScope({ nodes: nodes as FileTreeNode[], label })
+  }, [])
+
+  const hostHeader = useMemo(() => ({
+    title: directoryName ?? '',
+    action: { onClick: openDirectory, label: 'Open another folder', icon: folderIcon },
+  }), [directoryName, openDirectory])
+
+  const peerTree = useMemo(() => {
+    if (!sharedContent) return []
+    return buildVirtualTree(Object.keys(sharedContent.tree))
+  }, [sharedContent])
+
+  const peerHeader = useMemo(() => ({ title: 'Shared files' }), [])
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
@@ -175,7 +220,14 @@ function App() {
           </div>
         )}
         <div className="app-body">
-          <PeerFileTreeSidebar />
+          {peerTree.length > 1 && (
+            <FileTreeSidebar
+              tree={peerTree}
+              activeFilePath={activeFilePath}
+              onSelect={selectPeerFile}
+              header={peerHeader}
+            />
+          )}
           <main className="app-main">
             <PeerViewer />
           </main>
@@ -196,13 +248,28 @@ function App() {
     <div className="app-layout">
       {!focusMode && <Header />}
       <div className="app-body">
-        {hasFolderOpen && sidebarOpen && !focusMode && <FileTreeSidebar />}
+        {hasFolderOpen && sidebarOpen && !focusMode && (
+          <FileTreeSidebar
+            tree={fileTree}
+            activeFilePath={activeFilePath}
+            onSelect={handleHostSelect}
+            header={hostHeader}
+            onShare={WORKER_URL ? handleHostShare : undefined}
+          />
+        )}
         <main className="app-main">
           {fileName ? <MarkdownRenderer /> : <NoFileSelected />}
         </main>
         {commentPanelOpen && !focusMode && <CommentPanel />}
         {sharedPanelOpen && !focusMode && <SharedPanel />}
       </div>
+      {shareScope && (
+        <ShareDialog
+          onClose={() => setShareScope(null)}
+          scope={shareScope.nodes}
+          scopeLabel={shareScope.label}
+        />
+      )}
       <UndoToast />
       <Toast />
       {focusMode && (
