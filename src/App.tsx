@@ -1,201 +1,254 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useAppStore } from './store'
-import { FilePicker } from './components/FilePicker'
-import { Header } from './components/Header'
-import { MarkdownRenderer } from './components/MarkdownRenderer'
-import { FileTreeSidebar } from './components/FileTreeSidebar'
-import { ShareDialog } from './components/ShareDialog'
-import { CommentPanel } from './components/CommentPanel'
-import { SharedPanel } from './components/SharedPanel'
-import { UndoToast } from './components/UndoToast'
-import { Toast } from './components/Toast'
-import { PeerNamePrompt } from './components/PeerNamePrompt'
-import { buildVirtualTree } from './services/fileSystem'
-import type { FileTreeNode, FileNode, DirectoryNode, SidebarTreeNode } from './types/fileTree'
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAppStore } from "./store";
+import { FilePicker } from "./components/FilePicker";
+import { Header } from "./components/Header";
+import { MarkdownRenderer } from "./components/MarkdownRenderer";
+import { FileTreeSidebar } from "./components/FileTreeSidebar";
+import { ShareDialog } from "./components/ShareDialog";
+import { CommentPanel } from "./components/CommentPanel";
+import { SharedPanel } from "./components/SharedPanel";
+import { UndoToast } from "./components/UndoToast";
+import { Toast } from "./components/Toast";
+import { PeerNamePrompt } from "./components/PeerNamePrompt";
+import { buildVirtualTree } from "./services/fileSystem";
+import type {
+  FileTreeNode,
+  FileNode,
+  DirectoryNode,
+  SidebarTreeNode,
+} from "./types/fileTree";
 
-const WORKER_URL = import.meta.env.VITE_WORKER_URL as string | undefined
+const WORKER_URL = import.meta.env.VITE_WORKER_URL as string | undefined;
 
 function findFileNode(tree: FileTreeNode[], path: string): FileNode | null {
   for (const node of tree) {
-    if (node.kind === 'file' && node.path === path) return node
-    if (node.kind === 'directory') {
-      const found = findFileNode(node.children, path)
-      if (found) return found
+    if (node.kind === "file" && node.path === path) return node;
+    if (node.kind === "directory") {
+      const found = findFileNode(node.children, path);
+      if (found) return found;
     }
   }
-  return null
+  return null;
 }
 
 const folderIcon = (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
     <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
   </svg>
-)
+);
 
 function NoFileSelected() {
   return (
     <div className="content-empty">
-      <p className="content-empty__text">Select a file from the sidebar to start reading</p>
+      <p className="content-empty__text">
+        Select a file from the sidebar to start reading
+      </p>
     </div>
-  )
+  );
 }
 
 function ShareUnavailable() {
   return (
     <div className="share-status">
-      <svg className="share-status__icon" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10"/>
-        <line x1="15" y1="9" x2="9" y2="15"/>
-        <line x1="9" y1="9" x2="15" y2="15"/>
+      <svg
+        className="share-status__icon"
+        xmlns="http://www.w3.org/2000/svg"
+        width="48"
+        height="48"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <line x1="15" y1="9" x2="9" y2="15" />
+        <line x1="9" y1="9" x2="15" y2="15" />
       </svg>
       <h2 className="share-status__title">Document unavailable</h2>
       <p className="share-status__text">
         This shared link has been revoked by the author or has expired.
       </p>
     </div>
-  )
+  );
 }
 
 // Peer mode: render the first file in the shared folder tree
 function PeerViewer() {
-  const sharedContent = useAppStore((s) => s.sharedContent)
-  const rawContent = useAppStore((s) => s.rawContent)
+  const sharedContent = useAppStore((s) => s.sharedContent);
+  const rawContent = useAppStore((s) => s.rawContent);
 
-  if (!sharedContent) return <ShareUnavailable />
-  if (!rawContent) return <ShareUnavailable />
+  if (!sharedContent) return <ShareUnavailable />;
+  if (!rawContent) return <ShareUnavailable />;
 
-  return <MarkdownRenderer />
+  return <MarkdownRenderer />;
 }
 
 function App() {
-  const fileName = useAppStore((s) => s.fileName)
-  const directoryName = useAppStore((s) => s.directoryName)
-  const fileTree = useAppStore((s) => s.fileTree)
-  const theme = useAppStore((s) => s.theme)
-  const focusMode = useAppStore((s) => s.focusMode)
-  const sidebarOpen = useAppStore((s) => s.sidebarOpen)
-  const toggleFocusMode = useAppStore((s) => s.toggleFocusMode)
-  const toggleSidebar = useAppStore((s) => s.toggleSidebar)
-  const commentPanelOpen = useAppStore((s) => s.commentPanelOpen)
-  const sharedPanelOpen = useAppStore((s) => s.sharedPanelOpen)
-  const restoreDirectory = useAppStore((s) => s.restoreDirectory)
-  const fileHandle = useAppStore((s) => s.fileHandle)
-  const refreshFile = useAppStore((s) => s.refreshFile)
-  const selectFile = useAppStore((s) => s.selectFile)
-  const openDirectory = useAppStore((s) => s.openDirectory)
+  const fileName = useAppStore((s) => s.fileName);
+  const directoryName = useAppStore((s) => s.directoryName);
+  const fileTree = useAppStore((s) => s.fileTree);
+  const theme = useAppStore((s) => s.theme);
+  const focusMode = useAppStore((s) => s.focusMode);
+  const sidebarOpen = useAppStore((s) => s.sidebarOpen);
+  const toggleFocusMode = useAppStore((s) => s.toggleFocusMode);
+  const toggleSidebar = useAppStore((s) => s.toggleSidebar);
+  const commentPanelOpen = useAppStore((s) => s.commentPanelOpen);
+  const sharedPanelOpen = useAppStore((s) => s.sharedPanelOpen);
+  const restoreDirectory = useAppStore((s) => s.restoreDirectory);
+  const fileHandle = useAppStore((s) => s.fileHandle);
+  const refreshFile = useAppStore((s) => s.refreshFile);
+  const selectFile = useAppStore((s) => s.selectFile);
+  const openDirectory = useAppStore((s) => s.openDirectory);
 
   // v2 peer mode
-  const isPeerMode = useAppStore((s) => s.isPeerMode)
-  const peerName = useAppStore((s) => s.peerName)
-  const loadSharedContent = useAppStore((s) => s.loadSharedContent)
-  const sharedContent = useAppStore((s) => s.sharedContent)
-  const selectPeerFile = useAppStore((s) => s.selectPeerFile)
-  const peerCommentPanelOpen = useAppStore((s) => s.commentPanelOpen)
+  const isPeerMode = useAppStore((s) => s.isPeerMode);
+  const peerName = useAppStore((s) => s.peerName);
+  const loadSharedContent = useAppStore((s) => s.loadSharedContent);
+  const sharedContent = useAppStore((s) => s.sharedContent);
+  const selectPeerFile = useAppStore((s) => s.selectPeerFile);
+  const peerCommentPanelOpen = useAppStore((s) => s.commentPanelOpen);
 
   // v3 realtime
-  const connectRealtime = useAppStore((s) => s.connectRealtime)
-  const disconnectRealtime = useAppStore((s) => s.disconnectRealtime)
-  const setRealtimeAwareness = useAppStore((s) => s.setRealtimeAwareness)
-  const contentUpdateAvailable = useAppStore((s) => s.contentUpdateAvailable)
-  const dismissContentUpdate = useAppStore((s) => s.dismissContentUpdate)
-  const activeFilePath = useAppStore((s) => s.activeFilePath)
+  const connectRealtime = useAppStore((s) => s.connectRealtime);
+  const disconnectRealtime = useAppStore((s) => s.disconnectRealtime);
+  const setRealtimeAwareness = useAppStore((s) => s.setRealtimeAwareness);
+  const contentUpdateAvailable = useAppStore((s) => s.contentUpdateAvailable);
+  const dismissContentUpdate = useAppStore((s) => s.dismissContentUpdate);
+  const activeFilePath = useAppStore((s) => s.activeFilePath);
 
-  const [peerModeChecked, setPeerModeChecked] = useState(false)
-  const [shareScope, setShareScope] = useState<{ nodes: FileTreeNode[]; label: string } | null>(null)
+  const [peerModeChecked, setPeerModeChecked] = useState(false);
+  const [shareScope, setShareScope] = useState<{
+    nodes: FileTreeNode[];
+    label: string;
+  } | null>(null);
 
-  const handleHostSelect = useCallback((path: string) => {
-    const node = findFileNode(fileTree, path)
-    if (node) selectFile(node)
-  }, [fileTree, selectFile])
+  const handleHostSelect = useCallback(
+    (path: string) => {
+      const node = findFileNode(fileTree, path);
+      if (node) selectFile(node);
+    },
+    [fileTree, selectFile],
+  );
 
-  const handleHostShare = useCallback((nodes: SidebarTreeNode[], label: string) => {
-    setShareScope({ nodes: nodes as FileTreeNode[], label })
-  }, [])
+  const handleHostShare = useCallback(
+    (nodes: SidebarTreeNode[], label: string) => {
+      setShareScope({ nodes: nodes as FileTreeNode[], label });
+    },
+    [],
+  );
 
-  const hostHeader = useMemo(() => ({
-    title: directoryName ?? '',
-    action: { onClick: openDirectory, label: 'Open another folder', icon: folderIcon },
-  }), [directoryName, openDirectory])
+  const hostHeader = useMemo(
+    () => ({
+      title: directoryName ?? "",
+      action: {
+        onClick: openDirectory,
+        label: "Open another folder",
+        icon: folderIcon,
+      },
+    }),
+    [directoryName, openDirectory],
+  );
 
   const peerTree = useMemo(() => {
-    if (!sharedContent) return []
-    return buildVirtualTree(Object.keys(sharedContent.tree))
-  }, [sharedContent])
+    if (!sharedContent) return [];
+    return buildVirtualTree(Object.keys(sharedContent.tree));
+  }, [sharedContent]);
 
-  const peerHeader = useMemo(() => ({ title: 'Shared files' }), [])
+  const peerHeader = useMemo(() => ({ title: "Shared files" }), []);
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark')
-  }, [theme])
+    document.documentElement.classList.toggle("dark", theme === "dark");
+  }, [theme]);
 
   // Check for peer mode URL on mount and on hash change (same-tab navigation)
   useEffect(() => {
     function checkHash() {
-      const hash = window.location.hash
-      if (hash.includes('share=') && hash.includes('key=') && WORKER_URL) {
-        loadSharedContent().finally(() => setPeerModeChecked(true))
+      const hash = window.location.hash;
+      if (hash.includes("share=") && hash.includes("key=") && WORKER_URL) {
+        loadSharedContent().finally(() => setPeerModeChecked(true));
       } else {
-        setPeerModeChecked(true)
-        restoreDirectory()
+        setPeerModeChecked(true);
+        restoreDirectory();
       }
     }
-    checkHash()
-    window.addEventListener('hashchange', checkHash)
-    return () => window.removeEventListener('hashchange', checkHash)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    checkHash();
+    window.addEventListener("hashchange", checkHash);
+    return () => window.removeEventListener("hashchange", checkHash);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Cmd+B / Ctrl+B toggles sidebar
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
-        e.preventDefault()
-        toggleSidebar()
+      if ((e.metaKey || e.ctrlKey) && e.key === "b") {
+        e.preventDefault();
+        toggleSidebar();
       }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [toggleSidebar])
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [toggleSidebar]);
 
   // Watch the open file for external changes (e.g. LLM edits) using FileSystemObserver
   useEffect(() => {
-    if (!fileHandle || !('FileSystemObserver' in window)) return
+    if (!fileHandle || !("FileSystemObserver" in window)) return;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const observer = new (window as any).FileSystemObserver((records: any[]) => {
-      if (records.some((r) => r.type === 'modified' || r.type === 'appeared')) {
-        refreshFile()
+    const observer = new (window as any).FileSystemObserver(
+      (records: any[]) => {
+        if (
+          records.some((r) => r.type === "modified" || r.type === "appeared")
+        ) {
+          refreshFile();
+        }
+      },
+    );
+    (async () => {
+      try {
+        await observer.observe(fileHandle);
+      } catch {
+        /* unsupported */
       }
-    })
-    ;(async () => {
-      try { await observer.observe(fileHandle) } catch { /* unsupported */ }
-    })()
-    return () => observer.disconnect()
-  }, [fileHandle, refreshFile])
+    })();
+    return () => observer.disconnect();
+  }, [fileHandle, refreshFile]);
 
   // v3: Auto-connect to realtime room when peer name is set and room params exist
   useEffect(() => {
-    if (!peerName || !peerModeChecked) return
-    const hash = window.location.hash.slice(1)
-    const params = new URLSearchParams(hash)
-    const docId = params.get('share')
-    const roomId = params.get('room')
-    const roomPwd = params.get('pwd')
+    if (!peerName || !peerModeChecked) return;
+    const hash = window.location.hash.slice(1);
+    const params = new URLSearchParams(hash);
+    const docId = params.get("share");
+    const roomId = params.get("room");
+    const roomPwd = params.get("pwd");
     if (docId && roomId && roomPwd) {
-      connectRealtime(docId, roomPwd)
-      return () => disconnectRealtime()
+      connectRealtime(docId, roomPwd);
+      return () => disconnectRealtime();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [peerName, peerModeChecked])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [peerName, peerModeChecked]);
 
   // v3: Broadcast awareness when active file changes
   useEffect(() => {
-    setRealtimeAwareness(activeFilePath ?? fileName, null)
-  }, [activeFilePath, fileName, setRealtimeAwareness])
+    setRealtimeAwareness(activeFilePath ?? fileName, null);
+  }, [activeFilePath, fileName, setRealtimeAwareness]);
 
   // Peer mode: show name prompt first, then the document
   if (isPeerMode) {
-    if (!peerModeChecked) return null  // still loading
-    if (!peerName) return <PeerNamePrompt />
+    if (!peerModeChecked) return null; // still loading
+    if (!peerName) return <PeerNamePrompt />;
     return (
       <div className="app-layout">
         <Header peerMode />
@@ -205,8 +258,8 @@ function App() {
             <button
               className="content-update-banner__btn"
               onClick={() => {
-                dismissContentUpdate()
-                loadSharedContent()
+                dismissContentUpdate();
+                loadSharedContent();
               }}
             >
               Reload
@@ -236,15 +289,15 @@ function App() {
         </div>
         <Toast />
       </div>
-    )
+    );
   }
 
-  if (!peerModeChecked) return null
+  if (!peerModeChecked) return null;
 
-  const hasFolderOpen = fileTree.length > 0
-  const hasContent = !!fileName || !!directoryName
+  const hasFolderOpen = fileTree.length > 0;
+  const hasContent = !!fileName || !!directoryName;
 
-  if (!hasContent) return <FilePicker />
+  if (!hasContent) return <FilePicker />;
 
   return (
     <div className="app-layout">
@@ -281,14 +334,26 @@ function App() {
           title="Exit focus mode"
           className="focus-exit-btn"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/>
-            <path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+            <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+            <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+            <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
           </svg>
         </button>
       )}
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
