@@ -330,8 +330,13 @@ export const useAppStore = create<AppState>()(
           tree = { [path]: rawContent }
         }
 
+        const treeEntries = Object.entries(tree)
+        const totalChars = treeEntries.reduce((n, [, v]) => n + v.length, 0)
+        console.log('[share] uploading:', { fileCount: treeEntries.length, totalChars, paths: treeEntries.map(([k]) => k) })
+
         const key = await generateKey()
         const { docId, hostSecret } = await storage.uploadContent(tree, key, { ttl, label })
+        console.log('[share] uploaded successfully:', { docId, blobLabel: label })
         const keyB64 = await keyToBase64url(key)
 
         const now = new Date()

@@ -22,12 +22,23 @@ function NoFileSelected() {
 // Peer mode: render the first file in the shared folder tree
 function PeerViewer() {
   const sharedContent = useAppStore((s) => s.sharedContent)
-  const setComments = useAppStore((s) => s.setComments)
+  const rawContent = useAppStore((s) => s.rawContent)
+  const fileName = useAppStore((s) => s.fileName)
+
+  console.log('[peer] PeerViewer render:', { hasSharedContent: !!sharedContent, rawContentLen: rawContent.length, fileName })
 
   if (!sharedContent) {
     return (
       <div className="content-empty">
         <p className="content-empty__text">This document is no longer available.</p>
+      </div>
+    )
+  }
+
+  if (!rawContent) {
+    return (
+      <div className="content-empty">
+        <p className="content-empty__text">Document loaded but content is empty.</p>
       </div>
     )
   }

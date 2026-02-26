@@ -20,25 +20,38 @@ export class ShareStorage {
     opts: { ttl: number; label: string },
   ): Promise<UploadResult> {
     const compressed = await serializePayload(tree)
+    console.log('[share] serialized payload:', compressed.byteLength, 'bytes (compressed)')
     const blob = await encrypt(compressed, key)
+    console.log('[share] encrypted blob:', blob.byteLength, 'bytes')
     const hostSecret = generateSecret()
     const params = new URLSearchParams({ ttl: String(opts.ttl), label: opts.label })
-    const res = await fetch(`${this.workerUrl}/share?${params}`, {
+    const url = `${this.workerUrl}/share?${params}`
+    console.log('[share] POST', url, 'body size:', blob.byteLength)
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/octet-stream', 'X-Host-Secret': hostSecret },
       body: blob,
     })
+    console.log('[share] POST response:', res.status, res.statusText)
     if (!res.ok) throw new Error(`Upload failed: ${res.status}`)
-    const { docId } = await res.json() as { docId: string }
-    return { docId, hostSecret }
+    const data = await res.json() as { docId: string }
+    console.log('[share] POST result:', data)
+    return { docId: data.docId, hostSecret }
   }
 
   async fetchContent(docId: string, key: CryptoKey): Promise<SharePayload> {
-    const res = await fetch(`${this.workerUrl}/share/${docId}`)
+    const url = `${this.workerUrl}/share/${docId}`
+    console.log('[share] GET', url)
+    const res = await fetch(url)
+    console.log('[share] GET response:', res.status, res.statusText)
     if (!res.ok) throw new Error(res.status === 404 ? 'Share not found or expired' : `Fetch failed: ${res.status}`)
     const blob = await res.arrayBuffer()
+    console.log('[share] GET blob size:', blob.byteLength, 'bytes')
     const decrypted = await decrypt(blob, key)
-    return deserializePayload(decrypted)
+    console.log('[share] decrypted size:', decrypted.byteLength, 'bytes')
+    const payload = await deserializePayload(decrypted)
+    console.log('[share] deserialized payload:', { files: Object.keys(payload.tree).length, version: payload.version })
+    return payload
   }
 
   async deleteContent(docId: string, hostSecret: string): Promise<void> {

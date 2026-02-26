@@ -67,6 +67,7 @@ export default {
       // POST /share  — upload content
       if (req.method === 'POST' && !docId) {
         const blob = await req.arrayBuffer()
+        console.log('[worker] POST /share blob size:', blob.byteLength)
         if (blob.byteLength > 25 * 1024 * 1024) return errRes(413, 'Blob too large', cors)
         const id = crypto.randomUUID()
         const ttl = Math.min(Number(url.searchParams.get('ttl') ?? 604800), 30 * 86400)
@@ -81,12 +82,15 @@ export default {
           ttl,
           label,
         } satisfies ShareMeta))
+        console.log('[worker] POST /share stored:', { id, blobSize: blob.byteLength, ttl, label })
         return jsonRes({ docId: id }, cors)
       }
 
       // GET /share/:docId  — fetch content
       if (req.method === 'GET' && docId) {
+        console.log('[worker] GET /share/', docId)
         const blob = await env.LOLLIPOP_DRAGON.get(`share:${docId}`, 'arrayBuffer')
+        console.log('[worker] GET /share/ result:', blob ? `${blob.byteLength} bytes` : 'NOT FOUND')
         if (!blob) return errRes(404, 'Not found', cors)
         return new Response(blob, {
           headers: { ...cors, 'Content-Type': 'application/octet-stream' },
