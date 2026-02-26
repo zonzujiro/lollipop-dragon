@@ -476,10 +476,13 @@ export const useAppStore = create<AppState>()(
         try {
           const key = await base64urlToKey(keyB64)
           const payload = await storage.fetchContent(docId, key)
+          const firstPath = Object.keys(payload.tree)[0]
           set({
             isPeerMode: true,
             sharedContent: payload,
             shareKeys: { ...get().shareKeys, [docId]: key },
+            rawContent: firstPath ? payload.tree[firstPath] : '',
+            fileName: firstPath ?? null,
           })
         } catch (e) {
           set({ isPeerMode: true, sharedContent: null })

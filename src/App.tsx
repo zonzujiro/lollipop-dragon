@@ -56,7 +56,6 @@ function App() {
   const isPeerMode = useAppStore((s) => s.isPeerMode)
   const peerName = useAppStore((s) => s.peerName)
   const loadSharedContent = useAppStore((s) => s.loadSharedContent)
-  const sharedContent = useAppStore((s) => s.sharedContent)
 
   const [peerModeChecked, setPeerModeChecked] = useState(false)
 
@@ -75,20 +74,6 @@ function App() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  // Set first file from shared tree as rawContent so MarkdownRenderer can render it
-  const setRawContent = useAppStore((s) => s.rawContent)
-  useEffect(() => {
-    if (isPeerMode && sharedContent) {
-      const firstPath = Object.keys(sharedContent.tree)[0]
-      if (firstPath) {
-        useAppStore.setState({
-          rawContent: sharedContent.tree[firstPath],
-          fileName: firstPath,
-        })
-      }
-    }
-  }, [isPeerMode, sharedContent])
 
   // Cmd+B / Ctrl+B toggles sidebar
   useEffect(() => {
