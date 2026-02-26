@@ -42,6 +42,7 @@ const MAX_RETRIES = 3;
 const TRACKER_URLS = [
   "wss://tracker.webtorrent.dev",
   "wss://tracker.openwebtorrent.com",
+  "wss://tracker.files.fm:7073/announce",
 ];
 
 // ── RealtimeSession ──────────────────────────────────────────────────────────
