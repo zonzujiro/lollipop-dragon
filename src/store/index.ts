@@ -66,6 +66,8 @@ interface AppState {
   isPeerMode: boolean
   peerName: string | null
   sharedContent: SharePayload | null
+  // Peer's own submitted comments (peer mode only)
+  myPeerComments: PeerComment[]
   // docId → decrypted comments fetched from Worker
   pendingComments: Record<string, PeerComment[]>
   // docId → CryptoKey (in-memory only, not persisted)
@@ -153,6 +155,7 @@ export const useAppStore = create<AppState>()(
       isPeerMode: false,
       peerName: null,
       sharedContent: null,
+      myPeerComments: [],
       pendingComments: {},
       shareKeys: {},
       rtStatus: 'disconnected' as ConnectionStatus,
@@ -597,6 +600,9 @@ export const useAppStore = create<AppState>()(
           text,
           createdAt: new Date().toISOString(),
         }
+
+        // Track locally so peer can see their own comments
+        set({ myPeerComments: [comment, ...get().myPeerComments] })
 
         // Send via WebRTC if connected
         if (rtSession) {

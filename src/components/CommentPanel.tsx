@@ -21,7 +21,18 @@ function scrollToBlock(blockIndex: number | undefined) {
     ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
 }
 
-export function CommentPanel() {
+interface DisplayComment {
+  id: string
+  type: CommentType
+  text: string
+  blockIndex: number | undefined
+}
+
+interface Props {
+  peerMode?: boolean
+}
+
+export function CommentPanel({ peerMode = false }: Props) {
   const comments = useAppStore((s) => s.comments)
   const resolvedComments = useAppStore((s) => s.resolvedComments)
   const activeCommentId = useAppStore((s) => s.activeCommentId)
@@ -29,17 +40,34 @@ export function CommentPanel() {
   const setActiveCommentId = useAppStore((s) => s.setActiveCommentId)
   const setCommentFilter = useAppStore((s) => s.setCommentFilter)
   const toggleCommentPanel = useAppStore((s) => s.toggleCommentPanel)
+  const myPeerComments = useAppStore((s) => s.myPeerComments)
+  const activeFilePath = useAppStore((s) => s.activeFilePath)
 
-  const isResolved = commentFilter === 'resolved'
+  // In peer mode, map PeerComment[] to a unified display shape
+  const peerDisplayComments: DisplayComment[] = useMemo(() => {
+    if (!peerMode) return []
+    return myPeerComments
+      .filter((c) => c.path === activeFilePath)
+      .map((c) => ({
+        id: c.id,
+        type: c.commentType,
+        text: c.text,
+        blockIndex: c.blockRef.blockIndex,
+      }))
+  }, [peerMode, myPeerComments, activeFilePath])
 
-  // Count per type for current (non-resolved) comments
+  const sourceComments = peerMode ? peerDisplayComments : comments
+
+  const isResolved = !peerMode && commentFilter === 'resolved'
+
+  // Count per type
   const counts = useMemo(() => {
     const c: Partial<Record<CommentType, number>> = {}
-    for (const comment of comments) {
+    for (const comment of sourceComments) {
       c[comment.type] = (c[comment.type] ?? 0) + 1
     }
     return c
-  }, [comments])
+  }, [sourceComments])
 
   const activeTypes = ALL_TYPES.filter((t) => (counts[t] ?? 0) > 0)
 
@@ -47,29 +75,34 @@ export function CommentPanel() {
   const visible = isResolved
     ? resolvedComments
     : commentFilter === 'all' || commentFilter === 'pending'
-      ? comments
-      : comments.filter((c) => c.type === commentFilter)
+      ? sourceComments
+      : sourceComments.filter((c) => c.type === commentFilter)
 
   function handleEntryClick(id: string, blockIndex: number | undefined) {
     setActiveCommentId(activeCommentId === id ? null : id)
     scrollToBlock(blockIndex)
   }
 
-  function entryLabel(c: typeof comments[number]): string {
+  function entryLabel(c: DisplayComment): string {
+    const body = c.text || ''
+    return body.length > 72 ? body.slice(0, 72) + '…' : body
+  }
+
+  function hostEntryLabel(c: typeof comments[number]): string {
     const body = c.text || c.highlightedText || c.from || ''
     return body.length > 72 ? body.slice(0, 72) + '…' : body
   }
 
   const showTypeFilters = !isResolved && activeTypes.length > 1
-  const showStatusFilters = resolvedComments.length > 0
+  const showStatusFilters = !peerMode && resolvedComments.length > 0
 
   return (
     <aside className="comment-panel" aria-label="Comments">
       <div className="comment-panel__header">
         <span className="comment-panel__title">
           Comments
-          {comments.length > 0 && (
-            <span className="comment-panel__count">{comments.length}</span>
+          {sourceComments.length > 0 && (
+            <span className="comment-panel__count">{sourceComments.length}</span>
           )}
         </span>
         <button
@@ -89,7 +122,7 @@ export function CommentPanel() {
                 className={`comment-panel__filter${commentFilter === 'all' || commentFilter === 'pending' ? ' comment-panel__filter--active' : ''}`}
                 onClick={() => setCommentFilter('all')}
               >
-                Pending <span className="comment-panel__filter-count">{comments.length}</span>
+                Pending <span className="comment-panel__filter-count">{sourceComments.length}</span>
               </button>
               <button
                 className={`comment-panel__filter${isResolved ? ' comment-panel__filter--active' : ''}`}
@@ -107,7 +140,7 @@ export function CommentPanel() {
                   className={`comment-panel__filter${(commentFilter === 'all' || commentFilter === 'pending') ? ' comment-panel__filter--active' : ''}`}
                   onClick={() => setCommentFilter('all')}
                 >
-                  All <span className="comment-panel__filter-count">{comments.length}</span>
+                  All <span className="comment-panel__filter-count">{sourceComments.length}</span>
                 </button>
               )}
               {activeTypes.map((type) => (
@@ -130,8 +163,8 @@ export function CommentPanel() {
           <p className="comment-panel__empty">
             {isResolved
               ? 'No resolved comments.'
-              : comments.length === 0
-                ? 'No comments in this document.'
+              : sourceComments.length === 0
+                ? (peerMode ? 'No comments yet.' : 'No comments in this document.')
                 : 'No comments match the filter.'}
           </p>
         ) : (
@@ -145,7 +178,7 @@ export function CommentPanel() {
                   {c.type}
                 </span>
                 <span className="comment-panel__text comment-panel__text--resolved">
-                  {entryLabel(c)}
+                  {peerMode ? entryLabel(c) : hostEntryLabel(c as typeof comments[number])}
                 </span>
               </div>
             ) : (
@@ -160,7 +193,9 @@ export function CommentPanel() {
                 >
                   {c.type}
                 </span>
-                <span className="comment-panel__text">{entryLabel(c)}</span>
+                <span className="comment-panel__text">
+                  {peerMode ? entryLabel(c) : hostEntryLabel(c as typeof comments[number])}
+                </span>
                 {c.blockIndex !== undefined && (
                   <span className="comment-panel__ref">¶{c.blockIndex + 1}</span>
                 )}

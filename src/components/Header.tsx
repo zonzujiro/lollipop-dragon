@@ -54,6 +54,8 @@ export function Header({ peerMode = false }: Props) {
   const toggleSidebar = useAppStore((s) => s.toggleSidebar)
   const sidebarOpen = useAppStore((s) => s.sidebarOpen)
   const comments = useAppStore((s) => s.comments)
+  const myPeerComments = useAppStore((s) => s.myPeerComments)
+  const activeFilePath = useAppStore((s) => s.activeFilePath)
   const commentPanelOpen = useAppStore((s) => s.commentPanelOpen)
   const toggleCommentPanel = useAppStore((s) => s.toggleCommentPanel)
   const refreshFile = useAppStore((s) => s.refreshFile)
@@ -62,6 +64,9 @@ export function Header({ peerMode = false }: Props) {
   const sharedPanelOpen = useAppStore((s) => s.sharedPanelOpen)
   const toggleSharedPanel = useAppStore((s) => s.toggleSharedPanel)
 
+  const commentCount = peerMode
+    ? myPeerComments.filter((c) => c.path === activeFilePath).length
+    : comments.length
   const isDark = theme === 'dark'
   const hasFolderOpen = fileTree.length > 0
   const hasContent = !!(fileName || directoryName)
@@ -142,26 +147,24 @@ export function Header({ peerMode = false }: Props) {
             </button>
           )}
 
-          {!peerMode && (
-            <>
-              <button
-                onClick={toggleCommentPanel}
-                aria-label={commentPanelOpen ? 'Close comments panel' : 'Open comments panel'}
-                title={commentPanelOpen ? 'Close comments panel' : 'Open comments panel'}
-                className={`app-header__btn app-header__btn--text${commentPanelOpen ? ' app-header__btn--active' : ''}`}
-              >
-                Comments{comments.length > 0 && <span className="app-header__badge">{comments.length}</span>}
-              </button>
+          <button
+            onClick={toggleCommentPanel}
+            aria-label={commentPanelOpen ? 'Close comments panel' : 'Open comments panel'}
+            title={commentPanelOpen ? 'Close comments panel' : 'Open comments panel'}
+            className={`app-header__btn app-header__btn--text${commentPanelOpen ? ' app-header__btn--active' : ''}`}
+          >
+            Comments{commentCount > 0 && <span className="app-header__badge">{commentCount}</span>}
+          </button>
 
-              <button
-                onClick={toggleFocusMode}
-                aria-label="Enter focus mode"
-                title="Enter focus mode"
-                className="app-header__btn app-header__btn--icon"
-              >
-                <FocusIcon />
-              </button>
-            </>
+          {!peerMode && (
+            <button
+              onClick={toggleFocusMode}
+              aria-label="Enter focus mode"
+              title="Enter focus mode"
+              className="app-header__btn app-header__btn--icon"
+            >
+              <FocusIcon />
+            </button>
           )}
         </div>
       </header>

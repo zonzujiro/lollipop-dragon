@@ -90,6 +90,7 @@ function App() {
   const loadSharedContent = useAppStore((s) => s.loadSharedContent)
   const sharedContent = useAppStore((s) => s.sharedContent)
   const selectPeerFile = useAppStore((s) => s.selectPeerFile)
+  const peerCommentPanelOpen = useAppStore((s) => s.commentPanelOpen)
 
   // v3 realtime
   const connectRealtime = useAppStore((s) => s.connectRealtime)
@@ -231,6 +232,7 @@ function App() {
           <main className="app-main">
             <PeerViewer />
           </main>
+          {peerCommentPanelOpen && <CommentPanel peerMode />}
         </div>
         <Toast />
       </div>
