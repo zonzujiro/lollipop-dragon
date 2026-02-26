@@ -1216,26 +1216,23 @@ body {
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
-  padding: 0.2rem 0.45rem;
-  font-size: 0.7rem;
-  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
   font-family: var(--font-mono);
   background-color: var(--surface);
-  color: var(--text-muted);
+  color: var(--text-primary);
   border: 1px solid var(--border-light);
   border-radius: 4px;
   cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.15s, color 0.15s, border-color 0.15s;
-}
-
-.markdown-body .mermaid-diagram:hover .mermaid-dir-btn {
-  opacity: 1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: color 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 
 .mermaid-dir-btn:hover {
   color: var(--accent);
   border-color: var(--accent);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
 }
 
 .markdown-body .mermaid-error {
