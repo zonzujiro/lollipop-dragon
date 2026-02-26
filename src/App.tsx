@@ -150,6 +150,13 @@ function App() {
     [],
   );
 
+  const hostTree: FileTreeNode[] = useMemo(() => {
+    if (!directoryName || fileTree.length === 0) return fileTree;
+    return [
+      { kind: "directory", name: directoryName, path: "", children: fileTree },
+    ];
+  }, [directoryName, fileTree]);
+
   const hostHeader = useMemo(
     () => ({
       title: directoryName ?? "",
@@ -305,7 +312,7 @@ function App() {
       <div className="app-body">
         {hasFolderOpen && sidebarOpen && !focusMode && (
           <FileTreeSidebar
-            tree={fileTree}
+            tree={hostTree}
             activeFilePath={activeFilePath}
             onSelect={handleHostSelect}
             header={hostHeader}
