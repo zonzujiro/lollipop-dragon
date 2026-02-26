@@ -19,32 +19,30 @@ function NoFileSelected() {
   )
 }
 
+function ShareUnavailable() {
+  return (
+    <div className="share-status">
+      <svg className="share-status__icon" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="15" y1="9" x2="9" y2="15"/>
+        <line x1="9" y1="9" x2="15" y2="15"/>
+      </svg>
+      <h2 className="share-status__title">Document unavailable</h2>
+      <p className="share-status__text">
+        This shared link has been revoked by the author or has expired.
+      </p>
+    </div>
+  )
+}
+
 // Peer mode: render the first file in the shared folder tree
 function PeerViewer() {
   const sharedContent = useAppStore((s) => s.sharedContent)
   const rawContent = useAppStore((s) => s.rawContent)
-  const fileName = useAppStore((s) => s.fileName)
 
-  console.log('[peer] PeerViewer render:', { hasSharedContent: !!sharedContent, rawContentLen: rawContent.length, fileName })
+  if (!sharedContent) return <ShareUnavailable />
+  if (!rawContent) return <ShareUnavailable />
 
-  if (!sharedContent) {
-    return (
-      <div className="content-empty">
-        <p className="content-empty__text">This document is no longer available.</p>
-      </div>
-    )
-  }
-
-  if (!rawContent) {
-    return (
-      <div className="content-empty">
-        <p className="content-empty__text">Document loaded but content is empty.</p>
-      </div>
-    )
-  }
-
-  // In peer mode we use a simplified single-file view for now.
-  // The MarkdownRenderer reads rawContent from the store, which was set during loadSharedContent.
   return <MarkdownRenderer />
 }
 

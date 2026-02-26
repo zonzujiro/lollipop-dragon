@@ -116,6 +116,39 @@ body {
   font-size: 0.9rem;
 }
 
+/* ── Share status screen (revoked / expired) ─────────────────── */
+.share-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 0.75rem;
+  text-align: center;
+  padding: 2rem;
+}
+
+.share-status__icon {
+  color: var(--text-muted);
+  opacity: 0.5;
+  margin-bottom: 0.5rem;
+}
+
+.share-status__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.share-status__text {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  max-width: 360px;
+  line-height: 1.5;
+  margin: 0;
+}
+
 /* ── Markdown scroll area ────────────────────────────────────── */
 .markdown-scroll-area {
   height: 100%;
