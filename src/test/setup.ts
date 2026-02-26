@@ -6,3 +6,10 @@ global.ResizeObserver = class ResizeObserver {
   unobserve() {}
   disconnect() {}
 }
+
+// jsdom does not implement navigator.clipboard
+Object.defineProperty(navigator, 'clipboard', {
+  value: { writeText: () => Promise.resolve(), readText: () => Promise.resolve('') },
+  writable: true,
+  configurable: true,
+})

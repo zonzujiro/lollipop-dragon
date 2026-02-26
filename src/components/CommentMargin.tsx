@@ -80,9 +80,11 @@ interface Props {
   containerRef: React.RefObject<HTMLDivElement | null>
   hoveredBlock: { index: number; top: number } | null
   onAddComment: (blockIndex: number, type: CommentType, text: string) => void
+  peerMode?: boolean
+  onPostPeerComment?: (blockIndex: number, type: CommentType, text: string) => void
 }
 
-export function CommentMargin({ containerRef, hoveredBlock, onAddComment }: Props) {
+export function CommentMargin({ containerRef, hoveredBlock, onAddComment, peerMode, onPostPeerComment }: Props) {
   const editCommentAction = useAppStore((s) => s.editComment)
   const deleteCommentAction = useAppStore((s) => s.deleteComment)
   const [addingBlock, setAddingBlock] = useState<{ index: number; top: number } | null>(null)
@@ -157,7 +159,11 @@ export function CommentMargin({ containerRef, hoveredBlock, onAddComment }: Prop
         <AddCommentForm
           top={addingBlock.top}
           onSubmit={(type, text) => {
-            onAddComment(addingBlock.index, type, text)
+            if (peerMode && onPostPeerComment) {
+              onPostPeerComment(addingBlock.index, type, text)
+            } else {
+              onAddComment(addingBlock.index, type, text)
+            }
             setAddingBlock(null)
           }}
           onCancel={() => setAddingBlock(null)}

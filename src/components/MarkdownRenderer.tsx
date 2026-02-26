@@ -63,13 +63,17 @@ export function MarkdownRenderer() {
   const rawContent = useAppStore((s) => s.rawContent)
   const setComments = useAppStore((s) => s.setComments)
   const addCommentAction = useAppStore((s) => s.addComment)
+  const postPeerCommentAction = useAppStore((s) => s.postPeerComment)
+  const isPeerMode = useAppStore((s) => s.isPeerMode)
+  const fileName = useAppStore((s) => s.fileName)
+  const activeFilePath = useAppStore((s) => s.activeFilePath)
   const writeAllowed = useAppStore((s) => s.writeAllowed)
   const [highlighter, setHighlighter] = useState<Highlighter | null>(null)
   const viewerRef = useRef<HTMLDivElement>(null)
   const [hoveredBlock, setHoveredBlock] = useState<{ index: number; top: number } | null>(null)
 
   const handleBodyMouseOver = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!writeAllowed) return
+    if (!writeAllowed && !isPeerMode) return
     const block = (e.target as HTMLElement).closest('[data-block-index]') as HTMLElement | null
     if (!block) return
     setHoveredBlock({ index: Number(block.getAttribute('data-block-index')), top: block.offsetTop })
@@ -80,6 +84,11 @@ export function MarkdownRenderer() {
   const handleAddComment = useCallback((blockIndex: number, type: string, text: string) => {
     addCommentAction(blockIndex, type as import('../types/criticmarkup').CommentType, text)
   }, [addCommentAction])
+
+  const handlePostPeerComment = useCallback((blockIndex: number, type: string, text: string) => {
+    const path = activeFilePath ?? fileName ?? ''
+    postPeerCommentAction(blockIndex, type as import('../types/criticmarkup').CommentType, text, path)
+  }, [postPeerCommentAction, activeFilePath, fileName])
 
   useEffect(() => {
     getHighlighter().then(setHighlighter)
@@ -109,7 +118,13 @@ export function MarkdownRenderer() {
         </div>
       )}
       <div className="markdown-viewer" ref={viewerRef} onMouseLeave={handleBodyMouseLeave}>
-        <CommentMargin containerRef={viewerRef} hoveredBlock={hoveredBlock} onAddComment={handleAddComment} />
+        <CommentMargin
+          containerRef={viewerRef}
+          hoveredBlock={hoveredBlock}
+          onAddComment={handleAddComment}
+          peerMode={isPeerMode}
+          onPostPeerComment={handlePostPeerComment}
+        />
         <div className="markdown-body" onMouseOver={handleBodyMouseOver}>
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
