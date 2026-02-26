@@ -63,15 +63,20 @@ function App() {
     document.documentElement.classList.toggle('dark', theme === 'dark')
   }, [theme])
 
-  // Check for peer mode URL on first mount
+  // Check for peer mode URL on mount and on hash change (same-tab navigation)
   useEffect(() => {
-    const hash = window.location.hash
-    if (hash.includes('share=') && hash.includes('key=') && WORKER_URL) {
-      loadSharedContent().finally(() => setPeerModeChecked(true))
-    } else {
-      setPeerModeChecked(true)
-      restoreDirectory()
+    function checkHash() {
+      const hash = window.location.hash
+      if (hash.includes('share=') && hash.includes('key=') && WORKER_URL) {
+        loadSharedContent().finally(() => setPeerModeChecked(true))
+      } else {
+        setPeerModeChecked(true)
+        restoreDirectory()
+      }
     }
+    checkHash()
+    window.addEventListener('hashchange', checkHash)
+    return () => window.removeEventListener('hashchange', checkHash)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
