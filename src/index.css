@@ -546,6 +546,10 @@ body {
   line-height: 1;
 }
 
+.app-header__badge--pending {
+  background-color: var(--c-orange);
+}
+
 .app-header__btn--active {
   background-color: var(--accent-bg);
   color: var(--accent);
@@ -752,6 +756,111 @@ body {
   margin-top: 0.15rem;
 }
 
+/* ── Cross-file comment panel ──────────────────────────────── */
+
+.comment-panel__file-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.75rem 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-top: 1px solid var(--border-light);
+}
+
+.comment-panel__file-header:first-child {
+  border-top: none;
+}
+
+.comment-panel__file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.comment-panel__file-count {
+  flex-shrink: 0;
+  margin-left: 0.4rem;
+  opacity: 0.6;
+}
+
+.comment-panel__entry--other-file {
+  opacity: 0.7;
+}
+
+.comment-panel__entry--other-file:hover {
+  opacity: 1;
+}
+
+.comment-panel__entry-actions {
+  display: none;
+  align-items: center;
+  gap: 0.2rem;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.comment-panel__entry:hover .comment-panel__entry-actions {
+  display: flex;
+}
+
+.comment-panel__entry-edit,
+.comment-panel__entry-delete {
+  padding: 0.1rem 0.35rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  line-height: 1.3;
+}
+
+.comment-panel__entry-edit:hover {
+  background-color: var(--accent-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.comment-panel__entry-delete:hover {
+  background-color: rgba(224, 49, 49, 0.08);
+  border-color: var(--c-red);
+  color: var(--c-red);
+}
+
+.comment-panel__inline-edit {
+  width: 100%;
+  padding: 0.25rem 0;
+}
+
+.comment-panel__inline-edit .comment-add-form__types {
+  margin-bottom: 0.25rem;
+}
+
+.comment-panel__inline-edit .comment-add-form__input {
+  font-size: 0.75rem;
+}
+
+.comment-panel__inline-confirm {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.comment-panel__entry--editing {
+  padding: 0.45rem 0.75rem;
+  cursor: default;
+}
+
 /* ── File tree sidebar ───────────────────────────────────────── */
 .file-tree-sidebar {
   width: 240px;
@@ -904,6 +1013,16 @@ body {
 
 .tree-item-share-btn:hover {
   color: var(--accent);
+}
+
+.tree-item__shared-dot {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: 0.3rem;
+  color: var(--accent);
+  opacity: 0.6;
 }
 
 /* ── Markdown viewer (flex row: margin column + body) ────────── */

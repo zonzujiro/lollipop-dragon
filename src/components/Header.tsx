@@ -102,6 +102,7 @@ export function Header({ peerMode = false, onShare }: Props) {
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const sidebarOpen = useAppStore((s) => s.sidebarOpen);
   const comments = useAppStore((s) => s.comments);
+  const allFileComments = useAppStore((s) => s.allFileComments);
   const myPeerComments = useAppStore((s) => s.myPeerComments);
   const activeFilePath = useAppStore((s) => s.activeFilePath);
   const commentPanelOpen = useAppStore((s) => s.commentPanelOpen);
@@ -112,9 +113,18 @@ export function Header({ peerMode = false, onShare }: Props) {
   const sharedPanelOpen = useAppStore((s) => s.sharedPanelOpen);
   const toggleSharedPanel = useAppStore((s) => s.toggleSharedPanel);
 
+  const hasFolderComments = !peerMode && fileTree.length > 0;
+  const crossFileTotal = hasFolderComments
+    ? Object.values(allFileComments).reduce(
+        (sum, e) => sum + e.comments.length,
+        0,
+      )
+    : 0;
   const commentCount = peerMode
     ? myPeerComments.filter((c) => c.path === activeFilePath).length
-    : comments.length;
+    : hasFolderComments
+      ? crossFileTotal
+      : comments.length;
   const isDark = theme === "dark";
   const hasFolderOpen = fileTree.length > 0;
   const hasContent = !!(fileName || directoryName);
@@ -180,7 +190,12 @@ export function Header({ peerMode = false, onShare }: Props) {
                     title="Manage shared documents"
                   >
                     Shared
-                    {shares.length > 0 && (
+                    {totalPending > 0 && (
+                      <span className="app-header__badge app-header__badge--pending">
+                        {totalPending}
+                      </span>
+                    )}
+                    {totalPending === 0 && shares.length > 0 && (
                       <span className="app-header__badge">{shares.length}</span>
                     )}
                   </button>

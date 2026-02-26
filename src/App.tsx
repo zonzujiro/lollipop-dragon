@@ -128,6 +128,7 @@ function App() {
   const contentUpdateAvailable = useAppStore((s) => s.contentUpdateAvailable);
   const dismissContentUpdate = useAppStore((s) => s.dismissContentUpdate);
   const activeFilePath = useAppStore((s) => s.activeFilePath);
+  const shares = useAppStore((s) => s.shares);
 
   const [peerModeChecked, setPeerModeChecked] = useState(false);
   const [shareScope, setShareScope] = useState<{
@@ -323,6 +324,8 @@ function App() {
             onSelect={handleHostSelect}
             header={hostHeader}
             onShare={WORKER_URL ? handleHostShare : undefined}
+            directoryName={directoryName}
+            shares={shares}
           />
         )}
         <main className="app-main">

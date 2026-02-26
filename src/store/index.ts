@@ -41,6 +41,12 @@ function saveShares(shares: ShareRecord[]) {
   localStorage.setItem(SHARES_KEY, JSON.stringify(shares));
 }
 
+interface FileCommentEntry {
+  filePath: string;
+  fileName: string;
+  comments: Comment[];
+}
+
 interface AppState {
   // Single file
   fileHandle: FileSystemFileHandle | null;
@@ -60,6 +66,10 @@ interface AppState {
   activeCommentId: string | null;
   commentPanelOpen: boolean;
   commentFilter: CommentType | "all" | "pending" | "resolved";
+
+  // Cross-file comment cache
+  allFileComments: Record<string, FileCommentEntry>;
+  pendingScrollTarget: { filePath: string; rawStart: number } | null;
 
   // UI
   theme: "light" | "dark";
@@ -113,6 +123,10 @@ interface AppState {
   clearUndo: () => void;
   showToast: (msg: string) => void;
   dismissToast: () => void;
+  scanAllFileComments: () => Promise<void>;
+  navigateToComment: (filePath: string, rawStart: number) => void;
+  clearPendingScrollTarget: () => void;
+  restoreRealtimeSessions: () => Promise<void>;
 
   // v2 Sharing actions
   shareContent: (opts: {
@@ -153,6 +167,13 @@ function getStorage(): ShareStorage | null {
   return WORKER_URL ? new ShareStorage(WORKER_URL) : null;
 }
 
+function scrollToBlock(blockIndex: number | undefined) {
+  if (blockIndex === undefined) return;
+  document
+    .querySelector(`[data-block-index="${blockIndex}"]`)
+    ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
@@ -169,6 +190,8 @@ export const useAppStore = create<AppState>()(
       activeCommentId: null,
       commentPanelOpen: false,
       commentFilter: "all",
+      allFileComments: {},
+      pendingScrollTarget: null,
       theme: "light",
       focusMode: false,
       writeAllowed: true,
@@ -223,6 +246,7 @@ export const useAppStore = create<AppState>()(
         });
         const tree = await buildFileTree(result.handle);
         set({ fileTree: tree });
+        get().scanAllFileComments();
       },
 
       selectFile: async (node: FileNode) => {
@@ -247,8 +271,26 @@ export const useAppStore = create<AppState>()(
           activeFilePath: null,
         }),
 
-      setComments: (comments) =>
-        set({ comments, activeCommentId: null, commentFilter: "all" }),
+      setComments: (comments) => {
+        const { activeFilePath, fileName, allFileComments } = get();
+        const path = activeFilePath ?? fileName;
+        const updated = path
+          ? {
+              ...allFileComments,
+              [path]: {
+                filePath: path,
+                fileName: path.split("/").pop() ?? path,
+                comments: comments.map((c) => ({ ...c, filePath: path })),
+              },
+            }
+          : allFileComments;
+        set({
+          comments,
+          activeCommentId: null,
+          commentFilter: "all",
+          allFileComments: updated,
+        });
+      },
       setActiveCommentId: (id) => set({ activeCommentId: id }),
       toggleCommentPanel: () =>
         set((s) => ({
@@ -259,6 +301,74 @@ export const useAppStore = create<AppState>()(
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
       setTheme: (theme) => set({ theme }),
       toggleFocusMode: () => set((s) => ({ focusMode: !s.focusMode })),
+
+      scanAllFileComments: async () => {
+        const { fileTree } = get();
+        const result: Record<string, FileCommentEntry> = {};
+        const scanNodes = async (nodes: FileTreeNode[]) => {
+          for (const node of nodes) {
+            if (node.kind === "file") {
+              try {
+                const content = await readFile((node as FileNode).handle);
+                const parsed = parseCriticMarkup(content);
+                const { assignBlockIndices } =
+                  await import("../services/blockIndex");
+                const comments = assignBlockIndices(
+                  parsed.comments,
+                  parsed.cleanMarkdown,
+                );
+                result[node.path] = {
+                  filePath: node.path,
+                  fileName: node.name,
+                  comments: comments.map((c) => ({
+                    ...c,
+                    filePath: node.path,
+                  })),
+                };
+              } catch {
+                // skip unreadable files
+              }
+            } else if (node.kind === "directory") {
+              await scanNodes((node as DirectoryNode).children);
+            }
+          }
+        };
+        await scanNodes(fileTree);
+        set({ allFileComments: result });
+      },
+
+      navigateToComment: (filePath, rawStart) => {
+        const { activeFilePath, comments, fileTree } = get();
+        if (filePath === activeFilePath) {
+          // Same file — find and activate the comment
+          const comment = comments.find((c) => c.rawStart === rawStart);
+          if (comment) {
+            set({ activeCommentId: comment.id });
+            scrollToBlock(comment.blockIndex);
+          }
+          return;
+        }
+        // Different file — find the FileNode, set pending scroll target, then selectFile
+        const findFileNode = (nodes: FileTreeNode[]): FileNode | null => {
+          for (const node of nodes) {
+            if (node.kind === "file" && node.path === filePath) {
+              return node as FileNode;
+            }
+            if (node.kind === "directory") {
+              const found = findFileNode((node as DirectoryNode).children);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+        const fileNode = findFileNode(fileTree);
+        if (fileNode) {
+          set({ pendingScrollTarget: { filePath, rawStart } });
+          get().selectFile(fileNode);
+        }
+      },
+
+      clearPendingScrollTarget: () => set({ pendingScrollTarget: null }),
 
       deleteComment: async (id) => {
         const { rawContent, fileHandle, comments } = get();
@@ -393,8 +503,40 @@ export const useAppStore = create<AppState>()(
             fileTree: tree,
             sidebarOpen: true,
           });
+          get().scanAllFileComments();
+          get().restoreRealtimeSessions();
         } catch {
           // IndexedDB unavailable (private browsing, test env) — silent fail
+        }
+      },
+
+      restoreRealtimeSessions: async () => {
+        const { shares } = get();
+        const now = new Date();
+        const restoredKeys: Record<string, CryptoKey> = {};
+
+        for (const share of shares) {
+          if (new Date(share.expiresAt) <= now) continue;
+          try {
+            const key = await base64urlToKey(share.keyB64);
+            restoredKeys[share.docId] = key;
+          } catch {
+            // skip shares with invalid keys
+          }
+        }
+
+        if (Object.keys(restoredKeys).length > 0) {
+          set({ shareKeys: { ...get().shareKeys, ...restoredKeys } });
+        }
+
+        for (const share of shares) {
+          if (new Date(share.expiresAt) <= now) continue;
+          if (!restoredKeys[share.docId]) continue;
+          try {
+            get().connectRealtime(share.docId, share.roomPassword);
+          } catch {
+            // silent — connection may fail in some environments
+          }
         }
       },
 
