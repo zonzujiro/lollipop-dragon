@@ -1,10 +1,10 @@
-// Real-time collaboration service using Trystero (BitTorrent signaling) + Yjs (CRDT sync).
+// Real-time collaboration service using Trystero (MQTT signaling) + Yjs (CRDT sync).
 //
 // Trystero handles WebRTC room management and peer discovery.
 // Yjs handles conflict-free comment synchronization.
 // This module bridges the two: Trystero rooms transport Yjs sync messages.
 
-import { joinRoom as trysteroJoinRoom, selfId } from "trystero/torrent";
+import { joinRoom as trysteroJoinRoom, selfId } from "trystero/mqtt";
 import type { Room } from "trystero";
 import * as Y from "yjs";
 import type { PeerComment } from "../types/share";
@@ -38,12 +38,6 @@ const APP_ID = "markreview-v3";
 const RECONNECT_DELAY_MS = 3000;
 const AWARENESS_INTERVAL_MS = 5000;
 const MAX_RETRIES = 3;
-
-const TRACKER_URLS = [
-  "wss://tracker.webtorrent.dev",
-  "wss://tracker.openwebtorrent.com",
-  "wss://tracker.files.fm:7073/announce",
-];
 
 // ── RealtimeSession ──────────────────────────────────────────────────────────
 
@@ -208,7 +202,7 @@ export class RealtimeSession {
   private joinTrysteroRoom(): void {
     try {
       this.room = trysteroJoinRoom(
-        { appId: APP_ID, password: this.roomPassword, relayUrls: TRACKER_URLS },
+        { appId: APP_ID, password: this.roomPassword },
         this.roomId,
       );
     } catch (err) {
