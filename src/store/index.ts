@@ -13,6 +13,12 @@ import { applyEdit } from '../services/editComment'
 import { applyDelete } from '../services/deleteComment'
 import { ShareStorage } from '../services/shareStorage'
 import { generateKey, keyToBase64url, base64urlToKey } from '../services/crypto'
+import {
+  RealtimeSession,
+  docIdToRoomId,
+  generateRoomPassword,
+} from '../services/realtime'
+import type { ConnectionStatus, PeerInfo } from '../services/realtime'
 import type { FileTreeNode, FileNode, DirectoryNode } from '../types/fileTree'
 import type { Comment, CommentType } from '../types/criticmarkup'
 import type { ShareRecord, SharePayload, PeerComment } from '../types/share'
@@ -65,6 +71,13 @@ interface AppState {
   // docId → CryptoKey (in-memory only, not persisted)
   shareKeys: Record<string, CryptoKey>
 
+  // Real-time (v3)
+  rtStatus: ConnectionStatus
+  rtPeers: PeerInfo[]
+  rtSession: RealtimeSession | null
+  rtDocId: string | null
+  contentUpdateAvailable: boolean
+
   // v1 Actions
   openFile: () => Promise<void>
   openDirectory: () => Promise<void>
@@ -101,6 +114,12 @@ interface AppState {
   setPeerName: (name: string) => void
   loadSharedContent: () => Promise<void>
   postPeerComment: (blockIndex: number, type: CommentType, text: string, path: string) => Promise<void>
+
+  // v3 Real-time actions
+  connectRealtime: (docId: string, roomPassword: string) => void
+  disconnectRealtime: () => void
+  setRealtimeAwareness: (activeFile: string | null, focusedBlock: number | null) => void
+  dismissContentUpdate: () => void
 }
 
 function getStorage(): ShareStorage | null {
@@ -135,6 +154,11 @@ export const useAppStore = create<AppState>()(
       sharedContent: null,
       pendingComments: {},
       shareKeys: {},
+      rtStatus: 'disconnected' as ConnectionStatus,
+      rtPeers: [],
+      rtSession: null,
+      rtDocId: null,
+      contentUpdateAvailable: false,
 
       // ── v1 actions ──────────────────────────────────────────────────────
 
@@ -366,8 +390,11 @@ export const useAppStore = create<AppState>()(
         saveShares(shares)
         set({ shares, shareKeys: { ...get().shareKeys, [docId]: key } })
 
+        const roomPwd = generateRoomPassword()
+        const roomId = docIdToRoomId(docId)
+
         const base = window.location.origin + window.location.pathname
-        return `${base}#share=${docId}&key=${keyB64}`
+        return `${base}#share=${docId}&key=${keyB64}&room=${roomId}&pwd=${roomPwd}`
       },
 
       revokeShare: async (docId) => {
@@ -388,7 +415,7 @@ export const useAppStore = create<AppState>()(
       updateShare: async (docId) => {
         const storage = getStorage()
         if (!storage) throw new Error('Worker URL not configured')
-        const { shares } = get()
+        const { shares, rtSession } = get()
         const record = shares.find((s) => s.docId === docId)
         if (!record) throw new Error('Share not found')
 
@@ -398,6 +425,10 @@ export const useAppStore = create<AppState>()(
         // Re-share with a new key/docId using same TTL
         const ttl = Math.round((new Date(record.expiresAt).getTime() - Date.now()) / 1000)
         const url = await get().shareContent({ ttl: Math.max(ttl, 3600) })
+
+        // Notify connected peers that content was updated
+        if (rtSession) rtSession.notifyContentUpdated()
+
         return url
       },
 
@@ -503,6 +534,13 @@ export const useAppStore = create<AppState>()(
             rawContent: firstPath ? payload.tree[firstPath] : '',
             fileName: firstPath ?? null,
           })
+          // Auto-connect to realtime room if room params present
+          const roomId = params.get('room')
+          const roomPwd = params.get('pwd')
+          if (roomId && roomPwd) {
+            // Defer connect until peerName is set (handled by connectRealtime)
+            set({ rtDocId: docId })
+          }
         } catch (e) {
           set({ isPeerMode: true, sharedContent: null })
           console.error('[share] Failed to load shared content:', e)
@@ -515,10 +553,7 @@ export const useAppStore = create<AppState>()(
         const docId = params.get('share')
         const keyB64 = params.get('key')
         if (!docId || !keyB64) return
-        const storage = getStorage()
-        if (!storage) return
-        const { peerName } = get()
-        const key = get().shareKeys[docId] ?? await base64urlToKey(keyB64)
+        const { peerName, rtSession } = get()
         const comment: PeerComment = {
           id: `c_${crypto.randomUUID()}`,
           peerName: peerName ?? 'Anonymous',
@@ -528,8 +563,79 @@ export const useAppStore = create<AppState>()(
           text,
           createdAt: new Date().toISOString(),
         }
-        await storage.postComment(docId, comment, key)
+
+        // Send via WebRTC if connected
+        if (rtSession) {
+          rtSession.addComment(comment)
+        }
+
+        // Always also send to Worker as async backup
+        const storage = getStorage()
+        if (storage) {
+          const key = get().shareKeys[docId] ?? await base64urlToKey(keyB64)
+          await storage.postComment(docId, comment, key)
+        }
       },
+
+      // ── v3 Real-time actions ────────────────────────────────────────────
+
+      connectRealtime: (docId, roomPassword) => {
+        const { rtSession: existing, peerName } = get()
+        if (existing) existing.disconnect()
+
+        const session = new RealtimeSession(
+          docIdToRoomId(docId),
+          roomPassword,
+          peerName ?? 'Anonymous',
+          {
+            onConnectionChange: (status, peers) => {
+              set({ rtStatus: status, rtPeers: peers })
+            },
+            onRemoteComment: (comment) => {
+              // Dedup: check if we already have this comment from the Worker
+              const { pendingComments } = get()
+              const docComments = Object.values(pendingComments).flat()
+              if (docComments.some((c) => c.id === comment.id)) return
+              // Add to pending comments under the active docId
+              const activeDocId = get().rtDocId
+              if (!activeDocId) return
+              const pc = { ...get().pendingComments }
+              pc[activeDocId] = [...(pc[activeDocId] ?? []), comment]
+              const shares = get().shares.map((s) =>
+                s.docId === activeDocId ? { ...s, pendingCommentCount: pc[activeDocId].length } : s,
+              )
+              saveShares(shares)
+              set({ pendingComments: pc, shares })
+              get().showToast(`New comment from ${comment.peerName}`)
+            },
+            onCommentRemoved: (commentId) => {
+              const activeDocId = get().rtDocId
+              if (!activeDocId) return
+              get().dismissComment(activeDocId, commentId)
+            },
+            onDocumentUpdated: () => {
+              set({ contentUpdateAvailable: true })
+              get().showToast('Document has been updated by the host')
+            },
+          },
+        )
+
+        set({ rtSession: session, rtDocId: docId, rtStatus: 'connecting' })
+        session.connect()
+      },
+
+      disconnectRealtime: () => {
+        const { rtSession } = get()
+        if (rtSession) rtSession.disconnect()
+        set({ rtSession: null, rtDocId: null, rtStatus: 'disconnected', rtPeers: [] })
+      },
+
+      setRealtimeAwareness: (activeFile, focusedBlock) => {
+        const { rtSession } = get()
+        if (rtSession) rtSession.setLocalAwareness(activeFile, focusedBlock)
+      },
+
+      dismissContentUpdate: () => set({ contentUpdateAvailable: false }),
     }),
     {
       name: 'markreview-store',

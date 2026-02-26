@@ -67,6 +67,14 @@ function App() {
   const peerName = useAppStore((s) => s.peerName)
   const loadSharedContent = useAppStore((s) => s.loadSharedContent)
 
+  // v3 realtime
+  const connectRealtime = useAppStore((s) => s.connectRealtime)
+  const disconnectRealtime = useAppStore((s) => s.disconnectRealtime)
+  const setRealtimeAwareness = useAppStore((s) => s.setRealtimeAwareness)
+  const contentUpdateAvailable = useAppStore((s) => s.contentUpdateAvailable)
+  const dismissContentUpdate = useAppStore((s) => s.dismissContentUpdate)
+  const activeFilePath = useAppStore((s) => s.activeFilePath)
+
   const [peerModeChecked, setPeerModeChecked] = useState(false)
 
   useEffect(() => {
@@ -117,6 +125,26 @@ function App() {
     return () => observer.disconnect()
   }, [fileHandle, refreshFile])
 
+  // v3: Auto-connect to realtime room when peer name is set and room params exist
+  useEffect(() => {
+    if (!peerName || !peerModeChecked) return
+    const hash = window.location.hash.slice(1)
+    const params = new URLSearchParams(hash)
+    const docId = params.get('share')
+    const roomId = params.get('room')
+    const roomPwd = params.get('pwd')
+    if (docId && roomId && roomPwd) {
+      connectRealtime(docId, roomPwd)
+      return () => disconnectRealtime()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [peerName, peerModeChecked])
+
+  // v3: Broadcast awareness when active file changes
+  useEffect(() => {
+    setRealtimeAwareness(activeFilePath ?? fileName, null)
+  }, [activeFilePath, fileName, setRealtimeAwareness])
+
   // Peer mode: show name prompt first, then the document
   if (isPeerMode) {
     if (!peerModeChecked) return null  // still loading
@@ -124,11 +152,33 @@ function App() {
     return (
       <div className="app-layout">
         <Header peerMode />
+        {contentUpdateAvailable && (
+          <div className="content-update-banner" role="status">
+            <span>Document has been updated by the host.</span>
+            <button
+              className="content-update-banner__btn"
+              onClick={() => {
+                dismissContentUpdate()
+                loadSharedContent()
+              }}
+            >
+              Reload
+            </button>
+            <button
+              className="content-update-banner__dismiss"
+              onClick={dismissContentUpdate}
+              aria-label="Dismiss"
+            >
+              &times;
+            </button>
+          </div>
+        )}
         <div className="app-body">
           <main className="app-main">
             <PeerViewer />
           </main>
         </div>
+        <Toast />
       </div>
     )
   }

@@ -1,4 +1,6 @@
 import { useAppStore } from '../store'
+import { ConnectionStatus } from './ConnectionStatus'
+import { PresenceBar } from './PresenceBar'
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL as string | undefined
 
@@ -87,8 +89,10 @@ export function Header({ peerMode = false }: Props) {
           )}
           <span className="app-header__filename">{displayName}</span>
           {peerMode && <span className="app-header__peer-badge">Reviewing</span>}
+          <ConnectionStatus />
         </div>
 
+        <PresenceBar />
         <div className="app-header__actions">
           {!peerMode && (
             <>
