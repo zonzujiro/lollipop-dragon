@@ -470,13 +470,16 @@ export const useAppStore = create<AppState>()(
         const params = new URLSearchParams(hash)
         const docId = params.get('share')
         const keyB64 = params.get('key')
+        console.log('[share] hash:', hash, 'docId:', docId, 'keyB64 length:', keyB64?.length)
         if (!docId || !keyB64) return
         const storage = getStorage()
+        console.log('[share] storage:', !!storage, 'workerUrl:', WORKER_URL)
         if (!storage) return
         try {
           const key = await base64urlToKey(keyB64)
           const payload = await storage.fetchContent(docId, key)
           const firstPath = Object.keys(payload.tree)[0]
+          console.log('[share] loaded:', { firstPath, treeKeys: Object.keys(payload.tree), contentLength: firstPath ? payload.tree[firstPath].length : 0 })
           set({
             isPeerMode: true,
             sharedContent: payload,
@@ -486,7 +489,7 @@ export const useAppStore = create<AppState>()(
           })
         } catch (e) {
           set({ isPeerMode: true, sharedContent: null })
-          console.error('Failed to load shared content:', e)
+          console.error('[share] Failed to load shared content:', e)
         }
       },
 
