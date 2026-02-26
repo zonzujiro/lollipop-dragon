@@ -311,23 +311,35 @@ export const useAppStore = create<AppState>()(
         const label = directoryName ?? fileName ?? 'document'
 
         // Build tree: either the single open file or all files in memory
-        let tree: Record<string, string>
+        const tree: Record<string, string> = {}
         if (directoryName && fileTree.length > 0) {
           // Read all markdown files from the folder
-          tree = {}
           const readNode = async (nodes: FileTreeNode[]) => {
             for (const node of nodes) {
               if (node.type === 'file') {
-                try { tree[node.path] = await readFile((node as FileNode).handle) } catch { /* skip */ }
+                const path = node.path
+                // Use in-memory rawContent for the currently open file (always available),
+                // and try reading other files from their handles
+                if (path === activeFilePath && rawContent) {
+                  tree[path] = rawContent
+                } else {
+                  try {
+                    tree[path] = await readFile((node as FileNode).handle)
+                  } catch (e) {
+                    console.warn('[share] failed to read', path, e)
+                  }
+                }
               } else if (node.type === 'directory' && 'children' in node) {
                 await readNode((node as { children: FileTreeNode[] }).children)
               }
             }
           }
           await readNode(fileTree)
-        } else {
+        }
+        // Fallback: if no files were read (handles expired) or single-file mode, use rawContent
+        if (Object.keys(tree).length === 0 && rawContent) {
           const path = activeFilePath ?? fileName ?? 'document.md'
-          tree = { [path]: rawContent }
+          tree[path] = rawContent
         }
 
         const treeEntries = Object.entries(tree)
