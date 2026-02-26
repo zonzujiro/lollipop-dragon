@@ -342,13 +342,8 @@ export const useAppStore = create<AppState>()(
           tree[path] = rawContent
         }
 
-        const treeEntries = Object.entries(tree)
-        const totalChars = treeEntries.reduce((n, [, v]) => n + v.length, 0)
-        console.log('[share] uploading:', { fileCount: treeEntries.length, totalChars, paths: treeEntries.map(([k]) => k) })
-
         const key = await generateKey()
         const { docId, hostSecret } = await storage.uploadContent(tree, key, { ttl, label })
-        console.log('[share] uploaded successfully:', { docId, blobLabel: label })
         const keyB64 = await keyToBase64url(key)
 
         const now = new Date()
@@ -487,16 +482,13 @@ export const useAppStore = create<AppState>()(
         const params = new URLSearchParams(hash)
         const docId = params.get('share')
         const keyB64 = params.get('key')
-        console.log('[share] hash:', hash, 'docId:', docId, 'keyB64 length:', keyB64?.length)
         if (!docId || !keyB64) return
         const storage = getStorage()
-        console.log('[share] storage:', !!storage, 'workerUrl:', WORKER_URL)
         if (!storage) return
         try {
           const key = await base64urlToKey(keyB64)
           const payload = await storage.fetchContent(docId, key)
           const firstPath = Object.keys(payload.tree)[0]
-          console.log('[share] loaded:', { firstPath, treeKeys: Object.keys(payload.tree), contentLength: firstPath ? payload.tree[firstPath].length : 0 })
           set({
             isPeerMode: true,
             sharedContent: payload,

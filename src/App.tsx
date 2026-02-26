@@ -76,14 +76,9 @@ function App() {
   useEffect(() => {
     function checkHash() {
       const hash = window.location.hash
-      console.log('[app] checkHash:', { hash, WORKER_URL, hasShare: hash.includes('share='), hasKey: hash.includes('key=') })
       if (hash.includes('share=') && hash.includes('key=') && WORKER_URL) {
-        console.log('[app] calling loadSharedContent...')
-        loadSharedContent().then(() => {
-          console.log('[app] loadSharedContent resolved, isPeerMode:', useAppStore.getState().isPeerMode)
-        }).finally(() => setPeerModeChecked(true))
+        loadSharedContent().finally(() => setPeerModeChecked(true))
       } else {
-        console.log('[app] no share hash, normal mode')
         setPeerModeChecked(true)
         restoreDirectory()
       }
