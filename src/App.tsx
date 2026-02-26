@@ -221,7 +221,7 @@ function App() {
           </div>
         )}
         <div className="app-body">
-          {peerTree.length > 1 && (
+          {sharedContent && Object.keys(sharedContent.tree).length > 1 && (
             <FileTreeSidebar
               tree={peerTree}
               activeFilePath={activeFilePath}
