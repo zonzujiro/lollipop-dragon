@@ -9,12 +9,16 @@ export function ConnectionStatus() {
   const color =
     status === 'connected'
       ? 'var(--c-green)'
-      : 'var(--c-orange)'
+      : status === 'error'
+        ? 'var(--c-red)'
+        : 'var(--c-orange)'
 
   const label =
     status === 'connected'
       ? `Connected to ${peers.length} peer${peers.length !== 1 ? 's' : ''}`
-      : 'Connecting...'
+      : status === 'error'
+        ? 'Offline'
+        : 'Connecting...'
 
   return (
     <span className="connection-status" title={label}>

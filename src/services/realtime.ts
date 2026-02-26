@@ -12,7 +12,7 @@ import type { CommentType } from '../types/criticmarkup'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected'
+export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 
 export interface PeerInfo {
   peerId: string
@@ -33,6 +33,7 @@ export interface RealtimeCallbacks {
 const APP_ID = 'markreview-v3'
 const RECONNECT_DELAY_MS = 3000
 const AWARENESS_INTERVAL_MS = 5000
+const MAX_RETRIES = 3
 
 // ── RealtimeSession ──────────────────────────────────────────────────────────
 
@@ -48,6 +49,7 @@ export class RealtimeSession {
   private localActiveFile: string | null = null
   private localFocusedBlock: number | null = null
   private destroyed = false
+  private retryCount = 0
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private awarenessTimer: ReturnType<typeof setInterval> | null = null
 
@@ -194,76 +196,92 @@ export class RealtimeSession {
         { appId: APP_ID, password: this.roomPassword },
         this.roomId,
       )
-    } catch {
+    } catch (err) {
+      console.warn('[markreview] Failed to join Trystero room:', err)
       this.scheduleReconnect()
       return
     }
 
-    // ── Yjs sync actions ──
+    try {
+      // ── Yjs sync actions ──
 
-    const [sendSync, onSync] = this.room.makeAction<Uint8Array>('yjs-sync')
-    const [sendUpdate, onUpdate] = this.room.makeAction<Uint8Array>('yjs-update')
-    const [sendAwareness, onAwareness] = this.room.makeAction<Record<string, unknown>>('awareness')
-    const [sendContentUpdated, onContentUpdated] = this.room.makeAction<string>('doc-updated')
+      const [sendSync, onSync] = this.room.makeAction<Uint8Array>('yjs-sync')
+      const [sendUpdate, onUpdate] = this.room.makeAction<Uint8Array>('yjs-update')
+      const [sendAwareness, onAwareness] = this.room.makeAction<Record<string, unknown>>('awareness')
+      const [sendContentUpdated, onContentUpdated] = this.room.makeAction<string>('doc-updated')
 
-    this.sendYjsSync = sendSync
-    this.sendYjsUpdate = sendUpdate
-    this.sendAwareness = sendAwareness
-    this.sendContentUpdated = sendContentUpdated
+      this.sendYjsSync = sendSync
+      this.sendYjsUpdate = sendUpdate
+      this.sendAwareness = sendAwareness
+      this.sendContentUpdated = sendContentUpdated
 
-    // When receiving a Yjs sync message, apply it to local doc
-    onSync((data: Uint8Array) => {
-      Y.applyUpdate(this.ydoc, data, 'remote')
-    })
-
-    // When receiving a Yjs incremental update
-    onUpdate((data: Uint8Array) => {
-      Y.applyUpdate(this.ydoc, data, 'remote')
-    })
-
-    // When receiving awareness update from a peer
-    onAwareness((data: Record<string, unknown>, peerId: string) => {
-      this.awarenessState.set(peerId, {
-        peerId,
-        name: (data.name as string) ?? 'Anonymous',
-        activeFile: (data.activeFile as string | null) ?? null,
-        focusedBlock: (data.focusedBlock as number | null) ?? null,
+      // When receiving a Yjs sync message, apply it to local doc
+      onSync((data: Uint8Array) => {
+        try {
+          Y.applyUpdate(this.ydoc, data, 'remote')
+        } catch (err) {
+          console.warn('[markreview] Failed to apply Yjs sync update:', err)
+        }
       })
-      this.callbacks.onConnectionChange('connected', this.getPeers())
-    })
 
-    // When a peer notifies the content was updated
-    onContentUpdated(() => {
-      this.callbacks.onDocumentUpdated()
-    })
+      // When receiving a Yjs incremental update
+      onUpdate((data: Uint8Array) => {
+        try {
+          Y.applyUpdate(this.ydoc, data, 'remote')
+        } catch (err) {
+          console.warn('[markreview] Failed to apply Yjs incremental update:', err)
+        }
+      })
 
-    // ── Peer lifecycle ──
+      // When receiving awareness update from a peer
+      onAwareness((data: Record<string, unknown>, peerId: string) => {
+        this.awarenessState.set(peerId, {
+          peerId,
+          name: (data.name as string) ?? 'Anonymous',
+          activeFile: (data.activeFile as string | null) ?? null,
+          focusedBlock: (data.focusedBlock as number | null) ?? null,
+        })
+        this.callbacks.onConnectionChange('connected', this.getPeers())
+      })
 
-    this.room.onPeerJoin((peerId: string) => {
-      // Send our full Yjs state to the new peer
-      const stateVector = Y.encodeStateAsUpdate(this.ydoc)
-      sendSync(stateVector, peerId).catch(() => {})
-      // Send our awareness
-      this.broadcastAwareness()
-      this.callbacks.onConnectionChange('connected', this.getPeers())
-    })
+      // When a peer notifies the content was updated
+      onContentUpdated(() => {
+        this.callbacks.onDocumentUpdated()
+      })
 
-    this.room.onPeerLeave((peerId: string) => {
-      this.awarenessState.delete(peerId)
-      const peers = this.getPeers()
-      this.callbacks.onConnectionChange(
-        peers.length > 0 ? 'connected' : 'connecting',
-        peers,
-      )
-    })
+      // ── Peer lifecycle ──
 
-    // Start periodic awareness broadcast
-    this.awarenessTimer = setInterval(() => {
-      this.broadcastAwareness()
-    }, AWARENESS_INTERVAL_MS)
+      this.room.onPeerJoin((peerId: string) => {
+        this.retryCount = 0
+        // Send our full Yjs state to the new peer
+        const stateVector = Y.encodeStateAsUpdate(this.ydoc)
+        sendSync(stateVector, peerId).catch(() => {})
+        // Send our awareness
+        this.broadcastAwareness()
+        this.callbacks.onConnectionChange('connected', this.getPeers())
+      })
 
-    // We're now "connecting" — status upgrades to "connected" when a peer joins
-    this.callbacks.onConnectionChange('connecting', [])
+      this.room.onPeerLeave((peerId: string) => {
+        this.awarenessState.delete(peerId)
+        const peers = this.getPeers()
+        this.callbacks.onConnectionChange(
+          peers.length > 0 ? 'connected' : 'connecting',
+          peers,
+        )
+      })
+
+      // Start periodic awareness broadcast
+      this.awarenessTimer = setInterval(() => {
+        this.broadcastAwareness()
+      }, AWARENESS_INTERVAL_MS)
+
+      // We're now "connecting" — status upgrades to "connected" when a peer joins
+      this.callbacks.onConnectionChange('connecting', [])
+    } catch (err) {
+      console.warn('[markreview] Failed to set up realtime actions:', err)
+      this.cleanup()
+      this.callbacks.onConnectionChange('error', [])
+    }
   }
 
   private broadcastAwareness(): void {
@@ -293,6 +311,12 @@ export class RealtimeSession {
 
   private scheduleReconnect(): void {
     if (this.destroyed) return
+    this.retryCount++
+    if (this.retryCount >= MAX_RETRIES) {
+      console.warn(`[markreview] Giving up after ${MAX_RETRIES} connection attempts`)
+      this.callbacks.onConnectionChange('error', [])
+      return
+    }
     this.reconnectTimer = setTimeout(() => {
       if (!this.destroyed) this.joinTrysteroRoom()
     }, RECONNECT_DELAY_MS)
