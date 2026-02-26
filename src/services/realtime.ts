@@ -205,14 +205,6 @@ export class RealtimeSession {
   // ── Private ──────────────────────────────────────────────────────────────
 
   private joinTrysteroRoom(): void {
-    console.log(
-      "[markreview] Joining room:",
-      this.roomId,
-      "appId:",
-      APP_ID,
-      "selfId:",
-      selfId,
-    );
     try {
       this.room = trysteroJoinRoom(
         { appId: APP_ID, password: this.roomPassword, relayUrls: TRACKER_URLS },
@@ -280,7 +272,6 @@ export class RealtimeSession {
       // ── Peer lifecycle ──
 
       this.room.onPeerJoin((peerId: string) => {
-        console.log("[markreview] Peer joined:", peerId);
         this.retryCount = 0;
         // Send our full Yjs state to the new peer
         const stateVector = Y.encodeStateAsUpdate(this.ydoc);
