@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAppStore } from '../store'
+import type { FileTreeNode } from '../types/fileTree'
 
 const TTL_OPTIONS = [
   { label: '1 day', value: 86400 },
@@ -9,9 +10,11 @@ const TTL_OPTIONS = [
 
 interface Props {
   onClose: () => void
+  scope?: FileTreeNode[]
+  scopeLabel?: string
 }
 
-export function ShareDialog({ onClose }: Props) {
+export function ShareDialog({ onClose, scope, scopeLabel }: Props) {
   const fileName = useAppStore((s) => s.fileName)
   const directoryName = useAppStore((s) => s.directoryName)
   const shareContent = useAppStore((s) => s.shareContent)
@@ -22,13 +25,13 @@ export function ShareDialog({ onClose }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
-  const label = directoryName ?? fileName ?? 'document'
+  const label = scopeLabel ?? directoryName ?? fileName ?? 'document'
 
   async function handleShare() {
     setLoading(true)
     setError(null)
     try {
-      const url = await shareContent({ ttl })
+      const url = await shareContent({ ttl, nodes: scope, label: scopeLabel })
       setLink(url)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Share failed')

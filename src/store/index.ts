@@ -85,7 +85,7 @@ interface AppState {
   clearUndo: () => void
 
   // v2 Sharing actions
-  shareContent: (opts: { ttl: number }) => Promise<string>
+  shareContent: (opts: { ttl: number; nodes?: FileTreeNode[]; label?: string }) => Promise<string>
   revokeShare: (docId: string) => Promise<void>
   updateShare: (docId: string) => Promise<void>
   fetchPendingComments: (docId: string) => Promise<void>
@@ -304,18 +304,19 @@ export const useAppStore = create<AppState>()(
 
       // ── v2 Sharing actions ───────────────────────────────────────────────
 
-      shareContent: async ({ ttl }) => {
+      shareContent: async ({ ttl, nodes, label: scopeLabel }) => {
         const storage = getStorage()
         if (!storage) throw new Error('Worker URL not configured')
         const { fileName, directoryName, rawContent, fileTree, activeFilePath } = get()
-        const label = directoryName ?? fileName ?? 'document'
+        const label = scopeLabel ?? directoryName ?? fileName ?? 'document'
 
         // Build tree: either the single open file or all files in memory
         const tree: Record<string, string> = {}
-        if (directoryName && fileTree.length > 0) {
-          // Read all markdown files from the folder
-          const readNode = async (nodes: FileTreeNode[]) => {
-            for (const node of nodes) {
+        const sourceNodes = nodes ?? (directoryName && fileTree.length > 0 ? fileTree : null)
+        if (sourceNodes) {
+          // Read all markdown files from the specified nodes
+          const readNode = async (items: FileTreeNode[]) => {
+            for (const node of items) {
               if (node.kind === 'file') {
                 const path = node.path
                 // Use in-memory rawContent for the currently open file (always available),
@@ -334,7 +335,7 @@ export const useAppStore = create<AppState>()(
               }
             }
           }
-          await readNode(fileTree)
+          await readNode(sourceNodes)
         }
         // Fallback: if no files were read (handles expired) or single-file mode, use rawContent
         if (Object.keys(tree).length === 0 && rawContent) {

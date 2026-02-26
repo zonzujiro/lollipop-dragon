@@ -713,6 +713,54 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex: 1;
+}
+
+.tree-item-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.tree-item-row > .tree-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.tree-item-share-btn {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.625rem 0 1rem;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.tree-item-row:hover .tree-item-share-btn {
+  opacity: 1;
+  background: linear-gradient(to right, transparent, var(--surface-alt) 35%);
+  filter: drop-shadow(-2px 0 3px rgba(0, 0, 0, 0.08));
+}
+
+.tree-item-row:has(.tree-item--active):hover .tree-item-share-btn {
+  background: linear-gradient(to right, transparent, var(--accent-bg) 35%);
+}
+
+.dark .tree-item-row:hover .tree-item-share-btn {
+  filter: drop-shadow(-2px 0 3px rgba(0, 0, 0, 0.25));
+}
+
+.tree-item-share-btn:hover {
+  color: var(--accent);
 }
 
 /* ── Markdown viewer (flex row: margin column + body) ────────── */

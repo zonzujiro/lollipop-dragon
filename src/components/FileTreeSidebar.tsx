@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { useAppStore } from '../store'
-import type { FileTreeNode, FileNode } from '../types/fileTree'
+import { ShareDialog } from './ShareDialog'
+import type { FileTreeNode, FileNode, DirectoryNode } from '../types/fileTree'
+
+const WORKER_URL = import.meta.env.VITE_WORKER_URL as string | undefined
 
 function ChevronIcon({ expanded }: { expanded: boolean }) {
   return (
@@ -43,42 +46,97 @@ function FileIcon() {
   )
 }
 
+function ShareIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+      <polyline points="16 6 12 2 8 6" />
+      <line x1="12" x2="12" y1="2" y2="15" />
+    </svg>
+  )
+}
+
 interface TreeItemProps {
   node: FileTreeNode
   depth: number
   activeFilePath: string | null
   onSelect: (node: FileNode) => void
+  onShare: (scope: FileTreeNode[], label: string) => void
 }
 
-function TreeItem({ node, depth, activeFilePath, onSelect }: TreeItemProps) {
+function TreeItem({ node, depth, activeFilePath, onSelect, onShare }: TreeItemProps) {
   const [expanded, setExpanded] = useState(true)
   const indent = depth * 1 + 0.75
+
+  function handleShare(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (node.kind === 'file') {
+      onShare([node], node.name)
+    } else {
+      onShare((node as DirectoryNode).children, node.name)
+    }
+  }
 
   if (node.kind === 'file') {
     const isActive = activeFilePath === node.path
     return (
-      <button
-        className={`tree-item tree-item--file${isActive ? ' tree-item--active' : ''}`}
-        style={{ paddingLeft: `${indent}rem` }}
-        onClick={() => onSelect(node)}
-        title={node.path}
-      >
-        <FileIcon />
-        <span className="tree-item__name">{node.name}</span>
-      </button>
+      <div className="tree-item-row">
+        <button
+          className={`tree-item tree-item--file${isActive ? ' tree-item--active' : ''}`}
+          style={{ paddingLeft: `${indent}rem` }}
+          onClick={() => onSelect(node)}
+          title={node.path}
+        >
+          <FileIcon />
+          <span className="tree-item__name">{node.name}</span>
+        </button>
+        {WORKER_URL && (
+          <button
+            className="tree-item-share-btn"
+            onClick={handleShare}
+            title={`Share ${node.name}`}
+            aria-label={`Share ${node.name}`}
+          >
+            <ShareIcon />
+          </button>
+        )}
+      </div>
     )
   }
 
   return (
     <div className="tree-item-group">
-      <button
-        className="tree-item tree-item--dir"
-        style={{ paddingLeft: `${indent}rem` }}
-        onClick={() => setExpanded((e) => !e)}
-      >
-        <ChevronIcon expanded={expanded} />
-        <span className="tree-item__name">{node.name}</span>
-      </button>
+      <div className="tree-item-row">
+        <button
+          className="tree-item tree-item--dir"
+          style={{ paddingLeft: `${indent}rem` }}
+          onClick={() => setExpanded((e) => !e)}
+        >
+          <ChevronIcon expanded={expanded} />
+          <span className="tree-item__name">{node.name}</span>
+        </button>
+        {WORKER_URL && (
+          <button
+            className="tree-item-share-btn"
+            onClick={handleShare}
+            title={`Share ${node.name}`}
+            aria-label={`Share ${node.name}`}
+          >
+            <ShareIcon />
+          </button>
+        )}
+      </div>
       {expanded && (
         <div>
           {node.children.map((child) => (
@@ -88,6 +146,7 @@ function TreeItem({ node, depth, activeFilePath, onSelect }: TreeItemProps) {
               depth={depth + 1}
               activeFilePath={activeFilePath}
               onSelect={onSelect}
+              onShare={onShare}
             />
           ))}
         </div>
@@ -102,6 +161,12 @@ export function FileTreeSidebar() {
   const activeFilePath = useAppStore((s) => s.activeFilePath)
   const selectFile = useAppStore((s) => s.selectFile)
   const openDirectory = useAppStore((s) => s.openDirectory)
+
+  const [shareScope, setShareScope] = useState<{ nodes: FileTreeNode[]; label: string } | null>(null)
+
+  function handleShare(nodes: FileTreeNode[], label: string) {
+    setShareScope({ nodes, label })
+  }
 
   return (
     <aside className="file-tree-sidebar">
@@ -128,9 +193,17 @@ export function FileTreeSidebar() {
             depth={0}
             activeFilePath={activeFilePath}
             onSelect={selectFile}
+            onShare={handleShare}
           />
         ))}
       </div>
+      {shareScope && (
+        <ShareDialog
+          onClose={() => setShareScope(null)}
+          scope={shareScope.nodes}
+          scopeLabel={shareScope.label}
+        />
+      )}
     </aside>
   )
 }

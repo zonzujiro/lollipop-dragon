@@ -1,6 +1,4 @@
-import { useState } from 'react'
 import { useAppStore } from '../store'
-import { ShareDialog } from './ShareDialog'
 
 const WORKER_URL = import.meta.env.VITE_WORKER_URL as string | undefined
 
@@ -62,8 +60,6 @@ export function Header({ peerMode = false }: Props) {
   const sharedPanelOpen = useAppStore((s) => s.sharedPanelOpen)
   const toggleSharedPanel = useAppStore((s) => s.toggleSharedPanel)
 
-  const [shareDialogOpen, setShareDialogOpen] = useState(false)
-
   const isDark = theme === 'dark'
   const hasFolderOpen = fileTree.length > 0
   const hasContent = !!(fileName || directoryName)
@@ -106,13 +102,6 @@ export function Header({ peerMode = false }: Props) {
               {WORKER_URL && hasContent && (
                 <>
                   <div className="app-header__divider" aria-hidden="true" />
-                  <button
-                    className="app-header__btn app-header__btn--text"
-                    onClick={() => setShareDialogOpen(true)}
-                    title="Encrypt and share this document"
-                  >
-                    Share
-                  </button>
                   <button
                     className={`app-header__btn app-header__btn--text${sharedPanelOpen ? ' app-header__btn--active' : ''}`}
                     onClick={toggleSharedPanel}
@@ -173,7 +162,6 @@ export function Header({ peerMode = false }: Props) {
         </div>
       </header>
 
-      {shareDialogOpen && <ShareDialog onClose={() => setShareDialogOpen(false)} />}
     </>
   )
 }
