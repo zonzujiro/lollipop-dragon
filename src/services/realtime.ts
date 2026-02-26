@@ -39,6 +39,11 @@ const RECONNECT_DELAY_MS = 3000;
 const AWARENESS_INTERVAL_MS = 5000;
 const MAX_RETRIES = 3;
 
+const TRACKER_URLS = [
+  "wss://tracker.webtorrent.dev",
+  "wss://tracker.openwebtorrent.com",
+];
+
 // ── RealtimeSession ──────────────────────────────────────────────────────────
 
 export class RealtimeSession {
@@ -202,7 +207,7 @@ export class RealtimeSession {
   private joinTrysteroRoom(): void {
     try {
       this.room = trysteroJoinRoom(
-        { appId: APP_ID, password: this.roomPassword },
+        { appId: APP_ID, password: this.roomPassword, relayUrls: TRACKER_URLS },
         this.roomId,
       );
     } catch (err) {
