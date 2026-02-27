@@ -4,6 +4,7 @@ import {
   openFile as fsOpenFile,
   openDirectory as fsOpenDirectory,
   readFile,
+  writeFile,
   buildFileTree,
 } from "../services/fileSystem";
 import { saveHandle, getHandle, removeHandle } from "../services/handleStore";
@@ -176,6 +177,13 @@ function scrollToBlock(blockIndex: number | undefined) {
   document
     .querySelector(`[data-block-index="${blockIndex}"]`)
     ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function isPermissionError(e: unknown): boolean {
+  return (
+    e instanceof Error &&
+    (e.name === "NotAllowedError" || e.name === "SecurityError")
+  );
 }
 
 export const useAppStore = create<AppState>()(
@@ -390,21 +398,14 @@ export const useAppStore = create<AppState>()(
         if (!comment) return;
         const newRaw = applyDelete(rawContent, comment);
         try {
-          const writable = await fileHandle.createWritable();
-          await writable.write(newRaw);
-          await writable.close();
+          await writeFile(fileHandle, newRaw);
           set({
             rawContent: newRaw,
             writeAllowed: true,
             undoState: { rawContent },
           });
         } catch (e) {
-          if (
-            e instanceof Error &&
-            (e.name === "NotAllowedError" || e.name === "SecurityError")
-          ) {
-            set({ writeAllowed: false });
-          }
+          if (isPermissionError(e)) set({ writeAllowed: false });
         }
       },
 
@@ -415,21 +416,14 @@ export const useAppStore = create<AppState>()(
         if (!comment) return;
         const newRaw = applyEdit(rawContent, comment, type, text);
         try {
-          const writable = await fileHandle.createWritable();
-          await writable.write(newRaw);
-          await writable.close();
+          await writeFile(fileHandle, newRaw);
           set({
             rawContent: newRaw,
             writeAllowed: true,
             undoState: { rawContent },
           });
         } catch (e) {
-          if (
-            e instanceof Error &&
-            (e.name === "NotAllowedError" || e.name === "SecurityError")
-          ) {
-            set({ writeAllowed: false });
-          }
+          if (isPermissionError(e)) set({ writeAllowed: false });
         }
       },
 
@@ -446,21 +440,14 @@ export const useAppStore = create<AppState>()(
           text,
         );
         try {
-          const writable = await fileHandle.createWritable();
-          await writable.write(newRaw);
-          await writable.close();
+          await writeFile(fileHandle, newRaw);
           set({
             rawContent: newRaw,
             writeAllowed: true,
             undoState: { rawContent },
           });
         } catch (e) {
-          if (
-            e instanceof Error &&
-            (e.name === "NotAllowedError" || e.name === "SecurityError")
-          ) {
-            set({ writeAllowed: false });
-          }
+          if (isPermissionError(e)) set({ writeAllowed: false });
         }
       },
 
@@ -468,21 +455,14 @@ export const useAppStore = create<AppState>()(
         const { undoState, fileHandle } = get();
         if (!undoState || !fileHandle) return;
         try {
-          const writable = await fileHandle.createWritable();
-          await writable.write(undoState.rawContent);
-          await writable.close();
+          await writeFile(fileHandle, undoState.rawContent);
           set({
             rawContent: undoState.rawContent,
             undoState: null,
             writeAllowed: true,
           });
         } catch (e) {
-          if (
-            e instanceof Error &&
-            (e.name === "NotAllowedError" || e.name === "SecurityError")
-          ) {
-            set({ writeAllowed: false });
-          }
+          if (isPermissionError(e)) set({ writeAllowed: false });
         }
       },
 
@@ -769,21 +749,14 @@ export const useAppStore = create<AppState>()(
           comment.text + attribution,
         );
         try {
-          const writable = await fileHandle.createWritable();
-          await writable.write(newRaw);
-          await writable.close();
+          await writeFile(fileHandle, newRaw);
           set({
             rawContent: newRaw,
             writeAllowed: true,
             undoState: { rawContent },
           });
         } catch (e) {
-          if (
-            e instanceof Error &&
-            (e.name === "NotAllowedError" || e.name === "SecurityError")
-          ) {
-            set({ writeAllowed: false });
-          }
+          if (isPermissionError(e)) set({ writeAllowed: false });
         }
         // Remove from pending
         get().dismissComment(docId, comment.id);
