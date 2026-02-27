@@ -863,13 +863,29 @@ body {
 
 /* ── File tree sidebar ───────────────────────────────────────── */
 .file-tree-sidebar {
-  width: 240px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   background-color: var(--surface);
   border-right: 1px solid var(--border-light);
   overflow: hidden;
+  position: relative;
+}
+
+.file-tree-resize {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+}
+
+.file-tree-resize:hover,
+.file-tree-resize:active {
+  background-color: var(--accent);
+  opacity: 0.3;
 }
 
 .file-tree-header {

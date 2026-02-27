@@ -1,6 +1,10 @@
-import { useState, type ReactNode } from "react";
+import { useCallback, useRef, useState, type ReactNode } from "react";
 import type { SidebarTreeNode, SidebarDirectoryNode } from "../types/fileTree";
 import type { ShareRecord } from "../types/share";
+
+const MIN_WIDTH = 160;
+const MAX_WIDTH = 600;
+const DEFAULT_WIDTH = 240;
 
 function ChevronIcon({ expanded }: { expanded: boolean }) {
   return (
@@ -223,8 +227,36 @@ export function FileTreeSidebar({
   onShare,
   shares = [],
 }: FileTreeSidebarProps) {
+  const [width, setWidth] = useState(DEFAULT_WIDTH);
+  const dragging = useRef(false);
+
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      e.preventDefault();
+      dragging.current = true;
+      const startX = e.clientX;
+      const startW = width;
+
+      const onMove = (ev: PointerEvent) => {
+        const next = Math.min(
+          MAX_WIDTH,
+          Math.max(MIN_WIDTH, startW + ev.clientX - startX),
+        );
+        setWidth(next);
+      };
+      const onUp = () => {
+        dragging.current = false;
+        document.removeEventListener("pointermove", onMove);
+        document.removeEventListener("pointerup", onUp);
+      };
+      document.addEventListener("pointermove", onMove);
+      document.addEventListener("pointerup", onUp);
+    },
+    [width],
+  );
+
   return (
-    <aside className="file-tree-sidebar">
+    <aside className="file-tree-sidebar" style={{ width }}>
       <div className="file-tree-header">
         <span className="file-tree-header__name" title={header.title}>
           {header.title}
@@ -253,6 +285,13 @@ export function FileTreeSidebar({
           />
         ))}
       </div>
+      <div
+        className="file-tree-resize"
+        onPointerDown={onPointerDown}
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize sidebar"
+      />
     </aside>
   );
 }
