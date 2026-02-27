@@ -44,6 +44,28 @@ const TRACKER_URLS = [
   "wss://tracker.openwebtorrent.com",
 ];
 
+const RTC_CONFIG: RTCConfiguration = {
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+    {
+      urls: "turn:openrelay.metered.ca:80",
+      username: "openrelayproject",
+      credential: "openrelayproject",
+    },
+    {
+      urls: "turn:openrelay.metered.ca:443",
+      username: "openrelayproject",
+      credential: "openrelayproject",
+    },
+    {
+      urls: "turn:openrelay.metered.ca:443?transport=tcp",
+      username: "openrelayproject",
+      credential: "openrelayproject",
+    },
+  ],
+};
+
 // ── RealtimeSession ──────────────────────────────────────────────────────────
 
 export class RealtimeSession {
@@ -207,7 +229,12 @@ export class RealtimeSession {
   private joinTrysteroRoom(): void {
     try {
       this.room = trysteroJoinRoom(
-        { appId: APP_ID, password: this.roomPassword, relayUrls: TRACKER_URLS },
+        {
+          appId: APP_ID,
+          password: this.roomPassword,
+          relayUrls: TRACKER_URLS,
+          rtcConfig: RTC_CONFIG,
+        },
         this.roomId,
       );
     } catch (err) {
