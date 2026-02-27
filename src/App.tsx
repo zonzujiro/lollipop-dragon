@@ -324,7 +324,6 @@ function App() {
             onSelect={handleHostSelect}
             header={hostHeader}
             onShare={WORKER_URL ? handleHostShare : undefined}
-            directoryName={directoryName}
             shares={shares}
           />
         )}

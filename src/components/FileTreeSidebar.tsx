@@ -68,10 +68,10 @@ function ShareIcon() {
   );
 }
 
-function SharedDot() {
+function SharedBadge() {
   return (
     <span
-      className="tree-item__shared-dot"
+      className="tree-item__shared-badge"
       title="Currently shared"
       aria-label="Shared"
     >
@@ -87,33 +87,20 @@ function SharedDot() {
         strokeLinejoin="round"
         aria-hidden="true"
       >
-        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-        <polyline points="16 6 12 2 8 6" />
-        <line x1="12" x2="12" y1="2" y2="15" />
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
       </svg>
     </span>
   );
 }
 
-/** Compute whether a node is part of an active share */
-function isNodeShared(
-  node: SidebarTreeNode,
-  directoryName: string | null,
-  shares: ShareRecord[],
-): boolean {
+/** Compute whether this exact node has a share link */
+function isNodeShared(node: SidebarTreeNode, shares: ShareRecord[]): boolean {
   if (shares.length === 0) return false;
   const now = new Date();
-  const activeShares = shares.filter((s) => new Date(s.expiresAt) > now);
-  if (activeShares.length === 0) return false;
-  // If any share covers the whole directory, all items are shared
-  if (
-    directoryName &&
-    activeShares.some((s) => s.label === directoryName && s.fileCount > 1)
-  ) {
-    return true;
-  }
-  // Check if this specific item is shared by name
-  return activeShares.some((s) => s.label === node.name);
+  return shares.some(
+    (s) => new Date(s.expiresAt) > now && s.label === node.name,
+  );
 }
 
 interface TreeItemProps {
@@ -122,7 +109,6 @@ interface TreeItemProps {
   activeFilePath: string | null;
   onSelect: (path: string) => void;
   onShare?: (nodes: SidebarTreeNode[], label: string) => void;
-  directoryName: string | null;
   shares: ShareRecord[];
 }
 
@@ -132,12 +118,11 @@ function TreeItem({
   activeFilePath,
   onSelect,
   onShare,
-  directoryName,
   shares,
 }: TreeItemProps) {
   const [expanded, setExpanded] = useState(true);
   const indent = depth * 1 + 0.75;
-  const shared = isNodeShared(node, directoryName, shares);
+  const shared = isNodeShared(node, shares);
 
   function handleShare(e: React.MouseEvent) {
     e.stopPropagation();
@@ -160,7 +145,7 @@ function TreeItem({
         >
           <FileIcon />
           <span className="tree-item__name">{node.name}</span>
-          {shared && <SharedDot />}
+          {shared && <SharedBadge />}
         </button>
         {onShare && (
           <button
@@ -186,7 +171,7 @@ function TreeItem({
         >
           <ChevronIcon expanded={expanded} />
           <span className="tree-item__name">{node.name}</span>
-          {shared && <SharedDot />}
+          {shared && <SharedBadge />}
         </button>
         {onShare && (
           <button
@@ -209,7 +194,6 @@ function TreeItem({
               activeFilePath={activeFilePath}
               onSelect={onSelect}
               onShare={onShare}
-              directoryName={directoryName}
               shares={shares}
             />
           ))}
@@ -228,7 +212,6 @@ export interface FileTreeSidebarProps {
     action?: { onClick: () => void; label: string; icon: ReactNode };
   };
   onShare?: (nodes: SidebarTreeNode[], label: string) => void;
-  directoryName?: string | null;
   shares?: ShareRecord[];
 }
 
@@ -238,7 +221,6 @@ export function FileTreeSidebar({
   onSelect,
   header,
   onShare,
-  directoryName = null,
   shares = [],
 }: FileTreeSidebarProps) {
   return (
@@ -267,7 +249,6 @@ export function FileTreeSidebar({
             activeFilePath={activeFilePath}
             onSelect={onSelect}
             onShare={onShare}
-            directoryName={directoryName}
             shares={shares}
           />
         ))}

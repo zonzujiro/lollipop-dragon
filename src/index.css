@@ -1015,14 +1015,14 @@ body {
   color: var(--accent);
 }
 
-.tree-item__shared-dot {
+.tree-item__shared-badge {
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
   margin-left: auto;
   padding-left: 0.3rem;
-  color: var(--accent);
-  opacity: 0.6;
+  color: var(--c-green);
+  opacity: 0.7;
 }
 
 /* ── Markdown viewer (flex row: margin column + body) ────────── */
