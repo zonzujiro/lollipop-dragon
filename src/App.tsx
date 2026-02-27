@@ -233,6 +233,36 @@ function App() {
     return () => observer.disconnect();
   }, [fileHandle, refreshFile]);
 
+  // Watch the open directory for new/removed files using FileSystemObserver
+  const directoryHandle = useAppStore((s) => s.directoryHandle);
+  const refreshFileTree = useAppStore((s) => s.refreshFileTree);
+  useEffect(() => {
+    if (!directoryHandle || !("FileSystemObserver" in window)) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const observer = new (window as any).FileSystemObserver(
+      (records: any[]) => {
+        if (
+          records.some(
+            (r: any) =>
+              r.type === "appeared" ||
+              r.type === "disappeared" ||
+              r.type === "modified",
+          )
+        ) {
+          refreshFileTree();
+        }
+      },
+    );
+    (async () => {
+      try {
+        await observer.observe(directoryHandle, { recursive: true });
+      } catch {
+        /* unsupported */
+      }
+    })();
+    return () => observer.disconnect();
+  }, [directoryHandle, refreshFileTree]);
+
   // v3: Auto-connect to realtime room when peer name is set and room params exist
   useEffect(() => {
     if (!peerName || !peerModeChecked) return;

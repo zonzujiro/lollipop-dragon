@@ -11,6 +11,7 @@ export interface ShareRecord {
   keyB64: string; // encryption key in base64url (for link reconstruction)
   roomPassword: string; // room password for realtime
   fileCount: number; // number of files shared
+  sharedPaths?: string[]; // original file paths included in the share
 }
 
 // Decrypted content structure (inside the encrypted blob)

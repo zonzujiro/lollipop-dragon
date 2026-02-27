@@ -5,6 +5,20 @@ import type { ShareRecord } from "../types/share";
 const MIN_WIDTH = 160;
 const MAX_WIDTH = 600;
 const DEFAULT_WIDTH = 240;
+const WIDTH_KEY = "markreview-sidebar-width";
+
+function loadWidth(): number {
+  try {
+    const v = localStorage.getItem(WIDTH_KEY);
+    if (v) {
+      const n = Number(v);
+      if (n >= MIN_WIDTH && n <= MAX_WIDTH) return n;
+    }
+  } catch {
+    /* ignore */
+  }
+  return DEFAULT_WIDTH;
+}
 
 function ChevronIcon({ expanded }: { expanded: boolean }) {
   return (
@@ -227,8 +241,9 @@ export function FileTreeSidebar({
   onShare,
   shares = [],
 }: FileTreeSidebarProps) {
-  const [width, setWidth] = useState(DEFAULT_WIDTH);
+  const [width, setWidth] = useState(loadWidth);
   const dragging = useRef(false);
+  const latestWidth = useRef(width);
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
@@ -242,12 +257,18 @@ export function FileTreeSidebar({
           MAX_WIDTH,
           Math.max(MIN_WIDTH, startW + ev.clientX - startX),
         );
+        latestWidth.current = next;
         setWidth(next);
       };
       const onUp = () => {
         dragging.current = false;
         document.removeEventListener("pointermove", onMove);
         document.removeEventListener("pointerup", onUp);
+        try {
+          localStorage.setItem(WIDTH_KEY, String(latestWidth.current));
+        } catch {
+          /* ignore */
+        }
       };
       document.addEventListener("pointermove", onMove);
       document.addEventListener("pointerup", onUp);

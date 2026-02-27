@@ -112,6 +112,7 @@ interface AppState {
   toggleFocusMode: () => void;
   restoreDirectory: () => Promise<void>;
   refreshFile: () => Promise<void>;
+  refreshFileTree: () => Promise<void>;
   addComment: (
     blockIndex: number,
     type: CommentType,
@@ -152,6 +153,9 @@ interface AppState {
     text: string,
     path: string,
   ) => Promise<void>;
+
+  // Auto-sync
+  syncActiveShares: () => Promise<void>;
 
   // v3 Real-time actions
   connectRealtime: (docId: string, roomPassword: string) => void;
@@ -498,6 +502,18 @@ export const useAppStore = create<AppState>()(
         }
       },
 
+      refreshFileTree: async () => {
+        const { directoryHandle } = get();
+        if (!directoryHandle) return;
+        try {
+          const tree = await buildFileTree(directoryHandle);
+          set({ fileTree: tree });
+          get().scanAllFileComments();
+        } catch {
+          // directory read failed — silent
+        }
+      },
+
       restoreDirectory: async () => {
         try {
           const handle =
@@ -616,6 +632,7 @@ export const useAppStore = create<AppState>()(
           keyB64,
           roomPassword: roomPwd,
           fileCount: Object.keys(tree).length,
+          sharedPaths: Object.keys(tree),
         };
         const shares = [...get().shares, record];
         saveShares(shares);
@@ -674,13 +691,15 @@ export const useAppStore = create<AppState>()(
             "Encryption key not available (session may have expired)",
           );
 
-        // Build content tree from current file state
+        // Build content tree scoped to the originally shared paths
+        const allowed = record.sharedPaths ? new Set(record.sharedPaths) : null;
         const tree: Record<string, string> = {};
         if (fileTree.length > 0) {
           const readNode = async (items: FileTreeNode[]) => {
             for (const node of items) {
               if (node.kind === "file") {
                 const path = node.path;
+                if (allowed && !allowed.has(path)) continue;
                 if (path === activeFilePath && rawContent) {
                   tree[path] = rawContent;
                 } else {
@@ -698,7 +717,10 @@ export const useAppStore = create<AppState>()(
           await readNode(fileTree);
         }
         if (Object.keys(tree).length === 0 && rawContent) {
-          tree[activeFilePath ?? fileName ?? "document.md"] = rawContent;
+          const fallbackPath = activeFilePath ?? fileName ?? "document.md";
+          if (!allowed || allowed.has(fallbackPath)) {
+            tree[fallbackPath] = rawContent;
+          }
         }
 
         // Overwrite content at the same docId with the same key
@@ -887,6 +909,22 @@ export const useAppStore = create<AppState>()(
         }
       },
 
+      // ── Auto-sync ─────────────────────────────────────────────────────
+
+      syncActiveShares: async () => {
+        const { shares, isPeerMode } = get();
+        if (isPeerMode) return;
+        const now = new Date();
+        const active = shares.filter((s) => new Date(s.expiresAt) > now);
+        for (const share of active) {
+          try {
+            await get().updateShare(share.docId);
+          } catch (e) {
+            console.warn("[sync] failed to push update for", share.docId, e);
+          }
+        }
+      },
+
       // ── v3 Real-time actions ────────────────────────────────────────────
 
       connectRealtime: (docId, roomPassword) => {
@@ -968,3 +1006,21 @@ export const useAppStore = create<AppState>()(
     },
   ),
 );
+
+// ── Debounced auto-push: sync active shares when rawContent changes ──
+let _syncTimer: ReturnType<typeof setTimeout> | null = null;
+let _prevRawContent = useAppStore.getState().rawContent;
+useAppStore.subscribe((state) => {
+  const cur = state.rawContent;
+  if (cur === _prevRawContent) return;
+  _prevRawContent = cur;
+  if (state.isPeerMode) return;
+  const now = new Date();
+  const hasActive = state.shares.some((s) => new Date(s.expiresAt) > now);
+  if (!hasActive) return;
+  if (_syncTimer) clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(() => {
+    _syncTimer = null;
+    useAppStore.getState().syncActiveShares();
+  }, 2000);
+});
