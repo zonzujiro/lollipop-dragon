@@ -4,7 +4,11 @@
 // Yjs handles conflict-free comment synchronization.
 // This module bridges the two: Trystero rooms transport Yjs sync messages.
 
-import { joinRoom as trysteroJoinRoom, selfId } from "trystero/torrent";
+import {
+  joinRoom as trysteroJoinRoom,
+  getRelaySockets,
+  selfId,
+} from "trystero/torrent";
 import type { Room } from "trystero";
 import * as Y from "yjs";
 import type { PeerComment } from "../types/share";
@@ -41,32 +45,33 @@ const MAX_RETRIES = 3;
 
 const log = (...args: unknown[]) => console.log("[rt]", ...args);
 
+// Use all 4 default Trystero torrent trackers for better peer discovery
 const TRACKER_URLS = [
   "wss://tracker.webtorrent.dev",
   "wss://tracker.openwebtorrent.com",
+  "wss://tracker.btorrent.xyz",
+  "wss://tracker.files.fm:7073/announce",
 ];
 
-const RTC_CONFIG: RTCConfiguration = {
-  iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-    {
-      urls: "turn:openrelay.metered.ca:80",
-      username: "openrelayproject",
-      credential: "openrelayproject",
-    },
-    {
-      urls: "turn:openrelay.metered.ca:443",
-      username: "openrelayproject",
-      credential: "openrelayproject",
-    },
-    {
-      urls: "turn:openrelay.metered.ca:443?transport=tcp",
-      username: "openrelayproject",
-      credential: "openrelayproject",
-    },
-  ],
-};
+// TURN servers for NAT traversal — passed via turnConfig so they're
+// appended to Trystero's default STUN servers instead of replacing them
+const TURN_SERVERS: RTCIceServer[] = [
+  {
+    urls: "turn:openrelay.metered.ca:80",
+    username: "openrelayproject",
+    credential: "openrelayproject",
+  },
+  {
+    urls: "turn:openrelay.metered.ca:443",
+    username: "openrelayproject",
+    credential: "openrelayproject",
+  },
+  {
+    urls: "turn:openrelay.metered.ca:443?transport=tcp",
+    username: "openrelayproject",
+    credential: "openrelayproject",
+  },
+];
 
 // ── RealtimeSession ──────────────────────────────────────────────────────────
 
@@ -239,11 +244,37 @@ export class RealtimeSession {
           appId: APP_ID,
           password: this.roomPassword,
           relayUrls: TRACKER_URLS,
-          rtcConfig: RTC_CONFIG,
+          turnConfig: TURN_SERVERS,
         },
         this.roomId,
       );
       log("trysteroJoinRoom() succeeded, room created");
+
+      // Log tracker WebSocket states
+      const sockets = getRelaySockets();
+      for (const [url, socketP] of Object.entries(sockets)) {
+        socketP.then((socket: WebSocket) => {
+          log("tracker socket ready:", url, "state=", socket.readyState);
+          const origOnMessage = socket.onmessage;
+          socket.onmessage = (ev) => {
+            try {
+              const data = JSON.parse(ev.data as string);
+              if (data.offer) {
+                log("tracker RECV offer from", data.peer_id, "via", url);
+              } else if (data.answer) {
+                log("tracker RECV answer from", data.peer_id, "via", url);
+              } else if (data["failure reason"]) {
+                log("tracker FAILURE:", data["failure reason"], "from", url);
+              }
+            } catch {
+              /* binary or non-json */
+            }
+            if (origOnMessage) origOnMessage.call(socket, ev);
+          };
+          socket.onclose = () => log("tracker socket CLOSED:", url);
+          socket.onerror = (e) => log("tracker socket ERROR:", url, e);
+        });
+      }
     } catch (err) {
       log("trysteroJoinRoom() FAILED:", err);
       this.scheduleReconnect();
