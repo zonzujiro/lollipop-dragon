@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useMemo, useState } from "react";
 import { useAppStore } from "../store";
 import { CommentCard } from "./CommentCard";
 import { peerColor, initials } from "./PresenceBar";
 import type { Comment, CommentType } from "../types/criticmarkup";
+import type { PeerComment } from "../types/share";
 
 const COMMENT_TYPES: CommentType[] = [
   "note",
@@ -124,6 +125,10 @@ export function CommentMargin({
   const setActiveId = useAppStore((s) => s.setActiveCommentId);
   const rtPeers = useAppStore((s) => s.rtPeers);
   const rtStatus = useAppStore((s) => s.rtStatus);
+  const pendingComments = useAppStore((s) => s.pendingComments);
+  const rtDocId = useAppStore((s) => s.rtDocId);
+  const activeFilePath = useAppStore((s) => s.activeFilePath);
+  const fileName = useAppStore((s) => s.fileName);
   const [blockTops, setBlockTops] = useState<Map<number, number>>(new Map());
   // 'resolved' means the comments are gone from the file — no dots to show.
   // 'pending' is the same as 'all' for current (still-in-file) comments.
@@ -137,6 +142,24 @@ export function CommentMargin({
       : allComments.filter((c) => c.type === commentFilter);
   const [groups, setGroups] = useState<DotGroup[]>([]);
   const measureRef = useRef<() => void>(() => {});
+
+  // Peer comments for the current file, grouped by blockIndex
+  const peerDotGroups = useMemo(() => {
+    if (!rtDocId) return new Map<number, PeerComment[]>();
+    const all = pendingComments[rtDocId] ?? [];
+    const currentPath = activeFilePath ?? fileName ?? "";
+    const forFile = currentPath
+      ? all.filter((c) => c.path === currentPath)
+      : all;
+    const byBlock = new Map<number, PeerComment[]>();
+    for (const c of forFile) {
+      const idx = c.blockRef.blockIndex;
+      const arr = byBlock.get(idx) ?? [];
+      arr.push(c);
+      byBlock.set(idx, arr);
+    }
+    return byBlock;
+  }, [pendingComments, rtDocId, activeFilePath, fileName]);
 
   // Close card when clicking outside
   useEffect(() => {
@@ -246,6 +269,10 @@ export function CommentMargin({
       {groups.map(({ top, comments: groupComments }, i) => {
         const activeComment =
           groupComments.find((c) => c.id === activeId) ?? null;
+        // Find peer comments for the same block
+        const blockIdx = groupComments[0]?.blockIndex;
+        const peerForBlock =
+          blockIdx !== undefined ? peerDotGroups.get(blockIdx) ?? [] : [];
         return (
           <div key={i}>
             <div className="comment-margin__dots" style={{ top }}>
@@ -262,6 +289,24 @@ export function CommentMargin({
                   }}
                 />
               ))}
+              {peerForBlock.map((pc) => (
+                <button
+                  key={pc.id}
+                  className="comment-margin__peer-dot"
+                  style={{ backgroundColor: peerColor(pc.peerName) }}
+                  title={`${pc.peerName}: ${pc.text}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    document
+                      .querySelector(
+                        `[data-block-index="${pc.blockRef.blockIndex}"]`,
+                      )
+                      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }}
+                >
+                  {initials(pc.peerName)[0]}
+                </button>
+              ))}
             </div>
             {activeComment && (
               <CommentCard
@@ -277,6 +322,38 @@ export function CommentMargin({
                 }}
               />
             )}
+          </div>
+        );
+      })}
+      {/* Peer-only blocks (no host comments at this block) */}
+      {Array.from(peerDotGroups.entries()).map(([blockIdx, peerComments]) => {
+        // Skip blocks already rendered with host groups
+        if (groups.some((g) => g.comments[0]?.blockIndex === blockIdx))
+          return null;
+        const top = blockTops.get(blockIdx);
+        if (top == null) return null;
+        return (
+          <div key={`peer-${blockIdx}`}>
+            <div className="comment-margin__dots" style={{ top }}>
+              {peerComments.map((pc) => (
+                <button
+                  key={pc.id}
+                  className="comment-margin__peer-dot"
+                  style={{ backgroundColor: peerColor(pc.peerName) }}
+                  title={`${pc.peerName}: ${pc.text}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    document
+                      .querySelector(
+                        `[data-block-index="${pc.blockRef.blockIndex}"]`,
+                      )
+                      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }}
+                >
+                  {initials(pc.peerName)[0]}
+                </button>
+              ))}
+            </div>
           </div>
         );
       })}
