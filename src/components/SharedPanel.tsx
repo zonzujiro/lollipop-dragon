@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAppStore } from "../store";
 import { PendingCommentReview } from "./PendingCommentReview";
-import { docIdToRoomId } from "../services/realtime";
+import { buildShareUrlFromOrigin } from "../utils/shareUrl";
 
 function formatExpiry(expiresAt: string): string {
   const diff = new Date(expiresAt).getTime() - Date.now();
@@ -118,10 +118,11 @@ export function SharedPanel() {
                   <button
                     className="shared-panel__btn"
                     onClick={() => {
-                      const base =
-                        window.location.origin + window.location.pathname;
-                      const roomId = docIdToRoomId(share.docId);
-                      const url = `${base}#share=${share.docId}&key=${share.keyB64}&room=${roomId}&pwd=${share.roomPassword}`;
+                      const url = buildShareUrlFromOrigin({
+                        docId: share.docId,
+                        keyB64: share.keyB64,
+                        roomPwd: share.roomPassword,
+                      });
                       navigator.clipboard
                         .writeText(url)
                         .then(() => showToast("Link copied"));

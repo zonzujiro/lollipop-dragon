@@ -23,6 +23,7 @@ import {
   docIdToRoomId,
   generateRoomPassword,
 } from "../services/realtime";
+import { buildShareUrlFromOrigin, parseShareHash } from "../utils/shareUrl";
 import type { ConnectionStatus, PeerInfo } from "../services/realtime";
 import type { FileTreeNode, FileNode, DirectoryNode } from "../types/fileTree";
 import type { Comment, CommentType } from "../types/criticmarkup";
@@ -617,13 +618,11 @@ export const useAppStore = create<AppState>()(
         const shares = [...get().shares, record];
         saveShares(shares);
         set({ shares, shareKeys: { ...get().shareKeys, [docId]: key } });
-        const roomId = docIdToRoomId(docId);
 
         // Auto-connect host to the realtime room
         get().connectRealtime(docId, roomPwd);
 
-        const base = window.location.origin + window.location.pathname;
-        return `${base}#share=${docId}&key=${keyB64}&room=${roomId}&pwd=${roomPwd}`;
+        return buildShareUrlFromOrigin({ docId, keyB64, roomPwd });
       },
 
       revokeShare: async (docId) => {
@@ -817,11 +816,9 @@ export const useAppStore = create<AppState>()(
       },
 
       loadSharedContent: async () => {
-        const hash = window.location.hash.slice(1);
-        const params = new URLSearchParams(hash);
-        const docId = params.get("share");
-        const keyB64 = params.get("key");
-        if (!docId || !keyB64) return;
+        const parsed = parseShareHash();
+        if (!parsed) return;
+        const { docId, keyB64, roomId, roomPwd } = parsed;
         const storage = getStorage();
         if (!storage) return;
         try {
@@ -837,8 +834,6 @@ export const useAppStore = create<AppState>()(
             activeFilePath: firstPath ?? null,
           });
           // Auto-connect to realtime room if room params present
-          const roomId = params.get("room");
-          const roomPwd = params.get("pwd");
           if (roomId && roomPwd) {
             // Defer connect until peerName is set (handled by connectRealtime)
             set({ rtDocId: docId });
@@ -850,11 +845,9 @@ export const useAppStore = create<AppState>()(
       },
 
       postPeerComment: async (blockIndex, type, text, path) => {
-        const hash = window.location.hash.slice(1);
-        const params = new URLSearchParams(hash);
-        const docId = params.get("share");
-        const keyB64 = params.get("key");
-        if (!docId || !keyB64) return;
+        const parsed = parseShareHash();
+        if (!parsed) return;
+        const { docId, keyB64 } = parsed;
         const { peerName, rtSession } = get();
         const comment: PeerComment = {
           id: `c_${crypto.randomUUID()}`,

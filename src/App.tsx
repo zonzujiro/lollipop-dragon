@@ -11,6 +11,7 @@ import { UndoToast } from "./components/UndoToast";
 import { Toast } from "./components/Toast";
 import { PeerNamePrompt } from "./components/PeerNamePrompt";
 import { buildVirtualTree } from "./services/fileSystem";
+import { isShareHash, parseShareHash } from "./utils/shareUrl";
 import type {
   FileTreeNode,
   FileNode,
@@ -184,8 +185,7 @@ function App() {
   // Check for peer mode URL on mount and on hash change (same-tab navigation)
   useEffect(() => {
     function checkHash() {
-      const hash = window.location.hash;
-      if (hash.includes("share=") && hash.includes("key=") && WORKER_URL) {
+      if (isShareHash() && WORKER_URL) {
         loadSharedContent().finally(() => setPeerModeChecked(true));
       } else {
         setPeerModeChecked(true);
@@ -266,13 +266,9 @@ function App() {
   // v3: Auto-connect to realtime room when peer name is set and room params exist
   useEffect(() => {
     if (!peerName || !peerModeChecked) return;
-    const hash = window.location.hash.slice(1);
-    const params = new URLSearchParams(hash);
-    const docId = params.get("share");
-    const roomId = params.get("room");
-    const roomPwd = params.get("pwd");
-    if (docId && roomId && roomPwd) {
-      connectRealtime(docId, roomPwd);
+    const parsed = parseShareHash();
+    if (parsed && parsed.docId && parsed.roomId && parsed.roomPwd) {
+      connectRealtime(parsed.docId, parsed.roomPwd);
       return () => disconnectRealtime();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
