@@ -16,6 +16,7 @@ import { MermaidBlock } from "./MermaidBlock";
 import { CommentMargin } from "./CommentMargin";
 import { useAppStore } from "../store";
 import { parseCriticMarkup } from "../services/criticmarkup";
+import type { CommentType } from "../types/criticmarkup";
 import { assignBlockIndices } from "../services/blockIndex";
 
 // Singleton — created once, shared across all renders
@@ -136,7 +137,7 @@ export function MarkdownRenderer() {
     (blockIndex: number, type: string, text: string) => {
       addCommentAction(
         blockIndex,
-        type as import("../types/criticmarkup").CommentType,
+        type as CommentType,
         text,
       );
     },
@@ -148,7 +149,7 @@ export function MarkdownRenderer() {
       const path = activeFilePath ?? fileName ?? "";
       postPeerCommentAction(
         blockIndex,
-        type as import("../types/criticmarkup").CommentType,
+        type as CommentType,
         text,
         path,
       );
