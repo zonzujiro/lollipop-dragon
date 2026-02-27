@@ -705,9 +705,10 @@ body {
 
 .comment-panel__entry {
   display: flex;
+  flex-wrap: wrap;
   width: 100%;
-  align-items: flex-start;
-  gap: 0.4rem;
+  align-items: center;
+  gap: 0.25rem 0.4rem;
   padding: 0.45rem 0.75rem;
   background: none;
   border: none;
@@ -733,11 +734,10 @@ body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  margin-top: 0.1rem;
 }
 
 .comment-panel__text {
-  flex: 1;
+  width: 100%;
   font-size: 0.8rem;
   color: var(--text-secondary);
   line-height: 1.4;
@@ -753,7 +753,6 @@ body {
   font-size: 0.7rem;
   color: var(--text-muted);
   font-family: var(--font-mono);
-  margin-top: 0.15rem;
 }
 
 /* ── Cross-file comment panel ──────────────────────────────── */
@@ -802,7 +801,6 @@ body {
   align-items: center;
   gap: 0.2rem;
   flex-shrink: 0;
-  margin-left: auto;
 }
 
 .comment-panel__entry:hover .comment-panel__entry-actions {

@@ -83,11 +83,12 @@ export function CommentPanel({ peerMode = false }: Props) {
 
   const sourceComments = peerMode ? peerDisplayComments : comments;
 
-  // Build cross-file flat list for folder mode
+  // Build cross-file flat list for folder mode (only files with comments)
   const crossFileComments = useMemo(() => {
     if (!isFolderMode) return [];
-    const entries = Object.values(allFileComments);
-    // Sort entries by file path
+    const entries = Object.values(allFileComments).filter(
+      (e) => e.comments.length > 0,
+    );
     entries.sort((a, b) => a.filePath.localeCompare(b.filePath));
     return entries;
   }, [isFolderMode, allFileComments]);
@@ -454,7 +455,6 @@ function CommentEntry({
       >
         {comment.type}
       </span>
-      <span className="comment-panel__text">{displayText}</span>
       {comment.blockIndex !== undefined && (
         <span className="comment-panel__ref">¶{comment.blockIndex + 1}</span>
       )}
@@ -481,6 +481,7 @@ function CommentEntry({
           </button>
         </span>
       )}
+      <span className="comment-panel__text">{displayText}</span>
     </div>
   );
 }
@@ -606,6 +607,9 @@ function SingleFileList({
             >
               {c.type}
             </span>
+            {c.blockIndex !== undefined && (
+              <span className="comment-panel__ref">¶{c.blockIndex + 1}</span>
+            )}
             <span className="comment-panel__text comment-panel__text--resolved">
               {peerMode ? entryLabel(c) : hostEntryLabel(c as Comment)}
             </span>
@@ -623,10 +627,10 @@ function SingleFileList({
             >
               {c.type}
             </span>
-            <span className="comment-panel__text">{entryLabel(c)}</span>
             {c.blockIndex !== undefined && (
               <span className="comment-panel__ref">¶{c.blockIndex + 1}</span>
             )}
+            <span className="comment-panel__text">{entryLabel(c)}</span>
           </button>
         ) : (
           <CommentEntry

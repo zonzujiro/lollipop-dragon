@@ -195,9 +195,6 @@ export function Header({ peerMode = false, onShare }: Props) {
                         {totalPending}
                       </span>
                     )}
-                    {totalPending === 0 && shares.length > 0 && (
-                      <span className="app-header__badge">{shares.length}</span>
-                    )}
                   </button>
                 </>
               )}

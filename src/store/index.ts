@@ -334,7 +334,16 @@ export const useAppStore = create<AppState>()(
           }
         };
         await scanNodes(fileTree);
-        set({ allFileComments: result });
+        // Preserve the active file's entry set by setComments (source of
+        // truth for the currently-rendered file) — the scan is async and
+        // may complete after setComments already ran.
+        const { allFileComments: existing, activeFilePath, fileName } = get();
+        const activePath = activeFilePath ?? fileName;
+        const merged = { ...result };
+        if (activePath && existing[activePath]) {
+          merged[activePath] = existing[activePath];
+        }
+        set({ allFileComments: merged });
       },
 
       navigateToComment: (filePath, rawStart) => {
