@@ -29,7 +29,6 @@ export function SharedPanel() {
   const shares = useAppStore((s) => s.shares);
   const toggleSharedPanel = useAppStore((s) => s.toggleSharedPanel);
   const revokeShare = useAppStore((s) => s.revokeShare);
-  const updateShare = useAppStore((s) => s.updateShare);
   const fetchPendingComments = useAppStore((s) => s.fetchPendingComments);
   const pendingComments = useAppStore((s) => s.pendingComments);
 
@@ -37,8 +36,6 @@ export function SharedPanel() {
 
   const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
   const [loadingDocId, setLoadingDocId] = useState<string | null>(null);
-  const [updated, setUpdated] = useState<string | null>(null);
-
   async function handleFetch(docId: string) {
     setLoadingDocId(docId);
     try {
@@ -49,17 +46,6 @@ export function SharedPanel() {
     }
   }
 
-  async function handleUpdate(docId: string) {
-    setLoadingDocId(docId);
-    try {
-      await updateShare(docId);
-      setUpdated(docId);
-      showToast("Share updated");
-      setTimeout(() => setUpdated(null), 2000);
-    } finally {
-      setLoadingDocId(null);
-    }
-  }
 
   return (
     <aside className="shared-panel" aria-label="Shared documents">
@@ -140,15 +126,6 @@ export function SharedPanel() {
                   >
                     {isLoading ? "…" : "Check comments"}
                     {badge > 0 && !isLoading && ` (${badge})`}
-                  </button>
-
-                  <button
-                    className="shared-panel__btn"
-                    onClick={() => handleUpdate(share.docId)}
-                    disabled={isLoading}
-                    title="Re-encrypt current file state and update the shared content"
-                  >
-                    {updated === share.docId ? "Updated!" : "Update"}
                   </button>
 
                   <button

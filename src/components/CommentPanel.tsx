@@ -65,6 +65,8 @@ export function CommentPanel({ peerMode = false }: Props) {
   const navigateToComment = useAppStore((s) => s.navigateToComment);
   const editComment = useAppStore((s) => s.editComment);
   const deleteComment = useAppStore((s) => s.deleteComment);
+  const editPeerComment = useAppStore((s) => s.editPeerComment);
+  const deletePeerComment = useAppStore((s) => s.deletePeerComment);
 
   const isFolderMode = fileTree.length > 0 && !peerMode;
 
@@ -282,8 +284,8 @@ export function CommentPanel({ peerMode = false }: Props) {
             onEntryClick={handleEntryClick}
             entryLabel={entryLabel}
             hostEntryLabel={hostEntryLabel}
-            onEdit={editComment}
-            onDelete={deleteComment}
+            onEdit={peerMode ? editPeerComment : editComment}
+            onDelete={peerMode ? deletePeerComment : deleteComment}
           />
         )}
       </div>
@@ -298,7 +300,7 @@ function InlineEditForm({
   onSave,
   onCancel,
 }: {
-  comment: Comment;
+  comment: { type: CommentType; text: string };
   onSave: (type: CommentType, text: string) => void;
   onCancel: () => void;
 }) {
@@ -393,7 +395,7 @@ function CommentEntry({
   onEdit,
   onDelete,
 }: {
-  comment: Comment;
+  comment: Comment | DisplayComment;
   isActive: boolean;
   isOtherFile: boolean;
   canEdit: boolean;
@@ -404,10 +406,12 @@ function CommentEntry({
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
-  const label = comment.text || comment.highlightedText || comment.from || "";
+  const full = comment as Comment;
+  const label = comment.text || full.highlightedText || full.from || "";
   const displayText = label.length > 72 ? label.slice(0, 72) + "…" : label;
   const isEditable =
-    canEdit && EDITABLE_CRITIC_TYPES.includes(comment.criticType);
+    canEdit &&
+    (!full.criticType || EDITABLE_CRITIC_TYPES.includes(full.criticType));
 
   if (editing) {
     return (
@@ -502,8 +506,8 @@ function CrossFileList({
   activeCommentId: string | null;
   onEntryClick: (id: string, blockIndex: number | undefined) => void;
   onCrossFileClick: (filePath: string, rawStart: number) => void;
-  onEdit: (id: string, type: CommentType, text: string) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
+  onEdit: (id: string, type: CommentType, text: string) => void;
+  onDelete: (id: string) => void;
 }) {
   const totalCount = entries.reduce((sum, e) => sum + e.comments.length, 0);
 
@@ -572,8 +576,8 @@ function SingleFileList({
   onEntryClick: (id: string, blockIndex: number | undefined) => void;
   entryLabel: (c: DisplayComment) => string;
   hostEntryLabel: (c: Comment) => string;
-  onEdit: (id: string, type: CommentType, text: string) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
+  onEdit: (id: string, type: CommentType, text: string) => void;
+  onDelete: (id: string) => void;
 }) {
   if (visible.length === 0) {
     return (
@@ -614,28 +618,10 @@ function SingleFileList({
               {peerMode ? entryLabel(c) : hostEntryLabel(c as Comment)}
             </span>
           </div>
-        ) : peerMode ? (
-          <button
-            key={c.id}
-            data-comment-id={c.id}
-            className={`comment-panel__entry${activeCommentId === c.id ? " comment-panel__entry--active" : ""}`}
-            onClick={() => onEntryClick(c.id, c.blockIndex)}
-          >
-            <span
-              className="comment-panel__badge"
-              style={{ backgroundColor: TYPE_COLOR[c.type], color: "#fff" }}
-            >
-              {c.type}
-            </span>
-            {c.blockIndex !== undefined && (
-              <span className="comment-panel__ref">¶{c.blockIndex + 1}</span>
-            )}
-            <span className="comment-panel__text">{entryLabel(c)}</span>
-          </button>
         ) : (
           <CommentEntry
             key={c.id}
-            comment={c as Comment}
+            comment={c}
             isActive={activeCommentId === c.id}
             isOtherFile={false}
             canEdit={true}

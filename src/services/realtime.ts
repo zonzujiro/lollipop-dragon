@@ -290,6 +290,9 @@ export class RealtimeSession {
         );
       });
 
+      // Broadcast awareness immediately so existing peers discover us
+      this.broadcastAwareness();
+
       // Start periodic awareness broadcast
       this.awarenessTimer = setInterval(() => {
         this.broadcastAwareness();

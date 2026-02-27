@@ -73,10 +73,9 @@ describe('SharedPanel — share list', () => {
     expect(screen.queryByTitle(/0 pending/)).not.toBeInTheDocument()
   })
 
-  it('shows Check comments, Update, and Revoke buttons', () => {
+  it('shows Check comments and Revoke buttons', () => {
     render(<SharedPanel />)
     expect(screen.getByRole('button', { name: /Check comments/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Update/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Revoke/ })).toBeInTheDocument()
   })
 

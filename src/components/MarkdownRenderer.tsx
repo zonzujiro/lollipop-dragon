@@ -183,18 +183,29 @@ export function MarkdownRenderer() {
   useEffect(() => {
     if (!pendingScrollTarget) return;
     if (pendingScrollTarget.filePath !== activeFilePath) return;
-    const target = comments.find(
-      (c) => c.rawStart === pendingScrollTarget.rawStart,
-    );
-    if (target) {
-      setActiveCommentId(target.id);
-      // Delay scroll slightly to let the DOM render
+
+    let scrollBlock: number | undefined;
+
+    if (pendingScrollTarget.rawStart !== undefined) {
+      // Host cross-file: find comment by rawStart
+      const target = comments.find(
+        (c) => c.rawStart === pendingScrollTarget.rawStart,
+      );
+      if (target) {
+        setActiveCommentId(target.id);
+        scrollBlock = target.blockIndex;
+      }
+    } else if (pendingScrollTarget.blockIndex !== undefined) {
+      // Pending comment navigation: scroll directly to block
+      scrollBlock = pendingScrollTarget.blockIndex;
+    }
+
+    if (scrollBlock !== undefined) {
+      const bi = scrollBlock;
       requestAnimationFrame(() => {
-        if (target.blockIndex !== undefined) {
-          document
-            .querySelector(`[data-block-index="${target.blockIndex}"]`)
-            ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-        }
+        document
+          .querySelector(`[data-block-index="${bi}"]`)
+          ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       });
     }
     clearPendingScrollTarget();

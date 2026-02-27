@@ -70,7 +70,11 @@ interface AppState {
 
   // Cross-file comment cache
   allFileComments: Record<string, FileCommentEntry>;
-  pendingScrollTarget: { filePath: string; rawStart: number } | null;
+  pendingScrollTarget: {
+    filePath: string;
+    rawStart?: number;
+    blockIndex?: number;
+  } | null;
 
   // UI
   theme: "light" | "dark";
@@ -127,6 +131,7 @@ interface AppState {
   dismissToast: () => void;
   scanAllFileComments: () => Promise<void>;
   navigateToComment: (filePath: string, rawStart: number) => void;
+  navigateToBlock: (filePath: string, blockIndex: number) => void;
   clearPendingScrollTarget: () => void;
   restoreRealtimeSessions: () => Promise<void>;
 
@@ -154,6 +159,8 @@ interface AppState {
     text: string,
     path: string,
   ) => Promise<void>;
+  deletePeerComment: (commentId: string) => void;
+  editPeerComment: (commentId: string, type: CommentType, text: string) => void;
 
   // Auto-sync
   syncActiveShares: () => Promise<void>;
@@ -385,6 +392,32 @@ export const useAppStore = create<AppState>()(
         const fileNode = findFileNode(fileTree);
         if (fileNode) {
           set({ pendingScrollTarget: { filePath, rawStart } });
+          get().selectFile(fileNode);
+        }
+      },
+
+      navigateToBlock: (filePath, blockIndex) => {
+        const { activeFilePath, fileTree } = get();
+        if (filePath === activeFilePath) {
+          scrollToBlock(blockIndex);
+          return;
+        }
+        // Different file — find the FileNode, set pending scroll target, then selectFile
+        const findFileNode = (nodes: FileTreeNode[]): FileNode | null => {
+          for (const node of nodes) {
+            if (node.kind === "file" && node.path === filePath) {
+              return node as FileNode;
+            }
+            if (node.kind === "directory") {
+              const found = findFileNode((node as DirectoryNode).children);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+        const fileNode = findFileNode(fileTree);
+        if (fileNode) {
+          set({ pendingScrollTarget: { filePath, blockIndex } });
           get().selectFile(fileNode);
         }
       },
@@ -871,6 +904,26 @@ export const useAppStore = create<AppState>()(
         if (storage) {
           const key = get().shareKeys[docId] ?? (await base64urlToKey(keyB64));
           await storage.postComment(docId, comment, key);
+        }
+      },
+
+      deletePeerComment: (commentId) => {
+        const { myPeerComments, rtSession } = get();
+        set({
+          myPeerComments: myPeerComments.filter((c) => c.id !== commentId),
+        });
+        if (rtSession) rtSession.removeComment(commentId);
+      },
+
+      editPeerComment: (commentId, type, text) => {
+        const { myPeerComments, rtSession } = get();
+        const updated = myPeerComments.map((c) =>
+          c.id === commentId ? { ...c, commentType: type, text } : c,
+        );
+        set({ myPeerComments: updated });
+        if (rtSession) {
+          const comment = updated.find((c) => c.id === commentId);
+          if (comment) rtSession.addComment(comment);
         }
       },
 
