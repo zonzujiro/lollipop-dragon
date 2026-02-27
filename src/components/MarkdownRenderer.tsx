@@ -94,6 +94,7 @@ export function MarkdownRenderer() {
   const isPeerMode = useAppStore((s) => s.isPeerMode);
   const fileName = useAppStore((s) => s.fileName);
   const activeFilePath = useAppStore((s) => s.activeFilePath);
+  const setRealtimeAwareness = useAppStore((s) => s.setRealtimeAwareness);
   const pendingScrollTarget = useAppStore((s) => s.pendingScrollTarget);
   const clearPendingScrollTarget = useAppStore(
     (s) => s.clearPendingScrollTarget,
@@ -147,6 +148,12 @@ export function MarkdownRenderer() {
     },
     [postPeerCommentAction, activeFilePath, fileName],
   );
+
+  // Broadcast hovered block as focusedBlock to peers
+  useEffect(() => {
+    const file = activeFilePath ?? fileName ?? null;
+    setRealtimeAwareness(file, hoveredBlock?.index ?? null);
+  }, [hoveredBlock, activeFilePath, fileName, setRealtimeAwareness]);
 
   useEffect(() => {
     getHighlighter().then(setHighlighter);

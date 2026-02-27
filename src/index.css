@@ -1115,6 +1115,25 @@ body {
   color: var(--accent);
 }
 
+.comment-margin__cursor {
+  position: absolute;
+  left: 0.25rem;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.75;
+  pointer-events: none;
+  transition:
+    top 0.2s ease,
+    opacity 0.2s ease;
+}
+
 /* ── Add comment form ────────────────────────────────────────── */
 .comment-add-form {
   position: absolute;
