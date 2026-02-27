@@ -101,6 +101,7 @@ export function MarkdownRenderer() {
   );
   const setActiveCommentId = useAppStore((s) => s.setActiveCommentId);
   const writeAllowed = useAppStore((s) => s.writeAllowed);
+  const rtStatus = useAppStore((s) => s.rtStatus);
   const [highlighter, setHighlighter] = useState<Highlighter | null>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
   const [hoveredBlock, setHoveredBlock] = useState<{
@@ -108,9 +109,15 @@ export function MarkdownRenderer() {
     top: number;
   } | null>(null);
 
+  // Track hovered block for comment "+" button AND peer awareness.
+  // The "+" button only shows when writeAllowed || isPeerMode, but we
+  // always track hover when connected so peers see cursor indicators.
+  const canComment = writeAllowed || isPeerMode;
+  const shouldTrackHover = canComment || rtStatus === "connected";
+
   const handleBodyMouseOver = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!writeAllowed && !isPeerMode) return;
+      if (!shouldTrackHover) return;
       const block = (e.target as HTMLElement).closest(
         "[data-block-index]",
       ) as HTMLElement | null;
@@ -120,7 +127,7 @@ export function MarkdownRenderer() {
         top: block.offsetTop,
       });
     },
-    [writeAllowed],
+    [shouldTrackHover],
   );
 
   const handleBodyMouseLeave = useCallback(() => setHoveredBlock(null), []);
@@ -223,7 +230,7 @@ export function MarkdownRenderer() {
       >
         <CommentMargin
           containerRef={viewerRef}
-          hoveredBlock={hoveredBlock}
+          hoveredBlock={canComment ? hoveredBlock : null}
           onAddComment={handleAddComment}
           peerMode={isPeerMode}
           onPostPeerComment={handlePostPeerComment}
