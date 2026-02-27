@@ -18,8 +18,7 @@ import type {
   DirectoryNode,
   SidebarTreeNode,
 } from "./types/fileTree";
-
-const WORKER_URL = import.meta.env.VITE_WORKER_URL as string | undefined;
+import { WORKER_URL } from "./config";
 
 function findFileNode(tree: FileTreeNode[], path: string): FileNode | null {
   for (const node of tree) {

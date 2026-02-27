@@ -28,8 +28,7 @@ import type { ConnectionStatus, PeerInfo } from "../services/realtime";
 import type { FileTreeNode, FileNode, DirectoryNode } from "../types/fileTree";
 import type { Comment, CommentType } from "../types/criticmarkup";
 import type { ShareRecord, SharePayload, PeerComment } from "../types/share";
-
-const WORKER_URL = import.meta.env.VITE_WORKER_URL as string | undefined;
+import { WORKER_URL } from "../config";
 const SHARES_KEY = "markreview-shares";
 
 function loadShares(): ShareRecord[] {

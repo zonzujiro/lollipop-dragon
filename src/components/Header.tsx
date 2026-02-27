@@ -1,8 +1,7 @@
 import { useAppStore } from "../store";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { PresenceBar } from "./PresenceBar";
-
-const WORKER_URL = import.meta.env.VITE_WORKER_URL as string | undefined;
+import { WORKER_URL } from "../config";
 
 function SunIcon() {
   return (
