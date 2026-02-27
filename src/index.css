@@ -1669,17 +1669,6 @@ body {
   }
 }
 
-/* ── v2: Token additions ──────────────────────────────────────── */
-:root {
-  --color-fix: var(--c-red);
-  --color-rewrite: var(--c-orange);
-  --color-expand: var(--accent);
-  --color-clarify: var(--c-purple);
-  --color-question: var(--c-cyan);
-  --color-remove: var(--text-muted);
-  --color-note: var(--c-green);
-}
-
 /* ── Peer badge in header ─────────────────────────────────────── */
 .app-header__peer-badge {
   font-size: 0.6875rem;

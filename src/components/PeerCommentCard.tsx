@@ -2,13 +2,13 @@ import { useAppStore } from '../store'
 import type { PeerComment } from '../types/share'
 
 const TYPE_COLORS: Record<string, string> = {
-  fix: 'var(--color-fix)',
-  rewrite: 'var(--color-rewrite)',
-  expand: 'var(--color-expand)',
-  clarify: 'var(--color-clarify)',
-  question: 'var(--color-question)',
-  remove: 'var(--color-remove)',
-  note: 'var(--color-note)',
+  fix: 'var(--c-red)',
+  rewrite: 'var(--c-orange)',
+  expand: 'var(--accent)',
+  clarify: 'var(--c-purple)',
+  question: 'var(--c-cyan)',
+  remove: 'var(--text-muted)',
+  note: 'var(--c-green)',
 }
 
 interface Props {
