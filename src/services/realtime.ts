@@ -251,29 +251,38 @@ export class RealtimeSession {
       log("trysteroJoinRoom() succeeded, room created");
 
       // Log tracker WebSocket states
-      const sockets = getRelaySockets();
-      for (const [url, socketP] of Object.entries(sockets)) {
-        socketP.then((socket: WebSocket) => {
-          log("tracker socket ready:", url, "state=", socket.readyState);
-          const origOnMessage = socket.onmessage;
-          socket.onmessage = (ev) => {
-            try {
-              const data = JSON.parse(ev.data as string);
-              if (data.offer) {
-                log("tracker RECV offer from", data.peer_id, "via", url);
-              } else if (data.answer) {
-                log("tracker RECV answer from", data.peer_id, "via", url);
-              } else if (data["failure reason"]) {
-                log("tracker FAILURE:", data["failure reason"], "from", url);
+      try {
+        const sockets = getRelaySockets();
+        for (const [url, socketOrPromise] of Object.entries(sockets)) {
+          const attach = (socket: WebSocket) => {
+            log("tracker socket:", url, "readyState=", socket.readyState);
+            const origOnMessage = socket.onmessage;
+            socket.onmessage = (ev) => {
+              try {
+                const data = JSON.parse(ev.data as string);
+                if (data.offer) {
+                  log("tracker RECV offer from", data.peer_id, "via", url);
+                } else if (data.answer) {
+                  log("tracker RECV answer from", data.peer_id, "via", url);
+                } else if (data["failure reason"]) {
+                  log("tracker FAILURE:", data["failure reason"], "from", url);
+                }
+              } catch {
+                /* binary or non-json */
               }
-            } catch {
-              /* binary or non-json */
-            }
-            if (origOnMessage) origOnMessage.call(socket, ev);
+              if (origOnMessage) origOnMessage.call(socket, ev);
+            };
+            socket.onclose = () => log("tracker socket CLOSED:", url);
+            socket.onerror = (e) => log("tracker socket ERROR:", url, e);
           };
-          socket.onclose = () => log("tracker socket CLOSED:", url);
-          socket.onerror = (e) => log("tracker socket ERROR:", url, e);
-        });
+          if (socketOrPromise && typeof (socketOrPromise as Promise<WebSocket>).then === "function") {
+            (socketOrPromise as Promise<WebSocket>).then(attach);
+          } else {
+            attach(socketOrPromise as WebSocket);
+          }
+        }
+      } catch (e) {
+        log("getRelaySockets() failed:", e);
       }
     } catch (err) {
       log("trysteroJoinRoom() FAILED:", err);
