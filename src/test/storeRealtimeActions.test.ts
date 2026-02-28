@@ -10,6 +10,7 @@ vi.mock('trystero/nostr', () => ({
     leave: vi.fn().mockResolvedValue(undefined),
     getPeers: vi.fn(() => ({})),
   })),
+  getRelaySockets: vi.fn(() => ({})),
   selfId: 'test-self-id',
 }))
 

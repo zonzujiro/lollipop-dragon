@@ -659,9 +659,15 @@ export const useAppStore = create<AppState>()(
 
       revokeShare: async (docId) => {
         const storage = getStorage();
-        const { shares } = get();
+        const { shares, rtDocId } = get();
         const record = shares.find((s) => s.docId === docId);
         if (!record) return;
+
+        // Disconnect realtime if this share's session is active
+        if (rtDocId === docId) {
+          get().disconnectRealtime();
+        }
+
         try {
           await storage?.deleteContent(docId, record.hostSecret);
         } catch {

@@ -8,7 +8,7 @@ import {
   joinRoom as trysteroJoinRoom,
   getRelaySockets,
   selfId,
-} from "trystero/torrent";
+} from "trystero/nostr";
 import type { Room } from "trystero";
 import * as Y from "yjs";
 import type { PeerComment } from "../types/share";
@@ -45,33 +45,71 @@ const MAX_RETRIES = 3;
 
 const log = (...args: unknown[]) => console.log("[rt]", ...args);
 
-// Use all 4 default Trystero torrent trackers for better peer discovery
-const TRACKER_URLS = [
-  "wss://tracker.webtorrent.dev",
-  "wss://tracker.openwebtorrent.com",
-  "wss://tracker.btorrent.xyz",
-  "wss://tracker.files.fm:7073/announce",
-];
+// ICE servers: Google STUN + Cloudflare STUN + free TURN relay for NAT traversal
+const RTC_CONFIG: RTCConfiguration = {
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun.cloudflare.com:3478" },
+    {
+      urls: "turn:openrelay.metered.ca:80",
+      username: "openrelayproject",
+      credential: "openrelayproject",
+    },
+    {
+      urls: "turn:openrelay.metered.ca:443",
+      username: "openrelayproject",
+      credential: "openrelayproject",
+    },
+    {
+      urls: "turn:openrelay.metered.ca:443?transport=tcp",
+      username: "openrelayproject",
+      credential: "openrelayproject",
+    },
+  ],
+};
 
-// TURN servers for NAT traversal — passed via turnConfig so they're
-// appended to Trystero's default STUN servers instead of replacing them
-const TURN_SERVERS: RTCIceServer[] = [
-  {
-    urls: "turn:openrelay.metered.ca:80",
-    username: "openrelayproject",
-    credential: "openrelayproject",
-  },
-  {
-    urls: "turn:openrelay.metered.ca:443",
-    username: "openrelayproject",
-    credential: "openrelayproject",
-  },
-  {
-    urls: "turn:openrelay.metered.ca:443?transport=tcp",
-    username: "openrelayproject",
-    credential: "openrelayproject",
-  },
-];
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+const COMMENT_TYPES: ReadonlySet<string> = new Set([
+  "note",
+  "fix",
+  "rewrite",
+  "expand",
+  "clarify",
+  "question",
+  "remove",
+]);
+
+function isCommentType(value: unknown): value is CommentType {
+  return typeof value === "string" && COMMENT_TYPES.has(value);
+}
+
+function getString(obj: Record<string, unknown>, key: string): string {
+  const v = obj[key];
+  return typeof v === "string" ? v : "";
+}
+
+function getNumber(obj: Record<string, unknown>, key: string): number {
+  const v = obj[key];
+  return typeof v === "number" ? v : 0;
+}
+
+function getStringOrNull(
+  obj: Record<string, unknown>,
+  key: string,
+): string | null {
+  const v = obj[key];
+  return typeof v === "string" ? v : null;
+}
+
+function getNumberOrNull(
+  obj: Record<string, unknown>,
+  key: string,
+): number | null {
+  const v = obj[key];
+  return typeof v === "number" ? v : null;
+}
 
 // ── RealtimeSession ──────────────────────────────────────────────────────────
 
@@ -98,9 +136,6 @@ export class RealtimeSession {
     | ((data: Record<string, unknown>) => Promise<void[]>)
     | null = null;
   private sendContentUpdated: ((data: string) => Promise<void[]>) | null = null;
-
-  // Track applied remote updates to avoid echo
-  private appliedRemoteUpdates = new WeakSet<Uint8Array>();
 
   constructor(
     roomId: string,
@@ -237,53 +272,20 @@ export class RealtimeSession {
   // ── Private ──────────────────────────────────────────────────────────────
 
   private joinTrysteroRoom(): void {
-    log("joinTrysteroRoom() roomId=", this.roomId, "trackers=", TRACKER_URLS);
+    log("joinTrysteroRoom() roomId=", this.roomId);
     try {
       this.room = trysteroJoinRoom(
         {
           appId: APP_ID,
           password: this.roomPassword,
-          relayUrls: TRACKER_URLS,
-          turnConfig: TURN_SERVERS,
+          rtcConfig: RTC_CONFIG,
         },
         this.roomId,
       );
       log("trysteroJoinRoom() succeeded, room created");
 
-      // Log tracker WebSocket states
-      try {
-        const sockets = getRelaySockets();
-        for (const [url, socketOrPromise] of Object.entries(sockets)) {
-          const attach = (socket: WebSocket) => {
-            log("tracker socket:", url, "readyState=", socket.readyState);
-            const origOnMessage = socket.onmessage;
-            socket.onmessage = (ev) => {
-              try {
-                const data = JSON.parse(ev.data as string);
-                if (data.offer) {
-                  log("tracker RECV offer from", data.peer_id, "via", url);
-                } else if (data.answer) {
-                  log("tracker RECV answer from", data.peer_id, "via", url);
-                } else if (data["failure reason"]) {
-                  log("tracker FAILURE:", data["failure reason"], "from", url);
-                }
-              } catch {
-                /* binary or non-json */
-              }
-              if (origOnMessage) origOnMessage.call(socket, ev);
-            };
-            socket.onclose = () => log("tracker socket CLOSED:", url);
-            socket.onerror = (e) => log("tracker socket ERROR:", url, e);
-          };
-          if (socketOrPromise && typeof (socketOrPromise as Promise<WebSocket>).then === "function") {
-            (socketOrPromise as Promise<WebSocket>).then(attach);
-          } else {
-            attach(socketOrPromise as WebSocket);
-          }
-        }
-      } catch (e) {
-        log("getRelaySockets() failed:", e);
-      }
+      // Log relay WebSocket states
+      this.attachRelayLogs();
     } catch (err) {
       log("trysteroJoinRoom() FAILED:", err);
       this.scheduleReconnect();
@@ -331,9 +333,9 @@ export class RealtimeSession {
         log("recv awareness from", peerId, "data=", data);
         this.awarenessState.set(peerId, {
           peerId,
-          name: (data.name as string) ?? "Anonymous",
-          activeFile: (data.activeFile as string | null) ?? null,
-          focusedBlock: (data.focusedBlock as number | null) ?? null,
+          name: getString(data, "name") || "Anonymous",
+          activeFile: getStringOrNull(data, "activeFile"),
+          focusedBlock: getNumberOrNull(data, "focusedBlock"),
         });
         this.callbacks.onConnectionChange("connected", this.getPeers());
       });
@@ -388,6 +390,21 @@ export class RealtimeSession {
     }
   }
 
+  private attachRelayLogs(): void {
+    try {
+      const sockets = getRelaySockets();
+      const urls = Object.keys(sockets);
+      log("relay sockets:", urls.length, "relays");
+      for (const [url, socket] of Object.entries(sockets)) {
+        log("relay:", url, "readyState=", socket.readyState);
+        socket.onclose = () => log("relay CLOSED:", url);
+        socket.onerror = (e) => log("relay ERROR:", url, e);
+      }
+    } catch (e) {
+      log("getRelaySockets() failed:", e);
+    }
+  }
+
   private broadcastAwareness(): void {
     if (!this.sendAwareness) return;
     this.sendAwareness({
@@ -401,18 +418,20 @@ export class RealtimeSession {
     id: string,
     raw: Record<string, unknown>,
   ): PeerComment | null {
-    if (!raw.peerName || !raw.path) return null;
+    const peerName = getString(raw, "peerName");
+    const path = getString(raw, "path");
+    if (!peerName || !path) return null;
     return {
       id,
-      peerName: raw.peerName as string,
-      path: raw.path as string,
+      peerName,
+      path,
       blockRef: {
-        blockIndex: (raw.blockIndex as number) ?? 0,
-        contentPreview: (raw.contentPreview as string) ?? "",
+        blockIndex: getNumber(raw, "blockIndex"),
+        contentPreview: getString(raw, "contentPreview"),
       },
-      commentType: (raw.commentType as CommentType) ?? "note",
-      text: (raw.text as string) ?? "",
-      createdAt: (raw.createdAt as string) ?? new Date().toISOString(),
+      commentType: isCommentType(raw.commentType) ? raw.commentType : "note",
+      text: getString(raw, "text"),
+      createdAt: getString(raw, "createdAt") || new Date().toISOString(),
     };
   }
 
