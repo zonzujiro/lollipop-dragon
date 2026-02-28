@@ -6,6 +6,7 @@ interface Env {
 interface ShareMeta {
   hostSecretHash: string;
   createdAt: string;
+  updatedAt?: string;
   ttl: number;
   label: string;
 }
@@ -15,8 +16,9 @@ interface ShareMeta {
 function corsHeaders(origin: string) {
   return {
     "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, HEAD, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, X-Host-Secret",
+    "Access-Control-Expose-Headers": "Last-Modified, X-Comment-Count",
   };
 }
 
@@ -98,11 +100,13 @@ export default {
         await env.LOLLIPOP_DRAGON.put(`share:${id}`, blob, {
           expirationTtl: ttl,
         });
+        const now = new Date().toISOString();
         await env.LOLLIPOP_DRAGON.put(
           `share:${id}:meta`,
           JSON.stringify({
             hostSecretHash,
-            createdAt: new Date().toISOString(),
+            createdAt: now,
+            updatedAt: now,
             ttl,
             label,
           } satisfies ShareMeta),
@@ -142,7 +146,23 @@ export default {
         await env.LOLLIPOP_DRAGON.put(`share:${docId}`, blob, {
           expirationTtl: remainingTtl,
         });
+        const updatedMeta: ShareMeta = { ...meta, updatedAt: new Date().toISOString() };
+        await env.LOLLIPOP_DRAGON.put(
+          `share:${docId}:meta`,
+          JSON.stringify(updatedMeta),
+          { expirationTtl: remainingTtl },
+        );
         return jsonRes({ ok: true }, cors);
+      }
+
+      // HEAD /share/:docId  — cheap content-updated check
+      if (req.method === "HEAD" && docId) {
+        const meta = await getMeta(env, docId);
+        if (!meta) return new Response(null, { status: 404, headers: cors });
+        return new Response(null, {
+          status: 200,
+          headers: { ...cors, "Last-Modified": meta.updatedAt ?? meta.createdAt },
+        });
       }
 
       // DELETE /share/:docId  — revoke share
@@ -183,6 +203,17 @@ export default {
           .filter((b): b is ArrayBuffer => b !== null)
           .map((b) => btoa(String.fromCharCode(...new Uint8Array(b))));
         return jsonRes(encoded, cors);
+      }
+
+      // HEAD /comments/:docId  — cheap comment-count check
+      if (req.method === "HEAD") {
+        const list = await env.LOLLIPOP_DRAGON.list({
+          prefix: `comments:${docId}:`,
+        });
+        return new Response(null, {
+          status: 200,
+          headers: { ...cors, "X-Comment-Count": String(list.keys.length) },
+        });
       }
 
       // DELETE /comments/:docId  — clear all comments for a share

@@ -103,6 +103,11 @@ interface AppState {
   rtDocId: string | null;
   contentUpdateAvailable: boolean;
 
+  // Polling (fallback when WebRTC is not connected)
+  pollTimerId: ReturnType<typeof setInterval> | null;
+  lastKnownContentModified: string | null;
+  lastKnownCommentCounts: Record<string, number>;
+
   // v1 Actions
   openFile: () => Promise<void>;
   openDirectory: () => Promise<void>;
@@ -164,6 +169,10 @@ interface AppState {
 
   // Auto-sync
   syncActiveShares: () => Promise<void>;
+
+  // Polling actions
+  startPolling: () => void;
+  stopPolling: () => void;
 
   // v3 Real-time actions
   connectRealtime: (docId: string, roomPassword: string) => void;
@@ -229,6 +238,9 @@ export const useAppStore = create<AppState>()(
       rtSession: null,
       rtDocId: null,
       contentUpdateAvailable: false,
+      pollTimerId: null,
+      lastKnownContentModified: null,
+      lastKnownCommentCounts: {},
 
       // ── v1 actions ──────────────────────────────────────────────────────
 
@@ -576,6 +588,9 @@ export const useAppStore = create<AppState>()(
             // silent — connection may fail in some environments
           }
         }
+
+        // Start polling for comment updates (fallback when WebRTC is not connected)
+        get().startPolling();
       },
 
       // ── v2 Sharing actions ───────────────────────────────────────────────
@@ -871,6 +886,11 @@ export const useAppStore = create<AppState>()(
             fileName: firstPath ?? null,
             activeFilePath: firstPath ?? null,
           });
+          // Seed the last-known content timestamp for polling
+          const lastMod = await storage.checkContentUpdated(docId);
+          if (lastMod) set({ lastKnownContentModified: lastMod });
+          get().startPolling();
+
           // Auto-connect to realtime room if room password present
           if (roomPwd) {
             // Defer connect until peerName is set (handled by connectRealtime)
@@ -949,6 +969,68 @@ export const useAppStore = create<AppState>()(
         }
       },
 
+      // ── Polling actions ──────────────────────────────────────────────────
+
+      startPolling: () => {
+        if (get().pollTimerId !== null) return;
+
+        const poll = async () => {
+          const { rtStatus, isPeerMode, shares } = get();
+          // Skip polling while WebRTC is connected — realtime handles updates
+          if (rtStatus === 'connected') return;
+
+          const storage = getStorage();
+          if (!storage) return;
+
+          if (isPeerMode) {
+            // Peer path: check if content has been updated
+            const parsed = parseShareHash();
+            if (!parsed) return;
+            const modified = await storage.checkContentUpdated(parsed.docId);
+            if (modified !== null) {
+              const { lastKnownContentModified } = get();
+              if (lastKnownContentModified !== null && modified !== lastKnownContentModified) {
+                set({ contentUpdateAvailable: true, lastKnownContentModified: modified });
+                get().showToast('Document has been updated by the host');
+              } else {
+                set({ lastKnownContentModified: modified });
+              }
+            }
+          } else {
+            // Host path: check comment counts for each active share
+            const now = new Date();
+            for (const share of shares) {
+              if (new Date(share.expiresAt) <= now) continue;
+              const count = await storage.checkCommentCount(share.docId);
+              if (count !== null) {
+                const { lastKnownCommentCounts } = get();
+                const prev = lastKnownCommentCounts[share.docId];
+                if (prev !== undefined && count > prev) {
+                  set({ lastKnownCommentCounts: { ...get().lastKnownCommentCounts, [share.docId]: count } });
+                  get().fetchPendingComments(share.docId);
+                  get().showToast('New comments received');
+                } else {
+                  set({ lastKnownCommentCounts: { ...get().lastKnownCommentCounts, [share.docId]: count } });
+                }
+              }
+            }
+          }
+        };
+
+        // Run one poll immediately, then every 60s
+        poll();
+        const timerId = setInterval(poll, 60_000);
+        set({ pollTimerId: timerId });
+      },
+
+      stopPolling: () => {
+        const { pollTimerId } = get();
+        if (pollTimerId !== null) {
+          clearInterval(pollTimerId);
+          set({ pollTimerId: null });
+        }
+      },
+
       // ── v3 Real-time actions ────────────────────────────────────────────
 
       connectRealtime: (docId, roomPassword) => {
@@ -1001,6 +1083,7 @@ export const useAppStore = create<AppState>()(
       disconnectRealtime: () => {
         const { rtSession } = get();
         if (rtSession) rtSession.disconnect();
+        get().stopPolling();
         set({
           rtSession: null,
           rtDocId: null,
@@ -1047,4 +1130,25 @@ useAppStore.subscribe((state) => {
     _syncTimer = null;
     useAppStore.getState().syncActiveShares();
   }, 2000);
+});
+
+// ── Poll lifecycle: stop when WebRTC connects, resume when it disconnects ──
+let _prevRtStatus: ConnectionStatus = useAppStore.getState().rtStatus;
+useAppStore.subscribe((state) => {
+  const cur = state.rtStatus;
+  if (cur === _prevRtStatus) return;
+  const prev = _prevRtStatus;
+  _prevRtStatus = cur;
+
+  if (cur === "connected") {
+    useAppStore.getState().stopPolling();
+  } else if (prev === "connected") {
+    // Transitioning away from connected — resume polling if there's an active share context
+    const { isPeerMode, shares } = useAppStore.getState();
+    const now = new Date();
+    const hasActive = isPeerMode || shares.some((s) => new Date(s.expiresAt) > now);
+    if (hasActive) {
+      useAppStore.getState().startPolling();
+    }
+  }
 });

@@ -109,6 +109,7 @@ export function Header({ peerMode = false, onShare }: Props) {
   const refreshFile = useAppStore((s) => s.refreshFile);
   const loadSharedContent = useAppStore((s) => s.loadSharedContent);
   const fileHandle = useAppStore((s) => s.fileHandle);
+  const rtStatus = useAppStore((s) => s.rtStatus);
   const shares = useAppStore((s) => s.shares);
   const sharedPanelOpen = useAppStore((s) => s.sharedPanelOpen);
   const toggleSharedPanel = useAppStore((s) => s.toggleSharedPanel);
@@ -212,7 +213,7 @@ export function Header({ peerMode = false, onShare }: Props) {
             {isDark ? <SunIcon /> : <MoonIcon />}
           </button>
 
-          {peerMode && (
+          {peerMode && rtStatus !== 'connected' && (
             <button
               onClick={loadSharedContent}
               aria-label="Refresh content"
@@ -223,7 +224,7 @@ export function Header({ peerMode = false, onShare }: Props) {
             </button>
           )}
 
-          {!peerMode && fileHandle && (
+          {!peerMode && fileHandle && rtStatus !== 'connected' && (
             <button
               onClick={refreshFile}
               aria-label="Refresh file"
