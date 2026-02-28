@@ -1,20 +1,15 @@
-import { docIdToRoomId } from "../services/realtime";
-
 export interface ShareUrlParams {
   docId: string;
   keyB64: string;
-  roomPwd: string;
   name?: string;
 }
 
 /**
  * Build a share URL from the given base URL and share parameters.
- * Format: `${base}#share=${docId}&key=${keyB64}&pwd=${roomPwd}&name=${name}`
- *
- * The roomId is derived from docId on the receiving end, so it's not in the URL.
+ * Format: `${base}#share=${docId}&key=${keyB64}&name=${name}`
  */
 export function buildShareUrl(base: string, params: ShareUrlParams): string {
-  let url = `${base}#share=${params.docId}&key=${params.keyB64}&pwd=${params.roomPwd}`;
+  let url = `${base}#share=${params.docId}&key=${params.keyB64}`;
   if (params.name) {
     url += `&name=${encodeURIComponent(params.name)}`;
   }
@@ -32,19 +27,16 @@ export function buildShareUrlFromOrigin(params: ShareUrlParams): string {
 /**
  * Parse the current window.location.hash for share URL parameters.
  * Returns null if the hash does not contain valid share params (share + key).
- * The roomId is derived from docId via docIdToRoomId.
+ * Old URLs with `pwd` still parse fine — we just ignore the parameter.
  */
-export function parseShareHash(): (ShareUrlParams & { roomId: string }) | null {
+export function parseShareHash(): ShareUrlParams | null {
   const hash = window.location.hash.slice(1);
   const params = new URLSearchParams(hash);
   const docId = params.get("share");
   const keyB64 = params.get("key");
   if (!docId || !keyB64) return null;
-  const roomPwd = params.get("pwd") ?? "";
   const name = params.get("name") ?? undefined;
-  // Derive roomId from docId; also accept legacy "room" param for old URLs
-  const roomId = params.get("room") ?? docIdToRoomId(docId);
-  return { docId, keyB64, roomPwd, name, roomId };
+  return { docId, keyB64, name };
 }
 
 /**

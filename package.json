@@ -22,9 +22,7 @@
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "remark-parse": "^11.0.0",
-    "trystero": "^0.22.0",
     "unified": "^11.0.5",
-    "yjs": "^13.6.29",
     "zustand": "^5.0.0"
   },
   "devDependencies": {

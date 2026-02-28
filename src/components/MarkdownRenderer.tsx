@@ -95,14 +95,12 @@ export function MarkdownRenderer() {
   const isPeerMode = useAppStore((s) => s.isPeerMode);
   const fileName = useAppStore((s) => s.fileName);
   const activeFilePath = useAppStore((s) => s.activeFilePath);
-  const setRealtimeAwareness = useAppStore((s) => s.setRealtimeAwareness);
   const pendingScrollTarget = useAppStore((s) => s.pendingScrollTarget);
   const clearPendingScrollTarget = useAppStore(
     (s) => s.clearPendingScrollTarget,
   );
   const setActiveCommentId = useAppStore((s) => s.setActiveCommentId);
   const writeAllowed = useAppStore((s) => s.writeAllowed);
-  const rtStatus = useAppStore((s) => s.rtStatus);
   const [highlighter, setHighlighter] = useState<Highlighter | null>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
   const [hoveredBlock, setHoveredBlock] = useState<{
@@ -110,11 +108,8 @@ export function MarkdownRenderer() {
     top: number;
   } | null>(null);
 
-  // Track hovered block for comment "+" button AND peer awareness.
-  // The "+" button only shows when writeAllowed || isPeerMode, but we
-  // always track hover when connected so peers see cursor indicators.
   const canComment = writeAllowed || isPeerMode;
-  const shouldTrackHover = canComment || rtStatus === "connected";
+  const shouldTrackHover = canComment;
 
   const handleBodyMouseOver = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -156,12 +151,6 @@ export function MarkdownRenderer() {
     },
     [postPeerCommentAction, activeFilePath, fileName],
   );
-
-  // Broadcast hovered block as focusedBlock to peers
-  useEffect(() => {
-    const file = activeFilePath ?? fileName ?? null;
-    setRealtimeAwareness(file, hoveredBlock?.index ?? null);
-  }, [hoveredBlock, activeFilePath, fileName, setRealtimeAwareness]);
 
   useEffect(() => {
     getHighlighter().then(setHighlighter);

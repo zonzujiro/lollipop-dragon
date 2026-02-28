@@ -11,7 +11,7 @@ import { UndoToast } from "./components/UndoToast";
 import { Toast } from "./components/Toast";
 import { PeerNamePrompt } from "./components/PeerNamePrompt";
 import { buildVirtualTree } from "./services/fileSystem";
-import { isShareHash, parseShareHash } from "./utils/shareUrl";
+import { isShareHash } from "./utils/shareUrl";
 import type {
   FileTreeNode,
   FileNode,
@@ -121,10 +121,6 @@ function App() {
   const selectPeerFile = useAppStore((s) => s.selectPeerFile);
   const peerCommentPanelOpen = useAppStore((s) => s.commentPanelOpen);
 
-  // v3 realtime
-  const connectRealtime = useAppStore((s) => s.connectRealtime);
-  const disconnectRealtime = useAppStore((s) => s.disconnectRealtime);
-  const setRealtimeAwareness = useAppStore((s) => s.setRealtimeAwareness);
   const contentUpdateAvailable = useAppStore((s) => s.contentUpdateAvailable);
   const dismissContentUpdate = useAppStore((s) => s.dismissContentUpdate);
   const activeFilePath = useAppStore((s) => s.activeFilePath);
@@ -261,22 +257,6 @@ function App() {
     })();
     return () => observer.disconnect();
   }, [directoryHandle, refreshFileTree]);
-
-  // v3: Auto-connect to realtime room when peer name is set and room params exist
-  useEffect(() => {
-    if (!peerName || !peerModeChecked) return;
-    const parsed = parseShareHash();
-    if (parsed && parsed.docId && parsed.roomPwd) {
-      connectRealtime(parsed.docId, parsed.roomPwd);
-      return () => disconnectRealtime();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [peerName, peerModeChecked]);
-
-  // v3: Broadcast awareness when active file changes
-  useEffect(() => {
-    setRealtimeAwareness(activeFilePath ?? fileName, null);
-  }, [activeFilePath, fileName, setRealtimeAwareness]);
 
   // Peer mode: show name prompt first, then the document
   if (isPeerMode) {

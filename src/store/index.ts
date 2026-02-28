@@ -18,13 +18,7 @@ import {
   keyToBase64url,
   base64urlToKey,
 } from "../services/crypto";
-import {
-  RealtimeSession,
-  docIdToRoomId,
-  generateRoomPassword,
-} from "../services/realtime";
 import { buildShareUrlFromOrigin, parseShareHash } from "../utils/shareUrl";
-import type { ConnectionStatus, PeerInfo } from "../services/realtime";
 import type { FileTreeNode, FileNode, DirectoryNode } from "../types/fileTree";
 import type { Comment, CommentType } from "../types/criticmarkup";
 import type { ShareRecord, SharePayload, PeerComment } from "../types/share";
@@ -96,14 +90,11 @@ interface AppState {
   // docId → CryptoKey (in-memory only, not persisted)
   shareKeys: Record<string, CryptoKey>;
 
-  // Real-time (v3)
-  rtStatus: ConnectionStatus;
-  rtPeers: PeerInfo[];
-  rtSession: RealtimeSession | null;
-  rtDocId: string | null;
+  // Active document for peer comment indexing
+  activeDocId: string | null;
   contentUpdateAvailable: boolean;
 
-  // Polling (fallback when WebRTC is not connected)
+  // Polling
   pollTimerId: ReturnType<typeof setInterval> | null;
   lastKnownContentModified: string | null;
   lastKnownCommentCounts: Record<string, number>;
@@ -138,7 +129,7 @@ interface AppState {
   navigateToComment: (filePath: string, rawStart: number) => void;
   navigateToBlock: (filePath: string, blockIndex: number) => void;
   clearPendingScrollTarget: () => void;
-  restoreRealtimeSessions: () => Promise<void>;
+  restoreShareSessions: () => Promise<void>;
 
   // v2 Sharing actions
   shareContent: (opts: {
@@ -174,13 +165,6 @@ interface AppState {
   startPolling: () => void;
   stopPolling: () => void;
 
-  // v3 Real-time actions
-  connectRealtime: (docId: string, roomPassword: string) => void;
-  disconnectRealtime: () => void;
-  setRealtimeAwareness: (
-    activeFile: string | null,
-    focusedBlock: number | null,
-  ) => void;
   dismissContentUpdate: () => void;
 }
 
@@ -233,10 +217,7 @@ export const useAppStore = create<AppState>()(
       myPeerComments: [],
       pendingComments: {},
       shareKeys: {},
-      rtStatus: "disconnected" as ConnectionStatus,
-      rtPeers: [],
-      rtSession: null,
-      rtDocId: null,
+      activeDocId: null,
       contentUpdateAvailable: false,
       pollTimerId: null,
       lastKnownContentModified: null,
@@ -554,13 +535,13 @@ export const useAppStore = create<AppState>()(
             sidebarOpen: true,
           });
           get().scanAllFileComments();
-          get().restoreRealtimeSessions();
+          get().restoreShareSessions();
         } catch {
           // IndexedDB unavailable (private browsing, test env) — silent fail
         }
       },
 
-      restoreRealtimeSessions: async () => {
+      restoreShareSessions: async () => {
         const { shares } = get();
         const now = new Date();
         const restoredKeys: Record<string, CryptoKey> = {};
@@ -579,17 +560,7 @@ export const useAppStore = create<AppState>()(
           set({ shareKeys: { ...get().shareKeys, ...restoredKeys } });
         }
 
-        for (const share of shares) {
-          if (new Date(share.expiresAt) <= now) continue;
-          if (!restoredKeys[share.docId]) continue;
-          try {
-            get().connectRealtime(share.docId, share.roomPassword);
-          } catch {
-            // silent — connection may fail in some environments
-          }
-        }
-
-        // Start polling for comment updates (fallback when WebRTC is not connected)
+        // Start polling for comment updates
         get().startPolling();
       },
 
@@ -648,7 +619,6 @@ export const useAppStore = create<AppState>()(
         });
         const keyB64 = await keyToBase64url(key);
 
-        const roomPwd = generateRoomPassword();
         const now = new Date();
         const record: ShareRecord = {
           docId,
@@ -658,30 +628,28 @@ export const useAppStore = create<AppState>()(
           expiresAt: new Date(now.getTime() + ttl * 1000).toISOString(),
           pendingCommentCount: 0,
           keyB64,
-          roomPassword: roomPwd,
           fileCount: Object.keys(tree).length,
           sharedPaths: Object.keys(tree),
         };
         const shares = [...get().shares, record];
         saveShares(shares);
-        set({ shares, shareKeys: { ...get().shareKeys, [docId]: key } });
+        set({
+          shares,
+          shareKeys: { ...get().shareKeys, [docId]: key },
+          activeDocId: docId,
+        });
 
-        // Auto-connect host to the realtime room
-        get().connectRealtime(docId, roomPwd);
+        // Start polling for comment updates
+        get().startPolling();
 
-        return buildShareUrlFromOrigin({ docId, keyB64, roomPwd, name: label });
+        return buildShareUrlFromOrigin({ docId, keyB64, name: label });
       },
 
       revokeShare: async (docId) => {
         const storage = getStorage();
-        const { shares, rtDocId } = get();
+        const { shares } = get();
         const record = shares.find((s) => s.docId === docId);
         if (!record) return;
-
-        // Disconnect realtime if this share's session is active
-        if (rtDocId === docId) {
-          get().disconnectRealtime();
-        }
 
         try {
           await storage?.deleteContent(docId, record.hostSecret);
@@ -695,12 +663,17 @@ export const useAppStore = create<AppState>()(
         }
         const updated = shares.filter((s) => s.docId !== docId);
         saveShares(updated);
-        const { pendingComments, shareKeys } = get();
+        const { pendingComments, shareKeys, activeDocId } = get();
         const pc = { ...pendingComments };
         delete pc[docId];
         const sk = { ...shareKeys };
         delete sk[docId];
-        set({ shares: updated, pendingComments: pc, shareKeys: sk });
+        set({
+          shares: updated,
+          pendingComments: pc,
+          shareKeys: sk,
+          activeDocId: activeDocId === docId ? null : activeDocId,
+        });
       },
 
       updateShare: async (docId) => {
@@ -709,7 +682,6 @@ export const useAppStore = create<AppState>()(
         const {
           shares,
           shareKeys,
-          rtSession,
           fileName,
           rawContent,
           fileTree,
@@ -757,17 +729,13 @@ export const useAppStore = create<AppState>()(
 
         // Overwrite content at the same docId with the same key
         await storage.updateContent(docId, record.hostSecret, tree, key);
-
-        // Notify connected peers that content was updated
-        if (rtSession) rtSession.notifyContentUpdated();
       },
 
       fetchPendingComments: async (docId) => {
         const storage = getStorage();
         if (!storage) return;
-        let key = get().shareKeys[docId];
+        const key = get().shareKeys[docId];
         if (!key) {
-          // Try to recover from shares list — not possible without the base64 key
           // The key is only stored in-memory during the session; if lost, can't decrypt
           return;
         }
@@ -871,7 +839,7 @@ export const useAppStore = create<AppState>()(
       loadSharedContent: async () => {
         const parsed = parseShareHash();
         if (!parsed) return;
-        const { docId, keyB64, roomPwd } = parsed;
+        const { docId, keyB64 } = parsed;
         const storage = getStorage();
         if (!storage) return;
         try {
@@ -885,17 +853,12 @@ export const useAppStore = create<AppState>()(
             rawContent: firstPath ? payload.tree[firstPath] : "",
             fileName: firstPath ?? null,
             activeFilePath: firstPath ?? null,
+            activeDocId: docId,
           });
           // Seed the last-known content timestamp for polling
           const lastMod = await storage.checkContentUpdated(docId);
           if (lastMod) set({ lastKnownContentModified: lastMod });
           get().startPolling();
-
-          // Auto-connect to realtime room if room password present
-          if (roomPwd) {
-            // Defer connect until peerName is set (handled by connectRealtime)
-            set({ rtDocId: docId });
-          }
         } catch (e) {
           set({ isPeerMode: true, sharedContent: null });
           console.error("[share] Failed to load shared content:", e);
@@ -906,7 +869,7 @@ export const useAppStore = create<AppState>()(
         const parsed = parseShareHash();
         if (!parsed) return;
         const { docId, keyB64 } = parsed;
-        const { peerName, rtSession } = get();
+        const { peerName } = get();
         const comment: PeerComment = {
           id: `c_${crypto.randomUUID()}`,
           peerName: peerName ?? "Anonymous",
@@ -920,12 +883,7 @@ export const useAppStore = create<AppState>()(
         // Track locally so peer can see their own comments
         set({ myPeerComments: [comment, ...get().myPeerComments] });
 
-        // Send via WebRTC if connected
-        if (rtSession) {
-          rtSession.addComment(comment);
-        }
-
-        // Always also send to Worker as async backup
+        // Send to Worker
         const storage = getStorage();
         if (storage) {
           const key = get().shareKeys[docId] ?? (await base64urlToKey(keyB64));
@@ -934,23 +892,18 @@ export const useAppStore = create<AppState>()(
       },
 
       deletePeerComment: (commentId) => {
-        const { myPeerComments, rtSession } = get();
+        const { myPeerComments } = get();
         set({
           myPeerComments: myPeerComments.filter((c) => c.id !== commentId),
         });
-        if (rtSession) rtSession.removeComment(commentId);
       },
 
       editPeerComment: (commentId, type, text) => {
-        const { myPeerComments, rtSession } = get();
+        const { myPeerComments } = get();
         const updated = myPeerComments.map((c) =>
           c.id === commentId ? { ...c, commentType: type, text } : c,
         );
         set({ myPeerComments: updated });
-        if (rtSession) {
-          const comment = updated.find((c) => c.id === commentId);
-          if (comment) rtSession.addComment(comment);
-        }
       },
 
       // ── Auto-sync ─────────────────────────────────────────────────────
@@ -975,9 +928,7 @@ export const useAppStore = create<AppState>()(
         if (get().pollTimerId !== null) return;
 
         const poll = async () => {
-          const { rtStatus, isPeerMode, shares } = get();
-          // Skip polling while WebRTC is connected — realtime handles updates
-          if (rtStatus === 'connected') return;
+          const { isPeerMode, shares } = get();
 
           const storage = getStorage();
           if (!storage) return;
@@ -1031,72 +982,6 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      // ── v3 Real-time actions ────────────────────────────────────────────
-
-      connectRealtime: (docId, roomPassword) => {
-        const { rtSession: existing, peerName } = get();
-        if (existing) existing.disconnect();
-
-        const session = new RealtimeSession(
-          docIdToRoomId(docId),
-          roomPassword,
-          peerName ?? "Anonymous",
-          {
-            onConnectionChange: (status, peers) => {
-              set({ rtStatus: status, rtPeers: peers });
-            },
-            onRemoteComment: (comment) => {
-              // Dedup: check if we already have this comment from the Worker
-              const { pendingComments } = get();
-              const docComments = Object.values(pendingComments).flat();
-              if (docComments.some((c) => c.id === comment.id)) return;
-              // Add to pending comments under the active docId
-              const activeDocId = get().rtDocId;
-              if (!activeDocId) return;
-              const pc = { ...get().pendingComments };
-              pc[activeDocId] = [...(pc[activeDocId] ?? []), comment];
-              const shares = get().shares.map((s) =>
-                s.docId === activeDocId
-                  ? { ...s, pendingCommentCount: pc[activeDocId].length }
-                  : s,
-              );
-              saveShares(shares);
-              set({ pendingComments: pc, shares });
-              get().showToast(`New comment from ${comment.peerName}`);
-            },
-            onCommentRemoved: (commentId) => {
-              const activeDocId = get().rtDocId;
-              if (!activeDocId) return;
-              get().dismissComment(activeDocId, commentId);
-            },
-            onDocumentUpdated: () => {
-              set({ contentUpdateAvailable: true });
-              get().showToast("Document has been updated by the host");
-            },
-          },
-        );
-
-        set({ rtSession: session, rtDocId: docId, rtStatus: "connecting" });
-        session.connect();
-      },
-
-      disconnectRealtime: () => {
-        const { rtSession } = get();
-        if (rtSession) rtSession.disconnect();
-        get().stopPolling();
-        set({
-          rtSession: null,
-          rtDocId: null,
-          rtStatus: "disconnected",
-          rtPeers: [],
-        });
-      },
-
-      setRealtimeAwareness: (activeFile, focusedBlock) => {
-        const { rtSession } = get();
-        if (rtSession) rtSession.setLocalAwareness(activeFile, focusedBlock);
-      },
-
       dismissContentUpdate: () => set({ contentUpdateAvailable: false }),
     }),
     {
@@ -1130,25 +1015,4 @@ useAppStore.subscribe((state) => {
     _syncTimer = null;
     useAppStore.getState().syncActiveShares();
   }, 2000);
-});
-
-// ── Poll lifecycle: stop when WebRTC connects, resume when it disconnects ──
-let _prevRtStatus: ConnectionStatus = useAppStore.getState().rtStatus;
-useAppStore.subscribe((state) => {
-  const cur = state.rtStatus;
-  if (cur === _prevRtStatus) return;
-  const prev = _prevRtStatus;
-  _prevRtStatus = cur;
-
-  if (cur === "connected") {
-    useAppStore.getState().stopPolling();
-  } else if (prev === "connected") {
-    // Transitioning away from connected — resume polling if there's an active share context
-    const { isPeerMode, shares } = useAppStore.getState();
-    const now = new Date();
-    const hasActive = isPeerMode || shares.some((s) => new Date(s.expiresAt) > now);
-    if (hasActive) {
-      useAppStore.getState().startPolling();
-    }
-  }
 });

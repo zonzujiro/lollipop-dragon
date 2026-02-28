@@ -9,7 +9,6 @@ export interface ShareRecord {
   expiresAt: string; // ISO 8601
   pendingCommentCount: number;
   keyB64: string; // encryption key in base64url (for link reconstruction)
-  roomPassword: string; // room password for realtime
   fileCount: number; // number of files shared
   sharedPaths?: string[]; // original file paths included in the share
 }

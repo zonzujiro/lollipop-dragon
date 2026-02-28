@@ -107,7 +107,6 @@ export function SharedPanel() {
                       const url = buildShareUrlFromOrigin({
                         docId: share.docId,
                         keyB64: share.keyB64,
-                        roomPwd: share.roomPassword,
                         name: share.label,
                       });
                       navigator.clipboard

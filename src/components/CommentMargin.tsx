@@ -1,7 +1,7 @@
 import { useEffect, useRef, useMemo, useState } from "react";
 import { useAppStore } from "../store";
 import { CommentCard } from "./CommentCard";
-import { peerColor, initials } from "./PresenceBar";
+import { peerColor, initials } from "../utils/peerDisplay";
 import type { Comment, CommentType } from "../types/criticmarkup";
 import type { PeerComment } from "../types/share";
 
@@ -123,10 +123,8 @@ export function CommentMargin({
   const commentFilter = useAppStore((s) => s.commentFilter);
   const activeId = useAppStore((s) => s.activeCommentId);
   const setActiveId = useAppStore((s) => s.setActiveCommentId);
-  const rtPeers = useAppStore((s) => s.rtPeers);
-  const rtStatus = useAppStore((s) => s.rtStatus);
   const pendingComments = useAppStore((s) => s.pendingComments);
-  const rtDocId = useAppStore((s) => s.rtDocId);
+  const activeDocId = useAppStore((s) => s.activeDocId);
   const activeFilePath = useAppStore((s) => s.activeFilePath);
   const fileName = useAppStore((s) => s.fileName);
   const [blockTops, setBlockTops] = useState<Map<number, number>>(new Map());
@@ -145,8 +143,8 @@ export function CommentMargin({
 
   // Peer comments for the current file, grouped by blockIndex
   const peerDotGroups = useMemo(() => {
-    if (!rtDocId) return new Map<number, PeerComment[]>();
-    const all = pendingComments[rtDocId] ?? [];
+    if (!activeDocId) return new Map<number, PeerComment[]>();
+    const all = pendingComments[activeDocId] ?? [];
     const currentPath = activeFilePath ?? fileName ?? "";
     const forFile = currentPath
       ? all.filter((c) => c.path === currentPath)
@@ -159,7 +157,7 @@ export function CommentMargin({
       byBlock.set(idx, arr);
     }
     return byBlock;
-  }, [pendingComments, rtDocId, activeFilePath, fileName]);
+  }, [pendingComments, activeDocId, activeFilePath, fileName]);
 
   // Close card when clicking outside
   useEffect(() => {
@@ -250,22 +248,6 @@ export function CommentMargin({
           onCancel={() => setAddingBlock(null)}
         />
       )}
-      {rtStatus === "connected" &&
-        rtPeers.map((peer) => {
-          if (peer.focusedBlock == null) return null;
-          const top = blockTops.get(peer.focusedBlock);
-          if (top == null) return null;
-          return (
-            <div
-              key={peer.peerId}
-              className="comment-margin__cursor"
-              style={{ top, backgroundColor: peerColor(peer.peerId) }}
-              title={peer.name}
-            >
-              {initials(peer.name)}
-            </div>
-          );
-        })}
       {groups.map(({ top, comments: groupComments }, i) => {
         const activeComment =
           groupComments.find((c) => c.id === activeId) ?? null;

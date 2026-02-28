@@ -1,6 +1,4 @@
 import { useAppStore } from "../store";
-import { ConnectionStatus } from "./ConnectionStatus";
-import { PresenceBar } from "./PresenceBar";
 import { WORKER_URL } from "../config";
 
 function SunIcon() {
@@ -109,7 +107,6 @@ export function Header({ peerMode = false, onShare }: Props) {
   const refreshFile = useAppStore((s) => s.refreshFile);
   const loadSharedContent = useAppStore((s) => s.loadSharedContent);
   const fileHandle = useAppStore((s) => s.fileHandle);
-  const rtStatus = useAppStore((s) => s.rtStatus);
   const shares = useAppStore((s) => s.shares);
   const sharedPanelOpen = useAppStore((s) => s.sharedPanelOpen);
   const toggleSharedPanel = useAppStore((s) => s.toggleSharedPanel);
@@ -155,10 +152,8 @@ export function Header({ peerMode = false, onShare }: Props) {
           {peerMode && (
             <span className="app-header__peer-badge">Reviewing</span>
           )}
-          <ConnectionStatus />
         </div>
 
-        <PresenceBar />
         <div className="app-header__actions">
           {!peerMode && (
             <>
@@ -213,7 +208,7 @@ export function Header({ peerMode = false, onShare }: Props) {
             {isDark ? <SunIcon /> : <MoonIcon />}
           </button>
 
-          {peerMode && rtStatus !== 'connected' && (
+          {peerMode && (
             <button
               onClick={loadSharedContent}
               aria-label="Refresh content"
@@ -224,7 +219,7 @@ export function Header({ peerMode = false, onShare }: Props) {
             </button>
           )}
 
-          {!peerMode && fileHandle && rtStatus !== 'connected' && (
+          {!peerMode && fileHandle && (
             <button
               onClick={refreshFile}
               aria-label="Refresh file"
