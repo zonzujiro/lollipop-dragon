@@ -266,7 +266,7 @@ function App() {
   useEffect(() => {
     if (!peerName || !peerModeChecked) return;
     const parsed = parseShareHash();
-    if (parsed && parsed.docId && parsed.roomId && parsed.roomPwd) {
+    if (parsed && parsed.docId && parsed.roomPwd) {
       connectRealtime(parsed.docId, parsed.roomPwd);
       return () => disconnectRealtime();
     }

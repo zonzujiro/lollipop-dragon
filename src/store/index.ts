@@ -654,7 +654,7 @@ export const useAppStore = create<AppState>()(
         // Auto-connect host to the realtime room
         get().connectRealtime(docId, roomPwd);
 
-        return buildShareUrlFromOrigin({ docId, keyB64, roomPwd });
+        return buildShareUrlFromOrigin({ docId, keyB64, roomPwd, name: label });
       },
 
       revokeShare: async (docId) => {
@@ -856,7 +856,7 @@ export const useAppStore = create<AppState>()(
       loadSharedContent: async () => {
         const parsed = parseShareHash();
         if (!parsed) return;
-        const { docId, keyB64, roomId, roomPwd } = parsed;
+        const { docId, keyB64, roomPwd } = parsed;
         const storage = getStorage();
         if (!storage) return;
         try {
@@ -871,8 +871,8 @@ export const useAppStore = create<AppState>()(
             fileName: firstPath ?? null,
             activeFilePath: firstPath ?? null,
           });
-          // Auto-connect to realtime room if room params present
-          if (roomId && roomPwd) {
+          // Auto-connect to realtime room if room password present
+          if (roomPwd) {
             // Defer connect until peerName is set (handled by connectRealtime)
             set({ rtDocId: docId });
           }

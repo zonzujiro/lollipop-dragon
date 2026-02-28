@@ -106,6 +106,8 @@ export function Header({ peerMode = false, onShare }: Props) {
   const activeFilePath = useAppStore((s) => s.activeFilePath);
   const commentPanelOpen = useAppStore((s) => s.commentPanelOpen);
   const toggleCommentPanel = useAppStore((s) => s.toggleCommentPanel);
+  const refreshFile = useAppStore((s) => s.refreshFile);
+  const loadSharedContent = useAppStore((s) => s.loadSharedContent);
   const fileHandle = useAppStore((s) => s.fileHandle);
   const shares = useAppStore((s) => s.shares);
   const sharedPanelOpen = useAppStore((s) => s.sharedPanelOpen);
@@ -209,6 +211,28 @@ export function Header({ peerMode = false, onShare }: Props) {
           >
             {isDark ? <SunIcon /> : <MoonIcon />}
           </button>
+
+          {peerMode && (
+            <button
+              onClick={loadSharedContent}
+              aria-label="Refresh content"
+              title="Re-fetch content from host"
+              className="app-header__btn app-header__btn--text"
+            >
+              Refresh
+            </button>
+          )}
+
+          {!peerMode && fileHandle && (
+            <button
+              onClick={refreshFile}
+              aria-label="Refresh file"
+              title="Refresh file from disk"
+              className="app-header__btn app-header__btn--text"
+            >
+              Refresh
+            </button>
+          )}
 
           <button
             onClick={toggleCommentPanel}
