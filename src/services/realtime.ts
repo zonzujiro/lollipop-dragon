@@ -6,7 +6,6 @@
 
 import {
   joinRoom as trysteroJoinRoom,
-  getRelaySockets,
   selfId,
 } from "trystero/nostr";
 import type { Room } from "trystero";
@@ -42,8 +41,6 @@ const APP_ID = "lollipop-dragon";
 const RECONNECT_DELAY_MS = 3000;
 const AWARENESS_INTERVAL_MS = 5000;
 const MAX_RETRIES = 3;
-
-const log = (...args: unknown[]) => console.log("[rt]", ...args);
 
 // ICE servers: Google STUN + Cloudflare STUN + free TURN relay for NAT traversal
 const RTC_CONFIG: RTCConfiguration = {
@@ -180,13 +177,11 @@ export class RealtimeSession {
 
   connect(): void {
     if (this.destroyed) return;
-    log("connect() called, roomId=", this.roomId);
     this.callbacks.onConnectionChange("connecting", this.getPeers());
     this.joinTrysteroRoom();
   }
 
   disconnect(): void {
-    log("disconnect() called");
     this.destroyed = true;
     this.cleanup();
     this.callbacks.onConnectionChange("disconnected", []);
@@ -194,7 +189,6 @@ export class RealtimeSession {
 
   /** Add a comment to the shared Yjs doc (from local peer) */
   addComment(comment: PeerComment): void {
-    log("addComment()", comment.id, "by", comment.peerName);
     this.ydoc.transact(() => {
       this.commentsMap.set(comment.id, {
         peerName: comment.peerName,
@@ -272,7 +266,6 @@ export class RealtimeSession {
   // ── Private ──────────────────────────────────────────────────────────────
 
   private joinTrysteroRoom(): void {
-    log("joinTrysteroRoom() roomId=", this.roomId);
     try {
       this.room = trysteroJoinRoom(
         {
@@ -282,12 +275,7 @@ export class RealtimeSession {
         },
         this.roomId,
       );
-      log("trysteroJoinRoom() succeeded, room created");
-
-      // Log relay WebSocket states
-      this.attachRelayLogs();
-    } catch (err) {
-      log("trysteroJoinRoom() FAILED:", err);
+    } catch {
       this.scheduleReconnect();
       return;
     }
@@ -309,28 +297,25 @@ export class RealtimeSession {
       this.sendContentUpdated = sendContentUpdated;
 
       // When receiving a Yjs sync message, apply it to local doc
-      onSync((data: Uint8Array, peerId: string) => {
-        log("recv yjs-sync from", peerId, "bytes=", data.byteLength);
+      onSync((data: Uint8Array) => {
         try {
           Y.applyUpdate(this.ydoc, data, "remote");
-        } catch (err) {
-          log("yjs-sync apply FAILED:", err);
+        } catch {
+          /* malformed update */
         }
       });
 
       // When receiving a Yjs incremental update
-      onUpdate((data: Uint8Array, peerId: string) => {
-        log("recv yjs-update from", peerId, "bytes=", data.byteLength);
+      onUpdate((data: Uint8Array) => {
         try {
           Y.applyUpdate(this.ydoc, data, "remote");
-        } catch (err) {
-          log("yjs-update apply FAILED:", err);
+        } catch {
+          /* malformed update */
         }
       });
 
       // When receiving awareness update from a peer
       onAwareness((data: Record<string, unknown>, peerId: string) => {
-        log("recv awareness from", peerId, "data=", data);
         this.awarenessState.set(peerId, {
           peerId,
           name: getString(data, "name") || "Anonymous",
@@ -341,29 +326,23 @@ export class RealtimeSession {
       });
 
       // When a peer notifies the content was updated
-      onContentUpdated((_data: string, peerId: string) => {
-        log("recv doc-updated from", peerId);
+      onContentUpdated(() => {
         this.callbacks.onDocumentUpdated();
       });
 
       // ── Peer lifecycle ──
 
       this.room.onPeerJoin((peerId: string) => {
-        log("PEER JOINED:", peerId);
         this.retryCount = 0;
         // Send our full Yjs state to the new peer
         const stateVector = Y.encodeStateAsUpdate(this.ydoc);
-        log("sending yjs state to new peer, bytes=", stateVector.byteLength);
-        sendSync(stateVector, peerId).catch((err) => {
-          log("sendSync to", peerId, "FAILED:", err);
-        });
+        sendSync(stateVector, peerId).catch(() => {});
         // Send our awareness
         this.broadcastAwareness();
         this.callbacks.onConnectionChange("connected", this.getPeers());
       });
 
       this.room.onPeerLeave((peerId: string) => {
-        log("PEER LEFT:", peerId);
         this.awarenessState.delete(peerId);
         const peers = this.getPeers();
         this.callbacks.onConnectionChange(
@@ -381,27 +360,10 @@ export class RealtimeSession {
       }, AWARENESS_INTERVAL_MS);
 
       // We're now "connecting" — status upgrades to "connected" when a peer joins
-      log("room set up, waiting for peers…");
       this.callbacks.onConnectionChange("connecting", []);
-    } catch (err) {
-      log("room setup FAILED:", err);
+    } catch {
       this.cleanup();
       this.callbacks.onConnectionChange("error", []);
-    }
-  }
-
-  private attachRelayLogs(): void {
-    try {
-      const sockets = getRelaySockets();
-      const urls = Object.keys(sockets);
-      log("relay sockets:", urls.length, "relays");
-      for (const [url, socket] of Object.entries(sockets)) {
-        log("relay:", url, "readyState=", socket.readyState);
-        socket.onclose = () => log("relay CLOSED:", url);
-        socket.onerror = (e) => log("relay ERROR:", url, e);
-      }
-    } catch (e) {
-      log("getRelaySockets() failed:", e);
     }
   }
 
@@ -438,9 +400,7 @@ export class RealtimeSession {
   private scheduleReconnect(): void {
     if (this.destroyed) return;
     this.retryCount++;
-    log("scheduleReconnect() attempt", this.retryCount, "/", MAX_RETRIES);
     if (this.retryCount >= MAX_RETRIES) {
-      log("giving up after", MAX_RETRIES, "attempts");
       this.callbacks.onConnectionChange("error", []);
       return;
     }
