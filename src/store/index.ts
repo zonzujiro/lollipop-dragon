@@ -92,12 +92,6 @@ interface AppState {
 
   // Active document for peer comment indexing
   activeDocId: string | null;
-  contentUpdateAvailable: boolean;
-
-  // Polling
-  pollTimerId: ReturnType<typeof setInterval> | null;
-  lastKnownContentModified: string | null;
-  lastKnownCommentCounts: Record<string, number>;
 
   // v1 Actions
   openFile: () => Promise<void>;
@@ -160,12 +154,6 @@ interface AppState {
 
   // Auto-sync
   syncActiveShares: () => Promise<void>;
-
-  // Polling actions
-  startPolling: () => void;
-  stopPolling: () => void;
-
-  dismissContentUpdate: () => void;
 }
 
 function getStorage(): ShareStorage | null {
@@ -218,10 +206,6 @@ export const useAppStore = create<AppState>()(
       pendingComments: {},
       shareKeys: {},
       activeDocId: null,
-      contentUpdateAvailable: false,
-      pollTimerId: null,
-      lastKnownContentModified: null,
-      lastKnownCommentCounts: {},
 
       // ── v1 actions ──────────────────────────────────────────────────────
 
@@ -559,9 +543,6 @@ export const useAppStore = create<AppState>()(
         if (Object.keys(restoredKeys).length > 0) {
           set({ shareKeys: { ...get().shareKeys, ...restoredKeys } });
         }
-
-        // Start polling for comment updates
-        get().startPolling();
       },
 
       // ── v2 Sharing actions ───────────────────────────────────────────────
@@ -638,9 +619,6 @@ export const useAppStore = create<AppState>()(
           shareKeys: { ...get().shareKeys, [docId]: key },
           activeDocId: docId,
         });
-
-        // Start polling for comment updates
-        get().startPolling();
 
         return buildShareUrlFromOrigin({ docId, keyB64, name: label });
       },
@@ -855,10 +833,6 @@ export const useAppStore = create<AppState>()(
             activeFilePath: firstPath ?? null,
             activeDocId: docId,
           });
-          // Seed the last-known content timestamp for polling
-          const lastMod = await storage.checkContentUpdated(docId);
-          if (lastMod) set({ lastKnownContentModified: lastMod });
-          get().startPolling();
         } catch (e) {
           set({ isPeerMode: true, sharedContent: null });
           console.error("[share] Failed to load shared content:", e);
@@ -922,67 +896,6 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      // ── Polling actions ──────────────────────────────────────────────────
-
-      startPolling: () => {
-        if (get().pollTimerId !== null) return;
-
-        const poll = async () => {
-          const { isPeerMode, shares } = get();
-
-          const storage = getStorage();
-          if (!storage) return;
-
-          if (isPeerMode) {
-            // Peer path: check if content has been updated
-            const parsed = parseShareHash();
-            if (!parsed) return;
-            const modified = await storage.checkContentUpdated(parsed.docId);
-            if (modified !== null) {
-              const { lastKnownContentModified } = get();
-              if (lastKnownContentModified !== null && modified !== lastKnownContentModified) {
-                set({ contentUpdateAvailable: true, lastKnownContentModified: modified });
-                get().showToast('Document has been updated by the host');
-              } else {
-                set({ lastKnownContentModified: modified });
-              }
-            }
-          } else {
-            // Host path: check comment counts for each active share
-            const now = new Date();
-            for (const share of shares) {
-              if (new Date(share.expiresAt) <= now) continue;
-              const count = await storage.checkCommentCount(share.docId);
-              if (count !== null) {
-                const { lastKnownCommentCounts } = get();
-                const prev = lastKnownCommentCounts[share.docId];
-                if (prev !== undefined && count > prev) {
-                  set({ lastKnownCommentCounts: { ...get().lastKnownCommentCounts, [share.docId]: count } });
-                  get().fetchPendingComments(share.docId);
-                  get().showToast('New comments received');
-                } else {
-                  set({ lastKnownCommentCounts: { ...get().lastKnownCommentCounts, [share.docId]: count } });
-                }
-              }
-            }
-          }
-        };
-
-        // Run one poll immediately, then every 60s
-        poll();
-        const timerId = setInterval(poll, 60_000);
-        set({ pollTimerId: timerId });
-      },
-
-      stopPolling: () => {
-        const { pollTimerId } = get();
-        if (pollTimerId !== null) {
-          clearInterval(pollTimerId);
-          set({ pollTimerId: null });
-        }
-      },
-
-      dismissContentUpdate: () => set({ contentUpdateAvailable: false }),
     }),
     {
       name: "markreview-store",

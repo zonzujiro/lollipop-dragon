@@ -121,8 +121,6 @@ function App() {
   const selectPeerFile = useAppStore((s) => s.selectPeerFile);
   const peerCommentPanelOpen = useAppStore((s) => s.commentPanelOpen);
 
-  const contentUpdateAvailable = useAppStore((s) => s.contentUpdateAvailable);
-  const dismissContentUpdate = useAppStore((s) => s.dismissContentUpdate);
   const activeFilePath = useAppStore((s) => s.activeFilePath);
   const shares = useAppStore((s) => s.shares);
 
@@ -265,27 +263,6 @@ function App() {
     return (
       <div className="app-layout">
         <Header peerMode />
-        {contentUpdateAvailable && (
-          <div className="content-update-banner" role="status">
-            <span>Document has been updated by the host.</span>
-            <button
-              className="content-update-banner__btn"
-              onClick={() => {
-                dismissContentUpdate();
-                loadSharedContent();
-              }}
-            >
-              Reload
-            </button>
-            <button
-              className="content-update-banner__dismiss"
-              onClick={dismissContentUpdate}
-              aria-label="Dismiss"
-            >
-              &times;
-            </button>
-          </div>
-        )}
         <div className="app-body">
           {sharedContent && Object.keys(sharedContent.tree).length > 1 && (
             <FileTreeSidebar

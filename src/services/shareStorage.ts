@@ -93,29 +93,6 @@ export class ShareStorage {
     )
   }
 
-  async checkContentUpdated(docId: string): Promise<string | null> {
-    try {
-      const res = await fetch(`${this.workerUrl}/share/${docId}`, { method: 'HEAD' })
-      if (!res.ok) return null
-      return res.headers.get('Last-Modified')
-    } catch {
-      return null
-    }
-  }
-
-  async checkCommentCount(docId: string): Promise<number | null> {
-    try {
-      const res = await fetch(`${this.workerUrl}/comments/${docId}`, { method: 'HEAD' })
-      if (!res.ok) return null
-      const val = res.headers.get('X-Comment-Count')
-      if (val === null) return null
-      const n = parseInt(val, 10)
-      return Number.isNaN(n) ? null : n
-    } catch {
-      return null
-    }
-  }
-
   async deleteComments(docId: string, hostSecret: string): Promise<void> {
     const res = await fetch(`${this.workerUrl}/comments/${docId}`, {
       method: 'DELETE',
