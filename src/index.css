@@ -269,12 +269,20 @@ body {
   flex-shrink: 0;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
+  position: relative;
+}
+
+.tab-bar__tabs {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
 }
 
-.tab-bar::-webkit-scrollbar {
+.tab-bar__tabs::-webkit-scrollbar {
   display: none;
 }
 

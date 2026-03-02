@@ -1145,6 +1145,39 @@ export const useAppStore = create<AppState>()(
         theme: s.theme,
         peerName: s.peerName,
       }),
+      merge: (persisted, current) => {
+        if (typeof persisted !== "object" || persisted === null) return current;
+        const merged = { ...current };
+        // Restore persisted scalar fields
+        if ("theme" in persisted) {
+          const v = persisted.theme;
+          if (v === "light" || v === "dark") merged.theme = v;
+        }
+        if ("activeTabId" in persisted) {
+          const v = persisted.activeTabId;
+          if (typeof v === "string" || v === null) merged.activeTabId = v;
+        }
+        if ("peerName" in persisted) {
+          const v = persisted.peerName;
+          if (typeof v === "string" || v === null) merged.peerName = v;
+        }
+        // Restore tabs, filling in default values for non-persisted fields
+        if ("tabs" in persisted && Array.isArray(persisted.tabs)) {
+          merged.tabs = persisted.tabs
+            .filter(
+              (t: unknown) =>
+                typeof t === "object" && t !== null && "label" in t,
+            )
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .map((t: any) =>
+              createDefaultTab({
+                label: typeof t.label === "string" ? t.label : "document",
+                ...t,
+              }),
+            );
+        }
+        return merged;
+      },
     },
   ),
 );

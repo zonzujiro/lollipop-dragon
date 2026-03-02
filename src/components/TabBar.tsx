@@ -11,39 +11,41 @@ export function TabBar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <div className="tab-bar" role="tablist">
-      {tabs.map((tab) => (
-        <button
-          key={tab.id}
-          role="tab"
-          aria-selected={tab.id === activeTabId}
-          className={`tab-bar__tab${tab.id === activeTabId ? " tab-bar__tab--active" : ""}`}
-          onClick={() => switchTab(tab.id)}
-          title={tab.directoryName ?? tab.fileName ?? tab.label}
-        >
-          <span className="tab-bar__label">
-            {tab.directoryName ?? tab.fileName ?? tab.label}
-          </span>
-          <span
-            className="tab-bar__close"
-            role="button"
-            tabIndex={0}
-            aria-label={`Close ${tab.label}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              removeTab(tab.id);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
+    <div className="tab-bar">
+      <div className="tab-bar__tabs" role="tablist">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            role="tab"
+            aria-selected={tab.id === activeTabId}
+            className={`tab-bar__tab${tab.id === activeTabId ? " tab-bar__tab--active" : ""}`}
+            onClick={() => switchTab(tab.id)}
+            title={tab.directoryName ?? tab.fileName ?? tab.label}
+          >
+            <span className="tab-bar__label">
+              {tab.directoryName ?? tab.fileName ?? tab.label}
+            </span>
+            <span
+              className="tab-bar__close"
+              role="button"
+              tabIndex={0}
+              aria-label={`Close ${tab.label}`}
+              onClick={(e) => {
                 e.stopPropagation();
                 removeTab(tab.id);
-              }
-            }}
-          >
-            &times;
-          </span>
-        </button>
-      ))}
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.stopPropagation();
+                  removeTab(tab.id);
+                }
+              }}
+            >
+              &times;
+            </span>
+          </button>
+        ))}
+      </div>
       <div className="tab-bar__add-wrapper">
         <button
           className="tab-bar__add"
