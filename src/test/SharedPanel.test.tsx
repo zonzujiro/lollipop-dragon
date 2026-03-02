@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { SharedPanel } from '../components/SharedPanel'
 import { useAppStore } from '../store'
+import { setTestState, resetTestStore } from './testHelpers'
 import type { ShareRecord } from '../types/share'
 
 function makeShare(overrides: Partial<ShareRecord> = {}): ShareRecord {
@@ -18,10 +19,15 @@ function makeShare(overrides: Partial<ShareRecord> = {}): ShareRecord {
 }
 
 beforeEach(() => {
-  useAppStore.setState({
+  resetTestStore()
+  setTestState({
     shares: [],
     sharedPanelOpen: true,
     pendingComments: {},
+    fileName: null,
+    activeFilePath: null,
+  })
+  useAppStore.setState({
     toggleSharedPanel: vi.fn(),
     revokeShare: vi.fn(),
     updateShare: vi.fn(),
@@ -29,8 +35,6 @@ beforeEach(() => {
     mergeComment: vi.fn(),
     dismissComment: vi.fn(),
     clearPendingComments: vi.fn(),
-    fileName: null,
-    activeFilePath: null,
   })
   vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined)
 })
@@ -53,7 +57,7 @@ describe('SharedPanel — empty state', () => {
 
 describe('SharedPanel — share list', () => {
   beforeEach(() => {
-    useAppStore.setState({ shares: [makeShare()] })
+    setTestState({ shares: [makeShare()] })
   })
 
   it('renders share label', () => {
@@ -62,7 +66,7 @@ describe('SharedPanel — share list', () => {
   })
 
   it('shows pending badge when pendingCommentCount > 0', () => {
-    useAppStore.setState({ shares: [makeShare({ pendingCommentCount: 3 })] })
+    setTestState({ shares: [makeShare({ pendingCommentCount: 3 })] })
     render(<SharedPanel />)
     expect(screen.getByText('3')).toBeInTheDocument()
   })
@@ -90,7 +94,8 @@ describe('SharedPanel — share list', () => {
 
   it('calls fetchPendingComments and expands on Check comments click', async () => {
     const fetchPendingComments = vi.fn().mockResolvedValue(undefined)
-    useAppStore.setState({ fetchPendingComments, pendingComments: { 'doc-1': [] } })
+    useAppStore.setState({ fetchPendingComments })
+    setTestState({ pendingComments: { 'doc-1': [] } })
     const user = userEvent.setup()
     render(<SharedPanel />)
     await user.click(screen.getByRole('button', { name: /Check comments/ }))
@@ -106,7 +111,7 @@ describe('SharedPanel — share list', () => {
 
 describe('SharedPanel — expiry display', () => {
   it('shows expiry in days and hours for future date', () => {
-    useAppStore.setState({
+    setTestState({
       shares: [makeShare({ expiresAt: new Date(Date.now() + 2 * 86400000 + 3 * 3600000).toISOString() })],
     })
     render(<SharedPanel />)
@@ -114,7 +119,7 @@ describe('SharedPanel — expiry display', () => {
   })
 
   it('shows "Expired" for past date', () => {
-    useAppStore.setState({
+    setTestState({
       shares: [makeShare({ expiresAt: new Date(Date.now() - 1000).toISOString() })],
     })
     render(<SharedPanel />)

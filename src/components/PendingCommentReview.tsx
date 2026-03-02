@@ -1,4 +1,5 @@
 import { useAppStore } from '../store'
+import { useActiveTab } from '../store/selectors'
 import { PeerCommentCard } from './PeerCommentCard'
 
 interface Props {
@@ -6,11 +7,12 @@ interface Props {
 }
 
 export function PendingCommentReview({ docId }: Props) {
-  const pendingComments = useAppStore((s) => s.pendingComments)
+  const tab = useActiveTab()
+  const pendingComments = tab?.pendingComments ?? {}
   const mergeComment = useAppStore((s) => s.mergeComment)
   const clearPendingComments = useAppStore((s) => s.clearPendingComments)
-  const activeFilePath = useAppStore((s) => s.activeFilePath)
-  const fileName = useAppStore((s) => s.fileName)
+  const activeFilePath = tab?.activeFilePath ?? null
+  const fileName = tab?.fileName ?? null
 
   const comments = pendingComments[docId] ?? []
   const currentPath = activeFilePath ?? fileName ?? ''

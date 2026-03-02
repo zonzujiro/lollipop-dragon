@@ -1,10 +1,12 @@
 import { useEffect } from 'react'
 import { useAppStore } from '../store'
+import { useActiveTab } from '../store/selectors'
 
 const TOAST_DURATION_MS = 5000
 
 export function UndoToast() {
-  const undoState = useAppStore((s) => s.undoState)
+  const tab = useActiveTab()
+  const undoState = tab?.undoState ?? null
   const undo = useAppStore((s) => s.undo)
   const clearUndo = useAppStore((s) => s.clearUndo)
 

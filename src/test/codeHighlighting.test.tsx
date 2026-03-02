@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useAppStore } from '../store'
+import { setTestState, resetTestStore } from './testHelpers'
 
 // Mock shiki so tests don't load real language grammars
 vi.mock('shiki', () => ({
@@ -31,14 +31,15 @@ vi.mock('@shikijs/rehype/core', () => ({
 }))
 
 beforeEach(() => {
-  useAppStore.setState({ fileHandle: null, fileName: null, rawContent: '' })
+  resetTestStore()
+  setTestState({ fileHandle: null, fileName: null, rawContent: '' })
   vi.clearAllMocks()
 })
 
 describe('MarkdownRenderer — Shiki integration', () => {
   it('initializes the shiki highlighter on mount', async () => {
     const { createHighlighter } = await import('shiki')
-    useAppStore.setState({ rawContent: '```js\nconst x = 1\n```' })
+    setTestState({ rawContent: '```js\nconst x = 1\n```' })
 
     const { MarkdownRenderer } = await import('../components/MarkdownRenderer')
     render(<MarkdownRenderer />)
@@ -55,7 +56,7 @@ describe('MarkdownRenderer — Shiki integration', () => {
 
   it('applies rehypeShikiFromHighlighter once the highlighter is ready', async () => {
     const { default: rehypeShikiFromHighlighter } = await import('@shikijs/rehype/core')
-    useAppStore.setState({ rawContent: '```ts\nconst y: number = 2\n```' })
+    setTestState({ rawContent: '```ts\nconst y: number = 2\n```' })
 
     const { MarkdownRenderer } = await import('../components/MarkdownRenderer')
     render(<MarkdownRenderer />)
@@ -70,7 +71,7 @@ describe('MarkdownRenderer — Shiki integration', () => {
     const { createHighlighter } = await import('shiki')
     vi.mocked(createHighlighter).mockReturnValueOnce(new Promise(() => {})) // never resolves
 
-    useAppStore.setState({ rawContent: '```js\nconst z = 3\n```' })
+    setTestState({ rawContent: '```js\nconst z = 3\n```' })
 
     const { MarkdownRenderer } = await import('../components/MarkdownRenderer')
     render(<MarkdownRenderer />)

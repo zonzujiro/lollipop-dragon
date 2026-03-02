@@ -1,14 +1,15 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { MarkdownRenderer } from '../components/MarkdownRenderer'
-import { useAppStore } from '../store'
+import { setTestState, resetTestStore } from './testHelpers'
 
 function setContent(raw: string) {
-  useAppStore.setState({ rawContent: raw })
+  setTestState({ rawContent: raw })
 }
 
 beforeEach(() => {
-  useAppStore.setState({ fileHandle: null, fileName: null, rawContent: '', comments: [], writeAllowed: true })
+  resetTestStore()
+  setTestState({ fileHandle: null, fileName: null, rawContent: '', comments: [], writeAllowed: true })
 })
 
 describe('MarkdownRenderer — CommonMark', () => {
@@ -142,14 +143,14 @@ describe('MarkdownRenderer — GFM extras', () => {
 
 describe('MarkdownRenderer — read-only banner', () => {
   it('does not show the banner when writeAllowed is true', () => {
-    useAppStore.setState({ writeAllowed: true })
+    setTestState({ writeAllowed: true })
     setContent('Hello.')
     render(<MarkdownRenderer />)
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
   it('shows the read-only banner when writeAllowed is false', () => {
-    useAppStore.setState({ writeAllowed: false })
+    setTestState({ writeAllowed: false })
     setContent('Hello.')
     render(<MarkdownRenderer />)
     expect(screen.getByRole('status')).toBeInTheDocument()

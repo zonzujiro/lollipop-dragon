@@ -9,28 +9,33 @@ vi.mock('../components/MarkdownRenderer', () => ({
 
 import App from '../App'
 import { useAppStore } from '../store'
+import { setTestState, resetTestStore } from './testHelpers'
 import type { FileTreeNode } from '../types/fileTree'
 
 function resetStore() {
-  useAppStore.setState({
-    fileHandle: null,
-    fileName: null,
-    rawContent: '',
-    directoryHandle: null,
-    directoryName: null,
-    fileTree: [],
-    activeFilePath: null,
-    sidebarOpen: true,
-    comments: [],
-    resolvedComments: [],
-    activeCommentId: null,
-    commentPanelOpen: false,
-    commentFilter: 'all',
-    theme: 'light',
-    focusMode: false,
-    writeAllowed: true,
-    restoreDirectory: vi.fn().mockResolvedValue(undefined),
-  })
+  resetTestStore()
+  setTestState(
+    {
+      fileHandle: null,
+      fileName: null,
+      rawContent: '',
+      directoryHandle: null,
+      directoryName: null,
+      fileTree: [],
+      activeFilePath: null,
+      sidebarOpen: true,
+      comments: [],
+      resolvedComments: [],
+      activeCommentId: null,
+      commentPanelOpen: false,
+      commentFilter: 'all',
+      writeAllowed: true,
+    },
+    {
+      theme: 'light',
+      focusMode: false,
+    },
+  )
   localStorage.clear()
 }
 
@@ -54,16 +59,20 @@ beforeEach(() => {
 
 describe('App — no file open', () => {
   it('shows the FilePicker landing screen', () => {
+    // Reset to no tabs so FilePicker shows
+    resetTestStore()
     render(<App />)
     expect(screen.getByText('MarkReview')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Open File' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Open Folder' })).toBeInTheDocument()
   })
 
-  it('calls openFile on the store when the button is clicked', async () => {
+  it('calls openFileInNewTab on the store when the button is clicked', async () => {
+    // Reset to no tabs so FilePicker shows
+    resetTestStore()
     const user = userEvent.setup()
     const mockOpen = vi.fn()
-    useAppStore.setState({ openFile: mockOpen })
+    useAppStore.setState({ openFileInNewTab: mockOpen })
 
     render(<App />)
     await user.click(screen.getByRole('button', { name: 'Open File' }))
@@ -71,10 +80,12 @@ describe('App — no file open', () => {
     expect(mockOpen).toHaveBeenCalledOnce()
   })
 
-  it('calls openDirectory on the store when Open Folder is clicked', async () => {
+  it('calls openDirectoryInNewTab on the store when Open Folder is clicked', async () => {
+    // Reset to no tabs so FilePicker shows
+    resetTestStore()
     const user = userEvent.setup()
     const mockOpen = vi.fn()
-    useAppStore.setState({ openDirectory: mockOpen })
+    useAppStore.setState({ openDirectoryInNewTab: mockOpen })
 
     render(<App />)
     await user.click(screen.getByRole('button', { name: 'Open Folder' }))
@@ -85,7 +96,7 @@ describe('App — no file open', () => {
 
 describe('App — single file open', () => {
   beforeEach(() => {
-    useAppStore.setState({
+    setTestState({
       fileHandle: {} as FileSystemFileHandle,
       fileName: 'research.md',
       rawContent: '# Hello\n\nThis is a test.',
@@ -93,8 +104,9 @@ describe('App — single file open', () => {
   })
 
   it('shows the header with the file name', () => {
-    render(<App />)
-    expect(screen.getByText('research.md')).toBeInTheDocument()
+    const { container } = render(<App />)
+    const headerFilename = container.querySelector('.app-header__filename')
+    expect(headerFilename?.textContent).toBe('research.md')
   })
 
   it('renders the MarkdownRenderer', () => {
@@ -111,7 +123,7 @@ describe('App — single file open', () => {
 
 describe('App — folder open', () => {
   beforeEach(() => {
-    useAppStore.setState({
+    setTestState({
       directoryHandle: {} as FileSystemDirectoryHandle,
       directoryName: 'my-docs',
       fileTree: fakeTree,
@@ -137,14 +149,14 @@ describe('App — folder open', () => {
   })
 
   it('shows the markdown renderer after a file is selected', () => {
-    useAppStore.setState({ fileName: 'readme.md', rawContent: '# Hello', activeFilePath: 'readme.md' })
+    setTestState({ fileName: 'readme.md', rawContent: '# Hello', activeFilePath: 'readme.md' })
     render(<App />)
     expect(screen.getByTestId('markdown-renderer')).toBeInTheDocument()
     expect(screen.queryByText(/Select a file from the sidebar/)).not.toBeInTheDocument()
   })
 
   it('shows "my-docs / readme.md" in the header when a file is selected', () => {
-    useAppStore.setState({ fileName: 'readme.md', activeFilePath: 'readme.md' })
+    setTestState({ fileName: 'readme.md', activeFilePath: 'readme.md' })
     render(<App />)
     expect(screen.getByText('my-docs / readme.md')).toBeInTheDocument()
   })
@@ -178,12 +190,14 @@ describe('App — folder open', () => {
 
 describe('App — theme toggle', () => {
   beforeEach(() => {
-    useAppStore.setState({
-      fileHandle: {} as FileSystemFileHandle,
-      fileName: 'doc.md',
-      rawContent: '',
-      theme: 'light',
-    })
+    setTestState(
+      {
+        fileHandle: {} as FileSystemFileHandle,
+        fileName: 'doc.md',
+        rawContent: '',
+      },
+      { theme: 'light' },
+    )
   })
 
   it('adds dark class to <html> when theme is dark', async () => {
@@ -212,12 +226,14 @@ describe('App — theme toggle', () => {
 
 describe('App — focus mode', () => {
   beforeEach(() => {
-    useAppStore.setState({
-      fileHandle: {} as FileSystemFileHandle,
-      fileName: 'doc.md',
-      rawContent: '',
-      focusMode: false,
-    })
+    setTestState(
+      {
+        fileHandle: {} as FileSystemFileHandle,
+        fileName: 'doc.md',
+        rawContent: '',
+      },
+      { focusMode: false },
+    )
   })
 
   it('hides the header in focus mode', async () => {

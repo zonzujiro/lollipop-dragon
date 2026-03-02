@@ -1,4 +1,5 @@
 import { useAppStore } from "../store";
+import { useActiveTab } from "../store/selectors";
 import { WORKER_URL } from "../config";
 
 function SunIcon() {
@@ -88,28 +89,30 @@ interface Props {
 }
 
 export function Header({ peerMode = false, onShare }: Props) {
-  const fileName = useAppStore((s) => s.fileName);
-  const directoryName = useAppStore((s) => s.directoryName);
-  const fileTree = useAppStore((s) => s.fileTree);
-  const openFile = useAppStore((s) => s.openFile);
-  const openDirectory = useAppStore((s) => s.openDirectory);
+  const tab = useActiveTab();
+  const openFileInNewTab = useAppStore((s) => s.openFileInNewTab);
+  const openDirectoryInNewTab = useAppStore((s) => s.openDirectoryInNewTab);
   const theme = useAppStore((s) => s.theme);
   const setTheme = useAppStore((s) => s.setTheme);
   const toggleFocusMode = useAppStore((s) => s.toggleFocusMode);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
-  const sidebarOpen = useAppStore((s) => s.sidebarOpen);
-  const comments = useAppStore((s) => s.comments);
-  const allFileComments = useAppStore((s) => s.allFileComments);
-  const myPeerComments = useAppStore((s) => s.myPeerComments);
-  const activeFilePath = useAppStore((s) => s.activeFilePath);
-  const commentPanelOpen = useAppStore((s) => s.commentPanelOpen);
   const toggleCommentPanel = useAppStore((s) => s.toggleCommentPanel);
+  const toggleSharedPanel = useAppStore((s) => s.toggleSharedPanel);
   const refreshFile = useAppStore((s) => s.refreshFile);
   const loadSharedContent = useAppStore((s) => s.loadSharedContent);
-  const fileHandle = useAppStore((s) => s.fileHandle);
-  const shares = useAppStore((s) => s.shares);
-  const sharedPanelOpen = useAppStore((s) => s.sharedPanelOpen);
-  const toggleSharedPanel = useAppStore((s) => s.toggleSharedPanel);
+  const myPeerComments = useAppStore((s) => s.myPeerComments);
+  const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
+
+  const fileName = tab?.fileName ?? null;
+  const directoryName = tab?.directoryName ?? null;
+  const fileTree = tab?.fileTree ?? [];
+  const sidebarOpen = tab?.sidebarOpen ?? false;
+  const comments = tab?.comments ?? [];
+  const allFileComments = tab?.allFileComments ?? {};
+  const commentPanelOpen = tab?.commentPanelOpen ?? false;
+  const fileHandle = tab?.fileHandle ?? null;
+  const shares = tab?.shares ?? [];
+  const sharedPanelOpen = tab?.sharedPanelOpen ?? false;
 
   const hasFolderComments = !peerMode && fileTree.length > 0;
   const crossFileTotal = hasFolderComments
@@ -119,7 +122,7 @@ export function Header({ peerMode = false, onShare }: Props) {
       )
     : 0;
   const commentCount = peerMode
-    ? myPeerComments.filter((c) => c.path === activeFilePath).length
+    ? myPeerComments.filter((c) => c.path === peerActiveFilePath).length
     : hasFolderComments
       ? crossFileTotal
       : comments.length;
@@ -129,7 +132,7 @@ export function Header({ peerMode = false, onShare }: Props) {
   const totalPending = shares.reduce((n, s) => n + s.pendingCommentCount, 0);
 
   const displayName = peerMode
-    ? (fileName ?? "Shared document")
+    ? (useAppStore.getState().peerFileName ?? "Shared document")
     : hasFolderOpen && fileName
       ? `${directoryName} / ${fileName}`
       : (fileName ?? directoryName ?? "");
@@ -158,13 +161,13 @@ export function Header({ peerMode = false, onShare }: Props) {
           {!peerMode && (
             <>
               <button
-                onClick={openFile}
+                onClick={openFileInNewTab}
                 className="app-header__btn app-header__btn--text"
               >
                 Open file
               </button>
               <button
-                onClick={openDirectory}
+                onClick={openDirectoryInNewTab}
                 className="app-header__btn app-header__btn--text"
               >
                 Open folder

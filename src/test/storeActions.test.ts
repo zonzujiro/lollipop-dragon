@@ -1,5 +1,7 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { useAppStore } from '../store'
+import { getActiveTab } from '../store/selectors'
+import { setTestState, resetTestStore } from './testHelpers'
 import type { Comment } from '../types/criticmarkup'
 
 function makeHandle(writeOk = true) {
@@ -20,7 +22,8 @@ function makeComment(overrides: Partial<Comment> = {}): Comment {
 }
 
 beforeEach(() => {
-  useAppStore.setState({
+  resetTestStore()
+  setTestState({
     fileHandle: null, rawContent: '', comments: [],
     writeAllowed: true, undoState: null, resolvedComments: [],
   })
@@ -31,22 +34,24 @@ describe('store.editComment', () => {
   it('writes updated markup and saves undoState', async () => {
     const { handle, mockWritable } = makeHandle()
     const comment = makeComment({ rawStart: 0, rawEnd: 15 })
-    useAppStore.setState({
+    setTestState({
       fileHandle: handle,
       rawContent: '{>>original<<}',
       comments: [comment],
     })
     await useAppStore.getState().editComment('0', 'fix', 'fix this')
     expect(mockWritable.write).toHaveBeenCalledWith('{>>fix: fix this<<}')
-    expect(useAppStore.getState().rawContent).toBe('{>>fix: fix this<<}')
-    expect(useAppStore.getState().undoState?.rawContent).toBe('{>>original<<}')
+    const tab = getActiveTab(useAppStore.getState())
+    expect(tab?.rawContent).toBe('{>>fix: fix this<<}')
+    expect(tab?.undoState?.rawContent).toBe('{>>original<<}')
   })
 
   it('sets writeAllowed=false on permission error', async () => {
     const { handle } = makeHandle(false)
-    useAppStore.setState({ fileHandle: handle, rawContent: 'Hi.', comments: [makeComment()] })
+    setTestState({ fileHandle: handle, rawContent: 'Hi.', comments: [makeComment()] })
     await useAppStore.getState().editComment('0', 'note', 'x')
-    expect(useAppStore.getState().writeAllowed).toBe(false)
+    const tab = getActiveTab(useAppStore.getState())
+    expect(tab?.writeAllowed).toBe(false)
   })
 })
 
@@ -55,31 +60,33 @@ describe('store.deleteComment', () => {
     const { handle, mockWritable } = makeHandle()
     const comment = makeComment({ rawStart: 5, rawEnd: 19, raw: '{>>original<<}' })
     const raw = 'Hello{>>original<<}World'
-    useAppStore.setState({ fileHandle: handle, rawContent: raw, comments: [comment] })
+    setTestState({ fileHandle: handle, rawContent: raw, comments: [comment] })
     await useAppStore.getState().deleteComment('0')
     expect(mockWritable.write).toHaveBeenCalledWith('HelloWorld')
-    expect(useAppStore.getState().rawContent).toBe('HelloWorld')
-    expect(useAppStore.getState().undoState?.rawContent).toBe(raw)
+    const tab = getActiveTab(useAppStore.getState())
+    expect(tab?.rawContent).toBe('HelloWorld')
+    expect(tab?.undoState?.rawContent).toBe(raw)
   })
 })
 
 describe('store.undo', () => {
   it('restores rawContent from undoState and clears it', async () => {
     const { handle, mockWritable } = makeHandle()
-    useAppStore.setState({
+    setTestState({
       fileHandle: handle,
       rawContent: 'new content',
       undoState: { rawContent: 'original content' },
     })
     await useAppStore.getState().undo()
     expect(mockWritable.write).toHaveBeenCalledWith('original content')
-    expect(useAppStore.getState().rawContent).toBe('original content')
-    expect(useAppStore.getState().undoState).toBeNull()
+    const tab = getActiveTab(useAppStore.getState())
+    expect(tab?.rawContent).toBe('original content')
+    expect(tab?.undoState).toBeNull()
   })
 
   it('does nothing when undoState is null', async () => {
     const { handle, mockWritable } = makeHandle()
-    useAppStore.setState({ fileHandle: handle, undoState: null })
+    setTestState({ fileHandle: handle, undoState: null })
     await useAppStore.getState().undo()
     expect(mockWritable.write).not.toHaveBeenCalled()
   })
@@ -87,20 +94,18 @@ describe('store.undo', () => {
 
 describe('store.clearUndo', () => {
   it('clears undoState', () => {
-    useAppStore.setState({ undoState: { rawContent: 'x' } })
+    setTestState({ undoState: { rawContent: 'x' } })
     useAppStore.getState().clearUndo()
-    expect(useAppStore.getState().undoState).toBeNull()
+    const tab = getActiveTab(useAppStore.getState())
+    expect(tab?.undoState).toBeNull()
   })
 })
 
 describe('store.refreshFile', () => {
   it('reads file from disk and detects resolved comments', async () => {
     const existing = makeComment({ raw: '{>>original<<}', rawStart: 0, rawEnd: 15 })
-    const mockHandle = {
-      getFile: vi.fn().mockResolvedValue(new File(['New content without the comment.'], 'test.md')),
-    }
     // Patch readFile by putting text directly — mock the file read
-    useAppStore.setState({
+    setTestState({
       fileHandle: {
         getFile: vi.fn().mockResolvedValue({
           text: vi.fn().mockResolvedValue('New content without the comment.'),
@@ -110,14 +115,15 @@ describe('store.refreshFile', () => {
       comments: [existing],
     })
     await useAppStore.getState().refreshFile()
-    expect(useAppStore.getState().rawContent).toBe('New content without the comment.')
-    expect(useAppStore.getState().resolvedComments).toHaveLength(1)
-    expect(useAppStore.getState().resolvedComments[0].raw).toBe('{>>original<<}')
+    const tab = getActiveTab(useAppStore.getState())
+    expect(tab?.rawContent).toBe('New content without the comment.')
+    expect(tab?.resolvedComments).toHaveLength(1)
+    expect(tab?.resolvedComments[0].raw).toBe('{>>original<<}')
   })
 
   it('keeps comment as non-resolved if still present in new content', async () => {
     const existing = makeComment({ raw: '{>>original<<}', rawStart: 0, rawEnd: 15 })
-    useAppStore.setState({
+    setTestState({
       fileHandle: {
         getFile: vi.fn().mockResolvedValue({
           text: vi.fn().mockResolvedValue('{>>original<<} still here.'),
@@ -127,6 +133,7 @@ describe('store.refreshFile', () => {
       comments: [existing],
     })
     await useAppStore.getState().refreshFile()
-    expect(useAppStore.getState().resolvedComments).toHaveLength(0)
+    const tab = getActiveTab(useAppStore.getState())
+    expect(tab?.resolvedComments).toHaveLength(0)
   })
 })

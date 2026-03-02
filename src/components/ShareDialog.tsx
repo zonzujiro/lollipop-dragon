@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAppStore } from '../store'
+import { useActiveTab } from '../store/selectors'
 import type { FileTreeNode } from '../types/fileTree'
 
 const TTL_OPTIONS = [
@@ -15,8 +16,9 @@ interface Props {
 }
 
 export function ShareDialog({ onClose, scope, scopeLabel }: Props) {
-  const fileName = useAppStore((s) => s.fileName)
-  const directoryName = useAppStore((s) => s.directoryName)
+  const tab = useActiveTab()
+  const fileName = tab?.fileName ?? null
+  const directoryName = tab?.directoryName ?? null
   const shareContent = useAppStore((s) => s.shareContent)
   const showToast = useAppStore((s) => s.showToast)
 

@@ -169,8 +169,9 @@ describe('MarkdownRenderer — mermaid blocks', () => {
   })
 
   it('routes mermaid code blocks to MermaidBlock', async () => {
-    const { useAppStore } = await import('../store')
-    useAppStore.setState({
+    const { resetTestStore, setTestState } = await import('./testHelpers')
+    resetTestStore()
+    setTestState({
       rawContent: '```mermaid\ngraph TD; A-->B\n```',
     })
 

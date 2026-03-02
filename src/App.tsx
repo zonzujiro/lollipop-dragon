@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAppStore } from "./store";
+import { useActiveTab } from "./store/selectors";
 import { FilePicker } from "./components/FilePicker";
 import { Header } from "./components/Header";
+import { TabBar } from "./components/TabBar";
 import { MarkdownRenderer } from "./components/MarkdownRenderer";
 import { FileTreeSidebar } from "./components/FileTreeSidebar";
 import { ShareDialog } from "./components/ShareDialog";
@@ -88,7 +90,7 @@ function ShareUnavailable() {
 // Peer mode: render the first file in the shared folder tree
 function PeerViewer() {
   const sharedContent = useAppStore((s) => s.sharedContent);
-  const rawContent = useAppStore((s) => s.rawContent);
+  const rawContent = useAppStore((s) => s.peerRawContent);
 
   if (!sharedContent) return <ShareUnavailable />;
   if (!rawContent) return <ShareUnavailable />;
@@ -97,32 +99,26 @@ function PeerViewer() {
 }
 
 function App() {
-  const fileName = useAppStore((s) => s.fileName);
-  const directoryName = useAppStore((s) => s.directoryName);
-  const fileTree = useAppStore((s) => s.fileTree);
+  const tab = useActiveTab();
+  const tabs = useAppStore((s) => s.tabs);
   const theme = useAppStore((s) => s.theme);
   const focusMode = useAppStore((s) => s.focusMode);
-  const sidebarOpen = useAppStore((s) => s.sidebarOpen);
   const toggleFocusMode = useAppStore((s) => s.toggleFocusMode);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
-  const commentPanelOpen = useAppStore((s) => s.commentPanelOpen);
-  const sharedPanelOpen = useAppStore((s) => s.sharedPanelOpen);
-  const restoreDirectory = useAppStore((s) => s.restoreDirectory);
-  const fileHandle = useAppStore((s) => s.fileHandle);
-  const refreshFile = useAppStore((s) => s.refreshFile);
   const selectFile = useAppStore((s) => s.selectFile);
-  const openDirectory = useAppStore((s) => s.openDirectory);
+  const openDirectoryInNewTab = useAppStore((s) => s.openDirectoryInNewTab);
+  const refreshFile = useAppStore((s) => s.refreshFile);
+  const refreshFileTree = useAppStore((s) => s.refreshFileTree);
+  const restoreTabs = useAppStore((s) => s.restoreTabs);
 
-  // v2 peer mode
+  // Peer mode
   const isPeerMode = useAppStore((s) => s.isPeerMode);
   const peerName = useAppStore((s) => s.peerName);
   const loadSharedContent = useAppStore((s) => s.loadSharedContent);
   const sharedContent = useAppStore((s) => s.sharedContent);
   const selectPeerFile = useAppStore((s) => s.selectPeerFile);
-  const peerCommentPanelOpen = useAppStore((s) => s.commentPanelOpen);
-
-  const activeFilePath = useAppStore((s) => s.activeFilePath);
-  const shares = useAppStore((s) => s.shares);
+  const peerCommentPanelOpen = useAppStore((s) => s.peerCommentPanelOpen);
+  const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
 
   const [peerModeChecked, setPeerModeChecked] = useState(false);
   const [shareScope, setShareScope] = useState<{
@@ -132,10 +128,11 @@ function App() {
 
   const handleHostSelect = useCallback(
     (path: string) => {
-      const node = findFileNode(fileTree, path);
+      if (!tab) return;
+      const node = findFileNode(tab.fileTree, path);
       if (node) selectFile(node);
     },
-    [fileTree, selectFile],
+    [tab, selectFile],
   );
 
   const handleHostShare = useCallback(
@@ -146,22 +143,28 @@ function App() {
   );
 
   const hostTree: FileTreeNode[] = useMemo(() => {
-    if (!directoryName || fileTree.length === 0) return fileTree;
+    if (!tab || !tab.directoryName || tab.fileTree.length === 0)
+      return tab?.fileTree ?? [];
     return [
-      { kind: "directory", name: directoryName, path: "", children: fileTree },
+      {
+        kind: "directory",
+        name: tab.directoryName,
+        path: "",
+        children: tab.fileTree,
+      },
     ];
-  }, [directoryName, fileTree]);
+  }, [tab]);
 
   const hostHeader = useMemo(
     () => ({
-      title: directoryName ?? "",
+      title: tab?.directoryName ?? "",
       action: {
-        onClick: openDirectory,
+        onClick: openDirectoryInNewTab,
         label: "Open another folder",
         icon: folderIcon,
       },
     }),
-    [directoryName, openDirectory],
+    [tab?.directoryName, openDirectoryInNewTab],
   );
 
   const peerTree = useMemo(() => {
@@ -175,14 +178,14 @@ function App() {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
 
-  // Check for peer mode URL on mount and on hash change (same-tab navigation)
+  // Check for peer mode URL on mount and on hash change
   useEffect(() => {
     function checkHash() {
       if (isShareHash() && WORKER_URL) {
         loadSharedContent().finally(() => setPeerModeChecked(true));
       } else {
         setPeerModeChecked(true);
-        restoreDirectory();
+        restoreTabs();
       }
     }
     checkHash();
@@ -191,19 +194,36 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Cmd+B / Ctrl+B toggles sidebar
+  // Keyboard shortcuts: Cmd+B toggles sidebar, Cmd+W closes tab, Ctrl+Tab cycles tabs
   useEffect(() => {
+    const removeTab = useAppStore.getState().removeTab;
+    const switchTab = useAppStore.getState().switchTab;
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "b") {
+      const meta = e.metaKey || e.ctrlKey;
+      if (meta && e.key === "b") {
         e.preventDefault();
         toggleSidebar();
+      } else if (meta && e.key === "w") {
+        e.preventDefault();
+        const { activeTabId } = useAppStore.getState();
+        if (activeTabId) removeTab(activeTabId);
+      } else if (e.ctrlKey && e.key === "Tab") {
+        e.preventDefault();
+        const state = useAppStore.getState();
+        if (state.tabs.length < 2) return;
+        const idx = state.tabs.findIndex((t) => t.id === state.activeTabId);
+        const next = e.shiftKey
+          ? (idx - 1 + state.tabs.length) % state.tabs.length
+          : (idx + 1) % state.tabs.length;
+        switchTab(state.tabs[next].id);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [toggleSidebar]);
 
-  // Watch the open file for external changes (e.g. LLM edits) using FileSystemObserver
+  // Watch the active tab's open file for external changes
+  const fileHandle = tab?.fileHandle ?? null;
   useEffect(() => {
     if (!fileHandle || !("FileSystemObserver" in window)) return;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -226,9 +246,8 @@ function App() {
     return () => observer.disconnect();
   }, [fileHandle, refreshFile]);
 
-  // Watch the open directory for new/removed files using FileSystemObserver
-  const directoryHandle = useAppStore((s) => s.directoryHandle);
-  const refreshFileTree = useAppStore((s) => s.refreshFileTree);
+  // Watch the active tab's open directory for new/removed files
+  const directoryHandle = tab?.directoryHandle ?? null;
   useEffect(() => {
     if (!directoryHandle || !("FileSystemObserver" in window)) return;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -256,9 +275,9 @@ function App() {
     return () => observer.disconnect();
   }, [directoryHandle, refreshFileTree]);
 
-  // Peer mode: show name prompt first, then the document
+  // ── Peer mode (full-screen takeover, no tabs) ──
   if (isPeerMode) {
-    if (!peerModeChecked) return null; // still loading
+    if (!peerModeChecked) return null;
     if (!peerName) return <PeerNamePrompt />;
     return (
       <div className="app-layout">
@@ -267,7 +286,7 @@ function App() {
           {sharedContent && Object.keys(sharedContent.tree).length > 1 && (
             <FileTreeSidebar
               tree={peerTree}
-              activeFilePath={activeFilePath}
+              activeFilePath={peerActiveFilePath}
               onSelect={selectPeerFile}
               header={peerHeader}
             />
@@ -284,36 +303,41 @@ function App() {
 
   if (!peerModeChecked) return null;
 
-  const hasFolderOpen = fileTree.length > 0;
-  const hasContent = !!fileName || !!directoryName;
+  // ── No tabs open → show FilePicker ──
+  if (tabs.length === 0) return <FilePicker />;
 
-  if (!hasContent) return <FilePicker />;
+  // ── Host mode with tabs ──
+  const hasFolderOpen = (tab?.fileTree.length ?? 0) > 0;
 
   return (
     <div className="app-layout">
       {!focusMode && (
         <Header
           onShare={() =>
-            setShareScope({ nodes: [], label: fileName ?? "document" })
+            setShareScope({
+              nodes: [],
+              label: tab?.fileName ?? "document",
+            })
           }
         />
       )}
+      {!focusMode && <TabBar />}
       <div className="app-body">
-        {hasFolderOpen && sidebarOpen && !focusMode && (
+        {hasFolderOpen && tab?.sidebarOpen && !focusMode && (
           <FileTreeSidebar
             tree={hostTree}
-            activeFilePath={activeFilePath}
+            activeFilePath={tab?.activeFilePath ?? null}
             onSelect={handleHostSelect}
             header={hostHeader}
             onShare={WORKER_URL ? handleHostShare : undefined}
-            shares={shares}
+            shares={tab?.shares}
           />
         )}
         <main className="app-main">
-          {fileName ? <MarkdownRenderer /> : <NoFileSelected />}
+          {tab?.fileName ? <MarkdownRenderer /> : <NoFileSelected />}
         </main>
-        {commentPanelOpen && !focusMode && <CommentPanel />}
-        {sharedPanelOpen && !focusMode && <SharedPanel />}
+        {tab?.commentPanelOpen && !focusMode && <CommentPanel />}
+        {tab?.sharedPanelOpen && !focusMode && <SharedPanel />}
       </div>
       {shareScope && (
         <ShareDialog

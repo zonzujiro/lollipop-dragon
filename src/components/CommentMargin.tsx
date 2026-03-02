@@ -1,5 +1,6 @@
 import { useEffect, useRef, useMemo, useState } from "react";
 import { useAppStore } from "../store";
+import { useActiveTab } from "../store/selectors";
 import { CommentCard } from "./CommentCard";
 import { peerColor, initials } from "../utils/peerDisplay";
 import type { Comment, CommentType } from "../types/criticmarkup";
@@ -119,14 +120,15 @@ export function CommentMargin({
     index: number;
     top: number;
   } | null>(null);
-  const allComments = useAppStore((s) => s.comments);
-  const commentFilter = useAppStore((s) => s.commentFilter);
-  const activeId = useAppStore((s) => s.activeCommentId);
+  const tab = useActiveTab();
+  const allComments = tab?.comments ?? [];
+  const commentFilter = tab?.commentFilter ?? "all";
+  const activeId = tab?.activeCommentId ?? null;
   const setActiveId = useAppStore((s) => s.setActiveCommentId);
-  const pendingComments = useAppStore((s) => s.pendingComments);
-  const activeDocId = useAppStore((s) => s.activeDocId);
-  const activeFilePath = useAppStore((s) => s.activeFilePath);
-  const fileName = useAppStore((s) => s.fileName);
+  const pendingComments = tab?.pendingComments ?? {};
+  const activeDocId = tab?.activeDocId ?? null;
+  const activeFilePath = tab?.activeFilePath ?? null;
+  const fileName = tab?.fileName ?? null;
   const [blockTops, setBlockTops] = useState<Map<number, number>>(new Map());
   // 'resolved' means the comments are gone from the file — no dots to show.
   // 'pending' is the same as 'all' for current (still-in-file) comments.

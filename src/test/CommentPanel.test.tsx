@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { CommentPanel } from '../components/CommentPanel'
 import { useAppStore } from '../store'
+import { getActiveTab } from '../store/selectors'
+import { setTestState, resetTestStore } from './testHelpers'
 import type { Comment } from '../types/criticmarkup'
 
 // Re-export makeComment for resolved tests
@@ -35,7 +37,8 @@ const comments: Comment[] = [
 ]
 
 beforeEach(() => {
-  useAppStore.setState({
+  resetTestStore()
+  setTestState({
     comments: [],
     resolvedComments: [],
     activeCommentId: null,
@@ -52,7 +55,7 @@ describe('CommentPanel — list rendering', () => {
   })
 
   it('shows all comments when filter is "all"', () => {
-    useAppStore.setState({ comments })
+    setTestState({ comments })
     render(<CommentPanel />)
     expect(screen.getByText('fix the intro')).toBeInTheDocument()
     expect(screen.getByText('rewrite paragraph')).toBeInTheDocument()
@@ -60,19 +63,19 @@ describe('CommentPanel — list rendering', () => {
   })
 
   it('shows type badges for each comment', () => {
-    useAppStore.setState({ comments: [makeComment('0', 'fix', 'some text')] })
+    setTestState({ comments: [makeComment('0', 'fix', 'some text')] })
     render(<CommentPanel />)
     expect(screen.getByText('fix')).toBeInTheDocument()
   })
 
   it('shows block ref for each comment', () => {
-    useAppStore.setState({ comments: [makeComment('0', 'note', 'note', 3)] })
+    setTestState({ comments: [makeComment('0', 'note', 'note', 3)] })
     render(<CommentPanel />)
     expect(screen.getByText('¶4')).toBeInTheDocument()
   })
 
   it('shows the total comment count', () => {
-    useAppStore.setState({ comments })
+    setTestState({ comments })
     const { container } = render(<CommentPanel />)
     expect(container.querySelector('.comment-panel__count')?.textContent).toBe('3')
   })
@@ -80,7 +83,7 @@ describe('CommentPanel — list rendering', () => {
 
 describe('CommentPanel — filtering', () => {
   beforeEach(() => {
-    useAppStore.setState({ comments })
+    setTestState({ comments })
   })
 
   it('shows filter buttons when multiple types are present', () => {
@@ -102,23 +105,24 @@ describe('CommentPanel — filtering', () => {
 
   it('shows "no comments match" message when filter yields nothing after store change', async () => {
     // Set filter to 'expand' (no expand comments in the list)
-    useAppStore.setState({ commentFilter: 'expand' })
+    setTestState({ commentFilter: 'expand' })
     render(<CommentPanel />)
     expect(screen.getByText(/No comments match/)).toBeInTheDocument()
   })
 
   it('resets to all when clicking an active filter', async () => {
     const user = userEvent.setup()
-    useAppStore.setState({ commentFilter: 'fix' })
+    setTestState({ commentFilter: 'fix' })
     render(<CommentPanel />)
     await user.click(screen.getAllByRole('button', { name: /^fix/ })[0])
-    expect(useAppStore.getState().commentFilter).toBe('all')
+    const tab = getActiveTab(useAppStore.getState())
+    expect(tab?.commentFilter).toBe('all')
   })
 })
 
 describe('CommentPanel — active entry', () => {
   it('marks the active comment entry', () => {
-    useAppStore.setState({ comments, activeCommentId: '1' })
+    setTestState({ comments, activeCommentId: '1' })
     const { container } = render(<CommentPanel />)
     const active = container.querySelector('.comment-panel__entry--active')
     expect(active).toBeInTheDocument()
@@ -127,18 +131,20 @@ describe('CommentPanel — active entry', () => {
 
   it('sets activeCommentId when clicking an entry', async () => {
     const user = userEvent.setup()
-    useAppStore.setState({ comments })
+    setTestState({ comments })
     render(<CommentPanel />)
     await user.click(screen.getByText('fix the intro'))
-    expect(useAppStore.getState().activeCommentId).toBe('0')
+    const tab = getActiveTab(useAppStore.getState())
+    expect(tab?.activeCommentId).toBe('0')
   })
 
   it('clears activeCommentId when clicking the active entry again', async () => {
     const user = userEvent.setup()
-    useAppStore.setState({ comments, activeCommentId: '0' })
+    setTestState({ comments, activeCommentId: '0' })
     render(<CommentPanel />)
     await user.click(screen.getByText('fix the intro'))
-    expect(useAppStore.getState().activeCommentId).toBeNull()
+    const tab = getActiveTab(useAppStore.getState())
+    expect(tab?.activeCommentId).toBeNull()
   })
 })
 
@@ -160,7 +166,7 @@ describe('CommentPanel — resolved filter', () => {
   ]
 
   it('shows Pending and Resolved buttons when resolvedComments exist', () => {
-    useAppStore.setState({ resolvedComments: resolved })
+    setTestState({ resolvedComments: resolved })
     render(<CommentPanel />)
     expect(screen.getByRole('button', { name: /^Pending/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^Resolved/ })).toBeInTheDocument()
@@ -173,14 +179,14 @@ describe('CommentPanel — resolved filter', () => {
   })
 
   it('shows resolved comments in the list when Resolved filter is active', () => {
-    useAppStore.setState({ resolvedComments: resolved, commentFilter: 'resolved' })
+    setTestState({ resolvedComments: resolved, commentFilter: 'resolved' })
     render(<CommentPanel />)
     expect(screen.getByText('already fixed')).toBeInTheDocument()
     expect(screen.getByText('was removed')).toBeInTheDocument()
   })
 
   it('resolved entries have strikethrough styling', () => {
-    useAppStore.setState({ resolvedComments: resolved, commentFilter: 'resolved' })
+    setTestState({ resolvedComments: resolved, commentFilter: 'resolved' })
     const { container } = render(<CommentPanel />)
     const resolvedTexts = container.querySelectorAll('.comment-panel__text--resolved')
     expect(resolvedTexts.length).toBe(2)
@@ -188,17 +194,19 @@ describe('CommentPanel — resolved filter', () => {
 
   it('clicking Resolved sets commentFilter to resolved', async () => {
     const user = userEvent.setup()
-    useAppStore.setState({ resolvedComments: resolved })
+    setTestState({ resolvedComments: resolved })
     render(<CommentPanel />)
     await user.click(screen.getByRole('button', { name: /^Resolved/ }))
-    expect(useAppStore.getState().commentFilter).toBe('resolved')
+    const tab = getActiveTab(useAppStore.getState())
+    expect(tab?.commentFilter).toBe('resolved')
   })
 
   it('clicking Resolved again resets to all', async () => {
     const user = userEvent.setup()
-    useAppStore.setState({ resolvedComments: resolved, commentFilter: 'resolved' })
+    setTestState({ resolvedComments: resolved, commentFilter: 'resolved' })
     render(<CommentPanel />)
     await user.click(screen.getByRole('button', { name: /^Resolved/ }))
-    expect(useAppStore.getState().commentFilter).toBe('all')
+    const tab = getActiveTab(useAppStore.getState())
+    expect(tab?.commentFilter).toBe('all')
   })
 })

@@ -1,8 +1,8 @@
 import { useAppStore } from '../store'
 
 export function FilePicker() {
-  const openFile = useAppStore((s) => s.openFile)
-  const openDirectory = useAppStore((s) => s.openDirectory)
+  const openFile = useAppStore((s) => s.openFileInNewTab)
+  const openDirectory = useAppStore((s) => s.openDirectoryInNewTab)
 
   return (
     <div className="file-picker">

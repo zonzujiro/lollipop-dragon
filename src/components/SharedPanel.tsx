@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAppStore } from "../store";
+import { useActiveTab } from "../store/selectors";
 import { PendingCommentReview } from "./PendingCommentReview";
 import { buildShareUrlFromOrigin } from "../utils/shareUrl";
 
@@ -26,11 +27,12 @@ function formatFileCount(count: number): string {
 }
 
 export function SharedPanel() {
-  const shares = useAppStore((s) => s.shares);
+  const tab = useActiveTab();
+  const shares = tab?.shares ?? [];
   const toggleSharedPanel = useAppStore((s) => s.toggleSharedPanel);
   const revokeShare = useAppStore((s) => s.revokeShare);
   const fetchPendingComments = useAppStore((s) => s.fetchPendingComments);
-  const pendingComments = useAppStore((s) => s.pendingComments);
+  const pendingComments = tab?.pendingComments ?? {};
 
   const showToast = useAppStore((s) => s.showToast);
 

@@ -2,10 +2,11 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { CommentMargin } from '../components/CommentMargin'
-import { useAppStore } from '../store'
+import { setTestState, resetTestStore } from './testHelpers'
 
 beforeEach(() => {
-  useAppStore.setState({
+  resetTestStore()
+  setTestState({
     comments: [],
     commentFilter: 'all',
     activeCommentId: null,

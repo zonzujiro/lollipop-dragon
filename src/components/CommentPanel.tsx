@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAppStore } from "../store";
+import { useActiveTab } from "../store/selectors";
 import type { Comment, CommentType } from "../types/criticmarkup";
 
 const TYPE_COLOR: Record<CommentType, string> = {
@@ -51,17 +52,18 @@ interface Props {
 }
 
 export function CommentPanel({ peerMode = false }: Props) {
-  const comments = useAppStore((s) => s.comments);
-  const resolvedComments = useAppStore((s) => s.resolvedComments);
-  const activeCommentId = useAppStore((s) => s.activeCommentId);
-  const commentFilter = useAppStore((s) => s.commentFilter);
+  const tab = useActiveTab();
+  const comments = tab?.comments ?? [];
+  const resolvedComments = tab?.resolvedComments ?? [];
+  const activeCommentId = tab?.activeCommentId ?? null;
+  const commentFilter = tab?.commentFilter ?? "all";
   const setActiveCommentId = useAppStore((s) => s.setActiveCommentId);
   const setCommentFilter = useAppStore((s) => s.setCommentFilter);
   const toggleCommentPanel = useAppStore((s) => s.toggleCommentPanel);
   const myPeerComments = useAppStore((s) => s.myPeerComments);
-  const activeFilePath = useAppStore((s) => s.activeFilePath);
-  const fileTree = useAppStore((s) => s.fileTree);
-  const allFileComments = useAppStore((s) => s.allFileComments);
+  const activeFilePath = tab?.activeFilePath ?? null;
+  const fileTree = tab?.fileTree ?? [];
+  const allFileComments = tab?.allFileComments ?? {};
   const navigateToComment = useAppStore((s) => s.navigateToComment);
   const editComment = useAppStore((s) => s.editComment);
   const deleteComment = useAppStore((s) => s.deleteComment);

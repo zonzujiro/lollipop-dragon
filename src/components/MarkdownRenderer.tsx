@@ -15,6 +15,7 @@ import { createHighlighter, type Highlighter } from "shiki";
 import { MermaidBlock } from "./MermaidBlock";
 import { CommentMargin } from "./CommentMargin";
 import { useAppStore } from "../store";
+import { useActiveTab } from "../store/selectors";
 import { parseCriticMarkup } from "../services/criticmarkup";
 import type { CommentType } from "../types/criticmarkup";
 import { assignBlockIndices } from "../services/blockIndex";
@@ -88,19 +89,29 @@ function PreBlock({ children, ...props }: ComponentPropsWithoutRef<"pre">) {
 }
 
 export function MarkdownRenderer() {
-  const rawContent = useAppStore((s) => s.rawContent);
+  const tab = useActiveTab();
+  const isPeerMode = useAppStore((s) => s.isPeerMode);
+
+  // In peer mode, read from global peer state; in host mode, from active tab
+  const rawContent = useAppStore((s) =>
+    s.isPeerMode ? s.peerRawContent : (tab?.rawContent ?? ""),
+  );
+  const fileName = isPeerMode
+    ? useAppStore.getState().peerFileName
+    : (tab?.fileName ?? null);
+  const activeFilePath = isPeerMode
+    ? useAppStore.getState().peerActiveFilePath
+    : (tab?.activeFilePath ?? null);
+  const pendingScrollTarget = tab?.pendingScrollTarget ?? null;
+  const writeAllowed = tab?.writeAllowed ?? false;
+
   const setComments = useAppStore((s) => s.setComments);
   const addCommentAction = useAppStore((s) => s.addComment);
   const postPeerCommentAction = useAppStore((s) => s.postPeerComment);
-  const isPeerMode = useAppStore((s) => s.isPeerMode);
-  const fileName = useAppStore((s) => s.fileName);
-  const activeFilePath = useAppStore((s) => s.activeFilePath);
-  const pendingScrollTarget = useAppStore((s) => s.pendingScrollTarget);
   const clearPendingScrollTarget = useAppStore(
     (s) => s.clearPendingScrollTarget,
   );
   const setActiveCommentId = useAppStore((s) => s.setActiveCommentId);
-  const writeAllowed = useAppStore((s) => s.writeAllowed);
   const [highlighter, setHighlighter] = useState<Highlighter | null>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
   const [hoveredBlock, setHoveredBlock] = useState<{

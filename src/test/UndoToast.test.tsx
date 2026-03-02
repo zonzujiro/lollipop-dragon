@@ -3,9 +3,11 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { UndoToast } from '../components/UndoToast'
 import { useAppStore } from '../store'
+import { setTestState, resetTestStore } from './testHelpers'
 
 beforeEach(() => {
-  useAppStore.setState({ undoState: null })
+  resetTestStore()
+  setTestState({ undoState: null })
   vi.restoreAllMocks()
 })
 
@@ -16,7 +18,7 @@ describe('UndoToast', () => {
   })
 
   it('appears when undoState is set', () => {
-    useAppStore.setState({ undoState: { rawContent: 'old content' } })
+    setTestState({ undoState: { rawContent: 'old content' } })
     render(<UndoToast />)
     expect(screen.getByRole('status')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Undo' })).toBeInTheDocument()
@@ -25,7 +27,8 @@ describe('UndoToast', () => {
   it('calls store.undo when Undo button is clicked', async () => {
     const user = userEvent.setup()
     const mockUndo = vi.fn().mockResolvedValue(undefined)
-    useAppStore.setState({ undoState: { rawContent: 'old' }, undo: mockUndo })
+    setTestState({ undoState: { rawContent: 'old' } })
+    useAppStore.setState({ undo: mockUndo })
     render(<UndoToast />)
     await user.click(screen.getByRole('button', { name: 'Undo' }))
     expect(mockUndo).toHaveBeenCalledOnce()
@@ -34,7 +37,8 @@ describe('UndoToast', () => {
   it('calls store.clearUndo when Dismiss button is clicked', async () => {
     const user = userEvent.setup()
     const mockClear = vi.fn()
-    useAppStore.setState({ undoState: { rawContent: 'old' }, clearUndo: mockClear })
+    setTestState({ undoState: { rawContent: 'old' } })
+    useAppStore.setState({ clearUndo: mockClear })
     render(<UndoToast />)
     await user.click(screen.getByRole('button', { name: 'Dismiss' }))
     expect(mockClear).toHaveBeenCalledOnce()
@@ -43,7 +47,8 @@ describe('UndoToast', () => {
   it('auto-dismisses after 5 seconds', () => {
     vi.useFakeTimers()
     const mockClear = vi.fn()
-    useAppStore.setState({ undoState: { rawContent: 'old' }, clearUndo: mockClear })
+    setTestState({ undoState: { rawContent: 'old' } })
+    useAppStore.setState({ clearUndo: mockClear })
     render(<UndoToast />)
     act(() => vi.advanceTimersByTime(5000))
     expect(mockClear).toHaveBeenCalledOnce()

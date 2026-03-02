@@ -3,13 +3,15 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { ShareDialog } from '../components/ShareDialog'
 import { useAppStore } from '../store'
+import { setTestState, resetTestStore } from './testHelpers'
 
 beforeEach(() => {
-  useAppStore.setState({
+  resetTestStore()
+  setTestState({
     fileName: 'readme.md',
     directoryName: null,
-    shareContent: vi.fn(),
   })
+  useAppStore.setState({ shareContent: vi.fn() })
   vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined)
 })
 
@@ -20,7 +22,7 @@ describe('ShareDialog — initial render', () => {
   })
 
   it('uses directoryName as label when set', () => {
-    useAppStore.setState({ directoryName: 'my-project', fileName: 'index.md' })
+    setTestState({ directoryName: 'my-project', fileName: 'index.md' })
     render(<ShareDialog onClose={vi.fn()} />)
     expect(screen.getByRole('heading', { name: /Share "my-project"/ })).toBeInTheDocument()
   })
