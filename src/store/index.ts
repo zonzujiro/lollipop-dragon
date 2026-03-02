@@ -846,8 +846,16 @@ export const useAppStore = create<AppState>()(
         const tab = activeTab(get);
         if (!tab) return;
         const tabId = tab.id;
-        const key = tab.shareKeys[docId];
-        if (!key) return;
+        let key = tab.shareKeys[docId];
+        // Fallback: restore key from the share record if not yet in memory
+        if (!key) {
+          const share = tab.shares.find((s) => s.docId === docId);
+          if (!share?.keyB64) return;
+          key = await base64urlToKey(share.keyB64);
+          updateTab(get, set, tabId, (t) => ({
+            shareKeys: { ...t.shareKeys, [docId]: key },
+          }));
+        }
         const comments = await storage.fetchComments(docId, key);
         const currentTab = get().tabs.find((t) => t.id === tabId);
         if (!currentTab) return;

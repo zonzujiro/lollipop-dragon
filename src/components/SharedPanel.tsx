@@ -38,11 +38,15 @@ export function SharedPanel() {
 
   const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
   const [loadingDocId, setLoadingDocId] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   async function handleFetch(docId: string) {
     setLoadingDocId(docId);
+    setFetchError(null);
     try {
       await fetchPendingComments(docId);
       setExpandedDocId(docId);
+    } catch (e) {
+      setFetchError(e instanceof Error ? e.message : "Failed to fetch comments");
     } finally {
       setLoadingDocId(null);
     }
@@ -61,6 +65,10 @@ export function SharedPanel() {
           ×
         </button>
       </div>
+
+      {fetchError && (
+        <p className="shared-panel__error">{fetchError}</p>
+      )}
 
       {shares.length === 0 ? (
         <p className="shared-panel__empty">
