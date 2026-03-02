@@ -375,7 +375,7 @@ body {
 .tab-bar__menu {
   position: absolute;
   top: 100%;
-  left: 0;
+  right: 0;
   z-index: 100;
   min-width: 10rem;
   background: var(--surface);
