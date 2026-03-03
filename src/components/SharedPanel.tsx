@@ -115,7 +115,6 @@ export function SharedPanel() {
                     className="shared-panel__btn"
                     onClick={() => {
                       const url = buildShareUrlFromOrigin({
-                        docId: share.docId,
                         keyB64: share.keyB64,
                         name: share.label,
                       });

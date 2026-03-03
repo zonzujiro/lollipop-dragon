@@ -93,12 +93,13 @@ export default {
 
     // ── /share ──────────────────────────────────────────────────────────
     if (resource === "share") {
-      // POST /share  — upload content
-      if (req.method === "POST" && !docId) {
+      // POST /share/:docId  — upload content (client provides docId)
+      if (req.method === "POST" && docId) {
+        const existing = await env.LOLLIPOP_DRAGON.get(`share:${docId}:meta`);
+        if (existing) return errRes(409, "Document already exists", cors);
         const blob = await req.arrayBuffer();
         if (blob.byteLength > 25 * 1024 * 1024)
           return errRes(413, "Blob too large", cors);
-        const id = crypto.randomUUID();
         const ttl = Math.min(
           Number(url.searchParams.get("ttl") ?? 604800),
           30 * 86400,
@@ -107,12 +108,12 @@ export default {
         const hostSecret = req.headers.get("X-Host-Secret") ?? "";
         if (!hostSecret) return errRes(400, "X-Host-Secret required", cors);
         const hostSecretHash = await sha256hex(hostSecret);
-        await env.LOLLIPOP_DRAGON.put(`share:${id}`, blob, {
+        await env.LOLLIPOP_DRAGON.put(`share:${docId}`, blob, {
           expirationTtl: ttl,
         });
         const now = new Date().toISOString();
         await env.LOLLIPOP_DRAGON.put(
-          `share:${id}:meta`,
+          `share:${docId}:meta`,
           JSON.stringify({
             hostSecretHash,
             createdAt: now,
@@ -122,7 +123,7 @@ export default {
           } satisfies ShareMeta),
           { expirationTtl: ttl },
         );
-        return jsonRes({ docId: id }, cors);
+        return jsonRes({ ok: true }, cors);
       }
 
       // GET /share/:docId  — fetch content

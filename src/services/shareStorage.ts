@@ -3,7 +3,6 @@ import { serializePayload, deserializePayload } from './sharePayload'
 import type { SharePayload, PeerComment } from '../types/share'
 
 export interface UploadResult {
-  docId: string
   hostSecret: string
 }
 
@@ -15,6 +14,7 @@ export class ShareStorage {
   // ── Content ──────────────────────────────────────────────────────────
 
   async uploadContent(
+    docId: string,
     tree: Record<string, string>,
     key: CryptoKey,
     opts: { ttl: number; label: string },
@@ -23,14 +23,13 @@ export class ShareStorage {
     const blob = await encrypt(compressed, key)
     const hostSecret = generateSecret()
     const params = new URLSearchParams({ ttl: String(opts.ttl), label: opts.label })
-    const res = await fetch(`${this.workerUrl}/share?${params}`, {
+    const res = await fetch(`${this.workerUrl}/share/${docId}?${params}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/octet-stream', 'X-Host-Secret': hostSecret },
       body: blob,
     })
     if (!res.ok) throw new Error(`Upload failed: ${res.status}`)
-    const { docId } = await res.json() as { docId: string }
-    return { docId, hostSecret }
+    return { hostSecret }
   }
 
   async fetchContent(docId: string, key: CryptoKey): Promise<SharePayload> {

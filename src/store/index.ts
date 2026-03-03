@@ -17,6 +17,7 @@ import {
   generateKey,
   keyToBase64url,
   base64urlToKey,
+  docIdFromKey,
 } from "../services/crypto";
 import { buildShareUrlFromOrigin, parseShareHash } from "../utils/shareUrl";
 import type { FileTreeNode, FileNode, DirectoryNode } from "../types/fileTree";
@@ -758,7 +759,8 @@ export const useAppStore = create<AppState>()(
         }
 
         const key = await generateKey();
-        const { docId, hostSecret } = await storage.uploadContent(tree, key, {
+        const docId = await docIdFromKey(key);
+        const { hostSecret } = await storage.uploadContent(docId, tree, key, {
           ttl,
           label,
         });
@@ -786,7 +788,7 @@ export const useAppStore = create<AppState>()(
           activeDocId: docId,
         }));
 
-        return buildShareUrlFromOrigin({ docId, keyB64, name: label });
+        return buildShareUrlFromOrigin({ keyB64, name: label });
       },
 
       revokeShare: async (docId) => {
@@ -1019,11 +1021,12 @@ export const useAppStore = create<AppState>()(
       loadSharedContent: async () => {
         const parsed = parseShareHash();
         if (!parsed) return;
-        const { docId, keyB64 } = parsed;
+        const { keyB64 } = parsed;
         const storage = getStorage();
         if (!storage) return;
         try {
           const key = await base64urlToKey(keyB64);
+          const docId = await docIdFromKey(key);
           const payload = await storage.fetchContent(docId, key);
           const firstPath = Object.keys(payload.tree)[0];
           set({
@@ -1074,11 +1077,11 @@ export const useAppStore = create<AppState>()(
       syncPeerComments: async () => {
         const parsed = parseShareHash();
         if (!parsed) return;
-        const { docId, keyB64 } = parsed;
+        const { keyB64 } = parsed;
         const storage = getStorage();
         if (!storage) return;
-        const key =
-          get().peerShareKeys[docId] ?? (await base64urlToKey(keyB64));
+        const key = await base64urlToKey(keyB64);
+        const docId = await docIdFromKey(key);
         const { myPeerComments } = get();
         if (myPeerComments.length === 0) return;
         for (const comment of myPeerComments) {

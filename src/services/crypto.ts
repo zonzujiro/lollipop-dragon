@@ -22,6 +22,20 @@ export async function base64urlToKey(b64: string): Promise<CryptoKey> {
   return crypto.subtle.importKey('raw', raw, { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt'])
 }
 
+export async function docIdFromKey(key: CryptoKey): Promise<string> {
+  const raw = await crypto.subtle.exportKey('raw', key)
+  const hash = await crypto.subtle.digest('SHA-256', raw)
+  const bytes = new Uint8Array(hash, 0, 16)
+  let binary = ''
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i])
+  }
+  return btoa(binary)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '')
+}
+
 export async function encrypt(plaintext: Uint8Array, key: CryptoKey): Promise<ArrayBuffer> {
   const iv = crypto.getRandomValues(new Uint8Array(12))
   const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plaintext)

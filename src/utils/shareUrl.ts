@@ -1,17 +1,16 @@
 export interface ShareUrlParams {
-  docId: string;
   keyB64: string;
   name?: string;
 }
 
 /**
  * Build a share URL from the given base URL and share parameters.
- * Format: `${base}#share=${docId}&key=${keyB64}&name=${name}`
+ * Format: `${base}#s=${keyB64}&n=${name}`
  */
 export function buildShareUrl(base: string, params: ShareUrlParams): string {
-  let url = `${base}#share=${params.docId}&key=${params.keyB64}`;
+  let url = `${base}#s=${params.keyB64}`;
   if (params.name) {
-    url += `&name=${encodeURIComponent(params.name)}`;
+    url += `&n=${encodeURIComponent(params.name)}`;
   }
   return url;
 }
@@ -26,17 +25,29 @@ export function buildShareUrlFromOrigin(params: ShareUrlParams): string {
 
 /**
  * Parse the current window.location.hash for share URL parameters.
- * Returns null if the hash does not contain valid share params (share + key).
- * Old URLs with `pwd` still parse fine — we just ignore the parameter.
+ * Returns null if the hash does not contain valid share params.
+ * Supports both new format (#s=<key>&n=<name>) and old format
+ * (#share=<docId>&key=<key>&name=<name>) for backward compatibility.
  */
 export function parseShareHash(): ShareUrlParams | null {
   const hash = window.location.hash.slice(1);
   const params = new URLSearchParams(hash);
-  const docId = params.get("share");
-  const keyB64 = params.get("key");
-  if (!docId || !keyB64) return null;
-  const name = params.get("name") ?? undefined;
-  return { docId, keyB64, name };
+
+  // New format: #s=<keyB64>&n=<name>
+  const keyB64 = params.get("s");
+  if (keyB64) {
+    const name = params.get("n") ?? undefined;
+    return { keyB64, name };
+  }
+
+  // Old format: #share=<docId>&key=<keyB64>&name=<name>
+  const oldKey = params.get("key");
+  if (oldKey) {
+    const name = params.get("name") ?? undefined;
+    return { keyB64: oldKey, name };
+  }
+
+  return null;
 }
 
 /**
@@ -46,5 +57,8 @@ export function parseShareHash(): ShareUrlParams | null {
  */
 export function isShareHash(): boolean {
   const hash = window.location.hash;
+  // New format
+  if (/^#s=[A-Za-z0-9_-]/.test(hash)) return true;
+  // Old format
   return hash.includes("share=") && hash.includes("key=");
 }
