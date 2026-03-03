@@ -71,6 +71,15 @@ async function verifySecret(
 
 // --- Main handler ---
 
+function arrayBufferToBase64(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
@@ -78,6 +87,7 @@ export default {
 
     if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
+    try {
     const parts = url.pathname.replace(/^\//, "").split("/");
     const [resource, docId] = parts;
 
@@ -201,7 +211,7 @@ export default {
         );
         const encoded = blobs
           .filter((b): b is ArrayBuffer => b !== null)
-          .map((b) => btoa(String.fromCharCode(...new Uint8Array(b))));
+          .map((b) => arrayBufferToBase64(b));
         return jsonRes(encoded, cors);
       }
 
@@ -231,5 +241,10 @@ export default {
     }
 
     return errRes(404, "Not found", cors);
+
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Internal error";
+      return errRes(500, msg, cors);
+    }
   },
 };
