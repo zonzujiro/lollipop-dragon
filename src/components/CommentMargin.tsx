@@ -143,8 +143,28 @@ export function CommentMargin({
   const [groups, setGroups] = useState<DotGroup[]>([]);
   const measureRef = useRef<() => void>(() => {});
 
+  // In peer mode, show the peer's own comments as dots
+  const myPeerComments = useAppStore((s) => s.myPeerComments);
+  const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
+
   // Peer comments for the current file, grouped by blockIndex
   const peerDotGroups = useMemo(() => {
+    if (peerMode) {
+      // Peer sees their own comments
+      const currentPath = peerActiveFilePath ?? "";
+      const forFile = currentPath
+        ? myPeerComments.filter((c) => c.path === currentPath)
+        : myPeerComments;
+      const byBlock = new Map<number, PeerComment[]>();
+      for (const c of forFile) {
+        const idx = c.blockRef.blockIndex;
+        const arr = byBlock.get(idx) ?? [];
+        arr.push(c);
+        byBlock.set(idx, arr);
+      }
+      return byBlock;
+    }
+    // Host sees pending peer comments
     if (!activeDocId) return new Map<number, PeerComment[]>();
     const all = pendingComments[activeDocId] ?? [];
     const currentPath = activeFilePath ?? fileName ?? "";
@@ -159,7 +179,7 @@ export function CommentMargin({
       byBlock.set(idx, arr);
     }
     return byBlock;
-  }, [pendingComments, activeDocId, activeFilePath, fileName]);
+  }, [peerMode, myPeerComments, peerActiveFilePath, pendingComments, activeDocId, activeFilePath, fileName]);
 
   // Close card when clicking outside
   useEffect(() => {
