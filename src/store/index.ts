@@ -157,6 +157,7 @@ interface AppState {
   ) => Promise<void>;
   deletePeerComment: (commentId: string) => void;
   editPeerComment: (commentId: string, type: CommentType, text: string) => void;
+  syncPeerComments: () => Promise<void>;
 }
 
 function getStorage(): ShareStorage | null {
@@ -1073,6 +1074,21 @@ export const useAppStore = create<AppState>()(
           c.id === commentId ? { ...c, commentType: type, text } : c,
         );
         set({ myPeerComments: updated });
+      },
+
+      syncPeerComments: async () => {
+        const parsed = parseShareHash();
+        if (!parsed) return;
+        const { docId, keyB64 } = parsed;
+        const storage = getStorage();
+        if (!storage) return;
+        const key =
+          get().peerShareKeys[docId] ?? (await base64urlToKey(keyB64));
+        const { myPeerComments } = get();
+        if (myPeerComments.length === 0) return;
+        for (const comment of myPeerComments) {
+          await storage.postComment(docId, comment, key);
+        }
       },
     }),
     {

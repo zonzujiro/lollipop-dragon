@@ -100,6 +100,7 @@ export function Header({ peerMode = false, onShare }: Props) {
   const toggleSharedPanel = useAppStore((s) => s.toggleSharedPanel);
   const refreshFile = useAppStore((s) => s.refreshFile);
   const loadSharedContent = useAppStore((s) => s.loadSharedContent);
+  const syncPeerComments = useAppStore((s) => s.syncPeerComments);
   const myPeerComments = useAppStore((s) => s.myPeerComments);
   const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
 
@@ -212,14 +213,26 @@ export function Header({ peerMode = false, onShare }: Props) {
           </button>
 
           {peerMode && (
-            <button
-              onClick={loadSharedContent}
-              aria-label="Refresh content"
-              title="Re-fetch content from host"
-              className="app-header__btn app-header__btn--text"
-            >
-              Refresh
-            </button>
+            <>
+              <button
+                onClick={loadSharedContent}
+                aria-label="Get latest content"
+                title="Fetch latest content from the host"
+                className="app-header__btn app-header__btn--text"
+              >
+                Get latest
+              </button>
+              {myPeerComments.length > 0 && (
+                <button
+                  onClick={syncPeerComments}
+                  aria-label="Submit comments"
+                  title="Send your comments to the host"
+                  className="app-header__btn app-header__btn--text"
+                >
+                  Submit comments ({myPeerComments.length})
+                </button>
+              )}
+            </>
           )}
 
           {!peerMode && fileHandle && (
