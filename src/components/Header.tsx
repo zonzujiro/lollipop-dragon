@@ -110,7 +110,8 @@ export function Header({ peerMode = false, onShare }: Props) {
   const sidebarOpen = tab?.sidebarOpen ?? false;
   const comments = tab?.comments ?? [];
   const allFileComments = tab?.allFileComments ?? {};
-  const commentPanelOpen = tab?.commentPanelOpen ?? false;
+  const peerCommentPanelOpen = useAppStore((s) => s.peerCommentPanelOpen);
+  const commentPanelOpen = peerMode ? peerCommentPanelOpen : (tab?.commentPanelOpen ?? false);
   const fileHandle = tab?.fileHandle ?? null;
   const shares = tab?.shares ?? [];
   const sharedPanelOpen = tab?.sharedPanelOpen ?? false;

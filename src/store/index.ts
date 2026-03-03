@@ -154,7 +154,7 @@ interface AppState {
     type: CommentType,
     text: string,
     path: string,
-  ) => Promise<void>;
+  ) => void;
   deletePeerComment: (commentId: string) => void;
   editPeerComment: (commentId: string, type: CommentType, text: string) => void;
   syncPeerComments: () => Promise<void>;
@@ -371,11 +371,16 @@ export const useAppStore = create<AppState>()(
       setActiveCommentId: (id) =>
         updateActiveTab(get, set, () => ({ activeCommentId: id })),
 
-      toggleCommentPanel: () =>
-        updateActiveTab(get, set, (t) => ({
-          commentPanelOpen: !t.commentPanelOpen,
-          sharedPanelOpen: !t.commentPanelOpen ? false : t.sharedPanelOpen,
-        })),
+      toggleCommentPanel: () => {
+        if (get().isPeerMode) {
+          set((s) => ({ peerCommentPanelOpen: !s.peerCommentPanelOpen }));
+        } else {
+          updateActiveTab(get, set, (t) => ({
+            commentPanelOpen: !t.commentPanelOpen,
+            sharedPanelOpen: !t.commentPanelOpen ? false : t.sharedPanelOpen,
+          }));
+        }
+      },
 
       setCommentFilter: (f) =>
         updateActiveTab(get, set, () => ({
@@ -1036,10 +1041,7 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      postPeerComment: async (blockIndex, type, text, path) => {
-        const parsed = parseShareHash();
-        if (!parsed) return;
-        const { docId, keyB64 } = parsed;
+      postPeerComment: (blockIndex, type, text, path) => {
         const { peerName } = get();
         const comment: PeerComment = {
           id: `c_${crypto.randomUUID()}`,
@@ -1052,13 +1054,6 @@ export const useAppStore = create<AppState>()(
         };
 
         set({ myPeerComments: [comment, ...get().myPeerComments] });
-
-        const storage = getStorage();
-        if (storage) {
-          const key =
-            get().peerShareKeys[docId] ?? (await base64urlToKey(keyB64));
-          await storage.postComment(docId, comment, key);
-        }
       },
 
       deletePeerComment: (commentId) => {
@@ -1195,39 +1190,16 @@ export const useAppStore = create<AppState>()(
         activeTabId: s.activeTabId,
         theme: s.theme,
         peerName: s.peerName,
+        myPeerComments: s.myPeerComments,
       }),
       merge: (persisted, current) => {
         if (typeof persisted !== "object" || persisted === null) return current;
-        const merged = { ...current };
-        // Restore persisted scalar fields
-        if ("theme" in persisted) {
-          const v = persisted.theme;
-          if (v === "light" || v === "dark") merged.theme = v;
-        }
-        if ("activeTabId" in persisted) {
-          const v = persisted.activeTabId;
-          if (typeof v === "string" || v === null) merged.activeTabId = v;
-        }
-        if ("peerName" in persisted) {
-          const v = persisted.peerName;
-          if (typeof v === "string" || v === null) merged.peerName = v;
-        }
-        // Restore tabs, filling in default values for non-persisted fields
-        if ("tabs" in persisted && Array.isArray(persisted.tabs)) {
-          merged.tabs = persisted.tabs
-            .filter(
-              (t: unknown) =>
-                typeof t === "object" && t !== null && "label" in t,
-            )
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            .map((t: any) =>
-              createDefaultTab({
-                label: typeof t.label === "string" ? t.label : "document",
-                ...t,
-              }),
-            );
-        }
-        return merged;
+        const p: Partial<AppState> = persisted;
+        // Tabs need special handling: fill in defaults for non-persisted fields
+        const tabs = Array.isArray(p.tabs)
+          ? p.tabs.map((t) => createDefaultTab({ ...t, label: t.label ?? "document" }))
+          : current.tabs;
+        return { ...current, ...p, tabs };
       },
     },
   ),
