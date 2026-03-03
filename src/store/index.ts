@@ -620,10 +620,37 @@ export const useAppStore = create<AppState>()(
             const perm = await handle.queryPermission({ mode: "read" });
             if (perm !== "granted") continue;
             const tree = await buildFileTree(handle);
-            updateTab(get, set, tab.id, () => ({
+            // Re-select the previously active file to restore its fileHandle
+            let restoredFileHandle: FileSystemFileHandle | null = null;
+            let restoredRaw: string | null = null;
+            if (tab.activeFilePath) {
+              const findFile = (nodes: FileTreeNode[]): FileNode | null => {
+                for (const n of nodes) {
+                  if (n.kind === "file" && n.path === tab.activeFilePath)
+                    return n as FileNode;
+                  if (n.kind === "directory") {
+                    const found = findFile((n as DirectoryNode).children);
+                    if (found) return found;
+                  }
+                }
+                return null;
+              };
+              const fileNode = findFile(tree);
+              if (fileNode) {
+                restoredFileHandle = fileNode.handle;
+                try {
+                  restoredRaw = await readFile(fileNode.handle);
+                } catch {
+                  // file read failed — keep persisted rawContent
+                }
+              }
+            }
+            updateTab(get, set, tab.id, (t) => ({
               directoryHandle: handle,
               directoryName: handle.name,
               fileTree: tree,
+              ...(restoredFileHandle ? { fileHandle: restoredFileHandle } : {}),
+              ...(restoredRaw !== null ? { rawContent: restoredRaw } : {}),
             }));
           } catch {
             // IndexedDB unavailable or handle expired — silent
