@@ -30,6 +30,14 @@ import { WORKER_URL } from "../config";
 
 const SHARES_KEY = "markreview-shares";
 
+function stableShareKey(tab: {
+  directoryName: string | null;
+  fileName: string | null;
+  id: string;
+}): string {
+  return tab.directoryName ?? tab.fileName ?? tab.id;
+}
+
 function loadAllShares(): Record<string, ShareRecord[]> {
   try {
     const raw = localStorage.getItem(SHARES_KEY);
@@ -50,20 +58,47 @@ function saveAllShares(all: Record<string, ShareRecord[]>) {
   localStorage.setItem(SHARES_KEY, JSON.stringify(all));
 }
 
-function loadSharesForTab(tabId: string): ShareRecord[] {
-  return loadAllShares()[tabId] ?? [];
-}
-
-function saveSharesForTab(tabId: string, shares: ShareRecord[]) {
+function saveShares(key: string, shares: ShareRecord[]) {
   const all = loadAllShares();
-  all[tabId] = shares;
+  all[key] = shares;
   saveAllShares(all);
 }
 
-function removeSharesForTab(tabId: string) {
+function pruneExpiredShares() {
   const all = loadAllShares();
-  delete all[tabId];
-  saveAllShares(all);
+  const now = new Date();
+  let changed = false;
+  for (const key of Object.keys(all)) {
+    const live = all[key].filter((s) => new Date(s.expiresAt) > now);
+    if (live.length !== all[key].length) changed = true;
+    if (live.length === 0) {
+      delete all[key];
+    } else {
+      all[key] = live;
+    }
+  }
+  if (changed) saveAllShares(all);
+}
+
+function migrateShareKeys(tabs: TabState[]) {
+  const all = loadAllShares();
+  let changed = false;
+  for (const tab of tabs) {
+    const stableKey = stableShareKey(tab);
+    if (tab.id === stableKey) continue;
+    const oldShares = all[tab.id];
+    if (!oldShares || oldShares.length === 0) continue;
+    const existing = all[stableKey] ?? [];
+    const existingDocIds = new Set(existing.map((s) => s.docId));
+    const merged = [
+      ...existing,
+      ...oldShares.filter((s) => !existingDocIds.has(s.docId)),
+    ];
+    all[stableKey] = merged;
+    delete all[tab.id];
+    changed = true;
+  }
+  if (changed) saveAllShares(all);
 }
 
 interface AppState {
@@ -280,9 +315,8 @@ export const useAppStore = create<AppState>()(
             newActiveId = activeTabId;
           }
         }
-        // Clean up IndexedDB handle and shares for the removed tab
+        // Clean up IndexedDB handle for the removed tab
         removeHandle(`tab:${tabId}:directory`).catch(() => {});
-        removeSharesForTab(tabId);
         set({ tabs: updated, activeTabId: newActiveId });
       },
 
@@ -589,6 +623,7 @@ export const useAppStore = create<AppState>()(
         if (!tab?.fileHandle) return;
         try {
           const newRaw = await readFile(tab.fileHandle);
+          const changed = newRaw !== tab.rawContent;
           const newlyResolved = tab.comments.filter(
             (c) => !newRaw.includes(c.raw),
           );
@@ -596,6 +631,9 @@ export const useAppStore = create<AppState>()(
             rawContent: newRaw,
             resolvedComments: newlyResolved,
           }));
+          if (changed) {
+            get().syncActiveShares();
+          }
         } catch {
           // file read failed — silent
         }
@@ -663,10 +701,13 @@ export const useAppStore = create<AppState>()(
             // IndexedDB unavailable or handle expired — silent
           }
         }
+        // Migrate old tabId-keyed shares to stable keys, then prune expired
+        migrateShareKeys(get().tabs);
+        pruneExpiredShares();
         // Restore share sessions for all tabs
         const allShares = loadAllShares();
         for (const tab of get().tabs) {
-          const tabShares = allShares[tab.id] ?? [];
+          const tabShares = allShares[stableShareKey(tab)] ?? [];
           if (tabShares.length === 0) continue;
           const now = new Date();
           const restoredKeys: Record<string, CryptoKey> = {};
@@ -781,7 +822,7 @@ export const useAppStore = create<AppState>()(
         const currentTab = get().tabs.find((t) => t.id === tabId);
         if (!currentTab) throw new Error("Tab disappeared");
         const shares = [...currentTab.shares, record];
-        saveSharesForTab(tabId, shares);
+        saveShares(stableShareKey(currentTab), shares);
         updateTab(get, set, tabId, (t) => ({
           shares,
           shareKeys: { ...t.shareKeys, [docId]: key },
@@ -810,7 +851,7 @@ export const useAppStore = create<AppState>()(
           /* ignore */
         }
         const updated = tab.shares.filter((s) => s.docId !== docId);
-        saveSharesForTab(tabId, updated);
+        saveShares(stableShareKey(tab), updated);
         updateTab(get, set, tabId, (t) => {
           const pc = { ...t.pendingComments };
           delete pc[docId];
@@ -900,7 +941,7 @@ export const useAppStore = create<AppState>()(
             ? { ...s, pendingCommentCount: comments.length }
             : s,
         );
-        saveSharesForTab(tabId, shares);
+        saveShares(stableShareKey(currentTab), shares);
         updateTab(get, set, tabId, () => ({
           pendingComments: pc,
           shares,
@@ -948,7 +989,7 @@ export const useAppStore = create<AppState>()(
             ? { ...s, pendingCommentCount: pc[docId].length }
             : s,
         );
-        saveSharesForTab(tabId, shares);
+        saveShares(stableShareKey(tab), shares);
         updateTab(get, set, tabId, () => ({
           pendingComments: pc,
           shares,
@@ -973,7 +1014,7 @@ export const useAppStore = create<AppState>()(
         const shares = tab.shares.map((s) =>
           s.docId === docId ? { ...s, pendingCommentCount: 0 } : s,
         );
-        saveSharesForTab(tabId, shares);
+        saveShares(stableShareKey(tab), shares);
         updateTab(get, set, tabId, () => ({
           pendingComments: pc,
           shares,
@@ -1208,31 +1249,3 @@ export const useAppStore = create<AppState>()(
   ),
 );
 
-// ── Debounced auto-push: sync active shares when rawContent changes ──
-let _syncTimer: ReturnType<typeof setTimeout> | null = null;
-let _prevRawContent = "";
-let _prevActiveTabId: string | null = null;
-useAppStore.subscribe((state) => {
-  const tab = getActiveTab(state);
-  if (!tab) return;
-
-  // Reset tracking when switching tabs
-  if (state.activeTabId !== _prevActiveTabId) {
-    _prevActiveTabId = state.activeTabId;
-    _prevRawContent = tab.rawContent;
-    return;
-  }
-
-  const cur = tab.rawContent;
-  if (cur === _prevRawContent) return;
-  _prevRawContent = cur;
-  if (state.isPeerMode) return;
-  const now = new Date();
-  const hasActive = tab.shares.some((s) => new Date(s.expiresAt) > now);
-  if (!hasActive) return;
-  if (_syncTimer) clearTimeout(_syncTimer);
-  _syncTimer = setTimeout(() => {
-    _syncTimer = null;
-    useAppStore.getState().syncActiveShares();
-  }, 2000);
-});

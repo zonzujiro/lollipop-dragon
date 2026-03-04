@@ -24,8 +24,7 @@ describe('ShareStorage.uploadContent', () => {
     const fetchMock = makeFetchMock([{ ok: true, json: { docId: 'abc123' } }])
     vi.stubGlobal('fetch', fetchMock)
     const storage = new ShareStorage(WORKER)
-    const result = await storage.uploadContent({ 'a.md': '# A' }, key, { ttl: 604800, label: 'test' })
-    expect(result.docId).toBe('abc123')
+    const result = await storage.uploadContent('abc123', { 'a.md': '# A' }, key, { ttl: 604800, label: 'test' })
     expect(result.hostSecret).toHaveLength(64)
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining('/share'),
