@@ -9,6 +9,7 @@ import {
 } from "../services/fileSystem";
 import { saveHandle, getHandle, removeHandle } from "../services/handleStore";
 import { parseCriticMarkup } from "../services/criticmarkup";
+import { assignBlockIndices } from "../services/blockIndex";
 import { insertComment as insertCommentService } from "../services/insertComment";
 import { applyEdit } from "../services/editComment";
 import { applyDelete } from "../services/deleteComment";
@@ -20,7 +21,8 @@ import {
   docIdFromKey,
 } from "../services/crypto";
 import { buildShareUrlFromOrigin, parseShareHash } from "../utils/shareUrl";
-import type { FileTreeNode, FileNode, DirectoryNode } from "../types/fileTree";
+import { findFileInTree } from "../types/fileTree";
+import type { FileTreeNode, FileNode } from "../types/fileTree";
 import type { Comment, CommentType } from "../types/criticmarkup";
 import type { ShareRecord, SharePayload, PeerComment } from "../types/share";
 import type { TabState, FileCommentEntry } from "../types/tab";
@@ -38,16 +40,19 @@ function stableShareKey(tab: {
   return tab.directoryName ?? tab.fileName ?? tab.id;
 }
 
+function isShareRecordMap(
+  v: unknown,
+): v is Record<string, ShareRecord[]> {
+  if (typeof v !== "object" || v === null || Array.isArray(v)) return false;
+  return Object.values(v).every((val) => Array.isArray(val));
+}
+
 function loadAllShares(): Record<string, ShareRecord[]> {
   try {
     const raw = localStorage.getItem(SHARES_KEY);
     if (!raw) return {};
     const parsed: unknown = JSON.parse(raw);
-    // Migration: old format was a flat ShareRecord[]
-    if (Array.isArray(parsed)) return {};
-    if (typeof parsed === "object" && parsed !== null) {
-      return parsed as Record<string, ShareRecord[]>;
-    }
+    if (isShareRecordMap(parsed)) return parsed;
     return {};
   } catch {
     return {};
@@ -64,25 +69,12 @@ function saveShares(key: string, shares: ShareRecord[]) {
   saveAllShares(all);
 }
 
-function pruneExpiredShares() {
+/** Load shares, migrate old tabId keys to stable keys, prune expired entries. */
+function loadAndCleanShares(tabs: TabState[]): Record<string, ShareRecord[]> {
   const all = loadAllShares();
-  const now = new Date();
   let changed = false;
-  for (const key of Object.keys(all)) {
-    const live = all[key].filter((s) => new Date(s.expiresAt) > now);
-    if (live.length !== all[key].length) changed = true;
-    if (live.length === 0) {
-      delete all[key];
-    } else {
-      all[key] = live;
-    }
-  }
-  if (changed) saveAllShares(all);
-}
 
-function migrateShareKeys(tabs: TabState[]) {
-  const all = loadAllShares();
-  let changed = false;
+  // Migrate old tabId-keyed entries to stable keys
   for (const tab of tabs) {
     const stableKey = stableShareKey(tab);
     if (tab.id === stableKey) continue;
@@ -98,7 +90,69 @@ function migrateShareKeys(tabs: TabState[]) {
     delete all[tab.id];
     changed = true;
   }
+
+  // Prune expired shares
+  const now = new Date();
+  for (const key of Object.keys(all)) {
+    const live = all[key].filter((s) => new Date(s.expiresAt) > now);
+    if (live.length !== all[key].length) changed = true;
+    if (live.length === 0) {
+      delete all[key];
+    } else {
+      all[key] = live;
+    }
+  }
+
   if (changed) saveAllShares(all);
+  return all;
+}
+
+/** Collect file contents from a tree into a flat record. */
+async function collectTreeContents(
+  nodes: FileTreeNode[],
+  activeFilePath: string | null,
+  rawContent: string,
+  allowedPaths?: Set<string> | null,
+): Promise<Record<string, string>> {
+  const tree: Record<string, string> = {};
+  const walk = async (items: FileTreeNode[]) => {
+    for (const node of items) {
+      if (node.kind === "file") {
+        const path = node.path;
+        if (allowedPaths && !allowedPaths.has(path)) continue;
+        if (path === activeFilePath && rawContent) {
+          tree[path] = rawContent;
+        } else {
+          try {
+            tree[path] = await readFile(node.handle);
+          } catch {
+            // skip unreadable files
+          }
+        }
+      } else {
+        await walk(node.children);
+      }
+    }
+  };
+  await walk(nodes);
+  return tree;
+}
+
+/** Restore CryptoKeys from share records (skipping expired ones). */
+async function restoreShareKeys(
+  shares: ShareRecord[],
+): Promise<Record<string, CryptoKey>> {
+  const keys: Record<string, CryptoKey> = {};
+  const now = new Date();
+  for (const share of shares) {
+    if (new Date(share.expiresAt) <= now) continue;
+    try {
+      keys[share.docId] = await base64urlToKey(share.keyB64);
+    } catch {
+      // skip shares with invalid keys
+    }
+  }
+  return keys;
 }
 
 interface AppState {
@@ -246,6 +300,26 @@ function updateTab(
 // Helper: get the active tab state
 function activeTab(get: () => AppState): TabState | null {
   return getActiveTab(get());
+}
+
+// Helper: write file, update tab state with undo, handle permission errors
+async function writeAndUpdate(
+  get: () => AppState,
+  set: (partial: Partial<AppState> | ((s: AppState) => Partial<AppState>)) => void,
+  fileHandle: FileSystemFileHandle,
+  newRaw: string,
+) {
+  try {
+    await writeFile(fileHandle, newRaw);
+    updateActiveTab(get, set, (t) => ({
+      rawContent: newRaw,
+      writeAllowed: true,
+      undoState: { rawContent: t.rawContent },
+    }));
+  } catch (e) {
+    if (isPermissionError(e))
+      updateActiveTab(get, set, () => ({ writeAllowed: false }));
+  }
 }
 
 // Persistence migration: detect old flat format and convert
@@ -435,10 +509,8 @@ export const useAppStore = create<AppState>()(
           for (const node of nodes) {
             if (node.kind === "file") {
               try {
-                const content = await readFile((node as FileNode).handle);
+                const content = await readFile(node.handle);
                 const parsed = parseCriticMarkup(content);
-                const { assignBlockIndices } =
-                  await import("../services/blockIndex");
                 const comments = assignBlockIndices(
                   parsed.comments,
                   parsed.cleanMarkdown,
@@ -454,8 +526,8 @@ export const useAppStore = create<AppState>()(
               } catch {
                 // skip unreadable files
               }
-            } else if (node.kind === "directory") {
-              await scanNodes((node as DirectoryNode).children);
+            } else {
+              await scanNodes(node.children);
             }
           }
         };
@@ -484,19 +556,7 @@ export const useAppStore = create<AppState>()(
           }
           return;
         }
-        const findFileNode = (nodes: FileTreeNode[]): FileNode | null => {
-          for (const node of nodes) {
-            if (node.kind === "file" && node.path === filePath) {
-              return node as FileNode;
-            }
-            if (node.kind === "directory") {
-              const found = findFileNode((node as DirectoryNode).children);
-              if (found) return found;
-            }
-          }
-          return null;
-        };
-        const fileNode = findFileNode(tab.fileTree);
+        const fileNode = findFileInTree(tab.fileTree, filePath);
         if (fileNode) {
           updateActiveTab(get, set, () => ({
             pendingScrollTarget: { filePath, rawStart },
@@ -512,19 +572,7 @@ export const useAppStore = create<AppState>()(
           scrollToBlock(blockIndex);
           return;
         }
-        const findFileNode = (nodes: FileTreeNode[]): FileNode | null => {
-          for (const node of nodes) {
-            if (node.kind === "file" && node.path === filePath) {
-              return node as FileNode;
-            }
-            if (node.kind === "directory") {
-              const found = findFileNode((node as DirectoryNode).children);
-              if (found) return found;
-            }
-          }
-          return null;
-        };
-        const fileNode = findFileNode(tab.fileTree);
+        const fileNode = findFileInTree(tab.fileTree, filePath);
         if (fileNode) {
           updateActiveTab(get, set, () => ({
             pendingScrollTarget: { filePath, blockIndex },
@@ -541,18 +589,7 @@ export const useAppStore = create<AppState>()(
         if (!tab?.fileHandle) return;
         const comment = tab.comments.find((c) => c.id === id);
         if (!comment) return;
-        const newRaw = applyDelete(tab.rawContent, comment);
-        try {
-          await writeFile(tab.fileHandle, newRaw);
-          updateActiveTab(get, set, (t) => ({
-            rawContent: newRaw,
-            writeAllowed: true,
-            undoState: { rawContent: t.rawContent },
-          }));
-        } catch (e) {
-          if (isPermissionError(e))
-            updateActiveTab(get, set, () => ({ writeAllowed: false }));
-        }
+        await writeAndUpdate(get, set, tab.fileHandle, applyDelete(tab.rawContent, comment));
       },
 
       editComment: async (id, type, text) => {
@@ -560,18 +597,7 @@ export const useAppStore = create<AppState>()(
         if (!tab?.fileHandle) return;
         const comment = tab.comments.find((c) => c.id === id);
         if (!comment) return;
-        const newRaw = applyEdit(tab.rawContent, comment, type, text);
-        try {
-          await writeFile(tab.fileHandle, newRaw);
-          updateActiveTab(get, set, (t) => ({
-            rawContent: newRaw,
-            writeAllowed: true,
-            undoState: { rawContent: t.rawContent },
-          }));
-        } catch (e) {
-          if (isPermissionError(e))
-            updateActiveTab(get, set, () => ({ writeAllowed: false }));
-        }
+        await writeAndUpdate(get, set, tab.fileHandle, applyEdit(tab.rawContent, comment, type, text));
       },
 
       addComment: async (blockIndex, type, text) => {
@@ -586,17 +612,7 @@ export const useAppStore = create<AppState>()(
           type,
           text,
         );
-        try {
-          await writeFile(tab.fileHandle, newRaw);
-          updateActiveTab(get, set, (t) => ({
-            rawContent: newRaw,
-            writeAllowed: true,
-            undoState: { rawContent: t.rawContent },
-          }));
-        } catch (e) {
-          if (isPermissionError(e))
-            updateActiveTab(get, set, () => ({ writeAllowed: false }));
-        }
+        await writeAndUpdate(get, set, tab.fileHandle, newRaw);
       },
 
       undo: async () => {
@@ -669,18 +685,7 @@ export const useAppStore = create<AppState>()(
             let restoredFileHandle: FileSystemFileHandle | null = null;
             let restoredRaw: string | null = null;
             if (tab.activeFilePath) {
-              const findFile = (nodes: FileTreeNode[]): FileNode | null => {
-                for (const n of nodes) {
-                  if (n.kind === "file" && n.path === tab.activeFilePath)
-                    return n as FileNode;
-                  if (n.kind === "directory") {
-                    const found = findFile((n as DirectoryNode).children);
-                    if (found) return found;
-                  }
-                }
-                return null;
-              };
-              const fileNode = findFile(tree);
+              const fileNode = findFileInTree(tree, tab.activeFilePath);
               if (fileNode) {
                 restoredFileHandle = fileNode.handle;
                 try {
@@ -701,25 +706,12 @@ export const useAppStore = create<AppState>()(
             // IndexedDB unavailable or handle expired — silent
           }
         }
-        // Migrate old tabId-keyed shares to stable keys, then prune expired
-        migrateShareKeys(get().tabs);
-        pruneExpiredShares();
-        // Restore share sessions for all tabs
-        const allShares = loadAllShares();
+        // Migrate old tabId-keyed shares, prune expired, then restore
+        const allShares = loadAndCleanShares(get().tabs);
         for (const tab of get().tabs) {
           const tabShares = allShares[stableShareKey(tab)] ?? [];
           if (tabShares.length === 0) continue;
-          const now = new Date();
-          const restoredKeys: Record<string, CryptoKey> = {};
-          for (const share of tabShares) {
-            if (new Date(share.expiresAt) <= now) continue;
-            try {
-              const key = await base64urlToKey(share.keyB64);
-              restoredKeys[share.docId] = key;
-            } catch {
-              // skip shares with invalid keys
-            }
-          }
+          const restoredKeys = await restoreShareKeys(tabShares);
           updateTab(get, set, tab.id, (t) => ({
             shares: tabShares,
             shareKeys: { ...t.shareKeys, ...restoredKeys },
@@ -730,17 +722,7 @@ export const useAppStore = create<AppState>()(
       restoreShareSessions: async () => {
         const tab = activeTab(get);
         if (!tab) return;
-        const now = new Date();
-        const restoredKeys: Record<string, CryptoKey> = {};
-        for (const share of tab.shares) {
-          if (new Date(share.expiresAt) <= now) continue;
-          try {
-            const key = await base64urlToKey(share.keyB64);
-            restoredKeys[share.docId] = key;
-          } catch {
-            // skip shares with invalid keys
-          }
-        }
+        const restoredKeys = await restoreShareKeys(tab.shares);
         if (Object.keys(restoredKeys).length > 0) {
           updateActiveTab(get, set, (t) => ({
             shareKeys: { ...t.shareKeys, ...restoredKeys },
@@ -766,33 +748,14 @@ export const useAppStore = create<AppState>()(
         const label =
           scopeLabel ?? tab.directoryName ?? tab.fileName ?? "document";
 
-        const tree: Record<string, string> = {};
         const sourceNodes =
           nodes ??
           (tab.directoryName && tab.fileTree.length > 0
             ? tab.fileTree
             : null);
-        if (sourceNodes) {
-          const readNode = async (items: FileTreeNode[]) => {
-            for (const node of items) {
-              if (node.kind === "file") {
-                const path = node.path;
-                if (path === tab.activeFilePath && tab.rawContent) {
-                  tree[path] = tab.rawContent;
-                } else {
-                  try {
-                    tree[path] = await readFile((node as FileNode).handle);
-                  } catch (e) {
-                    console.warn("[share] failed to read", path, e);
-                  }
-                }
-              } else if (node.kind === "directory") {
-                await readNode((node as DirectoryNode).children);
-              }
-            }
-          };
-          await readNode(sourceNodes);
-        }
+        const tree = sourceNodes
+          ? await collectTreeContents(sourceNodes, tab.activeFilePath, tab.rawContent)
+          : {};
         if (Object.keys(tree).length === 0 && tab.rawContent) {
           const path =
             tab.activeFilePath ?? tab.fileName ?? "document.md";
@@ -882,29 +845,9 @@ export const useAppStore = create<AppState>()(
         const allowed = record.sharedPaths
           ? new Set(record.sharedPaths)
           : null;
-        const tree: Record<string, string> = {};
-        if (tab.fileTree.length > 0) {
-          const readNode = async (items: FileTreeNode[]) => {
-            for (const node of items) {
-              if (node.kind === "file") {
-                const path = node.path;
-                if (allowed && !allowed.has(path)) continue;
-                if (path === tab.activeFilePath && tab.rawContent) {
-                  tree[path] = tab.rawContent;
-                } else {
-                  try {
-                    tree[path] = await readFile((node as FileNode).handle);
-                  } catch {
-                    /* skip */
-                  }
-                }
-              } else if (node.kind === "directory") {
-                await readNode((node as DirectoryNode).children);
-              }
-            }
-          };
-          await readNode(tab.fileTree);
-        }
+        const tree = tab.fileTree.length > 0
+          ? await collectTreeContents(tab.fileTree, tab.activeFilePath, tab.rawContent, allowed)
+          : {};
         if (Object.keys(tree).length === 0 && tab.rawContent) {
           const fallbackPath =
             tab.activeFilePath ?? tab.fileName ?? "document.md";
@@ -964,17 +907,7 @@ export const useAppStore = create<AppState>()(
           comment.commentType,
           comment.text + attribution,
         );
-        try {
-          await writeFile(tab.fileHandle, newRaw);
-          updateActiveTab(get, set, (t) => ({
-            rawContent: newRaw,
-            writeAllowed: true,
-            undoState: { rawContent: t.rawContent },
-          }));
-        } catch (e) {
-          if (isPermissionError(e))
-            updateActiveTab(get, set, () => ({ writeAllowed: false }));
-        }
+        await writeAndUpdate(get, set, tab.fileHandle, newRaw);
         get().dismissComment(docId, comment.id);
       },
 

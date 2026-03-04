@@ -14,24 +14,13 @@ import { Toast } from "./components/Toast";
 import { PeerNamePrompt } from "./components/PeerNamePrompt";
 import { buildVirtualTree } from "./services/fileSystem";
 import { isShareHash } from "./utils/shareUrl";
+import { findFileInTree } from "./types/fileTree";
 import type {
   FileTreeNode,
-  FileNode,
   DirectoryNode,
   SidebarTreeNode,
 } from "./types/fileTree";
 import { WORKER_URL } from "./config";
-
-function findFileNode(tree: FileTreeNode[], path: string): FileNode | null {
-  for (const node of tree) {
-    if (node.kind === "file" && node.path === path) return node;
-    if (node.kind === "directory") {
-      const found = findFileNode(node.children, path);
-      if (found) return found;
-    }
-  }
-  return null;
-}
 
 const folderIcon = (
   <svg
@@ -129,7 +118,7 @@ function App() {
   const handleHostSelect = useCallback(
     (path: string) => {
       if (!tab) return;
-      const node = findFileNode(tab.fileTree, path);
+      const node = findFileInTree(tab.fileTree, path);
       if (node) selectFile(node);
     },
     [tab, selectFile],

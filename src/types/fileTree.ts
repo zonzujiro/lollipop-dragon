@@ -14,6 +14,21 @@ export interface DirectoryNode {
 
 export type FileTreeNode = FileNode | DirectoryNode
 
+export function findFileInTree(
+  nodes: FileTreeNode[],
+  path: string,
+): FileNode | null {
+  for (const node of nodes) {
+    if (node.kind === "file") {
+      if (node.path === path) return node;
+    } else {
+      const found = findFileInTree(node.children, path);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 // Sidebar-specific types (no handle field) for the unified presentational sidebar
 export interface SidebarFileNode {
   kind: 'file'
