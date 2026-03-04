@@ -71,9 +71,9 @@ describe('App — no file open', () => {
     // Reset to no tabs so FilePicker shows
     resetTestStore()
     render(<App />)
-    expect(screen.getByRole('heading', { name: /Lollipop\s+Dragon/ })).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: 'Open file' }).length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('button', { name: 'Open folder' }).length).toBeGreaterThan(0)
+    expect(screen.getByRole('heading', { name: /lollipop\s+dragon/i })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /open file/i }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: /open folder/i }).length).toBeGreaterThan(0)
   })
 
   it('calls openFileInNewTab on the store when the button is clicked', async () => {
@@ -84,7 +84,7 @@ describe('App — no file open', () => {
     useAppStore.setState({ openFileInNewTab: mockOpen })
 
     render(<App />)
-    await user.click(screen.getAllByRole('button', { name: 'Open file' })[0])
+    await user.click(screen.getAllByRole('button', { name: /open file/i })[0])
 
     expect(mockOpen).toHaveBeenCalledOnce()
   })
@@ -97,7 +97,7 @@ describe('App — no file open', () => {
     useAppStore.setState({ openDirectoryInNewTab: mockOpen })
 
     render(<App />)
-    await user.click(screen.getAllByRole('button', { name: 'Open folder' })[0])
+    await user.click(screen.getAllByRole('button', { name: /open folder/i })[0])
 
     expect(mockOpen).toHaveBeenCalledOnce()
   })
@@ -125,8 +125,8 @@ describe('App — single file open', () => {
 
   it('shows "Open file" and "Open folder" buttons in the header', () => {
     render(<App />)
-    expect(screen.getByRole('button', { name: 'Open file' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Open folder' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /open file/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /open folder/i })).toBeInTheDocument()
   })
 })
 
@@ -172,8 +172,8 @@ describe('App — folder open', () => {
 
   it('shows "Open file" and "Open folder" buttons in folder mode', () => {
     render(<App />)
-    expect(screen.getByRole('button', { name: 'Open file' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Open folder' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /open file/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /open folder/i })).toBeInTheDocument()
   })
 
   it('hides the sidebar when sidebar toggle is clicked', async () => {
