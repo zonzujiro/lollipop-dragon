@@ -12,6 +12,15 @@ import { useAppStore } from '../store'
 import { setTestState, resetTestStore } from './testHelpers'
 import type { FileTreeNode } from '../types/fileTree'
 
+// Mock IntersectionObserver for landing page
+const mockObserve = vi.fn()
+const mockDisconnect = vi.fn()
+vi.stubGlobal('IntersectionObserver', vi.fn(() => ({
+  observe: mockObserve,
+  disconnect: mockDisconnect,
+  unobserve: vi.fn(),
+})))
+
 function resetStore() {
   resetTestStore()
   setTestState(
@@ -62,9 +71,9 @@ describe('App — no file open', () => {
     // Reset to no tabs so FilePicker shows
     resetTestStore()
     render(<App />)
-    expect(screen.getByText('MarkReview')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Open File' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Open Folder' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Lollipop\s+Dragon/ })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Open file' }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: 'Open folder' }).length).toBeGreaterThan(0)
   })
 
   it('calls openFileInNewTab on the store when the button is clicked', async () => {
@@ -75,7 +84,7 @@ describe('App — no file open', () => {
     useAppStore.setState({ openFileInNewTab: mockOpen })
 
     render(<App />)
-    await user.click(screen.getByRole('button', { name: 'Open File' }))
+    await user.click(screen.getAllByRole('button', { name: 'Open file' })[0])
 
     expect(mockOpen).toHaveBeenCalledOnce()
   })
@@ -88,7 +97,7 @@ describe('App — no file open', () => {
     useAppStore.setState({ openDirectoryInNewTab: mockOpen })
 
     render(<App />)
-    await user.click(screen.getByRole('button', { name: 'Open Folder' }))
+    await user.click(screen.getAllByRole('button', { name: 'Open folder' })[0])
 
     expect(mockOpen).toHaveBeenCalledOnce()
   })
