@@ -170,6 +170,7 @@ interface AppState {
   peerName: string | null;
   sharedContent: SharePayload | null;
   myPeerComments: PeerComment[];
+  submittedPeerCommentIds: string[];
   peerShareKeys: Record<string, CryptoKey>;
   peerActiveDocId: string | null;
   // Peer uses rawContent/fileName/activeFilePath for display — these are
@@ -356,6 +357,7 @@ export const useAppStore = create<AppState>()(
       peerName: null,
       sharedContent: null,
       myPeerComments: [],
+      submittedPeerCommentIds: [],
       peerShareKeys: {},
       peerActiveDocId: null,
       peerRawContent: "",
@@ -927,6 +929,15 @@ export const useAppStore = create<AppState>()(
           pendingComments: pc,
           shares,
         }));
+
+        // When all comments for this docId are gone locally, clear from server
+        if (pc[docId].length === 0) {
+          const record = tab.shares.find((s) => s.docId === docId);
+          const storage = getStorage();
+          if (record && storage) {
+            storage.deleteComments(docId, record.hostSecret).catch(() => {});
+          }
+        }
       },
 
       clearPendingComments: async (docId) => {
@@ -1034,9 +1045,12 @@ export const useAppStore = create<AppState>()(
       },
 
       deletePeerComment: (commentId) => {
-        const { myPeerComments } = get();
+        const { myPeerComments, submittedPeerCommentIds } = get();
         set({
           myPeerComments: myPeerComments.filter((c) => c.id !== commentId),
+          submittedPeerCommentIds: submittedPeerCommentIds.filter(
+            (id) => id !== commentId,
+          ),
         });
       },
 
@@ -1056,11 +1070,20 @@ export const useAppStore = create<AppState>()(
         if (!storage) return;
         const key = await base64urlToKey(keyB64);
         const docId = await docIdFromKey(key);
-        const { myPeerComments } = get();
-        if (myPeerComments.length === 0) return;
-        for (const comment of myPeerComments) {
+        const { myPeerComments, submittedPeerCommentIds } = get();
+        const unsubmitted = myPeerComments.filter(
+          (c) => !submittedPeerCommentIds.includes(c.id),
+        );
+        if (unsubmitted.length === 0) return;
+        for (const comment of unsubmitted) {
           await storage.postComment(docId, comment, key);
         }
+        set({
+          submittedPeerCommentIds: [
+            ...get().submittedPeerCommentIds,
+            ...unsubmitted.map((c) => c.id),
+          ],
+        });
       },
     }),
     {
@@ -1139,6 +1162,7 @@ export const useAppStore = create<AppState>()(
               isPeerMode: false,
               sharedContent: null,
               myPeerComments: [],
+              submittedPeerCommentIds: [],
               peerShareKeys: {},
               peerActiveDocId: null,
               peerRawContent: "",
@@ -1168,6 +1192,7 @@ export const useAppStore = create<AppState>()(
         theme: s.theme,
         peerName: s.peerName,
         myPeerComments: s.myPeerComments,
+        submittedPeerCommentIds: s.submittedPeerCommentIds,
       }),
       merge: (persisted, current) => {
         if (typeof persisted !== "object" || persisted === null) return current;
@@ -1176,7 +1201,14 @@ export const useAppStore = create<AppState>()(
         const tabs = Array.isArray(p.tabs)
           ? p.tabs.map((t) => createDefaultTab({ ...t, label: t.label ?? "document" }))
           : current.tabs;
-        return { ...current, ...p, tabs };
+        return {
+          ...current,
+          ...p,
+          tabs,
+          submittedPeerCommentIds: Array.isArray(p.submittedPeerCommentIds)
+            ? p.submittedPeerCommentIds
+            : [],
+        };
       },
     },
   ),

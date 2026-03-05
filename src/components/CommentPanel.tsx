@@ -61,7 +61,8 @@ export function CommentPanel({ peerMode = false }: Props) {
   const setCommentFilter = useAppStore((s) => s.setCommentFilter);
   const toggleCommentPanel = useAppStore((s) => s.toggleCommentPanel);
   const myPeerComments = useAppStore((s) => s.myPeerComments);
-  const activeFilePath = tab?.activeFilePath ?? null;
+  const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
+  const activeFilePath = peerMode ? peerActiveFilePath : (tab?.activeFilePath ?? null);
   const fileTree = tab?.fileTree ?? [];
   const allFileComments = tab?.allFileComments ?? {};
   const navigateToComment = useAppStore((s) => s.navigateToComment);

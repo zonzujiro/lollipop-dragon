@@ -41,6 +41,7 @@ export function resetTestStore() {
     peerName: null,
     sharedContent: null,
     myPeerComments: [],
+    submittedPeerCommentIds: [],
     peerShareKeys: {},
     peerActiveDocId: null,
     peerRawContent: "",

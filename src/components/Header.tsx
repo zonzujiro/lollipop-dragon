@@ -102,7 +102,11 @@ export function Header({ peerMode = false, onShare }: Props) {
   const loadSharedContent = useAppStore((s) => s.loadSharedContent);
   const syncPeerComments = useAppStore((s) => s.syncPeerComments);
   const myPeerComments = useAppStore((s) => s.myPeerComments);
+  const submittedPeerCommentIds = useAppStore((s) => s.submittedPeerCommentIds);
   const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
+  const unsubmittedPeerCount = myPeerComments.filter(
+    (c) => !submittedPeerCommentIds.includes(c.id),
+  ).length;
 
   const fileName = tab?.fileName ?? null;
   const directoryName = tab?.directoryName ?? null;
@@ -223,14 +227,14 @@ export function Header({ peerMode = false, onShare }: Props) {
               >
                 Get latest
               </button>
-              {myPeerComments.length > 0 && (
+              {unsubmittedPeerCount > 0 && (
                 <button
                   onClick={syncPeerComments}
                   aria-label="Submit comments"
                   title="Send your comments to the host"
                   className="app-header__btn app-header__btn--text"
                 >
-                  Submit comments ({myPeerComments.length})
+                  Submit comments ({unsubmittedPeerCount})
                 </button>
               )}
             </>
