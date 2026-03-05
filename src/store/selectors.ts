@@ -1,5 +1,6 @@
 import { useAppStore } from "./index";
 import type { TabState } from "../types/tab";
+import type { PeerComment } from "../types/share";
 
 export function getActiveTab(state: {
   tabs: TabState[];
@@ -20,4 +21,17 @@ export function useActiveTabField<K extends keyof TabState>(
     const tab = getActiveTab(s);
     return tab?.[field];
   });
+}
+
+/** Unsubmitted peer comments for the currently viewed file. */
+export function getUnsubmittedPeerComments(state: {
+  myPeerComments: PeerComment[];
+  submittedPeerCommentIds: string[];
+  peerActiveFilePath: string | null;
+}): PeerComment[] {
+  return state.myPeerComments.filter(
+    (c) =>
+      c.path === state.peerActiveFilePath &&
+      !state.submittedPeerCommentIds.includes(c.id),
+  );
 }

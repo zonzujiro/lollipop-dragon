@@ -27,7 +27,7 @@ import type { Comment, CommentType } from "../types/criticmarkup";
 import type { ShareRecord, SharePayload, PeerComment } from "../types/share";
 import type { TabState, FileCommentEntry } from "../types/tab";
 import { createDefaultTab } from "../types/tab";
-import { getActiveTab } from "./selectors";
+import { getActiveTab, getUnsubmittedPeerComments } from "./selectors";
 import { WORKER_URL } from "../config";
 
 const SHARES_KEY = "markreview-shares";
@@ -1070,10 +1070,7 @@ export const useAppStore = create<AppState>()(
         if (!storage) return;
         const key = await base64urlToKey(keyB64);
         const docId = await docIdFromKey(key);
-        const { myPeerComments, submittedPeerCommentIds } = get();
-        const unsubmitted = myPeerComments.filter(
-          (c) => !submittedPeerCommentIds.includes(c.id),
-        );
+        const unsubmitted = getUnsubmittedPeerComments(get());
         if (unsubmitted.length === 0) return;
         for (const comment of unsubmitted) {
           await storage.postComment(docId, comment, key);

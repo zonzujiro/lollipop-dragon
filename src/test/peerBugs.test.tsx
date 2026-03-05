@@ -197,16 +197,19 @@ describe("store.syncPeerComments — no double submit", () => {
     window.location.hash = "";
   });
 
-  it("sends only unsubmitted comments", async () => {
+  it("sends only unsubmitted comments for the current file", async () => {
     const submitted = makePeerComment({ id: "old-1", text: "already sent" });
     const fresh = makePeerComment({ id: "new-1", text: "new comment" });
+    const otherFile = makePeerComment({ id: "other-1", text: "other file", path: "other.md" });
     setTestState({}, {
-      myPeerComments: [submitted, fresh],
+      peerActiveFilePath: "readme.md",
+      myPeerComments: [submitted, fresh, otherFile],
       submittedPeerCommentIds: ["old-1"],
     });
 
     await useAppStore.getState().syncPeerComments();
 
+    // Only the unsubmitted comment on readme.md should be sent
     expect(mockPostComment).toHaveBeenCalledTimes(1);
     expect(mockPostComment.mock.calls[0][1].id).toBe("new-1");
   });
@@ -215,6 +218,7 @@ describe("store.syncPeerComments — no double submit", () => {
     const c1 = makePeerComment({ id: "c-1" });
     const c2 = makePeerComment({ id: "c-2" });
     setTestState({}, {
+      peerActiveFilePath: "readme.md",
       myPeerComments: [c1, c2],
       submittedPeerCommentIds: [],
     });
@@ -229,6 +233,7 @@ describe("store.syncPeerComments — no double submit", () => {
   it("does nothing when all comments are already submitted", async () => {
     const c = makePeerComment({ id: "c-1" });
     setTestState({}, {
+      peerActiveFilePath: "readme.md",
       myPeerComments: [c],
       submittedPeerCommentIds: ["c-1"],
     });
@@ -239,6 +244,7 @@ describe("store.syncPeerComments — no double submit", () => {
 
   it("preserves previously submitted IDs when syncing new ones", async () => {
     setTestState({}, {
+      peerActiveFilePath: "readme.md",
       myPeerComments: [
         makePeerComment({ id: "c-old" }),
         makePeerComment({ id: "c-new" }),
@@ -251,6 +257,18 @@ describe("store.syncPeerComments — no double submit", () => {
     const { submittedPeerCommentIds } = useAppStore.getState();
     expect(submittedPeerCommentIds).toContain("c-old");
     expect(submittedPeerCommentIds).toContain("c-new");
+  });
+
+  it("does not send comments from other files", async () => {
+    const otherFile = makePeerComment({ id: "other-1", path: "other.md" });
+    setTestState({}, {
+      peerActiveFilePath: "readme.md",
+      myPeerComments: [otherFile],
+      submittedPeerCommentIds: [],
+    });
+
+    await useAppStore.getState().syncPeerComments();
+    expect(mockPostComment).not.toHaveBeenCalled();
   });
 });
 
@@ -337,6 +355,23 @@ describe("Header — peer mode submit button", () => {
     expect(
       screen.getByRole("button", { name: "Submit comments" }),
     ).toBeInTheDocument();
+  });
+
+  it("hides submit button when current file has no unsubmitted comments", () => {
+    // Comments exist on other.md but we're viewing readme.md
+    const c = makePeerComment({ id: "c-1", path: "other.md" });
+    setTestState({}, {
+      isPeerMode: true,
+      peerActiveFilePath: "readme.md",
+      peerFileName: "readme.md",
+      myPeerComments: [c],
+      submittedPeerCommentIds: [],
+    });
+
+    render(<Header peerMode />);
+    expect(
+      screen.queryByRole("button", { name: "Submit comments" }),
+    ).not.toBeInTheDocument();
   });
 });
 

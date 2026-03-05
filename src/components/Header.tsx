@@ -1,5 +1,5 @@
 import { useAppStore } from "../store";
-import { useActiveTab } from "../store/selectors";
+import { useActiveTab, getUnsubmittedPeerComments } from "../store/selectors";
 import { WORKER_URL } from "../config";
 
 function SunIcon() {
@@ -102,11 +102,10 @@ export function Header({ peerMode = false, onShare }: Props) {
   const loadSharedContent = useAppStore((s) => s.loadSharedContent);
   const syncPeerComments = useAppStore((s) => s.syncPeerComments);
   const myPeerComments = useAppStore((s) => s.myPeerComments);
-  const submittedPeerCommentIds = useAppStore((s) => s.submittedPeerCommentIds);
   const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
-  const unsubmittedPeerCount = myPeerComments.filter(
-    (c) => !submittedPeerCommentIds.includes(c.id),
-  ).length;
+  const unsubmittedPeerCount = useAppStore(
+    (s) => getUnsubmittedPeerComments(s).length,
+  );
 
   const fileName = tab?.fileName ?? null;
   const directoryName = tab?.directoryName ?? null;
