@@ -132,6 +132,60 @@ describe("CommentPanel — peer mode filters by peerActiveFilePath", () => {
   });
 });
 
+// ── Peer multi-file: cross-file comment panel ────────────────────────
+
+describe("CommentPanel — peer multi-file shows all comments grouped", () => {
+  function setupMultiFile(comments: ReturnType<typeof makePeerComment>[]) {
+    setTestState(
+      { commentPanelOpen: true },
+      {
+        isPeerMode: true,
+        peerActiveFilePath: "readme.md",
+        peerCommentPanelOpen: true,
+        myPeerComments: comments,
+        sharedContent: {
+          version: "2.0" as const,
+          created_at: new Date().toISOString(),
+          tree: { "readme.md": "# Hello", "other.md": "# Other" },
+        },
+      },
+    );
+  }
+
+  it("shows comments from all files when share has multiple files", () => {
+    const c1 = makePeerComment({ text: "readme comment", path: "readme.md" });
+    const c2 = makePeerComment({ text: "other comment", path: "other.md" });
+    setupMultiFile([c1, c2]);
+    render(<CommentPanel peerMode />);
+    expect(screen.getByText("readme comment")).toBeInTheDocument();
+    expect(screen.getByText("other comment")).toBeInTheDocument();
+  });
+
+  it("shows file headers for each group", () => {
+    const c1 = makePeerComment({ text: "note A", path: "readme.md" });
+    const c2 = makePeerComment({ text: "note B", path: "other.md" });
+    setupMultiFile([c1, c2]);
+    render(<CommentPanel peerMode />);
+    expect(screen.getByText("readme.md")).toBeInTheDocument();
+    expect(screen.getByText("other.md")).toBeInTheDocument();
+  });
+
+  it("shows total count across all files", () => {
+    const c1 = makePeerComment({ text: "a", path: "readme.md" });
+    const c2 = makePeerComment({ text: "b", path: "other.md" });
+    const c3 = makePeerComment({ text: "c", path: "other.md" });
+    setupMultiFile([c1, c2, c3]);
+    const { container } = render(<CommentPanel peerMode />);
+    expect(container.querySelector(".comment-panel__count")?.textContent).toBe("3");
+  });
+
+  it("shows empty state when no peer comments exist", () => {
+    setupMultiFile([]);
+    render(<CommentPanel peerMode />);
+    expect(screen.getByText(/No comments across files/)).toBeInTheDocument();
+  });
+});
+
 // ── Bug 2: syncPeerComments only sends unsubmitted ───────────────────
 
 describe("store.syncPeerComments — no double submit", () => {
