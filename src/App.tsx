@@ -211,57 +211,65 @@ function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [toggleSidebar]);
 
+  // FileSystemObserver is experimental; Edge exposes it but crashes on use
+  const supportsFileObserver =
+    "FileSystemObserver" in window && !/\bEdg\//.test(navigator.userAgent);
+
   // Watch the active tab's open file for external changes
   const fileHandle = tab?.fileHandle ?? null;
   useEffect(() => {
-    if (!fileHandle || !("FileSystemObserver" in window)) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const observer = new (window as any).FileSystemObserver(
-      (records: any[]) => {
-        if (
-          records.some((r) => r.type === "modified" || r.type === "appeared")
-        ) {
-          refreshFile();
-        }
-      },
-    );
-    (async () => {
-      try {
-        await observer.observe(fileHandle);
-      } catch {
-        /* unsupported */
-      }
-    })();
-    return () => observer.disconnect();
+    if (!fileHandle || !supportsFileObserver) return;
+    let observer: { disconnect: () => void } | null = null;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      observer = new (window as any).FileSystemObserver(
+        (records: any[]) => {
+          if (
+            records.some((r) => r.type === "modified" || r.type === "appeared")
+          ) {
+            refreshFile();
+          }
+        },
+      );
+      (observer as any).observe(fileHandle).catch((e: unknown) => {
+        console.warn("[FileSystemObserver] file observe failed:", e);
+      });
+    } catch (e) {
+      console.warn("[FileSystemObserver] file setup failed:", e);
+      return;
+    }
+    return () => observer?.disconnect();
   }, [fileHandle, refreshFile]);
 
   // Watch the active tab's open directory for new/removed files
   const directoryHandle = tab?.directoryHandle ?? null;
   useEffect(() => {
-    if (!directoryHandle || !("FileSystemObserver" in window)) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const observer = new (window as any).FileSystemObserver(
-      (records: any[]) => {
-        if (
-          records.some(
-            (r: any) =>
-              r.type === "appeared" ||
-              r.type === "disappeared" ||
-              r.type === "modified",
-          )
-        ) {
-          refreshFileTree();
-        }
-      },
-    );
-    (async () => {
-      try {
-        await observer.observe(directoryHandle, { recursive: true });
-      } catch {
-        /* unsupported */
-      }
-    })();
-    return () => observer.disconnect();
+    if (!directoryHandle || !supportsFileObserver) return;
+    let observer: { disconnect: () => void } | null = null;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      observer = new (window as any).FileSystemObserver(
+        (records: any[]) => {
+          if (
+            records.some(
+              (r: any) =>
+                r.type === "appeared" ||
+                r.type === "disappeared" ||
+                r.type === "modified",
+            )
+          ) {
+            refreshFileTree();
+          }
+        },
+      );
+      (observer as any).observe(directoryHandle, { recursive: true }).catch((e: unknown) => {
+        console.warn("[FileSystemObserver] directory observe failed:", e);
+      });
+    } catch (e) {
+      console.warn("[FileSystemObserver] directory setup failed:", e);
+      return;
+    }
+    return () => observer?.disconnect();
   }, [directoryHandle, refreshFileTree]);
 
   // ── Peer mode (full-screen takeover, no tabs) ──
