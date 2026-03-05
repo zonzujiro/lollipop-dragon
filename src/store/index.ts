@@ -125,8 +125,8 @@ async function collectTreeContents(
         } else {
           try {
             tree[path] = await readFile(node.handle);
-          } catch {
-            // skip unreadable files
+          } catch (e) {
+            console.warn("[collectTreeContents] skipping unreadable file:", path, e);
           }
         }
       } else {
@@ -317,8 +317,11 @@ async function writeAndUpdate(
       undoState: { rawContent: t.rawContent },
     }));
   } catch (e) {
-    if (isPermissionError(e))
+    if (isPermissionError(e)) {
       updateActiveTab(get, set, () => ({ writeAllowed: false }));
+    } else {
+      console.error("[writeAndUpdate] write failed:", e);
+    }
   }
 }
 
@@ -389,8 +392,9 @@ export const useAppStore = create<AppState>()(
             newActiveId = activeTabId;
           }
         }
-        // Clean up IndexedDB handle for the removed tab
-        removeHandle(`tab:${tabId}:directory`).catch(() => {});
+        // Clean up IndexedDB handles for the removed tab
+        removeHandle(`tab:${tabId}:directory`).catch((e) => console.warn("[handleStore] cleanup failed:", e));
+        removeHandle(`tab:${tabId}:file`).catch((e) => console.warn("[handleStore] cleanup failed:", e));
         set({ tabs: updated, activeTabId: newActiveId });
       },
 
@@ -409,6 +413,7 @@ export const useAppStore = create<AppState>()(
           rawContent: raw,
         });
         get().addTab(tab);
+        await saveHandle(`tab:${tab.id}:file`, result.handle);
       },
 
       openDirectoryInNewTab: async () => {
@@ -523,8 +528,8 @@ export const useAppStore = create<AppState>()(
                     filePath: node.path,
                   })),
                 };
-              } catch {
-                // skip unreadable files
+              } catch (e) {
+                console.warn("[scanAllFileComments] skipping unreadable file:", node.path, e);
               }
             } else {
               await scanNodes(node.children);
@@ -626,8 +631,11 @@ export const useAppStore = create<AppState>()(
             writeAllowed: true,
           }));
         } catch (e) {
-          if (isPermissionError(e))
+          if (isPermissionError(e)) {
             updateActiveTab(get, set, () => ({ writeAllowed: false }));
+          } else {
+            console.error("[undo] write failed:", e);
+          }
         }
       },
 
@@ -650,8 +658,8 @@ export const useAppStore = create<AppState>()(
           if (changed) {
             get().syncActiveShares();
           }
-        } catch {
-          // file read failed — silent
+        } catch (e) {
+          console.error("[refreshFile] file read failed:", e);
         }
       },
 
@@ -663,47 +671,70 @@ export const useAppStore = create<AppState>()(
           const tree = await buildFileTree(tab.directoryHandle);
           updateTab(get, set, tabId, () => ({ fileTree: tree }));
           get().scanAllFileComments();
-        } catch {
-          // directory read failed — silent
+        } catch (e) {
+          console.error("[refreshFileTree] directory read failed:", e);
         }
       },
 
       restoreTabs: async () => {
         const { tabs } = get();
         for (const tab of tabs) {
-          if (!tab.directoryName) continue;
-          try {
-            const handle =
-              await getHandle<FileSystemDirectoryHandle>(
-                `tab:${tab.id}:directory`,
-              );
-            if (!handle) continue;
-            const perm = await handle.queryPermission({ mode: "read" });
-            if (perm !== "granted") continue;
-            const tree = await buildFileTree(handle);
-            // Re-select the previously active file to restore its fileHandle
-            let restoredFileHandle: FileSystemFileHandle | null = null;
-            let restoredRaw: string | null = null;
-            if (tab.activeFilePath) {
-              const fileNode = findFileInTree(tree, tab.activeFilePath);
-              if (fileNode) {
-                restoredFileHandle = fileNode.handle;
-                try {
-                  restoredRaw = await readFile(fileNode.handle);
-                } catch {
-                  // file read failed — keep persisted rawContent
+          if (tab.directoryName) {
+            try {
+              const handle =
+                await getHandle<FileSystemDirectoryHandle>(
+                  `tab:${tab.id}:directory`,
+                );
+              if (!handle) continue;
+              const perm = await handle.queryPermission({ mode: "read" });
+              if (perm !== "granted") continue;
+              const tree = await buildFileTree(handle);
+              // Re-select the previously active file to restore its fileHandle
+              let restoredFileHandle: FileSystemFileHandle | null = null;
+              let restoredRaw: string | null = null;
+              if (tab.activeFilePath) {
+                const fileNode = findFileInTree(tree, tab.activeFilePath);
+                if (fileNode) {
+                  restoredFileHandle = fileNode.handle;
+                  try {
+                    restoredRaw = await readFile(fileNode.handle);
+                  } catch (e) {
+                    console.warn("[restoreTabs] file read failed, keeping persisted content:", e);
+                  }
                 }
               }
+              updateTab(get, set, tab.id, (t) => ({
+                directoryHandle: handle,
+                directoryName: handle.name,
+                fileTree: tree,
+                ...(restoredFileHandle ? { fileHandle: restoredFileHandle } : {}),
+                ...(restoredRaw !== null ? { rawContent: restoredRaw } : {}),
+              }));
+            } catch (e) {
+              console.error("[restoreTabs] failed to restore directory tab:", tab.id, e);
             }
-            updateTab(get, set, tab.id, (t) => ({
-              directoryHandle: handle,
-              directoryName: handle.name,
-              fileTree: tree,
-              ...(restoredFileHandle ? { fileHandle: restoredFileHandle } : {}),
-              ...(restoredRaw !== null ? { rawContent: restoredRaw } : {}),
-            }));
-          } catch {
-            // IndexedDB unavailable or handle expired — silent
+          } else if (tab.fileName) {
+            try {
+              const handle =
+                await getHandle<FileSystemFileHandle>(
+                  `tab:${tab.id}:file`,
+                );
+              if (!handle) continue;
+              const perm = await handle.queryPermission({ mode: "readwrite" });
+              if (perm !== "granted") continue;
+              let restoredRaw: string | null = null;
+              try {
+                restoredRaw = await readFile(handle);
+              } catch (e) {
+                console.warn("[restoreTabs] file read failed, keeping persisted content:", e);
+              }
+              updateTab(get, set, tab.id, () => ({
+                fileHandle: handle,
+                ...(restoredRaw !== null ? { rawContent: restoredRaw } : {}),
+              }));
+            } catch (e) {
+              console.error("[restoreTabs] failed to restore file tab:", tab.id, e);
+            }
           }
         }
         // Migrate old tabId-keyed shares, prune expired, then restore
@@ -805,13 +836,13 @@ export const useAppStore = create<AppState>()(
 
         try {
           await storage?.deleteContent(docId, record.hostSecret);
-        } catch {
-          /* ignore if already gone */
+        } catch (e) {
+          console.error("[revokeShare] failed to delete content:", docId, e);
         }
         try {
           await storage?.deleteComments(docId, record.hostSecret);
-        } catch {
-          /* ignore */
+        } catch (e) {
+          console.error("[revokeShare] failed to delete comments:", docId, e);
         }
         const updated = tab.shares.filter((s) => s.docId !== docId);
         saveShares(stableShareKey(tab), updated);
@@ -938,8 +969,8 @@ export const useAppStore = create<AppState>()(
         if (record && storage) {
           try {
             await storage.deleteComments(docId, record.hostSecret);
-          } catch {
-            /* ignore */
+          } catch (e) {
+            console.error("[clearPendingComments] failed to delete comments:", docId, e);
           }
         }
         const pc = { ...tab.pendingComments };
@@ -1121,8 +1152,8 @@ export const useAppStore = create<AppState>()(
                   tabs[0].shares = oldShares;
                 }
               }
-            } catch {
-              // ignore migration errors for shares
+            } catch (e) {
+              console.error("[migrate] failed to migrate shares:", e);
             }
 
             // Migrate old IndexedDB handle key
