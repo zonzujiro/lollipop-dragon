@@ -3,20 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { PeerCommentCard } from '../components/PeerCommentCard'
 import { useAppStore } from '../store'
-import type { PeerComment } from '../types/share'
-
-function makePeerComment(overrides: Partial<PeerComment> = {}): PeerComment {
-  return {
-    id: 'cmt-1',
-    peerName: 'Alice',
-    path: 'readme.md',
-    blockRef: { blockIndex: 0, contentPreview: 'Some preview text' },
-    commentType: 'note',
-    text: 'This is a peer comment',
-    createdAt: new Date().toISOString(),
-    ...overrides,
-  }
-}
+import { makePeerComment } from './testHelpers'
 
 beforeEach(() => {
   useAppStore.setState({
@@ -30,12 +17,12 @@ describe('PeerCommentCard — display', () => {
     render(<PeerCommentCard docId="doc-1" comment={makePeerComment()} currentPath="readme.md" />)
     expect(screen.getByText('Alice')).toBeInTheDocument()
     expect(screen.getByText('note')).toBeInTheDocument()
-    expect(screen.getByText('This is a peer comment')).toBeInTheDocument()
+    expect(screen.getByText('A comment')).toBeInTheDocument()
   })
 
   it('renders block content preview when provided', () => {
     render(<PeerCommentCard docId="doc-1" comment={makePeerComment()} currentPath="readme.md" />)
-    expect(screen.getByText('Some preview text')).toBeInTheDocument()
+    expect(screen.getByText('Some text')).toBeInTheDocument()
   })
 
   it('does not render preview blockquote when contentPreview is empty', () => {

@@ -44,3 +44,18 @@ export interface SidebarDirectoryNode {
 }
 
 export type SidebarTreeNode = SidebarFileNode | SidebarDirectoryNode
+
+/** Type guard: checks whether a SidebarTreeNode is actually a FileTreeNode (has handle on file nodes). */
+function isSidebarNodeFileTreeNode(node: SidebarTreeNode): node is FileTreeNode {
+  if (node.kind === 'file') return 'handle' in node
+  return node.children.every(isSidebarNodeFileTreeNode)
+}
+
+/**
+ * Narrows SidebarTreeNode[] back to FileTreeNode[] when the nodes
+ * originated from a FileTreeNode[] tree (i.e., file nodes have handles).
+ * Returns only nodes that pass the type guard.
+ */
+export function toFileTreeNodes(nodes: SidebarTreeNode[]): FileTreeNode[] {
+  return nodes.filter(isSidebarNodeFileTreeNode)
+}

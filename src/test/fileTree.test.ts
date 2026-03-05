@@ -125,7 +125,7 @@ describe('buildFileTree', () => {
       makeFileHandle('mango.md'),
     ])
     const tree = await buildFileTree(dir)
-    const files = tree.filter((n) => n.kind === 'file') as FileNode[]
+    const files = tree.filter((n): n is FileNode => n.kind === 'file')
     expect(files.map((f) => f.name)).toEqual(['alpha.md', 'mango.md', 'zebra.md'])
   })
 

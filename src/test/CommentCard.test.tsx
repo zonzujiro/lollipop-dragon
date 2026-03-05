@@ -2,22 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { CommentCard } from '../components/CommentCard'
-import type { Comment } from '../types/criticmarkup'
-
-function makeComment(overrides: Partial<Comment> = {}): Comment {
-  return {
-    id: '0',
-    criticType: 'comment',
-    type: 'note',
-    text: 'test comment',
-    raw: '{>>test comment<<}',
-    rawStart: 0,
-    rawEnd: 18,
-    cleanStart: 0,
-    cleanEnd: 0,
-    ...overrides,
-  }
-}
+import { makeComment } from './testHelpers'
 
 describe('CommentCard — type badge', () => {
   it('shows the comment type in the badge', () => {

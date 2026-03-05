@@ -705,7 +705,7 @@ export const useAppStore = create<AppState>()(
                   }
                 }
               }
-              updateTab(get, set, tab.id, (t) => ({
+              updateTab(get, set, tab.id, () => ({
                 directoryHandle: handle,
                 directoryName: handle.name,
                 fileTree: tree,

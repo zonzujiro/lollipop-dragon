@@ -1,33 +1,7 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { useAppStore } from '../store'
 import { getActiveTab } from '../store/selectors'
-import { setTestState, resetTestStore } from './testHelpers'
-import type { ShareRecord, PeerComment } from '../types/share'
-
-function makeShare(overrides: Partial<ShareRecord> = {}): ShareRecord {
-  return {
-    docId: 'doc-1',
-    hostSecret: 'secret',
-    label: 'my-doc',
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
-    pendingCommentCount: 0,
-    ...overrides,
-  }
-}
-
-function makePeerComment(overrides: Partial<PeerComment> = {}): PeerComment {
-  return {
-    id: 'cmt-1',
-    peerName: 'Alice',
-    path: 'readme.md',
-    blockRef: { blockIndex: 0, contentPreview: 'Some text' },
-    commentType: 'note',
-    text: 'A comment',
-    createdAt: new Date().toISOString(),
-    ...overrides,
-  }
-}
+import { setTestState, resetTestStore, makeShare, makePeerComment } from './testHelpers'
 
 beforeEach(() => {
   resetTestStore()

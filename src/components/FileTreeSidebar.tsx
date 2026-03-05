@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState, type ReactNode } from "react";
-import type { SidebarTreeNode, SidebarDirectoryNode } from "../types/fileTree";
+import type { SidebarTreeNode } from "../types/fileTree";
 import type { ShareRecord } from "../types/share";
 
 const MIN_WIDTH = 160;
@@ -146,8 +146,8 @@ function TreeItem({
     e.stopPropagation();
     if (node.kind === "file") {
       onShare!([node], node.name);
-    } else {
-      onShare!((node as SidebarDirectoryNode).children, node.name);
+    } else if (node.kind === "directory") {
+      onShare!(node.children, node.name);
     }
   }
 

@@ -3,13 +3,22 @@ import type { Comment, CommentType, CriticType } from '../types/criticmarkup'
 // Recognized Conventional Comments prefixes
 const PREFIX_RE = /^(fix|rewrite|expand|clarify|question|remove):\s*/i
 
+const COMMENT_TYPES: ReadonlySet<string> = new Set<CommentType>([
+  'note', 'fix', 'rewrite', 'expand', 'clarify', 'question', 'remove',
+])
+
+export function isCommentType(value: string): value is CommentType {
+  return COMMENT_TYPES.has(value)
+}
+
 // Parse a semantic type from the start of a comment body.
 // Returns the matched type and the text with the prefix stripped.
 export function parseCommentType(text: string): { type: CommentType; text: string } {
   const m = PREFIX_RE.exec(text)
   if (!m) return { type: 'note', text }
+  const lower = m[1].toLowerCase()
   return {
-    type: m[1].toLowerCase() as CommentType,
+    type: isCommentType(lower) ? lower : 'note',
     text: text.slice(m[0].length),
   }
 }

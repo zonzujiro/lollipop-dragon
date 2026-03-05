@@ -4,30 +4,15 @@ import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { CommentPanel } from '../components/CommentPanel'
 import { useAppStore } from '../store'
 import { getActiveTab } from '../store/selectors'
-import { setTestState, resetTestStore } from './testHelpers'
+import { setTestState, resetTestStore, makeComment as makeCommentBase } from './testHelpers'
 import type { Comment } from '../types/criticmarkup'
 
-// Re-export makeComment for resolved tests
-function makeResolvedComment(id: string, text: string): Comment {
-  return {
-    id, criticType: 'comment', type: 'fix', text, raw: `{>>fix: ${text}<<}`,
-    rawStart: 0, rawEnd: 0, cleanStart: 0, cleanEnd: 0,
-  }
+function makeResolvedComment(id: string, text: string) {
+  return makeCommentBase({ id, type: 'fix', text, raw: `{>>fix: ${text}<<}` })
 }
 
-function makeComment(id: string, type: Comment['type'], text: string, blockIndex = 0): Comment {
-  return {
-    id,
-    criticType: 'comment',
-    type,
-    text,
-    raw: `{>>${text}<<}`,
-    rawStart: 0,
-    rawEnd: 0,
-    cleanStart: 0,
-    cleanEnd: 0,
-    blockIndex,
-  }
+function makeComment(id: string, type: Comment['type'], text: string, blockIndex = 0) {
+  return makeCommentBase({ id, type, text, raw: `{>>${text}<<}`, blockIndex })
 }
 
 const comments: Comment[] = [

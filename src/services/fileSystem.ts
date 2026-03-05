@@ -1,5 +1,17 @@
 import type { FileTreeNode, FileNode, DirectoryNode, SidebarTreeNode, SidebarDirectoryNode } from '../types/fileTree'
 
+function isDirectoryHandle(
+  entry: FileSystemHandle,
+): entry is FileSystemDirectoryHandle {
+  return entry.kind === 'directory'
+}
+
+function isFileHandle(
+  entry: FileSystemHandle,
+): entry is FileSystemFileHandle {
+  return entry.kind === 'file'
+}
+
 export interface OpenedFile {
   handle: FileSystemFileHandle
   name: string
@@ -63,20 +75,20 @@ export async function buildFileTree(
     if (isIgnored(entry.name)) continue
     const entryPath = basePath ? `${basePath}/${entry.name}` : entry.name
 
-    if (entry.kind === 'directory') {
+    if (isDirectoryHandle(entry)) {
       const children = await buildFileTree(
-        entry as FileSystemDirectoryHandle,
+        entry,
         entryPath,
       )
       if (children.length > 0) {
         dirs.push({ kind: 'directory', name: entry.name, path: entryPath, children })
       }
-    } else if (isMdFile(entry.name)) {
+    } else if (isFileHandle(entry) && isMdFile(entry.name)) {
       files.push({
         kind: 'file',
         name: entry.name,
         path: entryPath,
-        handle: entry as FileSystemFileHandle,
+        handle: entry,
       })
     }
   }
@@ -100,9 +112,11 @@ export function buildVirtualTree(paths: string[]): SidebarTreeNode[] {
       if (i === parts.length - 1) {
         current.children.push({ kind: 'file', name, path })
       } else {
-        let dir = current.children.find(
+        const found = current.children.find(
           (c) => c.kind === 'directory' && c.name === name,
-        ) as SidebarDirectoryNode | undefined
+        )
+        let dir: SidebarDirectoryNode | undefined =
+          found?.kind === 'directory' ? found : undefined
         if (!dir) {
           dir = { kind: 'directory', name, path: subPath, children: [] }
           current.children.push(dir)

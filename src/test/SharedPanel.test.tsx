@@ -3,20 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { SharedPanel } from '../components/SharedPanel'
 import { useAppStore } from '../store'
-import { setTestState, resetTestStore } from './testHelpers'
-import type { ShareRecord } from '../types/share'
-
-function makeShare(overrides: Partial<ShareRecord> = {}): ShareRecord {
-  return {
-    docId: 'doc-1',
-    hostSecret: 'secret',
-    label: 'my-doc',
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
-    pendingCommentCount: 0,
-    ...overrides,
-  }
-}
+import { setTestState, resetTestStore, makeShare } from './testHelpers'
 
 beforeEach(() => {
   resetTestStore()

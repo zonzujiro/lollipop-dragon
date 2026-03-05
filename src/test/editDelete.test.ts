@@ -1,22 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { replaceCommentMarkup, applyEdit } from '../services/editComment'
 import { applyDelete } from '../services/deleteComment'
-import type { Comment } from '../types/criticmarkup'
-
-function makeComment(overrides: Partial<Comment> = {}): Comment {
-  return {
-    id: '0',
-    criticType: 'comment',
-    type: 'note',
-    text: 'original',
-    raw: '{>>original<<}',
-    rawStart: 0,
-    rawEnd: 15,
-    cleanStart: 0,
-    cleanEnd: 0,
-    ...overrides,
-  }
-}
+import { makeComment } from './testHelpers'
 
 describe('replaceCommentMarkup', () => {
   it('builds a note comment with no prefix', () => {

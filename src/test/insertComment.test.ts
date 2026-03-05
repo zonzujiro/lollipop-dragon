@@ -1,21 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { insertComment } from '../services/insertComment'
-import type { Comment } from '../types/criticmarkup'
-
-function makeComment(overrides: Partial<Comment>): Comment {
-  return {
-    id: '0',
-    criticType: 'comment',
-    type: 'note',
-    text: '',
-    raw: '',
-    rawStart: 0,
-    rawEnd: 0,
-    cleanStart: 0,
-    cleanEnd: 0,
-    ...overrides,
-  }
-}
+import { makeComment } from './testHelpers'
 
 describe('insertComment — plain content (no existing markup)', () => {
   it('appends a note comment (no prefix) after the first paragraph', () => {

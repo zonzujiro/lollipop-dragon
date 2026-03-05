@@ -16,8 +16,7 @@ import { MermaidBlock } from "./MermaidBlock";
 import { CommentMargin } from "./CommentMargin";
 import { useAppStore } from "../store";
 import { useActiveTab } from "../store/selectors";
-import { parseCriticMarkup } from "../services/criticmarkup";
-import type { CommentType } from "../types/criticmarkup";
+import { parseCriticMarkup, isCommentType } from "../services/criticmarkup";
 import { assignBlockIndices } from "../services/blockIndex";
 
 // Singleton — created once, shared across all renders
@@ -80,8 +79,11 @@ function PreBlock({ children, ...props }: ComponentPropsWithoutRef<"pre">) {
     typeof child.props.className === "string" &&
     child.props.className.includes("language-mermaid")
   ) {
+    const childProps = child.props;
     const code = String(
-      (child.props as { children?: unknown }).children ?? "",
+      (typeof childProps === "object" && childProps !== null && "children" in childProps)
+        ? childProps.children
+        : "",
     ).replace(/\n$/, "");
     return <MermaidBlock code={code} />;
   }
@@ -125,10 +127,10 @@ export function MarkdownRenderer() {
   const handleBodyMouseOver = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (!shouldTrackHover) return;
-      const block = (e.target as HTMLElement).closest(
-        "[data-block-index]",
-      ) as HTMLElement | null;
-      if (!block) return;
+      const target = e.target;
+      if (!(target instanceof HTMLElement)) return;
+      const block = target.closest("[data-block-index]");
+      if (!(block instanceof HTMLElement)) return;
       setHoveredBlock({
         index: Number(block.getAttribute("data-block-index")),
         top: block.offsetTop,
@@ -141,9 +143,10 @@ export function MarkdownRenderer() {
 
   const handleAddComment = useCallback(
     (blockIndex: number, type: string, text: string) => {
+      if (!isCommentType(type)) return;
       addCommentAction(
         blockIndex,
-        type as CommentType,
+        type,
         text,
       );
     },
@@ -152,10 +155,11 @@ export function MarkdownRenderer() {
 
   const handlePostPeerComment = useCallback(
     (blockIndex: number, type: string, text: string) => {
+      if (!isCommentType(type)) return;
       const path = activeFilePath ?? fileName ?? "";
       postPeerCommentAction(
         blockIndex,
-        type as CommentType,
+        type,
         text,
         path,
       );

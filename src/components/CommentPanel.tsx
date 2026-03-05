@@ -336,7 +336,6 @@ export function CommentPanel({ peerMode = false }: Props) {
             peerMode={peerMode}
             activeCommentId={activeCommentId}
             sourceComments={sourceComments}
-            comments={comments}
             onEntryClick={handleEntryClick}
             entryLabel={entryLabel}
             hostEntryLabel={hostEntryLabel}
@@ -462,12 +461,12 @@ function CommentEntry({
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
-  const full = comment as Comment;
-  const label = comment.text || full.highlightedText || full.from || "";
+  const isFullComment = "criticType" in comment;
+  const label = comment.text || (isFullComment ? comment.highlightedText : undefined) || (isFullComment ? comment.from : undefined) || "";
   const displayText = label.length > 72 ? label.slice(0, 72) + "…" : label;
   const isEditable =
     canEdit &&
-    (!full.criticType || EDITABLE_CRITIC_TYPES.includes(full.criticType));
+    (!isFullComment || !comment.criticType || EDITABLE_CRITIC_TYPES.includes(comment.criticType));
 
   if (editing) {
     return (
@@ -619,7 +618,6 @@ function SingleFileList({
   peerMode,
   activeCommentId,
   sourceComments,
-  comments,
   onEntryClick,
   entryLabel,
   hostEntryLabel,
@@ -631,7 +629,6 @@ function SingleFileList({
   peerMode: boolean;
   activeCommentId: string | null;
   sourceComments: (Comment | DisplayComment)[];
-  comments: Comment[];
   onEntryClick: (id: string, blockIndex: number | undefined) => void;
   entryLabel: (c: DisplayComment) => string;
   hostEntryLabel: (c: Comment) => string;
@@ -674,7 +671,7 @@ function SingleFileList({
               <span className="comment-panel__ref">¶{c.blockIndex + 1}</span>
             )}
             <span className="comment-panel__text comment-panel__text--resolved">
-              {peerMode ? entryLabel(c) : hostEntryLabel(c as Comment)}
+              {peerMode ? entryLabel(c) : "criticType" in c ? hostEntryLabel(c) : entryLabel(c)}
             </span>
           </div>
         ) : (

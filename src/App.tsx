@@ -14,13 +14,31 @@ import { Toast } from "./components/Toast";
 import { PeerNamePrompt } from "./components/PeerNamePrompt";
 import { buildVirtualTree } from "./services/fileSystem";
 import { isShareHash } from "./utils/shareUrl";
-import { findFileInTree } from "./types/fileTree";
+import { findFileInTree, toFileTreeNodes } from "./types/fileTree";
 import type {
   FileTreeNode,
-  DirectoryNode,
   SidebarTreeNode,
 } from "./types/fileTree";
 import { WORKER_URL } from "./config";
+
+// FileSystemObserver is an experimental browser API not yet in TypeScript's
+// lib types. Declare a minimal interface so we can avoid `as any`.
+interface FileSystemObserverRecord {
+  type: string;
+}
+interface FileSystemObserver {
+  observe(handle: FileSystemHandle, opts?: { recursive: boolean }): Promise<void>;
+  disconnect(): void;
+}
+interface FileSystemObserverConstructor {
+  new (callback: (records: FileSystemObserverRecord[]) => void): FileSystemObserver;
+}
+
+declare global {
+  interface Window {
+    FileSystemObserver?: FileSystemObserverConstructor;
+  }
+}
 
 const folderIcon = (
   <svg
@@ -126,7 +144,7 @@ function App() {
 
   const handleHostShare = useCallback(
     (nodes: SidebarTreeNode[], label: string) => {
-      setShareScope({ nodes: nodes as FileTreeNode[], label });
+      setShareScope({ nodes: toFileTreeNodes(nodes), label });
     },
     [],
   );
@@ -219,11 +237,12 @@ function App() {
   const fileHandle = tab?.fileHandle ?? null;
   useEffect(() => {
     if (!fileHandle || !supportsFileObserver) return;
-    let observer: { disconnect: () => void } | null = null;
+    const FSObserver = window.FileSystemObserver;
+    if (!FSObserver) return;
+    let observer: FileSystemObserver | null = null;
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      observer = new (window as any).FileSystemObserver(
-        (records: any[]) => {
+      observer = new FSObserver(
+        (records: FileSystemObserverRecord[]) => {
           if (
             records.some((r) => r.type === "modified" || r.type === "appeared")
           ) {
@@ -231,7 +250,7 @@ function App() {
           }
         },
       );
-      (observer as any).observe(fileHandle).catch((e: unknown) => {
+      observer.observe(fileHandle).catch((e: unknown) => {
         console.warn("[FileSystemObserver] file observe failed:", e);
       });
     } catch (e) {
@@ -245,14 +264,15 @@ function App() {
   const directoryHandle = tab?.directoryHandle ?? null;
   useEffect(() => {
     if (!directoryHandle || !supportsFileObserver) return;
-    let observer: { disconnect: () => void } | null = null;
+    const FSObserver = window.FileSystemObserver;
+    if (!FSObserver) return;
+    let observer: FileSystemObserver | null = null;
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      observer = new (window as any).FileSystemObserver(
-        (records: any[]) => {
+      observer = new FSObserver(
+        (records: FileSystemObserverRecord[]) => {
           if (
             records.some(
-              (r: any) =>
+              (r) =>
                 r.type === "appeared" ||
                 r.type === "disappeared" ||
                 r.type === "modified",
@@ -262,7 +282,7 @@ function App() {
           }
         },
       );
-      (observer as any).observe(directoryHandle, { recursive: true }).catch((e: unknown) => {
+      observer.observe(directoryHandle, { recursive: true }).catch((e: unknown) => {
         console.warn("[FileSystemObserver] directory observe failed:", e);
       });
     } catch (e) {

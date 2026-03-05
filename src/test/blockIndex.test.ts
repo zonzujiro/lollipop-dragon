@@ -1,20 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { getBlockPositions, assignBlockIndices } from '../services/blockIndex'
-import type { Comment } from '../types/criticmarkup'
+import { makeComment as makeCommentBase } from './testHelpers'
 
-// Minimal Comment factory for tests
-function makeComment(cleanStart: number, cleanEnd = cleanStart): Comment {
-  return {
-    id: String(cleanStart),
-    criticType: 'comment',
-    type: 'note',
-    text: 'test',
-    raw: '{>>test<<}',
-    rawStart: 0,
-    rawEnd: 9,
-    cleanStart,
-    cleanEnd,
-  }
+function makeComment(cleanStart: number, cleanEnd = cleanStart) {
+  return makeCommentBase({ id: String(cleanStart), cleanStart, cleanEnd })
 }
 
 describe('getBlockPositions', () => {

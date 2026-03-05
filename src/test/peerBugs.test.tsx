@@ -1,6 +1,5 @@
 import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
-import type { PeerComment, ShareRecord } from "../types/share";
 
 // ── Module-level mocks (hoisted before imports) ──────────────────────
 
@@ -38,34 +37,7 @@ import { CommentPanel } from "../components/CommentPanel";
 import { Header } from "../components/Header";
 import { useAppStore } from "../store";
 import { getActiveTab } from "../store/selectors";
-import { setTestState, resetTestStore } from "./testHelpers";
-
-function makePeerComment(overrides: Partial<PeerComment> = {}): PeerComment {
-  return {
-    id: `c_${crypto.randomUUID()}`,
-    peerName: "Alice",
-    path: "readme.md",
-    blockRef: { blockIndex: 0, contentPreview: "Some text" },
-    commentType: "note",
-    text: "A comment",
-    createdAt: new Date().toISOString(),
-    ...overrides,
-  };
-}
-
-function makeShare(overrides: Partial<ShareRecord> = {}): ShareRecord {
-  return {
-    docId: "doc-1",
-    hostSecret: "secret",
-    label: "my-doc",
-    createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
-    pendingCommentCount: 0,
-    keyB64: "test-key",
-    fileCount: 1,
-    ...overrides,
-  };
-}
+import { setTestState, resetTestStore, makePeerComment, makeShare } from "./testHelpers";
 
 beforeEach(() => {
   resetTestStore();

@@ -28,14 +28,32 @@ export async function saveHandle(key: string, handle: FileSystemHandle): Promise
   })
 }
 
+function isFileSystemHandle(value: unknown): value is FileSystemHandle {
+  if (value == null || typeof value !== 'object') return false
+  if (!('kind' in value) || !('name' in value)) return false
+  const { kind } = value
+  return kind === 'file' || kind === 'directory'
+}
+
 export async function getHandle<T extends FileSystemHandle = FileSystemHandle>(
   key: string,
 ): Promise<T | null> {
   const db = await getDB()
-  return new Promise((resolve, reject) => {
+  return new Promise<T | null>((resolve, reject) => {
     const tx = db.transaction(STORE, 'readonly')
     const req = tx.objectStore(STORE).get(key)
-    req.onsuccess = () => resolve((req.result as T) ?? null)
+    req.onsuccess = () => {
+      const result: unknown = req.result
+      // `as T` unavoidable: IndexedDB's IDBRequest.result is `any`, and after
+      // the runtime guard confirms it is a FileSystemHandle, TypeScript cannot
+      // narrow further to the generic sub-type T (File vs Directory).  Callers
+      // are responsible for storing and retrieving the correct sub-type.
+      if (isFileSystemHandle(result)) {
+        resolve(result as T)
+      } else {
+        resolve(null)
+      }
+    }
     req.onerror = () => reject(req.error)
   })
 }

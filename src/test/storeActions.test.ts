@@ -1,8 +1,7 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { useAppStore } from '../store'
 import { getActiveTab } from '../store/selectors'
-import { setTestState, resetTestStore } from './testHelpers'
-import type { Comment } from '../types/criticmarkup'
+import { setTestState, resetTestStore, makeComment } from './testHelpers'
 
 function makeHandle(writeOk = true) {
   const mockWritable = { write: vi.fn().mockResolvedValue(undefined), close: vi.fn().mockResolvedValue(undefined) }
@@ -10,15 +9,6 @@ function makeHandle(writeOk = true) {
     ? vi.fn().mockResolvedValue(mockWritable)
     : vi.fn().mockRejectedValue(Object.assign(new Error(), { name: 'NotAllowedError' }))
   return { handle: { createWritable } as unknown as FileSystemFileHandle, mockWritable }
-}
-
-function makeComment(overrides: Partial<Comment> = {}): Comment {
-  return {
-    id: '0', criticType: 'comment', type: 'note', text: 'original',
-    raw: '{>>original<<}', rawStart: 0, rawEnd: 15,
-    cleanStart: 0, cleanEnd: 0,
-    ...overrides,
-  }
 }
 
 beforeEach(() => {
