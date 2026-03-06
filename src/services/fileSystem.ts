@@ -1,153 +1,175 @@
-import type { FileTreeNode, FileNode, DirectoryNode, SidebarTreeNode, SidebarDirectoryNode } from '../types/fileTree'
+import type {
+  FileTreeNode,
+  FileNode,
+  DirectoryNode,
+  SidebarTreeNode,
+  SidebarDirectoryNode,
+} from "../types/fileTree";
 
 function isDirectoryHandle(
   entry: FileSystemHandle,
 ): entry is FileSystemDirectoryHandle {
-  return entry.kind === 'directory'
+  return entry.kind === "directory";
 }
 
-function isFileHandle(
-  entry: FileSystemHandle,
-): entry is FileSystemFileHandle {
-  return entry.kind === 'file'
+function isFileHandle(entry: FileSystemHandle): entry is FileSystemFileHandle {
+  return entry.kind === "file";
 }
 
 export interface OpenedFile {
-  handle: FileSystemFileHandle
-  name: string
+  handle: FileSystemFileHandle;
+  name: string;
 }
 
 export async function openFile(): Promise<OpenedFile | null> {
+  if (typeof window.showOpenFilePicker !== "function") {
+    console.warn("File System Access API not supported in this browser");
+    return null;
+  }
   try {
     const [handle] = await window.showOpenFilePicker({
       types: [
         {
-          description: 'Markdown files',
-          accept: { 'text/markdown': ['.md', '.markdown'] },
+          description: "Markdown files",
+          accept: { "text/markdown": [".md", ".markdown"] },
         },
       ],
       multiple: false,
-    })
-    return { handle, name: handle.name }
+    });
+    return { handle, name: handle.name };
   } catch (err) {
     // User cancelled the picker — not an error
-    if (err instanceof DOMException && err.name === 'AbortError') return null
-    throw err
+    if (err instanceof DOMException && err.name === "AbortError") return null;
+    throw err;
   }
 }
 
 export async function readFile(handle: FileSystemFileHandle): Promise<string> {
-  const file = await handle.getFile()
-  return file.text()
+  const file = await handle.getFile();
+  return file.text();
 }
 
 export async function writeFile(
   handle: FileSystemFileHandle,
   content: string,
 ): Promise<void> {
-  const writable = await handle.createWritable()
-  await writable.write(content)
-  await writable.close()
+  const writable = await handle.createWritable();
+  await writable.write(content);
+  await writable.close();
 }
 
 // ── Folder support ────────────────────────────────────────────
 
-const IGNORE = new Set(['node_modules', '.git', '.markreview'])
-const MD_EXT = new Set(['.md', '.markdown'])
+const IGNORE = new Set(["node_modules", ".git", ".markreview"]);
+const MD_EXT = new Set([".md", ".markdown"]);
 
 function isIgnored(name: string): boolean {
-  return name.startsWith('.') || IGNORE.has(name)
+  return name.startsWith(".") || IGNORE.has(name);
 }
 
 function isMdFile(name: string): boolean {
-  const dot = name.lastIndexOf('.')
-  return dot !== -1 && MD_EXT.has(name.slice(dot))
+  const dot = name.lastIndexOf(".");
+  return dot !== -1 && MD_EXT.has(name.slice(dot));
 }
 
 export async function buildFileTree(
   dirHandle: FileSystemDirectoryHandle,
-  basePath = '',
+  basePath = "",
 ): Promise<FileTreeNode[]> {
-  const dirs: DirectoryNode[] = []
-  const files: FileNode[] = []
+  const dirs: DirectoryNode[] = [];
+  const files: FileNode[] = [];
 
   for await (const entry of dirHandle.values()) {
-    if (isIgnored(entry.name)) continue
-    const entryPath = basePath ? `${basePath}/${entry.name}` : entry.name
+    if (isIgnored(entry.name)) continue;
+    const entryPath = basePath ? `${basePath}/${entry.name}` : entry.name;
 
     if (isDirectoryHandle(entry)) {
-      const children = await buildFileTree(
-        entry,
-        entryPath,
-      )
+      const children = await buildFileTree(entry, entryPath);
       if (children.length > 0) {
-        dirs.push({ kind: 'directory', name: entry.name, path: entryPath, children })
+        dirs.push({
+          kind: "directory",
+          name: entry.name,
+          path: entryPath,
+          children,
+        });
       }
     } else if (isFileHandle(entry) && isMdFile(entry.name)) {
       files.push({
-        kind: 'file',
+        kind: "file",
         name: entry.name,
         path: entryPath,
         handle: entry,
-      })
+      });
     }
   }
 
-  dirs.sort((a, b) => a.name.localeCompare(b.name))
-  files.sort((a, b) => a.name.localeCompare(b.name))
+  dirs.sort((a, b) => a.name.localeCompare(b.name));
+  files.sort((a, b) => a.name.localeCompare(b.name));
 
-  return [...dirs, ...files]
+  return [...dirs, ...files];
 }
 
 /** Build a nested tree from flat path keys like "folder/sub/file.md" */
 export function buildVirtualTree(paths: string[]): SidebarTreeNode[] {
-  const root: SidebarDirectoryNode = { kind: 'directory', name: '', path: '', children: [] }
+  const root: SidebarDirectoryNode = {
+    kind: "directory",
+    name: "",
+    path: "",
+    children: [],
+  };
 
   for (const path of paths) {
-    const parts = path.split('/')
-    let current = root
+    const parts = path.split("/");
+    let current = root;
     for (let i = 0; i < parts.length; i++) {
-      const name = parts[i]
-      const subPath = parts.slice(0, i + 1).join('/')
+      const name = parts[i];
+      const subPath = parts.slice(0, i + 1).join("/");
       if (i === parts.length - 1) {
-        current.children.push({ kind: 'file', name, path })
+        current.children.push({ kind: "file", name, path });
       } else {
         const found = current.children.find(
-          (c) => c.kind === 'directory' && c.name === name,
-        )
+          (c) => c.kind === "directory" && c.name === name,
+        );
         let dir: SidebarDirectoryNode | undefined =
-          found?.kind === 'directory' ? found : undefined
+          found?.kind === "directory" ? found : undefined;
         if (!dir) {
-          dir = { kind: 'directory', name, path: subPath, children: [] }
-          current.children.push(dir)
+          dir = { kind: "directory", name, path: subPath, children: [] };
+          current.children.push(dir);
         }
-        current = dir
+        current = dir;
       }
     }
   }
 
   function sortNodes(nodes: SidebarTreeNode[]): SidebarTreeNode[] {
-    return nodes.sort((a, b) => {
-      if (a.kind !== b.kind) return a.kind === 'directory' ? -1 : 1
-      return a.name.localeCompare(b.name)
-    }).map((n) => {
-      if (n.kind === 'directory') return { ...n, children: sortNodes(n.children) }
-      return n
-    })
+    return nodes
+      .sort((a, b) => {
+        if (a.kind !== b.kind) return a.kind === "directory" ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      })
+      .map((n) => {
+        if (n.kind === "directory")
+          return { ...n, children: sortNodes(n.children) };
+        return n;
+      });
   }
 
-  return sortNodes(root.children)
+  return sortNodes(root.children);
 }
 
 export async function openDirectory(): Promise<{
-  handle: FileSystemDirectoryHandle
-  name: string
+  handle: FileSystemDirectoryHandle;
+  name: string;
 } | null> {
+  if (typeof window.showDirectoryPicker !== "function") {
+    console.warn("File System Access API not supported in this browser");
+    return null;
+  }
   try {
-    const handle = await window.showDirectoryPicker({ mode: 'readwrite' })
-    return { handle, name: handle.name }
+    const handle = await window.showDirectoryPicker({ mode: "readwrite" });
+    return { handle, name: handle.name };
   } catch (err) {
-    if (err instanceof DOMException && err.name === 'AbortError') return null
-    throw err
+    if (err instanceof DOMException && err.name === "AbortError") return null;
+    throw err;
   }
 }

@@ -90,6 +90,36 @@ body {
 }
 
 /* ── App layout ──────────────────────────────────────────────── */
+.app-unsupported {
+  max-width: 480px;
+  margin: 15vh auto;
+  padding: 2rem;
+  text-align: center;
+  color: var(--fg);
+}
+
+.app-unsupported h1 {
+  font-size: 1.4rem;
+  margin-bottom: 1rem;
+}
+
+.app-unsupported p {
+  margin: 0.75rem 0;
+  line-height: 1.5;
+}
+
+.app-unsupported a {
+  color: var(--accent, #4a9eff);
+}
+
+.app-unsupported__hint {
+  margin-top: 1.5rem;
+  padding: 0.75rem;
+  background: rgba(255, 180, 0, 0.12);
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
 .app-layout {
   display: flex;
   height: 100vh;
@@ -303,7 +333,9 @@ body {
   min-width: 0;
   max-width: 12rem;
   flex-shrink: 0;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
 }
 
 .tab-bar__tab:hover {
@@ -332,7 +364,9 @@ body {
   font-size: 0.85rem;
   line-height: 1;
   opacity: 0;
-  transition: opacity 0.1s, background 0.1s;
+  transition:
+    opacity 0.1s,
+    background 0.1s;
   flex-shrink: 0;
 }
 
@@ -366,7 +400,9 @@ body {
   color: var(--text-muted);
   font-size: 1.1rem;
   cursor: pointer;
-  transition: background 0.1s, color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s;
 }
 
 .tab-bar__add:hover {
@@ -501,17 +537,16 @@ body {
   opacity: 1;
 }
 
-
 /* ── Landing page (bauhaus) ──────────────────────────────────── */
 @import url("https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700;800;900&display=swap");
 
 .landing {
   /* Bauhaus palette */
-  --bh-red: #E63946;
-  --bh-yellow: #FFB800;
-  --bh-blue: #1D3557;
-  --bh-black: #1A1A1A;
-  --bh-cream: #F5F0E8;
+  --bh-red: #e63946;
+  --bh-yellow: #ffb800;
+  --bh-blue: #1d3557;
+  --bh-black: #1a1a1a;
+  --bh-cream: #f5f0e8;
 
   /* Override theme vars in landing scope */
   --bg: var(--bh-cream);
@@ -520,15 +555,15 @@ body {
   --border: #d5cfc4;
   --text: var(--bh-black);
   --accent: var(--bh-blue);
-  --accent-bg: rgba(29,53,87,0.08);
+  --accent-bg: rgba(29, 53, 87, 0.08);
   --c-red: var(--bh-red);
-  --c-green: #1D3557;
-  --c-orange: #FFB800;
-  --c-purple: #1D3557;
-  --c-cyan: #FFB800;
+  --c-green: #1d3557;
+  --c-orange: #ffb800;
+  --c-purple: #1d3557;
+  --c-cyan: #ffb800;
   --text-muted: #666;
 
-  font-family: 'Jost', sans-serif;
+  font-family: "Jost", sans-serif;
   background: var(--bh-cream);
   color: var(--bh-black);
   min-height: 100vh;
@@ -582,7 +617,7 @@ body {
   transform: translateY(-50%) scale(0.8);
   margin-right: 0.75rem;
   white-space: nowrap;
-  font-family: 'Jost', sans-serif;
+  font-family: "Jost", sans-serif;
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--bh-cream);
@@ -590,7 +625,9 @@ body {
   padding: 0.3rem 0.7rem;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s, transform 0.2s;
+  transition:
+    opacity 0.2s,
+    transform 0.2s;
   text-transform: lowercase;
 }
 .bh-hero__logo-wrap:hover .bh-hero__easter-egg {
@@ -598,7 +635,7 @@ body {
   transform: translateY(-50%) scale(1);
 }
 .bh-hero__title {
-  font-family: 'Jost', sans-serif;
+  font-family: "Jost", sans-serif;
   font-size: clamp(4rem, 14vw, 9rem);
   font-weight: 900;
   line-height: 0.9;
@@ -625,7 +662,7 @@ body {
   flex-wrap: wrap;
 }
 .bh-btn {
-  font-family: 'Jost', sans-serif;
+  font-family: "Jost", sans-serif;
   font-size: 0.95rem;
   font-weight: 700;
   text-transform: lowercase;
@@ -656,7 +693,9 @@ body {
 .bh-section {
   padding: 5rem 2rem;
 }
-.bh-section--cream { background: var(--bh-cream); }
+.bh-section--cream {
+  background: var(--bh-cream);
+}
 .bh-section--black {
   background: var(--bh-black);
   color: var(--bh-cream);
@@ -682,7 +721,7 @@ body {
 
 /* ── Heading ── */
 .bh-heading {
-  font-family: 'Jost', sans-serif;
+  font-family: "Jost", sans-serif;
   font-size: clamp(2.5rem, 8vw, 5rem);
   font-weight: 900;
   text-transform: lowercase;
@@ -690,7 +729,9 @@ body {
   line-height: 0.95;
   margin: 0;
 }
-.bh-heading--light { color: var(--bh-cream); }
+.bh-heading--light {
+  color: var(--bh-cream);
+}
 
 /* ── Row layout ── */
 .bh-row {
@@ -703,7 +744,10 @@ body {
   min-width: 0;
 }
 @media (max-width: 720px) {
-  .bh-row { flex-direction: column; gap: 2rem; }
+  .bh-row {
+    flex-direction: column;
+    gap: 2rem;
+  }
 }
 
 /* ── Features list ── */
@@ -712,14 +756,16 @@ body {
   list-style: none;
   margin: 0;
   padding: 0;
-  font-family: 'Jost', sans-serif;
+  font-family: "Jost", sans-serif;
   font-size: 1.1rem;
   font-weight: 600;
   line-height: 2.4;
   color: var(--bh-black);
   text-transform: lowercase;
 }
-.bh-features--light { color: var(--bh-cream); }
+.bh-features--light {
+  color: var(--bh-cream);
+}
 .bh-features--titled .bh-features__title {
   font-size: 1.8rem;
   font-weight: 900;
@@ -770,7 +816,7 @@ body {
   border-radius: 50%;
 }
 .bh-demo__title {
-  font-family: 'Jost', sans-serif;
+  font-family: "Jost", sans-serif;
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--bh-cream);
@@ -780,7 +826,7 @@ body {
 .bh-demo__body {
   display: flex;
   min-height: 300px;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
   font-size: 0.85rem;
   line-height: 1.6;
 }
@@ -799,9 +845,11 @@ body {
   color: var(--bh-black);
   min-height: 1.75em;
 }
-.bh-demo__line--blank { height: 0.75em; }
+.bh-demo__line--blank {
+  height: 0.75em;
+}
 .bh-demo__line--h1 {
-  font-family: 'Jost', sans-serif;
+  font-family: "Jost", sans-serif;
   font-size: 1.3rem;
   font-weight: 800;
   letter-spacing: -0.02em;
@@ -809,7 +857,7 @@ body {
   text-transform: lowercase;
 }
 .bh-demo__line--h2 {
-  font-family: 'Jost', sans-serif;
+  font-family: "Jost", sans-serif;
   font-size: 1.05rem;
   font-weight: 700;
   letter-spacing: -0.015em;
@@ -826,7 +874,7 @@ body {
   font-size: 0.78rem;
   padding: 0.1rem 0.3rem;
   border-left: 3px solid;
-  background: rgba(0,0,0,0.03);
+  background: rgba(0, 0, 0, 0.03);
   opacity: 0.8;
 }
 .bh-demo__indicator {
@@ -844,8 +892,13 @@ body {
   vertical-align: text-bottom;
 }
 @keyframes bh-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
 }
 
 /* ── Footer ── */
@@ -857,7 +910,7 @@ body {
   border-top: 3px solid var(--bh-black);
 }
 .bh-footer__title {
-  font-family: 'Jost', sans-serif;
+  font-family: "Jost", sans-serif;
   font-size: 0.9rem;
   font-weight: 700;
   text-transform: lowercase;
@@ -882,12 +935,25 @@ body {
 
 /* ── Responsive ── */
 @media (max-width: 720px) {
-  .bh-hero__title { font-size: clamp(3rem, 14vw, 5rem); }
-  .bh-section { padding: 3rem 1.5rem; }
-  .bh-demo__body { min-height: 260px; font-size: 0.8rem; }
-  .bh-demo__margin { width: 24px; }
-  .bh-demo__content { padding: 1rem; }
-  .bh-features { font-size: 1rem; }
+  .bh-hero__title {
+    font-size: clamp(3rem, 14vw, 5rem);
+  }
+  .bh-section {
+    padding: 3rem 1.5rem;
+  }
+  .bh-demo__body {
+    min-height: 260px;
+    font-size: 0.8rem;
+  }
+  .bh-demo__margin {
+    width: 24px;
+  }
+  .bh-demo__content {
+    padding: 1rem;
+  }
+  .bh-features {
+    font-size: 1rem;
+  }
 }
 
 /* ── Header badge ────────────────────────────────────────────── */

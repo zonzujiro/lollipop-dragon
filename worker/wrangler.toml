@@ -7,4 +7,4 @@ binding = "LOLLIPOP_DRAGON"
 id = "d1299f23b0084de49ddd80728cc1b3bc"
 
 [vars]
-ALLOWED_ORIGIN = "https://zonzujiro.github.io"
+ALLOWED_ORIGINS = "https://critiq.ink,https://zonzujiro.github.io"

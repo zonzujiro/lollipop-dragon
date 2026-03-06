@@ -15,10 +15,7 @@ import { PeerNamePrompt } from "./components/PeerNamePrompt";
 import { buildVirtualTree } from "./services/fileSystem";
 import { isShareHash } from "./utils/shareUrl";
 import { findFileInTree, toFileTreeNodes } from "./types/fileTree";
-import type {
-  FileTreeNode,
-  SidebarTreeNode,
-} from "./types/fileTree";
+import type { FileTreeNode, SidebarTreeNode } from "./types/fileTree";
 import { WORKER_URL } from "./config";
 
 // FileSystemObserver is an experimental browser API not yet in TypeScript's
@@ -27,11 +24,16 @@ interface FileSystemObserverRecord {
   type: string;
 }
 interface FileSystemObserver {
-  observe(handle: FileSystemHandle, opts?: { recursive: boolean }): Promise<void>;
+  observe(
+    handle: FileSystemHandle,
+    opts?: { recursive: boolean },
+  ): Promise<void>;
   disconnect(): void;
 }
 interface FileSystemObserverConstructor {
-  new (callback: (records: FileSystemObserverRecord[]) => void): FileSystemObserver;
+  new (
+    callback: (records: FileSystemObserverRecord[]) => void,
+  ): FileSystemObserver;
 }
 
 declare global {
@@ -241,15 +243,13 @@ function App() {
     if (!FSObserver) return;
     let observer: FileSystemObserver | null = null;
     try {
-      observer = new FSObserver(
-        (records: FileSystemObserverRecord[]) => {
-          if (
-            records.some((r) => r.type === "modified" || r.type === "appeared")
-          ) {
-            refreshFile();
-          }
-        },
-      );
+      observer = new FSObserver((records: FileSystemObserverRecord[]) => {
+        if (
+          records.some((r) => r.type === "modified" || r.type === "appeared")
+        ) {
+          refreshFile();
+        }
+      });
       observer.observe(fileHandle).catch((e: unknown) => {
         console.warn("[FileSystemObserver] file observe failed:", e);
       });
@@ -268,23 +268,23 @@ function App() {
     if (!FSObserver) return;
     let observer: FileSystemObserver | null = null;
     try {
-      observer = new FSObserver(
-        (records: FileSystemObserverRecord[]) => {
-          if (
-            records.some(
-              (r) =>
-                r.type === "appeared" ||
-                r.type === "disappeared" ||
-                r.type === "modified",
-            )
-          ) {
-            refreshFileTree();
-          }
-        },
-      );
-      observer.observe(directoryHandle, { recursive: true }).catch((e: unknown) => {
-        console.warn("[FileSystemObserver] directory observe failed:", e);
+      observer = new FSObserver((records: FileSystemObserverRecord[]) => {
+        if (
+          records.some(
+            (r) =>
+              r.type === "appeared" ||
+              r.type === "disappeared" ||
+              r.type === "modified",
+          )
+        ) {
+          refreshFileTree();
+        }
       });
+      observer
+        .observe(directoryHandle, { recursive: true })
+        .catch((e: unknown) => {
+          console.warn("[FileSystemObserver] directory observe failed:", e);
+        });
     } catch (e) {
       console.warn("[FileSystemObserver] directory setup failed:", e);
       return;
@@ -319,6 +319,37 @@ function App() {
   }
 
   if (!peerModeChecked) return null;
+
+  // ── Host mode requires File System Access API (Chrome/Edge over HTTPS) ──
+  if (typeof window.showOpenFilePicker !== "function") {
+    return (
+      <div className="app-unsupported">
+        <h1>Browser not supported</h1>
+        <p>
+          This app requires the{" "}
+          <a
+            href="https://developer.mozilla.org/en-US/docs/Web/API/File_System_Access_API"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            File System Access API
+          </a>{" "}
+          to open and edit local files.
+        </p>
+        <p>
+          Please use <strong>Google Chrome</strong> or{" "}
+          <strong>Microsoft Edge</strong> over a{" "}
+          <strong>secure connection (HTTPS)</strong>.
+        </p>
+        {!window.isSecureContext && (
+          <p className="app-unsupported__hint">
+            This page is not served over HTTPS, which may disable the API even
+            in supported browsers.
+          </p>
+        )}
+      </div>
+    );
+  }
 
   // ── No tabs open → show FilePicker ──
   if (tabs.length === 0) return <FilePicker />;
