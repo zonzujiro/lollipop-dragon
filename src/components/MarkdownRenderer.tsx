@@ -81,7 +81,9 @@ function PreBlock({ children, ...props }: ComponentPropsWithoutRef<"pre">) {
   ) {
     const childProps = child.props;
     const code = String(
-      (typeof childProps === "object" && childProps !== null && "children" in childProps)
+      typeof childProps === "object" &&
+        childProps !== null &&
+        "children" in childProps
         ? childProps.children
         : "",
     ).replace(/\n$/, "");
@@ -144,11 +146,7 @@ export function MarkdownRenderer() {
   const handleAddComment = useCallback(
     (blockIndex: number, type: string, text: string) => {
       if (!isCommentType(type)) return;
-      addCommentAction(
-        blockIndex,
-        type,
-        text,
-      );
+      addCommentAction(blockIndex, type, text);
     },
     [addCommentAction],
   );
@@ -157,12 +155,7 @@ export function MarkdownRenderer() {
     (blockIndex: number, type: string, text: string) => {
       if (!isCommentType(type)) return;
       const path = activeFilePath ?? fileName ?? "";
-      postPeerCommentAction(
-        blockIndex,
-        type,
-        text,
-        path,
-      );
+      postPeerCommentAction(blockIndex, type, text, path);
     },
     [postPeerCommentAction, activeFilePath, fileName],
   );
@@ -234,9 +227,10 @@ export function MarkdownRenderer() {
 
   return (
     <div className="markdown-scroll-area">
-      {!writeAllowed && (
+      {!writeAllowed && !isPeerMode && (
         <div className="readonly-banner" role="status">
-          This file is read-only — comments cannot be saved.
+          Read-only — write permission was denied or the file is on a read-only
+          filesystem. Comments cannot be saved to disk.
         </div>
       )}
       <div
