@@ -2709,7 +2709,6 @@ body {
   max-height: 100vh;
   overflow-y: auto;
   padding: 3rem 2rem;
-  animation: presentation-fade-in 0.3s ease both;
 }
 
 .presentation__viewport.presentation-slide--enter-up {
@@ -2720,13 +2719,13 @@ body {
   animation: presentation-slide-down 0.3s ease both;
 }
 
-@keyframes presentation-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+.presentation__viewport.presentation-slide--fade {
+  animation: presentation-fade 0.3s ease both;
+}
+
+@keyframes presentation-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes presentation-slide-up {
