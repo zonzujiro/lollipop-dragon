@@ -42,6 +42,25 @@ export function CodeBlock({
   return <code className={className}>{children}</code>;
 }
 
+// Unwrap <pre> for mermaid blocks to avoid invalid <pre><div> nesting.
+// react-markdown passes a CodeBlock element as the child of pre; we check
+// its className prop to detect mermaid before it renders.
+export function PreBlock({
+  children,
+  ...props
+}: ComponentPropsWithoutRef<"pre">) {
+  const child = Array.isArray(children) ? children[0] : children;
+  if (
+    child &&
+    typeof child === "object" &&
+    "props" in child &&
+    child.props?.className?.includes("language-mermaid")
+  ) {
+    return <>{children}</>;
+  }
+  return <pre {...props}>{children}</pre>;
+}
+
 export function MarkdownRenderer() {
   const tab = useActiveTab();
   const isPeerMode = useAppStore((s) => s.isPeerMode);
@@ -188,7 +207,7 @@ export function MarkdownRenderer() {
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             rehypePlugins={rehypePlugins}
-            components={{ code: CodeBlock }}
+            components={{ code: CodeBlock, pre: PreBlock }}
           >
             {cleanMarkdown}
           </ReactMarkdown>

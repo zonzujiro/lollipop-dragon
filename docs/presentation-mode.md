@@ -164,7 +164,7 @@ A simpler alternative: split the **raw markdown string** at `^# ` or `^---` line
 3. Screen goes fullscreen. All chrome disappears. First slide is shown centered with large text.
 4. User presses Down arrow — slide 1 animates in from below, slide 0 exits upward.
 5. User presses Up arrow — slide 0 animates in from above, slide 1 exits downward.
-6. User clicks dot 3 — jumps to slide 3 (no directional animation, just a fade).
+6. User clicks dot 3 — navigates to slide 3 with a directional slide animation (up or down based on relative position).
 7. User presses Escape — exits presentation mode, returns to normal view.
 
 ### Flow 2: Toggle theme during presentation
@@ -188,11 +188,11 @@ A simpler alternative: split the **raw markdown string** at `^# ` or `^---` line
 | `src/store/index.ts` | Add `presentationMode`, `enterPresentationMode`, `exitPresentationMode` to `AppState` |
 | `src/App.tsx` | Render `PresentationMode` when `presentationMode === true` |
 | `src/components/Header.tsx` | Add "Present" button |
-| `src/App.css` | Presentation mode styles |
+| `src/index.css` | Presentation mode styles |
 
 ## Edge cases
 
-- **Empty document**: Show a single empty slide with a subtle "No content" message.
+- **Empty document**: Renders as a single empty slide (no placeholder message).
 - **Document with no headings or rules**: The entire document is one slide.
 - **Very long slide**: Content scrolls vertically within the slide viewport if it exceeds the screen height.
 - **Mermaid diagrams**: Should render normally within a slide — the existing `MermaidBlock` component handles this.

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { CodeBlock } from "./MarkdownRenderer";
+import { CodeBlock, PreBlock } from "./MarkdownRenderer";
 import { SunIcon, MoonIcon } from "./Icons";
 import { useAppStore } from "../store";
 import { useActiveTab } from "../store/selectors";
@@ -66,9 +66,19 @@ export function PresentationMode() {
 
   const slides = useMemo(() => splitIntoSlides(cleanMarkdown), [cleanMarkdown]);
 
-  // Request fullscreen on mount, exit presentation when fullscreen ends
+  // Clamp currentSlide if content changes and shrinks the slide count
   useEffect(() => {
-    document.documentElement.requestFullscreen?.().catch(() => {});
+    if (currentSlide >= slides.length) {
+      setCurrentSlide(Math.max(0, slides.length - 1));
+    }
+  }, [slides.length, currentSlide]);
+
+  // Request fullscreen on mount, exit presentation when fullscreen ends
+  const didRequestFullscreen = useRef(false);
+  useEffect(() => {
+    document.documentElement.requestFullscreen?.()
+      .then(() => { didRequestFullscreen.current = true; })
+      .catch(() => {});
 
     const onFullscreenChange = () => {
       if (!document.fullscreenElement) {
@@ -78,7 +88,7 @@ export function PresentationMode() {
     document.addEventListener("fullscreenchange", onFullscreenChange);
     return () => {
       document.removeEventListener("fullscreenchange", onFullscreenChange);
-      if (document.fullscreenElement) {
+      if (didRequestFullscreen.current && document.fullscreenElement === document.documentElement) {
         document.exitFullscreen?.().catch(() => {});
       }
     };
@@ -178,7 +188,7 @@ export function PresentationMode() {
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             rehypePlugins={rehypePlugins}
-            components={{ code: CodeBlock }}
+            components={{ code: CodeBlock, pre: PreBlock }}
           >
             {slides[currentSlide]}
           </ReactMarkdown>
