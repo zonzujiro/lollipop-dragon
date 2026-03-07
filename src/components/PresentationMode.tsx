@@ -32,6 +32,21 @@ function splitIntoSlides(markdown: string): string[] {
   return slides.length > 0 ? slides : [""];
 }
 
+type SlideDirection = "up" | "down" | "fade";
+
+const ANIMATION_CLASSES: Record<SlideDirection, string> = {
+  up: "presentation-slide--enter-up",
+  down: "presentation-slide--enter-down",
+  fade: "presentation-slide--fade",
+};
+
+function applySlideAnimation(el: HTMLElement, dir: SlideDirection) {
+  const allClasses = Object.values(ANIMATION_CLASSES);
+  el.classList.remove(...allClasses);
+  void el.offsetHeight; // reflow to restart animation
+  el.classList.add(ANIMATION_CLASSES[dir]);
+}
+
 export function PresentationMode() {
   const tab = useActiveTab();
   const rawContent = tab?.rawContent ?? "";
@@ -41,24 +56,15 @@ export function PresentationMode() {
   const shikiPlugin = useShikiRehypePlugin();
 
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [animating, setAnimating] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const viewportRef = useRef<HTMLDivElement>(null);
-
-  // Use refs for values needed in stable callbacks
-  const slideRef = useRef(currentSlide);
-  slideRef.current = currentSlide;
-  const animatingRef = useRef(animating);
-  animatingRef.current = animating;
 
   const cleanMarkdown = useMemo(() => {
     return parseCriticMarkup(rawContent).cleanMarkdown;
   }, [rawContent]);
 
   const slides = useMemo(() => splitIntoSlides(cleanMarkdown), [cleanMarkdown]);
-  const slidesRef = useRef(slides);
-  slidesRef.current = slides;
 
   // Request fullscreen on mount, exit presentation when fullscreen ends
   useEffect(() => {
@@ -90,53 +96,18 @@ export function PresentationMode() {
     return () => clearTimeout(hideTimerRef.current);
   }, [resetControlsTimer]);
 
-  // Stable navigation — reads from refs, no dependency churn
   const goTo = useCallback(
-    (index: number, dir: "up" | "down" | null) => {
-      const total = slidesRef.current.length;
-      const cur = slideRef.current;
-      if (index < 0 || index >= total || index === cur) return;
-      if (animatingRef.current) return;
-
-      const el = viewportRef.current;
-      if (!el) return;
-
-      setAnimating(true);
-      const cls =
-        dir === "up"
-          ? "presentation-slide--enter-up"
-          : dir === "down"
-            ? "presentation-slide--enter-down"
-            : "presentation-slide--fade";
-
-      el.classList.remove(
-        "presentation-slide--enter-up",
-        "presentation-slide--enter-down",
-        "presentation-slide--fade",
-      );
-      // Force reflow so re-adding the same class restarts the animation
-      void el.offsetHeight;
-
+    (index: number, dir: SlideDirection) => {
+      if (index < 0 || index >= slides.length || index === currentSlide) return;
       setCurrentSlide(index);
-      el.classList.add(cls);
+      if (viewportRef.current) {
+        applySlideAnimation(viewportRef.current, dir);
+      }
     },
-    [],
+    [slides.length, currentSlide],
   );
 
-  // Clear animating flag when CSS animation finishes
-  const handleAnimationEnd = useCallback(() => {
-    setAnimating(false);
-  }, []);
-
-  const goNext = useCallback(() => {
-    goTo(slideRef.current + 1, "up");
-  }, [goTo]);
-
-  const goPrev = useCallback(() => {
-    goTo(slideRef.current - 1, "down");
-  }, [goTo]);
-
-  // Keyboard navigation — stable deps, registered once
+  // Keyboard navigation
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       switch (e.key) {
@@ -145,14 +116,14 @@ export function PresentationMode() {
         case " ":
         case "PageDown":
           e.preventDefault();
-          goNext();
+          goTo(currentSlide + 1, "up");
           break;
         case "ArrowUp":
         case "ArrowLeft":
         case "Backspace":
         case "PageUp":
           e.preventDefault();
-          goPrev();
+          goTo(currentSlide - 1, "down");
           break;
         case "Home":
           e.preventDefault();
@@ -160,11 +131,10 @@ export function PresentationMode() {
           break;
         case "End":
           e.preventDefault();
-          goTo(slidesRef.current.length - 1, "up");
+          goTo(slides.length - 1, "up");
           break;
         case "Escape":
           e.preventDefault();
-          // Let fullscreenchange listener handle exit to avoid double-call
           if (document.fullscreenElement) {
             document.exitFullscreen?.().catch(() => {});
           } else {
@@ -175,10 +145,9 @@ export function PresentationMode() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [goNext, goPrev, goTo, exitPresentationMode]);
+  }, [goTo, currentSlide, slides.length, exitPresentationMode]);
 
   const isDark = theme === "dark";
-
   const rehypePlugins = shikiPlugin ? ([shikiPlugin] as const) : ([] as const);
 
   return (
@@ -204,11 +173,7 @@ export function PresentationMode() {
         </svg>
       </button>
 
-      <div
-        className="presentation__viewport"
-        ref={viewportRef}
-        onAnimationEnd={handleAnimationEnd}
-      >
+      <div className="presentation__viewport" ref={viewportRef}>
         <div className="presentation__slide markdown-body">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
