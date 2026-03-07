@@ -83,12 +83,32 @@ function SidebarIcon() {
   );
 }
 
+function PresentIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m5 3 14 9-14 9V3z" />
+    </svg>
+  );
+}
+
 interface Props {
   peerMode?: boolean;
   onShare?: () => void;
+  onPresent?: () => void;
 }
 
-export function Header({ peerMode = false, onShare }: Props) {
+export function Header({ peerMode = false, onShare, onPresent }: Props) {
   const tab = useActiveTab();
   const openFileInNewTab = useAppStore((s) => s.openFileInNewTab);
   const openDirectoryInNewTab = useAppStore((s) => s.openDirectoryInNewTab);
@@ -265,6 +285,17 @@ export function Header({ peerMode = false, onShare }: Props) {
               <span className="app-header__badge">{commentCount}</span>
             )}
           </button>
+
+          {!peerMode && hasContent && onPresent && (
+            <button
+              onClick={onPresent}
+              aria-label="Enter presentation mode"
+              title="Enter presentation mode"
+              className="app-header__btn app-header__btn--icon"
+            >
+              <PresentIcon />
+            </button>
+          )}
 
           {!peerMode && (
             <button
