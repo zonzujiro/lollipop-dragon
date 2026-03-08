@@ -9,13 +9,13 @@ import {
 } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { MermaidBlock } from "./MermaidBlock";
-import { CommentMargin } from "./CommentMargin";
-import { useAppStore } from "../store";
-import { useActiveTab } from "../store/selectors";
-import { parseCriticMarkup, isCommentType } from "../services/criticmarkup";
-import { assignBlockIndices } from "../services/blockIndex";
-import { useShikiRehypePlugin } from "../services/highlighter";
+import { MermaidBlock } from "../MermaidBlock";
+import { CommentMargin } from "../CommentMargin";
+import { useAppStore } from "../../store";
+import { useActiveTab } from "../../store/selectors";
+import { parseCriticMarkup, isCommentType } from "../../services/criticmarkup";
+import { assignBlockIndices } from "../../services/blockIndex";
+import { useShikiRehypePlugin } from "../../services/highlighter";
 
 // Rehype plugin: adds data-block-index to each top-level element node.
 // This lets CommentMargin align dots with rendered blocks.

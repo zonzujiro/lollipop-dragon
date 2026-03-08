@@ -1,4 +1,4 @@
-import { useActiveTab } from '../store/selectors'
+import { useActiveTab } from '../../store/selectors'
 
 export function RawViewer() {
   const rawContent = useActiveTab()?.rawContent ?? ''

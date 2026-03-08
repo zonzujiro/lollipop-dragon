@@ -1,6 +1,6 @@
 import './CommentCard.css'
 import { useState } from 'react'
-import type { Comment, CommentType } from '../types/criticmarkup'
+import type { Comment, CommentType } from '../../types/criticmarkup'
 
 const TYPE_COLOR: Record<CommentType, string> = {
   fix:      'var(--c-red)',

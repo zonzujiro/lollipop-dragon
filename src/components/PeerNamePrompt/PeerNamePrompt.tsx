@@ -1,6 +1,6 @@
 import './PeerNamePrompt.css'
 import { useState } from 'react'
-import { useAppStore } from '../store'
+import { useAppStore } from '../../store'
 
 export function PeerNamePrompt() {
   const setPeerName = useAppStore((s) => s.setPeerName)

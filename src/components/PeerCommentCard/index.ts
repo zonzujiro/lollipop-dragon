@@ -1,0 +1,1 @@
+export { PeerCommentCard } from './PeerCommentCard';

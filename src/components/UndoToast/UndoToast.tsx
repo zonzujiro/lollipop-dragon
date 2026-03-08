@@ -1,7 +1,7 @@
 import './UndoToast.css'
 import { useEffect } from 'react'
-import { useAppStore } from '../store'
-import { useActiveTab } from '../store/selectors'
+import { useAppStore } from '../../store'
+import { useActiveTab } from '../../store/selectors'
 
 const TOAST_DURATION_MS = 5000
 

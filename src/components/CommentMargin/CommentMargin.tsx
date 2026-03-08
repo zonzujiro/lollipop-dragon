@@ -1,11 +1,11 @@
 import './CommentMargin.css'
 import { useEffect, useRef, useMemo, useState } from "react";
-import { useAppStore } from "../store";
-import { useActiveTab } from "../store/selectors";
-import { CommentCard } from "./CommentCard";
-import { peerColor, initials } from "../utils/peerDisplay";
-import type { Comment, CommentType } from "../types/criticmarkup";
-import type { PeerComment } from "../types/share";
+import { useAppStore } from "../../store";
+import { useActiveTab } from "../../store/selectors";
+import { CommentCard } from "../CommentCard";
+import { peerColor, initials } from "../../utils/peerDisplay";
+import type { Comment, CommentType } from "../../types/criticmarkup";
+import type { PeerComment } from "../../types/share";
 
 const COMMENT_TYPES: CommentType[] = [
   "note",

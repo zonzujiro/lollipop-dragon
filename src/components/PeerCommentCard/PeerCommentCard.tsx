@@ -1,6 +1,6 @@
 import './PeerCommentCard.css'
-import { useAppStore } from '../store'
-import type { PeerComment } from '../types/share'
+import { useAppStore } from '../../store'
+import type { PeerComment } from '../../types/share'
 
 const TYPE_COLORS: Record<string, string> = {
   fix: 'var(--c-red)',
