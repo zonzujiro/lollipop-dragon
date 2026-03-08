@@ -1,5 +1,15 @@
 # Project Rules
 
+## Documentation
+
+Before making architectural decisions or adding features, review the docs in [`docs/`](./docs/):
+
+- Feature specs and product requirements
+- Technical designs for core systems (comments, sharing, tabs, presentation mode)
+- Iteration roadmap with planned features
+
+These documents capture the design rationale and constraints for the project.
+
 ## TypeScript
 
 - **Never use `as` for type assertions.** Use type guards, proper narrowing, or helper functions instead.
@@ -54,10 +64,12 @@ If a component reads tab state while in peer mode (or vice versa), it will get s
 ## File Organization
 
 ```
+docs/            -- Feature specs, technical designs, roadmap (read before building)
 src/store/       -- Zustand store (index.ts) and selectors (selectors.ts)
-src/components/  -- React components
+src/components/  -- React components (folder-per-component: Name/Name.tsx, Name.css, index.ts)
 src/services/    -- API/storage services (shareStorage, crypto, handleStore, fileSystem)
 src/utils/       -- Pure utility functions
 src/types/       -- TypeScript type definitions (tab.ts, share.ts, fileTree.ts, criticmarkup.ts)
+src/styles/      -- Global CSS (tokens, reset, layout, landing page)
 src/test/        -- Test files and helpers
 ```
