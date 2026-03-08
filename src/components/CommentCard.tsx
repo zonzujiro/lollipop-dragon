@@ -1,3 +1,4 @@
+import './CommentCard.css'
 import { useState } from 'react'
 import type { Comment, CommentType } from '../types/criticmarkup'
 

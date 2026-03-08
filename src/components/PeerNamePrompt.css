@@ -1,0 +1,92 @@
+/* ── Peer name prompt ─────────────────────────────────────────── */
+.peer-prompt__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.peer-prompt {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 2rem;
+  width: 420px;
+  max-width: calc(100vw - 2rem);
+  text-align: center;
+}
+
+.peer-prompt__dragon {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+}
+
+.peer-prompt__title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 0.5rem;
+}
+
+.peer-prompt__desc {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.peer-prompt__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.peer-prompt__input {
+  width: 100%;
+  font-size: 1rem;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  text-align: center;
+  box-sizing: border-box;
+}
+.peer-prompt__input:focus {
+  outline: 2px solid var(--accent);
+  border-color: transparent;
+}
+
+.peer-prompt__btn {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  padding: 10px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.peer-prompt__btn:hover {
+  opacity: 0.9;
+}
+.peer-prompt__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Dark mode ── */
+.dark .peer-prompt {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.dark .peer-prompt__input {
+  background: var(--surface-alt);
+  border-color: var(--border);
+  color: var(--text);
+}

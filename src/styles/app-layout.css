@@ -1,0 +1,111 @@
+/* ── App layout ──────────────────────────────────────────────── */
+.app-unsupported {
+  max-width: 480px;
+  margin: 15vh auto;
+  padding: 2rem;
+  text-align: center;
+  color: var(--fg);
+}
+
+.app-unsupported h1 {
+  font-size: 1.4rem;
+  margin-bottom: 1rem;
+}
+
+.app-unsupported p {
+  margin: 0.75rem 0;
+  line-height: 1.5;
+}
+
+.app-unsupported a {
+  color: var(--accent, #4a9eff);
+}
+
+.app-unsupported__hint {
+  margin-top: 1.5rem;
+  padding: 0.75rem;
+  background: rgba(255, 180, 0, 0.12);
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.app-layout {
+  display: flex;
+  height: 100vh;
+  flex-direction: column;
+}
+
+.app-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.app-main {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Empty state ──────────────────────────────────────────────── */
+.content-empty {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.content-empty__text {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* ── Share status screen (revoked / expired) ─────────────────── */
+.share-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 0.75rem;
+  text-align: center;
+  padding: 2rem;
+}
+
+.share-status__icon {
+  color: var(--text-muted);
+  opacity: 0.5;
+  margin-bottom: 0.5rem;
+}
+
+.share-status__title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.share-status__text {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  max-width: 360px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ── Markdown scroll area ────────────────────────────────────── */
+.markdown-scroll-area {
+  height: 100%;
+  overflow-y: auto;
+  padding: 2.5rem 2rem;
+}
+
+.readonly-banner {
+  width: 90%;
+  margin: 0 auto 1rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--c-orange, #f59e0b);
+  color: #fff;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  text-align: center;
+}

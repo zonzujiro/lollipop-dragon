@@ -1,3 +1,4 @@
+import './CommentPanel.css'
 import { useEffect, useMemo, useState } from "react";
 import { useAppStore } from "../store";
 import { useActiveTab } from "../store/selectors";
