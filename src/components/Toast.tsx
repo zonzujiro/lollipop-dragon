@@ -1,3 +1,4 @@
+import './Toast.css'
 import { useEffect } from 'react'
 import { useAppStore } from '../store'
 

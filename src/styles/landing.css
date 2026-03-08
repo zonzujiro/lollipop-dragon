@@ -1,0 +1,416 @@
+/* ── Landing page (bauhaus) ──────────────────────────────────── */
+.landing {
+  /* Bauhaus palette */
+  --bh-red: #e63946;
+  --bh-yellow: #ffb800;
+  --bh-blue: #1d3557;
+  --bh-black: #1a1a1a;
+  --bh-cream: #f5f0e8;
+
+  /* Override theme vars in landing scope */
+  --bg: var(--bh-cream);
+  --surface: #ffffff;
+  --surface-alt: #ede8df;
+  --border: #d5cfc4;
+  --text: var(--bh-black);
+  --accent: var(--bh-blue);
+  --accent-bg: rgba(29, 53, 87, 0.08);
+  --c-red: var(--bh-red);
+  --c-green: #1d3557;
+  --c-orange: #ffb800;
+  --c-purple: #1d3557;
+  --c-cyan: #ffb800;
+  --text-muted: #666;
+
+  font-family: "Jost", sans-serif;
+  background: var(--bh-cream);
+  color: var(--bh-black);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+.dark .landing {
+  --bg: var(--bh-cream);
+  --surface: #ffffff;
+  --text: var(--bh-black);
+  --accent: var(--bh-blue);
+  background: var(--bh-cream);
+  color: var(--bh-black);
+}
+
+/* ── Hero ── */
+.bh-hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--bh-cream);
+}
+.bh-hero__geo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.bh-hero__content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  padding: 2rem;
+}
+.bh-hero__logo-wrap {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 1.5rem;
+}
+.bh-hero__logo {
+  width: 80px;
+  height: 80px;
+}
+.bh-hero__easter-egg {
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%) scale(0.8);
+  margin-right: 0.75rem;
+  white-space: nowrap;
+  font-family: "Jost", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--bh-cream);
+  background: var(--bh-black);
+  padding: 0.3rem 0.7rem;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.2s,
+    transform 0.2s;
+  text-transform: lowercase;
+}
+.bh-hero__logo-wrap:hover .bh-hero__easter-egg {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+.bh-hero__title {
+  font-family: "Jost", sans-serif;
+  font-size: clamp(4rem, 14vw, 9rem);
+  font-weight: 900;
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+  text-transform: lowercase;
+  color: var(--bh-black);
+  margin: 0 0 1.5rem;
+}
+.bh-hero__tagline {
+  font-size: clamp(1rem, 2.5vw, 1.3rem);
+  font-weight: 500;
+  color: var(--bh-black);
+  opacity: 0.7;
+  margin: 0 0 2rem;
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+}
+
+/* ── Buttons ── */
+.bh-hero__actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.bh-btn {
+  font-family: "Jost", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+  padding: 0.8rem 2rem;
+  border: 3px solid var(--bh-black);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.bh-btn--primary {
+  background: var(--bh-black);
+  color: var(--bh-cream);
+}
+.bh-btn--primary:hover {
+  background: var(--bh-red);
+  border-color: var(--bh-red);
+}
+.bh-btn--secondary {
+  background: transparent;
+  color: var(--bh-black);
+}
+.bh-btn--secondary:hover {
+  background: var(--bh-yellow);
+  border-color: var(--bh-yellow);
+}
+
+/* ── Sections ── */
+.bh-section {
+  padding: 5rem 2rem;
+}
+.bh-section--cream {
+  background: var(--bh-cream);
+}
+.bh-section--black {
+  background: var(--bh-black);
+  color: var(--bh-cream);
+  padding: 4rem 2rem 3rem;
+  text-align: center;
+}
+.bh-section--blue {
+  background: var(--bh-blue);
+  color: var(--bh-cream);
+}
+.bh-section--red {
+  background: var(--bh-red);
+  color: var(--bh-cream);
+}
+.bh-section--yellow {
+  background: var(--bh-yellow);
+  color: var(--bh-black);
+}
+.bh-section__inner {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* ── Heading ── */
+.bh-heading {
+  font-family: "Jost", sans-serif;
+  font-size: clamp(2.5rem, 8vw, 5rem);
+  font-weight: 900;
+  text-transform: lowercase;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+  margin: 0;
+}
+.bh-heading--light {
+  color: var(--bh-cream);
+}
+
+/* ── Row layout ── */
+.bh-row {
+  display: flex;
+  align-items: center;
+  gap: 3rem;
+}
+.bh-row__main {
+  flex: 1.2;
+  min-width: 0;
+}
+@media (max-width: 720px) {
+  .bh-row {
+    flex-direction: column;
+    gap: 2rem;
+  }
+}
+
+/* ── Features list ── */
+.bh-features {
+  flex: 0.8;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-family: "Jost", sans-serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 2.4;
+  color: var(--bh-black);
+  text-transform: lowercase;
+}
+.bh-features--light {
+  color: var(--bh-cream);
+}
+.bh-features--titled .bh-features__title {
+  font-size: 1.8rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  margin-bottom: 0.5rem;
+  line-height: 1.2;
+}
+.bh-features__dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 0.6rem;
+  vertical-align: middle;
+}
+
+/* ── SVG card ── */
+.bh-card {
+  background: var(--bh-cream);
+  border: 3px solid var(--bh-black);
+  padding: 1.5rem;
+}
+.bh-svg {
+  width: 100%;
+  height: auto;
+}
+
+/* ── Demo editor ── */
+.bh-demo {
+  border: 3px solid var(--bh-black);
+  overflow: hidden;
+  background: #fff;
+}
+.bh-demo__chrome {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bh-black);
+}
+.bh-demo__dots {
+  display: flex;
+  gap: 5px;
+}
+.bh-demo__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.bh-demo__title {
+  font-family: "Jost", sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--bh-cream);
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
+}
+.bh-demo__body {
+  display: flex;
+  min-height: 300px;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+.bh-demo__margin {
+  width: 32px;
+  flex-shrink: 0;
+  background: var(--bh-cream);
+  border-right: 2px solid var(--bh-black);
+  opacity: 0.3;
+}
+.bh-demo__content {
+  flex: 1;
+  padding: 1.25rem 1.5rem;
+}
+.bh-demo__line {
+  color: var(--bh-black);
+  min-height: 1.75em;
+}
+.bh-demo__line--blank {
+  height: 0.75em;
+}
+.bh-demo__line--h1 {
+  font-family: "Jost", sans-serif;
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.25em;
+  text-transform: lowercase;
+}
+.bh-demo__line--h2 {
+  font-family: "Jost", sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  margin-top: 0.5em;
+  margin-bottom: 0.15em;
+  text-transform: lowercase;
+}
+.bh-demo__line--comment {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.bh-demo__markup {
+  font-size: 0.78rem;
+  padding: 0.1rem 0.3rem;
+  border-left: 3px solid;
+  background: rgba(0, 0, 0, 0.03);
+  opacity: 0.8;
+}
+.bh-demo__indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.bh-demo__cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  background: var(--bh-red);
+  animation: bh-blink 0.8s step-end infinite;
+  vertical-align: text-bottom;
+}
+@keyframes bh-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ── Footer ── */
+.bh-footer {
+  text-align: center;
+  padding: 3rem 2rem 0;
+  background: var(--bh-cream);
+  color: var(--bh-black);
+  border-top: 3px solid var(--bh-black);
+}
+.bh-footer__title {
+  font-family: "Jost", sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: lowercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 0.5rem;
+  opacity: 0.6;
+}
+.bh-footer__recipe {
+  font-size: 0.8rem;
+  line-height: 1.6;
+  max-width: 480px;
+  margin: 0 auto 0.5rem;
+  opacity: 0.4;
+  font-style: italic;
+}
+.bh-footer .bh-svg {
+  width: auto;
+  height: 400px;
+  margin: 0 auto;
+  display: block;
+}
+
+/* ── Responsive ── */
+@media (max-width: 720px) {
+  .bh-hero__title {
+    font-size: clamp(3rem, 14vw, 5rem);
+  }
+  .bh-section {
+    padding: 3rem 1.5rem;
+  }
+  .bh-demo__body {
+    min-height: 260px;
+    font-size: 0.8rem;
+  }
+  .bh-demo__margin {
+    width: 24px;
+  }
+  .bh-demo__content {
+    padding: 1rem;
+  }
+  .bh-features {
+    font-size: 1rem;
+  }
+}

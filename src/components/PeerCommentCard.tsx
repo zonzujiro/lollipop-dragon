@@ -1,3 +1,4 @@
+import './PeerCommentCard.css'
 import { useAppStore } from '../store'
 import type { PeerComment } from '../types/share'
 

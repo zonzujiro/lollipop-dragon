@@ -1,0 +1,146 @@
+/* ── Tab bar ─────────────────────────────────────────────────── */
+.tab-bar {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  height: 2.25rem;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+
+.tab-bar__tabs {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.tab-bar__tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tab-bar__tab {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0 0.75rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+  min-width: 0;
+  max-width: 12rem;
+  flex-shrink: 0;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.tab-bar__tab:hover {
+  color: var(--text);
+  background: var(--surface-alt);
+}
+
+.tab-bar__tab--active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  font-weight: 500;
+}
+
+.tab-bar__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab-bar__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 3px;
+  font-size: 0.85rem;
+  line-height: 1;
+  opacity: 0;
+  transition:
+    opacity 0.1s,
+    background 0.1s;
+  flex-shrink: 0;
+}
+
+.tab-bar__tab:hover .tab-bar__close,
+.tab-bar__tab--active .tab-bar__close {
+  opacity: 0.6;
+}
+
+.tab-bar__close:hover {
+  opacity: 1 !important;
+  background: var(--border);
+}
+
+.tab-bar__add-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.tab-bar__add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin: 0 0.25rem;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition:
+    background 0.1s,
+    color 0.1s;
+}
+
+.tab-bar__add:hover {
+  background: var(--surface-alt);
+  color: var(--text);
+}
+
+.tab-bar__menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 100;
+  min-width: 10rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: 0.25rem 0;
+}
+
+.tab-bar__menu-item {
+  display: block;
+  width: 100%;
+  padding: 0.4rem 0.75rem;
+  border: none;
+  background: none;
+  color: var(--text);
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tab-bar__menu-item:hover {
+  background: var(--surface-alt);
+}

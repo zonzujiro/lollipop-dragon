@@ -1,3 +1,4 @@
+import './Header.css'
 import { useAppStore } from "../store";
 import { useActiveTab, getUnsubmittedPeerComments } from "../store/selectors";
 import { SunIcon, MoonIcon } from "./Icons";

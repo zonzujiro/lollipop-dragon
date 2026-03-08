@@ -1,3 +1,4 @@
+import './PendingCommentReview.css'
 import { useAppStore } from '../store'
 import { useActiveTab } from '../store/selectors'
 import { PeerCommentCard } from './PeerCommentCard'

@@ -1,3 +1,4 @@
+import '../styles/landing.css'
 import { useEffect, useState } from "react";
 import { useAppStore } from "../store";
 

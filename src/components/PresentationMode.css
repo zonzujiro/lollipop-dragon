@@ -1,0 +1,168 @@
+/* ── Presentation mode ───────────────────────────────────────── */
+.presentation {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Slide viewport — centered content area */
+.presentation__viewport {
+  width: 100%;
+  max-width: 800px;
+  max-height: 100vh;
+  overflow-y: auto;
+  padding: 3rem 2rem;
+}
+
+.presentation__viewport.presentation-slide--enter-up {
+  animation: presentation-slide-up 0.3s ease both;
+}
+
+.presentation__viewport.presentation-slide--enter-down {
+  animation: presentation-slide-down 0.3s ease both;
+}
+
+.presentation__viewport.presentation-slide--fade {
+  animation: presentation-fade 0.3s ease both;
+}
+
+@keyframes presentation-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes presentation-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes presentation-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Larger text in presentation mode */
+.presentation__slide {
+  font-size: 1.4rem;
+  line-height: 1.8;
+}
+
+.presentation__slide h1 {
+  font-size: 2.8rem;
+  border-bottom: none;
+}
+
+.presentation__slide h2 {
+  font-size: 2rem;
+  border-bottom: none;
+}
+
+.presentation__slide h3 {
+  font-size: 1.6rem;
+}
+
+.presentation__slide > :first-child {
+  margin-top: 0;
+}
+
+/* Dot navigation — right edge, vertically centered */
+.presentation__dots {
+  position: fixed;
+  right: 1.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 1001;
+}
+
+.presentation__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    transform 0.2s;
+}
+
+.presentation__dot:hover {
+  border-color: var(--accent);
+  transform: scale(1.3);
+}
+
+.presentation__dot--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  transform: scale(1.3);
+}
+
+/* Many slides — shrink dots */
+.presentation__dots:has(.presentation__dot:nth-child(16)) {
+  gap: 0.35rem;
+}
+.presentation__dots:has(.presentation__dot:nth-child(16)) .presentation__dot {
+  width: 7px;
+  height: 7px;
+}
+
+/* Controls — exit button & theme toggle, fade on mouse activity */
+.presentation__exit,
+.presentation__theme {
+  position: fixed;
+  z-index: 1002;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  padding: 0.5rem;
+  cursor: pointer;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.presentation__control--visible {
+  opacity: 0.6;
+  pointer-events: auto;
+}
+
+.presentation__control--visible:hover {
+  opacity: 1;
+}
+
+.presentation__exit {
+  top: 1.25rem;
+  right: 1.25rem;
+}
+
+.presentation__theme {
+  bottom: 1.25rem;
+  right: 1.25rem;
+}

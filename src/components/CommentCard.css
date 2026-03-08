@@ -1,0 +1,151 @@
+/* ── Comment card ────────────────────────────────────────────── */
+.comment-card {
+  position: absolute;
+  left: calc(100% + 0.75rem);
+  z-index: 50;
+  width: 340px;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.comment-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.comment-card__badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 99px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.comment-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.comment-card__edit {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  padding: 0 0.25rem;
+}
+
+.comment-card__edit:hover {
+  color: var(--accent);
+}
+
+.comment-card__delete {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  padding: 0 0.25rem;
+}
+
+.comment-card__delete:hover {
+  color: var(--c-red, #ef4444);
+}
+
+.comment-card__confirm {
+  padding: 0.5rem 0;
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.comment-card__confirm p {
+  margin: 0 0 0.4rem;
+}
+
+.comment-card__confirm-yes {
+  background: var(--c-red, #ef4444);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.comment-card__confirm-yes:hover {
+  opacity: 0.85;
+}
+
+.comment-card__edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.25rem;
+}
+
+.comment-card__close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--text-muted);
+  padding: 0 0.25rem;
+}
+
+.comment-card__close:hover {
+  color: var(--text);
+}
+
+.comment-card__highlight {
+  margin: 0 0 0.4rem;
+  padding: 0.3rem 0.5rem;
+  border-left: 3px solid var(--border);
+  font-style: italic;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.comment-card__content {
+  margin: 0;
+  color: var(--text);
+}
+
+.comment-card__content--add {
+  color: var(--c-green);
+}
+
+.comment-card__content--del {
+  color: var(--c-red);
+  text-decoration: line-through;
+}
+
+.comment-card__sub {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.comment-card__sub-from {
+  color: var(--c-red);
+  text-decoration: line-through;
+}
+
+.comment-card__sub-arrow {
+  color: var(--text-muted);
+}
+
+.comment-card__sub-to {
+  color: var(--c-green);
+}

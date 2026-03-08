@@ -1,0 +1,62 @@
+/* ── Design tokens — light ───────────────────────────────────── */
+:root {
+  --bg: #f8f9fa;
+  --surface: #ffffff;
+  --surface-alt: #f1f3f5;
+  --border: #dee2e6;
+  --border-light: #e9ecef;
+  --text: #212529;
+  --text-secondary: #495057;
+  --text-muted: #868e96;
+  --accent: #4263eb;
+  --accent-light: #5c7cfa;
+  --accent-bg: rgba(66, 99, 235, 0.06);
+
+  --c-green: #2b8a3e;
+  --c-green-bg: #d3f9d8;
+  --c-red: #e03131;
+  --c-orange: #e67700;
+  --c-purple: #7048e8;
+  --c-cyan: #1098ad;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.12);
+
+  --radius: 8px;
+  --radius-lg: 12px;
+
+  --font-body:
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono:
+    "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
+
+  --text-body: 1rem;
+  --leading: 1.7;
+}
+
+/* ── Design tokens — dark (Monokai Pro) ──────────────────────── */
+.dark {
+  --bg: #2d2a2e;
+  --surface: #363337;
+  --surface-alt: #403e41;
+  --border: #525053;
+  --border-light: #403e41;
+  --text: #fcfcfa;
+  --text-secondary: #c1c0c0;
+  --text-muted: #727072;
+  --accent: #78dce8;
+  --accent-light: #a0e7f0;
+  --accent-bg: rgba(120, 220, 232, 0.1);
+
+  --c-green: #a9dc76;
+  --c-green-bg: rgba(169, 220, 118, 0.15);
+  --c-red: #ff6188;
+  --c-orange: #fc9867;
+  --c-purple: #ab9df2;
+  --c-cyan: #78dce8;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.6);
+}

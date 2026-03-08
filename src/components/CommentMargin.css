@@ -1,0 +1,206 @@
+/* ── Comment margin column ───────────────────────────────────── */
+.comment-margin {
+  width: 2.5rem;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.comment-margin__dots {
+  position: absolute;
+  right: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.comment-margin__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
+}
+
+.comment-margin__dot:hover {
+  transform: scale(1.4);
+}
+
+.comment-margin__dot--active {
+  transform: scale(1.4);
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 3px currentColor;
+}
+
+.comment-margin__add-wrapper {
+  position: absolute;
+  left: 0.25rem;
+  margin-top: -6px;
+}
+
+.comment-margin__add {
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.comment-margin__add:hover {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.comment-margin__peer-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+
+.comment-margin__peer-dot:hover {
+  transform: scale(1.3);
+}
+
+.comment-margin__cursor {
+  position: absolute;
+  left: 0.25rem;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.75;
+  pointer-events: none;
+  transition:
+    top 0.2s ease,
+    opacity 0.2s ease;
+}
+
+/* ── Add comment form ────────────────────────────────────────── */
+.comment-add-form {
+  position: absolute;
+  left: calc(100% + 0.75rem);
+  z-index: 60;
+  width: 340px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.comment-add-form__types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.comment-add-form__type {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    background 0.1s,
+    color 0.1s,
+    border-color 0.1s;
+}
+
+.comment-add-form__type:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.comment-add-form__type--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.comment-add-form__input {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  font-size: 0.875rem;
+  font-family: inherit;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+}
+
+.comment-add-form__input:focus {
+  border-color: var(--accent);
+}
+
+.comment-add-form__actions {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+
+.comment-add-form__save,
+.comment-add-form__cancel {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.comment-add-form__save {
+  background: var(--accent);
+  color: #fff;
+}
+
+.comment-add-form__save:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.comment-add-form__cancel {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+
+.comment-add-form__cancel:hover {
+  border-color: var(--text-muted);
+}
