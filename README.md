@@ -1,4 +1,4 @@
-# markreview
+# [Lollipop Dragon](https://critiq.ink/)
 
 A browser-based platform for reviewing LLM-generated research documents. Open local markdown files, annotate them with [CriticMarkup](https://criticmarkup.com/) comments, share encrypted snapshots with peers, and present content as slideshows — all without leaving the browser.
 
