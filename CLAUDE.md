@@ -2,17 +2,7 @@
 
 ## Before you start
 
-Read the [contribution guide](./docs/contributing.md) first. It covers setup, workflow, code conventions, and testing patterns.
-
-## Documentation
-
-Before making architectural decisions or adding features, review the docs in [`docs/`](./docs/):
-
-- Feature specs and product requirements
-- Technical designs for core systems (comments, sharing, tabs, presentation mode)
-- Iteration roadmap with planned features
-
-These documents capture the design rationale and constraints for the project.
+Read the [contribution guide](./docs/contributing.md) and review the docs in [`docs/`](./docs/) (feature specs, technical designs, iteration roadmap) before making architectural decisions or adding features.
 
 ## TypeScript
 
