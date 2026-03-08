@@ -74,10 +74,17 @@ export function PresentationMode() {
   }, [slides.length, currentSlide]);
 
   // Request fullscreen on mount, exit presentation when fullscreen ends
-  const didRequestFullscreen = useRef(false);
   useEffect(() => {
+    let unmounted = false;
+    let enteredFullscreen = false;
+
     document.documentElement.requestFullscreen?.()
-      .then(() => { didRequestFullscreen.current = true; })
+      .then(() => {
+        enteredFullscreen = true;
+        if (unmounted && document.fullscreenElement === document.documentElement) {
+          document.exitFullscreen?.().catch(() => {});
+        }
+      })
       .catch(() => {});
 
     const onFullscreenChange = () => {
@@ -87,8 +94,9 @@ export function PresentationMode() {
     };
     document.addEventListener("fullscreenchange", onFullscreenChange);
     return () => {
+      unmounted = true;
       document.removeEventListener("fullscreenchange", onFullscreenChange);
-      if (didRequestFullscreen.current && document.fullscreenElement === document.documentElement) {
+      if (enteredFullscreen && document.fullscreenElement === document.documentElement) {
         document.exitFullscreen?.().catch(() => {});
       }
     };
@@ -120,20 +128,27 @@ export function PresentationMode() {
   // Keyboard navigation
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const canGoForward = currentSlide < slides.length - 1;
+      const canGoBackward = currentSlide > 0;
+
       switch (e.key) {
         case "ArrowDown":
         case "ArrowRight":
         case " ":
         case "PageDown":
-          e.preventDefault();
-          goTo(currentSlide + 1, "up");
+          if (canGoForward) {
+            e.preventDefault();
+            goTo(currentSlide + 1, "up");
+          }
           break;
         case "ArrowUp":
         case "ArrowLeft":
         case "Backspace":
         case "PageUp":
-          e.preventDefault();
-          goTo(currentSlide - 1, "down");
+          if (canGoBackward) {
+            e.preventDefault();
+            goTo(currentSlide - 1, "down");
+          }
           break;
         case "Home":
           e.preventDefault();
@@ -166,6 +181,8 @@ export function PresentationMode() {
         className={`presentation__exit ${controlsVisible ? "presentation__control--visible" : ""}`}
         onClick={exitPresentationMode}
         aria-label="Exit presentation mode"
+        tabIndex={controlsVisible ? 0 : -1}
+        aria-hidden={!controlsVisible}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -213,6 +230,8 @@ export function PresentationMode() {
         className={`presentation__theme ${controlsVisible ? "presentation__control--visible" : ""}`}
         onClick={() => setTheme(isDark ? "light" : "dark")}
         aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+        tabIndex={controlsVisible ? 0 : -1}
+        aria-hidden={!controlsVisible}
       >
         {isDark ? <SunIcon size={18} /> : <MoonIcon size={18} />}
       </button>

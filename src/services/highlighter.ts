@@ -39,7 +39,16 @@ export function useShikiRehypePlugin(): RehypePlugin | null {
   const [highlighter, setHighlighter] = useState<Highlighter | null>(null);
 
   useEffect(() => {
-    getHighlighter().then(setHighlighter);
+    let cancelled = false;
+    getHighlighter()
+      .then((h) => {
+        if (!cancelled) setHighlighter(h);
+      })
+      .catch(() => {
+        // Allow retry on next mount by clearing the cached promise
+        highlighterPromise = null;
+      });
+    return () => { cancelled = true; };
   }, []);
 
   if (!highlighter) return null;

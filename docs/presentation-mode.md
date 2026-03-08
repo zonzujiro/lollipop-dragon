@@ -146,14 +146,9 @@ No other store state is needed. The current slide index and slide list are local
 
 ### Slide splitting strategy
 
-The component renders the full markdown to HTML (using the same `ReactMarkdown` + rehype pipeline), then splits the resulting DOM nodes at `<h1>` or `<hr>` boundaries. Each group of nodes between boundaries is one slide.
+The component splits the **raw markdown string** at `^# ` (h1 heading) or `^---` (horizontal rule) line boundaries before rendering. Each chunk between boundaries becomes one slide. Only the current slide's markdown is passed to `ReactMarkdown` for rendering.
 
-This is done by:
-1. Rendering markdown through `ReactMarkdown` into a hidden container (or using a custom rehype plugin).
-2. Walking the top-level children and grouping them by `<h1>`/`<hr>` boundaries.
-3. Rendering only the current slide's group.
-
-A simpler alternative: split the **raw markdown string** at `^# ` or `^---` lines before rendering, then render only the current slide's markdown chunk. This avoids DOM manipulation but may break cross-references. We'll use this simpler approach.
+This approach avoids DOM manipulation and keeps the logic simple: the `splitIntoSlides` function iterates over lines, starting a new slide whenever it encounters an h1 heading or a horizontal rule.
 
 ## User flows
 
