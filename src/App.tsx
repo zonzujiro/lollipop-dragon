@@ -19,6 +19,14 @@ import { findFileInTree, toFileTreeNodes } from "./types/fileTree";
 import type { FileTreeNode, SidebarTreeNode } from "./types/fileTree";
 import { WORKER_URL } from "./config";
 
+const PEER_HEADER = { title: "Shared files" };
+
+// FileSystemObserver is experimental; Edge exposes it but crashes on use
+const supportsFileObserver =
+  typeof window !== "undefined" &&
+  "FileSystemObserver" in window &&
+  !/\bEdg\//.test(navigator.userAgent);
+
 // FileSystemObserver is an experimental browser API not yet in TypeScript's
 // lib types. Declare a minimal interface so we can avoid `as any`.
 interface FileSystemObserverRecord {
@@ -184,7 +192,7 @@ function App() {
     return buildVirtualTree(Object.keys(sharedContent.tree));
   }, [sharedContent]);
 
-  const peerHeader = useMemo(() => ({ title: "Shared files" }), []);
+  const peerHeader = PEER_HEADER;
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -233,10 +241,6 @@ function App() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [toggleSidebar]);
-
-  // FileSystemObserver is experimental; Edge exposes it but crashes on use
-  const supportsFileObserver =
-    "FileSystemObserver" in window && !/\bEdg\//.test(navigator.userAgent);
 
   // Watch the active tab's open file for external changes
   const fileHandle = tab?.fileHandle ?? null;
