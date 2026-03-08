@@ -72,8 +72,9 @@ describe("PresentationMode — rendering", () => {
     ).toBeInTheDocument();
   });
 
-  it("requests fullscreen on mount", () => {
-    render(<PresentationMode />);
+  it("requests fullscreen via enterPresentationMode action", () => {
+    vi.clearAllMocks();
+    useAppStore.getState().enterPresentationMode();
     expect(mockRequestFullscreen).toHaveBeenCalled();
   });
 });
@@ -224,6 +225,22 @@ describe("PresentationMode — slide splitting", () => {
     expect(
       screen.queryByRole("navigation", { name: "Slide navigation" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("does not split on headings or HRs inside fenced code blocks", () => {
+    setTestState({
+      rawContent: "# Slide 1\nIntro\n\n# Slide 2\n```bash\n# this is a comment\n---\necho hello\n```\nAfter code",
+    });
+    render(<PresentationMode />);
+    // Navigate to slide 2
+    fireEvent.keyDown(window, { key: "ArrowDown" });
+    // The code block content and "After code" should all be on slide 2
+    expect(screen.getByText("After code")).toBeInTheDocument();
+    // Should only have 2 slides (dots)
+    const dots = screen
+      .getByRole("navigation", { name: "Slide navigation" })
+      .querySelectorAll("button");
+    expect(dots).toHaveLength(2);
   });
 
   it("handles empty content", () => {

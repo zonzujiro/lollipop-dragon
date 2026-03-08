@@ -12,9 +12,15 @@ function splitIntoSlides(markdown: string): string[] {
   const lines = markdown.split("\n");
   const slides: string[] = [];
   let current: string[] = [];
+  let inFence = false;
 
   for (const line of lines) {
-    if (/^# /.test(line) || /^---\s*$/.test(line)) {
+    // Track fenced code blocks so we don't split on headings/HRs inside them
+    if (/^(`{3,}|~{3,})/.test(line)) {
+      inFence = !inFence;
+    }
+
+    if (!inFence && (/^# /.test(line) || /^---\s*$/.test(line))) {
       if (current.length > 0) {
         slides.push(current.join("\n").trim());
       }
@@ -73,20 +79,8 @@ export function PresentationMode() {
     }
   }, [slides.length, currentSlide]);
 
-  // Request fullscreen on mount, exit presentation when fullscreen ends
+  // Exit presentation when fullscreen ends; clean up fullscreen on unmount
   useEffect(() => {
-    let unmounted = false;
-    let enteredFullscreen = false;
-
-    document.documentElement.requestFullscreen?.()
-      .then(() => {
-        enteredFullscreen = true;
-        if (unmounted && document.fullscreenElement === document.documentElement) {
-          document.exitFullscreen?.().catch(() => {});
-        }
-      })
-      .catch(() => {});
-
     const onFullscreenChange = () => {
       if (!document.fullscreenElement) {
         exitPresentationMode();
@@ -94,9 +88,8 @@ export function PresentationMode() {
     };
     document.addEventListener("fullscreenchange", onFullscreenChange);
     return () => {
-      unmounted = true;
       document.removeEventListener("fullscreenchange", onFullscreenChange);
-      if (enteredFullscreen && document.fullscreenElement === document.documentElement) {
+      if (document.fullscreenElement === document.documentElement) {
         document.exitFullscreen?.().catch(() => {});
       }
     };
@@ -119,6 +112,7 @@ export function PresentationMode() {
       if (index < 0 || index >= slides.length || index === currentSlide) return;
       setCurrentSlide(index);
       if (viewportRef.current) {
+        viewportRef.current.scrollTop = 0;
         applySlideAnimation(viewportRef.current, dir);
       }
     },

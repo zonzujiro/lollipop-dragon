@@ -771,7 +771,10 @@ export const useAppStore = create<AppState>()(
 
       setTheme: (theme) => set({ theme }),
       toggleFocusMode: () => set((s) => ({ focusMode: !s.focusMode })),
-      enterPresentationMode: () => set({ presentationMode: true }),
+      enterPresentationMode: () => {
+        document.documentElement.requestFullscreen?.().catch(() => {});
+        set({ presentationMode: true });
+      },
       exitPresentationMode: () => set({ presentationMode: false }),
       showToast: (msg) => set({ toast: msg }),
       dismissToast: () => set({ toast: null }),
