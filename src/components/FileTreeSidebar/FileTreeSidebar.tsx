@@ -1,7 +1,7 @@
 import './FileTreeSidebar.css'
 import { useCallback, useRef, useState, type ReactNode } from "react";
-import type { SidebarTreeNode } from "../types/fileTree";
-import type { ShareRecord } from "../types/share";
+import type { SidebarTreeNode } from "../../types/fileTree";
+import type { ShareRecord } from "../../types/share";
 
 const MIN_WIDTH = 160;
 const MAX_WIDTH = 600;

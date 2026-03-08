@@ -1,8 +1,8 @@
 import './CommentPanel.css'
 import { useEffect, useMemo, useState } from "react";
-import { useAppStore } from "../store";
-import { useActiveTab } from "../store/selectors";
-import type { Comment, CommentType } from "../types/criticmarkup";
+import { useAppStore } from "../../store";
+import { useActiveTab } from "../../store/selectors";
+import type { Comment, CommentType } from "../../types/criticmarkup";
 
 const TYPE_COLOR: Record<CommentType, string> = {
   fix: "var(--c-red)",

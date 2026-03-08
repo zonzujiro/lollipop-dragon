@@ -1,6 +1,6 @@
 import './TabBar.css'
 import { useState } from "react";
-import { useAppStore } from "../store";
+import { useAppStore } from "../../store";
 
 export function TabBar() {
   const tabs = useAppStore((s) => s.tabs);

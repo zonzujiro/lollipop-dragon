@@ -1,8 +1,8 @@
 import './ShareDialog.css'
 import { useState } from 'react'
-import { useAppStore } from '../store'
-import { useActiveTab } from '../store/selectors'
-import type { FileTreeNode } from '../types/fileTree'
+import { useAppStore } from '../../store'
+import { useActiveTab } from '../../store/selectors'
+import type { FileTreeNode } from '../../types/fileTree'
 
 const TTL_OPTIONS = [
   { label: '1 day', value: 86400 },

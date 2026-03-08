@@ -1,6 +1,6 @@
 import './Toast.css'
 import { useEffect } from 'react'
-import { useAppStore } from '../store'
+import { useAppStore } from '../../store'
 
 const TOAST_DURATION_MS = 3000
 

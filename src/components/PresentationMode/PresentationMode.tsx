@@ -2,12 +2,12 @@ import './PresentationMode.css'
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { CodeBlock, PreBlock } from "./MarkdownRenderer";
-import { SunIcon, MoonIcon } from "./Icons";
-import { useAppStore } from "../store";
-import { useActiveTab } from "../store/selectors";
-import { parseCriticMarkup } from "../services/criticmarkup";
-import { useShikiRehypePlugin } from "../services/highlighter";
+import { CodeBlock, PreBlock } from "../MarkdownRenderer";
+import { SunIcon, MoonIcon } from "../Icons";
+import { useAppStore } from "../../store";
+import { useActiveTab } from "../../store/selectors";
+import { parseCriticMarkup } from "../../services/criticmarkup";
+import { useShikiRehypePlugin } from "../../services/highlighter";
 
 function splitIntoSlides(markdown: string): string[] {
   const lines = markdown.split("\n");
