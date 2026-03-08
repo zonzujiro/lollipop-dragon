@@ -1,6 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import mermaid from 'mermaid'
+import { MermaidBlock } from '../components/MermaidBlock'
+import { MarkdownRenderer } from '../components/MarkdownRenderer'
+import { resetTestStore, setTestState } from './testHelpers'
 
 // Mock mermaid before importing the component
 vi.mock('mermaid', () => ({
@@ -25,10 +29,8 @@ describe('MermaidBlock', () => {
   })
 
   it('renders the SVG returned by mermaid', async () => {
-    const mermaid = (await import('mermaid')).default
     vi.mocked(mermaid.render).mockResolvedValue({ svg: '<svg data-testid="diagram"></svg>', bindFunctions: undefined })
 
-    const { MermaidBlock } = await import('../components/MermaidBlock')
     render(<MermaidBlock code="graph TD; A-->B" />)
 
     await waitFor(() => {
@@ -37,10 +39,8 @@ describe('MermaidBlock', () => {
   })
 
   it('shows raw code and error message when mermaid fails', async () => {
-    const mermaid = (await import('mermaid')).default
     vi.mocked(mermaid.render).mockRejectedValue(new Error('Parse error on line 1'))
 
-    const { MermaidBlock } = await import('../components/MermaidBlock')
     render(<MermaidBlock code="invalid diagram code" />)
 
     await waitFor(() => {
@@ -50,10 +50,8 @@ describe('MermaidBlock', () => {
   })
 
   it('renders nothing while mermaid is still rendering', async () => {
-    const mermaid = (await import('mermaid')).default
     vi.mocked(mermaid.render).mockReturnValue(new Promise(() => {})) // never resolves
 
-    const { MermaidBlock } = await import('../components/MermaidBlock')
     const { container } = render(<MermaidBlock code="graph TD; A-->B" />)
 
     // Nothing rendered yet — no SVG, no error
@@ -62,10 +60,8 @@ describe('MermaidBlock', () => {
   })
 
   it('shows a direction toggle button for graph/flowchart diagrams', async () => {
-    const mermaid = (await import('mermaid')).default
     vi.mocked(mermaid.render).mockResolvedValue({ svg: '<svg></svg>', bindFunctions: undefined })
 
-    const { MermaidBlock } = await import('../components/MermaidBlock')
     render(<MermaidBlock code="graph TD; A-->B" />)
 
     await waitFor(() => {
@@ -74,10 +70,8 @@ describe('MermaidBlock', () => {
   })
 
   it('does not show a direction button for non-directional diagrams', async () => {
-    const mermaid = (await import('mermaid')).default
     vi.mocked(mermaid.render).mockResolvedValue({ svg: '<svg></svg>', bindFunctions: undefined })
 
-    const { MermaidBlock } = await import('../components/MermaidBlock')
     render(<MermaidBlock code="sequenceDiagram\nA->>B: Hello" />)
 
     await waitFor(() => {
@@ -86,12 +80,10 @@ describe('MermaidBlock', () => {
   })
 
   it('re-renders with LR direction when toggle button is clicked', async () => {
-    const mermaid = (await import('mermaid')).default
     vi.mocked(mermaid.render)
       .mockResolvedValueOnce({ svg: '<svg data-testid="td"></svg>', bindFunctions: undefined })
       .mockResolvedValueOnce({ svg: '<svg data-testid="lr"></svg>', bindFunctions: undefined })
 
-    const { MermaidBlock } = await import('../components/MermaidBlock')
     render(<MermaidBlock code="graph TD; A-->B" />)
 
     await waitFor(() => screen.getByTestId('td'))
@@ -108,11 +100,9 @@ describe('MermaidBlock', () => {
   })
 
   it('button label flips to TD after switching to LR', async () => {
-    const mermaid = (await import('mermaid')).default
     vi.mocked(mermaid.render)
       .mockResolvedValue({ svg: '<svg></svg>', bindFunctions: undefined })
 
-    const { MermaidBlock } = await import('../components/MermaidBlock')
     render(<MermaidBlock code="graph TD; A-->B" />)
 
     await waitFor(() => screen.getByRole('button', { name: 'Switch to LR layout' }))
@@ -124,11 +114,9 @@ describe('MermaidBlock', () => {
   })
 
   it('resets direction override when code prop changes', async () => {
-    const mermaid = (await import('mermaid')).default
     vi.mocked(mermaid.render)
       .mockResolvedValue({ svg: '<svg></svg>', bindFunctions: undefined })
 
-    const { MermaidBlock } = await import('../components/MermaidBlock')
     const { rerender } = render(<MermaidBlock code="graph TD; A-->B" />)
 
     await waitFor(() => screen.getByRole('button', { name: 'Switch to LR layout' }))
@@ -143,12 +131,10 @@ describe('MermaidBlock', () => {
   })
 
   it('re-renders when code prop changes', async () => {
-    const mermaid = (await import('mermaid')).default
     vi.mocked(mermaid.render)
       .mockResolvedValueOnce({ svg: '<svg data-testid="first"></svg>', bindFunctions: undefined })
       .mockResolvedValueOnce({ svg: '<svg data-testid="second"></svg>', bindFunctions: undefined })
 
-    const { MermaidBlock } = await import('../components/MermaidBlock')
     const { rerender } = render(<MermaidBlock code="graph TD; A-->B" />)
 
     await waitFor(() => expect(screen.getByTestId('first')).toBeInTheDocument())
@@ -160,8 +146,7 @@ describe('MermaidBlock', () => {
 })
 
 describe('MarkdownRenderer — mermaid blocks', () => {
-  beforeEach(async () => {
-    const mermaid = (await import('mermaid')).default
+  beforeEach(() => {
     vi.mocked(mermaid.render).mockResolvedValue({
       svg: '<svg data-testid="mermaid-svg"></svg>',
       bindFunctions: undefined,
@@ -169,13 +154,11 @@ describe('MarkdownRenderer — mermaid blocks', () => {
   })
 
   it('routes mermaid code blocks to MermaidBlock', async () => {
-    const { resetTestStore, setTestState } = await import('./testHelpers')
     resetTestStore()
     setTestState({
       rawContent: '```mermaid\ngraph TD; A-->B\n```',
     })
 
-    const { MarkdownRenderer } = await import('../components/MarkdownRenderer')
     render(<MarkdownRenderer />)
 
     await waitFor(() => {
