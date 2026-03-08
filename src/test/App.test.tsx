@@ -21,6 +21,27 @@ vi.stubGlobal('IntersectionObserver', vi.fn(() => ({
   unobserve: vi.fn(),
 })))
 
+// Stub File System Access API so App doesn't render "Browser not supported"
+if (!window.showOpenFilePicker) {
+  (window as Record<string, unknown>).showOpenFilePicker = vi.fn()
+}
+if (!window.showDirectoryPicker) {
+  (window as Record<string, unknown>).showDirectoryPicker = vi.fn()
+}
+
+// Stub indexedDB so restoreTabs doesn't throw
+if (typeof globalThis.indexedDB === 'undefined') {
+  const noopDB = {
+    open: vi.fn(() => {
+      const req = { result: null, error: null, onsuccess: null as (() => void) | null, onerror: null as (() => void) | null }
+      setTimeout(() => req.onsuccess?.(), 0)
+      return req
+    }),
+    deleteDatabase: vi.fn(),
+  }
+  vi.stubGlobal('indexedDB', noopDB)
+}
+
 function resetStore() {
   resetTestStore()
   setTestState(

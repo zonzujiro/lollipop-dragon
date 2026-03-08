@@ -9,6 +9,7 @@ import { FileTreeSidebar } from "./components/FileTreeSidebar";
 import { ShareDialog } from "./components/ShareDialog";
 import { CommentPanel } from "./components/CommentPanel";
 import { SharedPanel } from "./components/SharedPanel";
+import { PresentationMode } from "./components/PresentationMode";
 import { UndoToast } from "./components/UndoToast";
 import { Toast } from "./components/Toast";
 import { PeerNamePrompt } from "./components/PeerNamePrompt";
@@ -112,7 +113,9 @@ function App() {
   const tabs = useAppStore((s) => s.tabs);
   const theme = useAppStore((s) => s.theme);
   const focusMode = useAppStore((s) => s.focusMode);
+  const presentationMode = useAppStore((s) => s.presentationMode);
   const toggleFocusMode = useAppStore((s) => s.toggleFocusMode);
+  const enterPresentationMode = useAppStore((s) => s.enterPresentationMode);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const selectFile = useAppStore((s) => s.selectFile);
   const openDirectoryInNewTab = useAppStore((s) => s.openDirectoryInNewTab);
@@ -354,6 +357,9 @@ function App() {
   // ── No tabs open → show FilePicker ──
   if (tabs.length === 0) return <FilePicker />;
 
+  // ── Presentation mode (fullscreen slideshow) ──
+  if (presentationMode) return <PresentationMode />;
+
   // ── Host mode with tabs ──
   const hasFolderOpen = (tab?.fileTree.length ?? 0) > 0;
 
@@ -367,6 +373,7 @@ function App() {
               label: tab?.fileName ?? "document",
             })
           }
+          onPresent={enterPresentationMode}
         />
       )}
       {!focusMode && <TabBar />}

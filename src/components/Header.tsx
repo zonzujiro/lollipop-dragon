@@ -1,45 +1,7 @@
 import { useAppStore } from "../store";
 import { useActiveTab, getUnsubmittedPeerComments } from "../store/selectors";
+import { SunIcon, MoonIcon } from "./Icons";
 import { WORKER_URL } from "../config";
-
-function SunIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
-    </svg>
-  );
-}
-
-function MoonIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-    </svg>
-  );
-}
 
 function FocusIcon() {
   return (
@@ -83,12 +45,32 @@ function SidebarIcon() {
   );
 }
 
+function PresentIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m5 3 14 9-14 9V3z" />
+    </svg>
+  );
+}
+
 interface Props {
   peerMode?: boolean;
   onShare?: () => void;
+  onPresent?: () => void;
 }
 
-export function Header({ peerMode = false, onShare }: Props) {
+export function Header({ peerMode = false, onShare, onPresent }: Props) {
   const tab = useActiveTab();
   const openFileInNewTab = useAppStore((s) => s.openFileInNewTab);
   const openDirectoryInNewTab = useAppStore((s) => s.openDirectoryInNewTab);
@@ -265,6 +247,17 @@ export function Header({ peerMode = false, onShare }: Props) {
               <span className="app-header__badge">{commentCount}</span>
             )}
           </button>
+
+          {!peerMode && hasContent && onPresent && (
+            <button
+              onClick={onPresent}
+              aria-label="Enter presentation mode"
+              title="Enter presentation mode"
+              className="app-header__btn app-header__btn--icon"
+            >
+              <PresentIcon />
+            </button>
+          )}
 
           {!peerMode && (
             <button

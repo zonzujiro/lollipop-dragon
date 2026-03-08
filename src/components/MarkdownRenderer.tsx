@@ -5,51 +5,16 @@ import {
   useMemo,
   useRef,
   useState,
-  Children,
-  isValidElement,
 } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import rehypeShikiFromHighlighter from "@shikijs/rehype/core";
-import { createHighlighter, type Highlighter } from "shiki";
 import { MermaidBlock } from "./MermaidBlock";
 import { CommentMargin } from "./CommentMargin";
 import { useAppStore } from "../store";
 import { useActiveTab } from "../store/selectors";
 import { parseCriticMarkup, isCommentType } from "../services/criticmarkup";
 import { assignBlockIndices } from "../services/blockIndex";
-
-// Singleton — created once, shared across all renders
-let highlighterPromise: Promise<Highlighter> | null = null;
-
-function getHighlighter(): Promise<Highlighter> {
-  if (!highlighterPromise) {
-    highlighterPromise = createHighlighter({
-      themes: ["github-light"],
-      langs: [
-        "javascript",
-        "typescript",
-        "tsx",
-        "jsx",
-        "python",
-        "bash",
-        "sh",
-        "json",
-        "yaml",
-        "css",
-        "html",
-        "markdown",
-        "sql",
-        "rust",
-        "go",
-        "java",
-        "c",
-        "cpp",
-      ],
-    });
-  }
-  return highlighterPromise;
-}
+import { useShikiRehypePlugin } from "../services/highlighter";
 
 // Rehype plugin: adds data-block-index to each top-level element node.
 // This lets CommentMargin align dots with rendered blocks.
@@ -67,27 +32,31 @@ function rehypeBlockIndex() {
   };
 }
 
-// Override <pre> to detect mermaid blocks (which Shiki skips as unknown lang)
-// and route them to MermaidBlock instead of a plain <pre>.
-function PreBlock({ children, ...props }: ComponentPropsWithoutRef<"pre">) {
-  const child = Children.toArray(children)[0];
+export function CodeBlock({
+  className,
+  children,
+}: ComponentPropsWithoutRef<"code">) {
+  if (className?.includes("language-mermaid")) {
+    return <MermaidBlock code={String(children).replace(/\n$/, "")} />;
+  }
+  return <code className={className}>{children}</code>;
+}
+
+// Unwrap <pre> for mermaid blocks to avoid invalid <pre><div> nesting.
+// react-markdown passes a CodeBlock element as the child of pre; we check
+// its className prop to detect mermaid before it renders.
+export function PreBlock({
+  children,
+  ...props
+}: ComponentPropsWithoutRef<"pre">) {
+  const child = Array.isArray(children) ? children[0] : children;
   if (
-    isValidElement(child) &&
-    typeof child.props === "object" &&
-    child.props !== null &&
-    "className" in child.props &&
-    typeof child.props.className === "string" &&
-    child.props.className.includes("language-mermaid")
+    child &&
+    typeof child === "object" &&
+    "props" in child &&
+    child.props?.className?.includes("language-mermaid")
   ) {
-    const childProps = child.props;
-    const code = String(
-      typeof childProps === "object" &&
-        childProps !== null &&
-        "children" in childProps
-        ? childProps.children
-        : "",
-    ).replace(/\n$/, "");
-    return <MermaidBlock code={code} />;
+    return <>{children}</>;
   }
   return <pre {...props}>{children}</pre>;
 }
@@ -116,7 +85,7 @@ export function MarkdownRenderer() {
     (s) => s.clearPendingScrollTarget,
   );
   const setActiveCommentId = useAppStore((s) => s.setActiveCommentId);
-  const [highlighter, setHighlighter] = useState<Highlighter | null>(null);
+  const shikiPlugin = useShikiRehypePlugin();
   const viewerRef = useRef<HTMLDivElement>(null);
   const [hoveredBlock, setHoveredBlock] = useState<{
     index: number;
@@ -159,10 +128,6 @@ export function MarkdownRenderer() {
     },
     [postPeerCommentAction, activeFilePath, fileName],
   );
-
-  useEffect(() => {
-    getHighlighter().then(setHighlighter);
-  }, []);
 
   // Strip CriticMarkup and collect comments with block indices
   const { cleanMarkdown, comments } = useMemo(() => {
@@ -214,15 +179,8 @@ export function MarkdownRenderer() {
     clearPendingScrollTarget,
   ]);
 
-  const rehypePlugins = highlighter
-    ? ([
-        rehypeBlockIndex,
-        [
-          rehypeShikiFromHighlighter,
-          highlighter,
-          { theme: "github-light", missingLang: "ignore" },
-        ],
-      ] as const)
+  const rehypePlugins = shikiPlugin
+    ? ([rehypeBlockIndex, shikiPlugin] as const)
     : ([rehypeBlockIndex] as const);
 
   return (
@@ -249,7 +207,7 @@ export function MarkdownRenderer() {
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             rehypePlugins={rehypePlugins}
-            components={{ pre: PreBlock }}
+            components={{ code: CodeBlock, pre: PreBlock }}
           >
             {cleanMarkdown}
           </ReactMarkdown>

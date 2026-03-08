@@ -19,6 +19,7 @@ dist-ssr
 .yarn/install-state.gz
 .yarn/unplugged
 .yarn/build-state.yml
+.pnp.*
 
 # Editor directories and files
 .vscode/*

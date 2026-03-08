@@ -163,6 +163,7 @@ interface AppState {
   // Global UI
   theme: "light" | "dark";
   focusMode: boolean;
+  presentationMode: boolean;
   toast: string | null;
 
   // Peer mode (full-screen takeover, not in tabs)
@@ -217,6 +218,8 @@ interface AppState {
   // Global actions
   setTheme: (theme: "light" | "dark") => void;
   toggleFocusMode: () => void;
+  enterPresentationMode: () => void;
+  exitPresentationMode: () => void;
   showToast: (msg: string) => void;
   dismissToast: () => void;
   restoreTabs: () => Promise<void>;
@@ -354,6 +357,7 @@ export const useAppStore = create<AppState>()(
 
       theme: "light",
       focusMode: false,
+      presentationMode: false,
       toast: null,
 
       isPeerMode: false,
@@ -767,6 +771,11 @@ export const useAppStore = create<AppState>()(
 
       setTheme: (theme) => set({ theme }),
       toggleFocusMode: () => set((s) => ({ focusMode: !s.focusMode })),
+      enterPresentationMode: () => {
+        document.documentElement.requestFullscreen?.().catch(() => {});
+        set({ presentationMode: true });
+      },
+      exitPresentationMode: () => set({ presentationMode: false }),
       showToast: (msg) => set({ toast: msg }),
       dismissToast: () => set({ toast: null }),
 
@@ -1186,6 +1195,7 @@ export const useAppStore = create<AppState>()(
               peerName: persisted.peerName ?? null,
               // Defaults for other global fields
               focusMode: false,
+              presentationMode: false,
               toast: null,
               isPeerMode: false,
               sharedContent: null,

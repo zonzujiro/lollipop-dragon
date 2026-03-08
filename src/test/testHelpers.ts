@@ -91,6 +91,7 @@ export function resetTestStore() {
     activeTabId: null,
     theme: "light",
     focusMode: false,
+    presentationMode: false,
     toast: null,
     isPeerMode: false,
     peerName: null,
