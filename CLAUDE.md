@@ -1,5 +1,9 @@
 # Project Rules
 
+## Before you start
+
+Read the [contribution guide](./docs/contributing.md) first. It covers setup, workflow, code conventions, and testing patterns.
+
 ## Documentation
 
 Before making architectural decisions or adding features, review the docs in [`docs/`](./docs/):
