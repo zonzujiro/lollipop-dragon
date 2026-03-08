@@ -61,6 +61,8 @@ export function PreBlock({
   return <pre {...props}>{children}</pre>;
 }
 
+const markdownComponents = { code: CodeBlock, pre: PreBlock };
+
 export function MarkdownRenderer() {
   const tab = useActiveTab();
   const isPeerMode = useAppStore((s) => s.isPeerMode);
@@ -69,11 +71,11 @@ export function MarkdownRenderer() {
   const rawContent = useAppStore((s) =>
     s.isPeerMode ? s.peerRawContent : (tab?.rawContent ?? ""),
   );
-  const fileName = isPeerMode
-    ? useAppStore.getState().peerFileName
-    : (tab?.fileName ?? null);
+  const peerFileName = useAppStore((s) => s.peerFileName);
+  const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
+  const fileName = isPeerMode ? peerFileName : (tab?.fileName ?? null);
   const activeFilePath = isPeerMode
-    ? useAppStore.getState().peerActiveFilePath
+    ? peerActiveFilePath
     : (tab?.activeFilePath ?? null);
   const pendingScrollTarget = tab?.pendingScrollTarget ?? null;
   const writeAllowed = tab?.writeAllowed ?? false;
@@ -102,9 +104,11 @@ export function MarkdownRenderer() {
       if (!(target instanceof HTMLElement)) return;
       const block = target.closest("[data-block-index]");
       if (!(block instanceof HTMLElement)) return;
-      setHoveredBlock({
-        index: Number(block.getAttribute("data-block-index")),
-        top: block.offsetTop,
+      const index = Number(block.getAttribute("data-block-index"));
+      const top = block.offsetTop;
+      setHoveredBlock((prev) => {
+        if (prev && prev.index === index && prev.top === top) return prev;
+        return { index, top };
       });
     },
     [shouldTrackHover],
@@ -136,10 +140,13 @@ export function MarkdownRenderer() {
     return { cleanMarkdown: parsed.cleanMarkdown, comments };
   }, [rawContent]);
 
-  // Sync parsed comments into the store so CommentMargin and CommentPanel can read them
-  useEffect(() => {
+  // Sync parsed comments into the store during render to avoid an extra
+  // render cycle from a useEffect chain.
+  const prevCommentsRef = useRef(comments);
+  if (prevCommentsRef.current !== comments) {
+    prevCommentsRef.current = comments;
     setComments(comments);
-  }, [comments, setComments]);
+  }
 
   // Handle cross-file navigation: after switching to target file, find comment and scroll
   useEffect(() => {
@@ -207,7 +214,7 @@ export function MarkdownRenderer() {
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             rehypePlugins={rehypePlugins}
-            components={{ code: CodeBlock, pre: PreBlock }}
+            components={markdownComponents}
           >
             {cleanMarkdown}
           </ReactMarkdown>

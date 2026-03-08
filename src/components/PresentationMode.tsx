@@ -95,8 +95,12 @@ export function PresentationMode() {
     };
   }, [exitPresentationMode]);
 
-  // Auto-hide controls after inactivity
+  // Auto-hide controls after inactivity (throttled for mousemove)
+  const lastMoveRef = useRef(0);
   const resetControlsTimer = useCallback(() => {
+    const now = Date.now();
+    if (now - lastMoveRef.current < 200) return;
+    lastMoveRef.current = now;
     setControlsVisible(true);
     clearTimeout(hideTimerRef.current);
     hideTimerRef.current = setTimeout(() => setControlsVisible(false), 2000);
