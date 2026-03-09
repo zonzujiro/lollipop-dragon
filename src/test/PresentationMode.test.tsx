@@ -19,7 +19,7 @@ beforeEach(() => {
     {
       fileHandle: {} as FileSystemFileHandle,
       fileName: "slides.md",
-      rawContent: "# Slide 1\nIntro text\n\n# Slide 2\nMore content\n\n# Slide 3\nFinal slide",
+      rawContent: "# Slide 1\nIntro text\n\n---\n\n# Slide 2\nMore content\n\n---\n\n# Slide 3\nFinal slide",
     },
     { presentationMode: true },
   );
@@ -199,11 +199,12 @@ describe("PresentationMode — exit button", () => {
 });
 
 describe("PresentationMode — slide splitting", () => {
-  it("treats content before first heading as slide 0", () => {
+  it("keeps heading and surrounding content on the same slide", () => {
     setTestState({ rawContent: "Preamble text\n\n# First heading\nBody" });
     render(<PresentationMode />);
     expect(screen.getByText("Preamble text")).toBeInTheDocument();
-    expect(screen.queryByText("First heading")).not.toBeInTheDocument();
+    expect(screen.getByText("First heading")).toBeInTheDocument();
+    expect(screen.getByText("Body")).toBeInTheDocument();
   });
 
   it("splits on horizontal rules", () => {
@@ -227,9 +228,9 @@ describe("PresentationMode — slide splitting", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("does not split on headings or HRs inside fenced code blocks", () => {
+  it("does not split on HRs inside fenced code blocks", () => {
     setTestState({
-      rawContent: "# Slide 1\nIntro\n\n# Slide 2\n```bash\n# this is a comment\n---\necho hello\n```\nAfter code",
+      rawContent: "Slide 1\nIntro\n\n---\n\n```bash\n# this is a comment\n---\necho hello\n```\nAfter code",
     });
     render(<PresentationMode />);
     // Navigate to slide 2

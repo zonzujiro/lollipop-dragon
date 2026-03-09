@@ -21,11 +21,11 @@ function splitIntoSlides(markdown: string): string[] {
       inFence = !inFence;
     }
 
-    if (!inFence && (/^# /.test(line) || /^---\s*$/.test(line))) {
+    if (!inFence && /^---\s*$/.test(line)) {
       if (current.length > 0) {
         slides.push(current.join("\n").trim());
       }
-      current = /^# /.test(line) ? [line] : [];
+      current = [];
     } else {
       current.push(line);
     }
