@@ -1421,3 +1421,14 @@ export const useAppStore = create<AppState>()(
   ),
 );
 
+// Keep browser tab title in sync with the active file
+const APP_TITLE = "critiq.ink";
+useAppStore.subscribe((state) => {
+  const name = state.isPeerMode
+    ? state.peerActiveFilePath?.split("/").pop()
+    : getActiveTab(state)?.fileName;
+  const title = name ? `${name} — ${APP_TITLE}` : APP_TITLE;
+  if (document.title !== title) {
+    document.title = title;
+  }
+});
