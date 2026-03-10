@@ -282,9 +282,14 @@ function scrollToBlock(blockIndex: number | undefined) {
   if (blockIndex === undefined) {
     return;
   }
-  document
-    .querySelector(`[data-block-index="${blockIndex}"]`)
-    ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  const el = document.querySelector(`[data-block-index="${blockIndex}"]`);
+  if (!el) {
+    console.error(
+      `[scrollToBlock] No element found for data-block-index="${blockIndex}"`,
+    );
+    return;
+  }
+  el.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 function isPermissionError(e: unknown): boolean {
