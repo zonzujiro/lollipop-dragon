@@ -40,9 +40,7 @@ function stableShareKey(tab: {
   return tab.directoryName ?? tab.fileName ?? tab.id;
 }
 
-function isShareRecordMap(
-  v: unknown,
-): v is Record<string, ShareRecord[]> {
+function isShareRecordMap(v: unknown): v is Record<string, ShareRecord[]> {
   if (typeof v !== "object" || v === null || Array.isArray(v)) return false;
   return Object.values(v).every((val) => Array.isArray(val));
 }
@@ -126,7 +124,11 @@ async function collectTreeContents(
           try {
             tree[path] = await readFile(node.handle);
           } catch (e) {
-            console.warn("[collectTreeContents] skipping unreadable file:", path, e);
+            console.warn(
+              "[collectTreeContents] skipping unreadable file:",
+              path,
+              e,
+            );
           }
         }
       } else {
@@ -275,29 +277,29 @@ function isPermissionError(e: unknown): boolean {
 // Helper: update the active tab within the tabs array
 function updateActiveTab(
   get: () => AppState,
-  set: (partial: Partial<AppState> | ((s: AppState) => Partial<AppState>)) => void,
+  set: (
+    partial: Partial<AppState> | ((s: AppState) => Partial<AppState>),
+  ) => void,
   updater: (tab: TabState) => Partial<TabState>,
 ) {
   const { activeTabId, tabs } = get();
   if (!activeTabId) return;
   set({
-    tabs: tabs.map((t) =>
-      t.id === activeTabId ? { ...t, ...updater(t) } : t,
-    ),
+    tabs: tabs.map((t) => (t.id === activeTabId ? { ...t, ...updater(t) } : t)),
   });
 }
 
 // Helper: update a specific tab by id
 function updateTab(
   get: () => AppState,
-  set: (partial: Partial<AppState> | ((s: AppState) => Partial<AppState>)) => void,
+  set: (
+    partial: Partial<AppState> | ((s: AppState) => Partial<AppState>),
+  ) => void,
   tabId: string,
   updater: (tab: TabState) => Partial<TabState>,
 ) {
   set({
-    tabs: get().tabs.map((t) =>
-      t.id === tabId ? { ...t, ...updater(t) } : t,
-    ),
+    tabs: get().tabs.map((t) => (t.id === tabId ? { ...t, ...updater(t) } : t)),
   });
 }
 
@@ -309,7 +311,9 @@ function activeTab(get: () => AppState): TabState | null {
 // Helper: write file, update tab state with undo, handle permission errors
 async function writeAndUpdate(
   get: () => AppState,
-  set: (partial: Partial<AppState> | ((s: AppState) => Partial<AppState>)) => void,
+  set: (
+    partial: Partial<AppState> | ((s: AppState) => Partial<AppState>),
+  ) => void,
   fileHandle: FileSystemFileHandle,
   newRaw: string,
 ) {
@@ -399,8 +403,12 @@ export const useAppStore = create<AppState>()(
           }
         }
         // Clean up IndexedDB handles for the removed tab
-        removeHandle(`tab:${tabId}:directory`).catch((e) => console.warn("[handleStore] cleanup failed:", e));
-        removeHandle(`tab:${tabId}:file`).catch((e) => console.warn("[handleStore] cleanup failed:", e));
+        removeHandle(`tab:${tabId}:directory`).catch((e) =>
+          console.warn("[handleStore] cleanup failed:", e),
+        );
+        removeHandle(`tab:${tabId}:file`).catch((e) =>
+          console.warn("[handleStore] cleanup failed:", e),
+        );
         set({ tabs: updated, activeTabId: newActiveId });
       },
 
@@ -535,7 +543,11 @@ export const useAppStore = create<AppState>()(
                   })),
                 };
               } catch (e) {
-                console.warn("[scanAllFileComments] skipping unreadable file:", node.path, e);
+                console.warn(
+                  "[scanAllFileComments] skipping unreadable file:",
+                  node.path,
+                  e,
+                );
               }
             } else {
               await scanNodes(node.children);
@@ -600,7 +612,12 @@ export const useAppStore = create<AppState>()(
         if (!tab?.fileHandle) return;
         const comment = tab.comments.find((c) => c.id === id);
         if (!comment) return;
-        await writeAndUpdate(get, set, tab.fileHandle, applyDelete(tab.rawContent, comment));
+        await writeAndUpdate(
+          get,
+          set,
+          tab.fileHandle,
+          applyDelete(tab.rawContent, comment),
+        );
       },
 
       editComment: async (id, type, text) => {
@@ -608,7 +625,12 @@ export const useAppStore = create<AppState>()(
         if (!tab?.fileHandle) return;
         const comment = tab.comments.find((c) => c.id === id);
         if (!comment) return;
-        await writeAndUpdate(get, set, tab.fileHandle, applyEdit(tab.rawContent, comment, type, text));
+        await writeAndUpdate(
+          get,
+          set,
+          tab.fileHandle,
+          applyEdit(tab.rawContent, comment, type, text),
+        );
       },
 
       addComment: async (blockIndex, type, text) => {
@@ -645,8 +667,7 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      clearUndo: () =>
-        updateActiveTab(get, set, () => ({ undoState: null })),
+      clearUndo: () => updateActiveTab(get, set, () => ({ undoState: null })),
 
       refreshFile: async () => {
         const tab = activeTab(get);
@@ -687,10 +708,9 @@ export const useAppStore = create<AppState>()(
         for (const tab of tabs) {
           if (tab.directoryName) {
             try {
-              const handle =
-                await getHandle<FileSystemDirectoryHandle>(
-                  `tab:${tab.id}:directory`,
-                );
+              const handle = await getHandle<FileSystemDirectoryHandle>(
+                `tab:${tab.id}:directory`,
+              );
               if (!handle) continue;
               const perm = await handle.queryPermission({ mode: "read" });
               if (perm !== "granted") continue;
@@ -705,7 +725,10 @@ export const useAppStore = create<AppState>()(
                   try {
                     restoredRaw = await readFile(fileNode.handle);
                   } catch (e) {
-                    console.warn("[restoreTabs] file read failed, keeping persisted content:", e);
+                    console.warn(
+                      "[restoreTabs] file read failed, keeping persisted content:",
+                      e,
+                    );
                   }
                 }
               }
@@ -713,18 +736,23 @@ export const useAppStore = create<AppState>()(
                 directoryHandle: handle,
                 directoryName: handle.name,
                 fileTree: tree,
-                ...(restoredFileHandle ? { fileHandle: restoredFileHandle } : {}),
+                ...(restoredFileHandle
+                  ? { fileHandle: restoredFileHandle }
+                  : {}),
                 ...(restoredRaw !== null ? { rawContent: restoredRaw } : {}),
               }));
             } catch (e) {
-              console.error("[restoreTabs] failed to restore directory tab:", tab.id, e);
+              console.error(
+                "[restoreTabs] failed to restore directory tab:",
+                tab.id,
+                e,
+              );
             }
           } else if (tab.fileName) {
             try {
-              const handle =
-                await getHandle<FileSystemFileHandle>(
-                  `tab:${tab.id}:file`,
-                );
+              const handle = await getHandle<FileSystemFileHandle>(
+                `tab:${tab.id}:file`,
+              );
               if (!handle) continue;
               const perm = await handle.queryPermission({ mode: "readwrite" });
               if (perm !== "granted") continue;
@@ -732,14 +760,21 @@ export const useAppStore = create<AppState>()(
               try {
                 restoredRaw = await readFile(handle);
               } catch (e) {
-                console.warn("[restoreTabs] file read failed, keeping persisted content:", e);
+                console.warn(
+                  "[restoreTabs] file read failed, keeping persisted content:",
+                  e,
+                );
               }
               updateTab(get, set, tab.id, () => ({
                 fileHandle: handle,
                 ...(restoredRaw !== null ? { rawContent: restoredRaw } : {}),
               }));
             } catch (e) {
-              console.error("[restoreTabs] failed to restore file tab:", tab.id, e);
+              console.error(
+                "[restoreTabs] failed to restore file tab:",
+                tab.id,
+                e,
+              );
             }
           }
         }
@@ -792,15 +827,16 @@ export const useAppStore = create<AppState>()(
 
         const sourceNodes =
           nodes ??
-          (tab.directoryName && tab.fileTree.length > 0
-            ? tab.fileTree
-            : null);
+          (tab.directoryName && tab.fileTree.length > 0 ? tab.fileTree : null);
         const tree = sourceNodes
-          ? await collectTreeContents(sourceNodes, tab.activeFilePath, tab.rawContent)
+          ? await collectTreeContents(
+              sourceNodes,
+              tab.activeFilePath,
+              tab.rawContent,
+            )
           : {};
         if (Object.keys(tree).length === 0 && tab.rawContent) {
-          const path =
-            tab.activeFilePath ?? tab.fileName ?? "document.md";
+          const path = tab.activeFilePath ?? tab.fileName ?? "document.md";
           tree[path] = tab.rawContent;
         }
 
@@ -884,12 +920,16 @@ export const useAppStore = create<AppState>()(
             "Encryption key not available (session may have expired)",
           );
 
-        const allowed = record.sharedPaths
-          ? new Set(record.sharedPaths)
-          : null;
-        const tree = tab.fileTree.length > 0
-          ? await collectTreeContents(tab.fileTree, tab.activeFilePath, tab.rawContent, allowed)
-          : {};
+        const allowed = record.sharedPaths ? new Set(record.sharedPaths) : null;
+        const tree =
+          tab.fileTree.length > 0
+            ? await collectTreeContents(
+                tab.fileTree,
+                tab.activeFilePath,
+                tab.rawContent,
+                allowed,
+              )
+            : {};
         if (Object.keys(tree).length === 0 && tab.rawContent) {
           const fallbackPath =
             tab.activeFilePath ?? tab.fileName ?? "document.md";
@@ -990,7 +1030,11 @@ export const useAppStore = create<AppState>()(
           try {
             await storage.deleteComments(docId, record.hostSecret);
           } catch (e) {
-            console.error("[clearPendingComments] failed to delete comments:", docId, e);
+            console.error(
+              "[clearPendingComments] failed to delete comments:",
+              docId,
+              e,
+            );
           }
         }
         const pc = { ...tab.pendingComments };
@@ -1053,14 +1097,19 @@ export const useAppStore = create<AppState>()(
           const key = await base64urlToKey(keyB64);
           const docId = await docIdFromKey(key);
           const payload = await storage.fetchContent(docId, key);
-          const firstPath = Object.keys(payload.tree)[0];
+          const currentPath = get().peerActiveFilePath;
+          const paths = Object.keys(payload.tree);
+          const activePath =
+            currentPath && currentPath in payload.tree
+              ? currentPath
+              : (paths[0] ?? null);
           set({
             isPeerMode: true,
             sharedContent: payload,
             peerShareKeys: { ...get().peerShareKeys, [docId]: key },
-            peerRawContent: firstPath ? payload.tree[firstPath] : "",
-            peerFileName: firstPath ?? null,
-            peerActiveFilePath: firstPath ?? null,
+            peerRawContent: activePath ? payload.tree[activePath] : "",
+            peerFileName: activePath,
+            peerActiveFilePath: activePath,
             peerActiveDocId: docId,
           });
         } catch (e) {
@@ -1237,7 +1286,9 @@ export const useAppStore = create<AppState>()(
         const p: Partial<AppState> = persisted;
         // Tabs need special handling: fill in defaults for non-persisted fields
         const tabs = Array.isArray(p.tabs)
-          ? p.tabs.map((t) => createDefaultTab({ ...t, label: t.label ?? "document" }))
+          ? p.tabs.map((t) =>
+              createDefaultTab({ ...t, label: t.label ?? "document" }),
+            )
           : current.tabs;
         return {
           ...current,
@@ -1251,4 +1302,3 @@ export const useAppStore = create<AppState>()(
     },
   ),
 );
-

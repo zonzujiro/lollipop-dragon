@@ -1,6 +1,9 @@
-import './Header.css'
+import "./Header.css";
 import { useAppStore } from "../../store";
-import { useActiveTab, getUnsubmittedPeerComments } from "../../store/selectors";
+import {
+  useActiveTab,
+  getUnsubmittedPeerComments,
+} from "../../store/selectors";
 import { SunIcon, MoonIcon } from "../Icons";
 import { WORKER_URL } from "../../config";
 
@@ -97,10 +100,16 @@ export function Header({ peerMode = false, onShare, onPresent }: Props) {
   const comments = tab?.comments ?? [];
   const allFileComments = tab?.allFileComments ?? {};
   const peerCommentPanelOpen = useAppStore((s) => s.peerCommentPanelOpen);
-  const commentPanelOpen = peerMode ? peerCommentPanelOpen : (tab?.commentPanelOpen ?? false);
+  const commentPanelOpen = peerMode
+    ? peerCommentPanelOpen
+    : (tab?.commentPanelOpen ?? false);
   const fileHandle = tab?.fileHandle ?? null;
   const shares = tab?.shares ?? [];
   const sharedPanelOpen = tab?.sharedPanelOpen ?? false;
+  const syncActiveShares = useAppStore((s) => s.syncActiveShares);
+  const hasActiveShares = shares.some(
+    (s) => new Date(s.expiresAt) > new Date(),
+  );
 
   const hasFolderComments = !peerMode && fileTree.length > 0;
   const crossFileTotal = hasFolderComments
@@ -183,6 +192,15 @@ export function Header({ peerMode = false, onShare, onPresent }: Props) {
                       </span>
                     )}
                   </button>
+                  {hasActiveShares && (
+                    <button
+                      onClick={syncActiveShares}
+                      title="Push latest content to all active shares"
+                      className="app-header__btn app-header__btn--text"
+                    >
+                      Push update
+                    </button>
+                  )}
                 </>
               )}
 
