@@ -177,13 +177,19 @@ Next time the host opens the app, it fetches pending comments from the Worker, d
 
 Peers can always comment, regardless of whether the host is online.
 
-### 7.4 Manage Shared Documents
+### 7.4 Push Updates to Peers
+
+When the host edits shared files locally, peers don't see changes automatically. The host must explicitly push updates:
+
+- **"Push update" button** — appears in the header toolbar whenever there are active (non-expired) shares. Clicking it re-encrypts the current file/folder content and uploads it to the Worker, replacing the old blob. The same link keeps working; peers click "Get latest" to fetch the updated content.
+- Peers viewing the shared document see a **"Get latest" button** in their header. Clicking it fetches the latest content from the Worker. The peer's currently viewed file is preserved — if the file still exists in the updated payload, the peer stays on it; otherwise, the view falls back to the first file.
+
+### 7.5 Manage Shared Documents
 
 The host has a "Shared" panel showing all active shares:
 
 - Document/folder name, creation date, expiry (TTL).
 - "Revoke" button — deletes the content and comments from the Worker immediately.
-- "Update" button — re-encrypts current file state and uploads to the Worker, replacing the old blob. Same link keeps working, peers see the updated content.
 - "Check comments" button — fetches and displays pending async comments from the Worker.
 - Share metadata (doc-id, host-secret) is stored in the host's browser localStorage.
 
@@ -217,7 +223,7 @@ The host has a "Shared" panel showing all active shares:
 4. Host clicks "Merge" — app inserts CriticMarkup into the local files.
 5. Host tells LLM CLI: "Address the comments in this file."
 6. LLM reads CriticMarkup, makes fixes, removes the markup.
-7. Host clicks "Update" to push revised content to Worker. Peers see updates on next load.
+7. Host clicks "Push update" in the header to push revised content to Worker. Peers click "Get latest" to see the updates.
 
 ---
 
