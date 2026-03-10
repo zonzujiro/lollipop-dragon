@@ -110,8 +110,12 @@ function PeerViewer() {
   const sharedContent = useAppStore((s) => s.sharedContent);
   const rawContent = useAppStore((s) => s.peerRawContent);
 
-  if (!sharedContent) return <ShareUnavailable />;
-  if (!rawContent) return <ShareUnavailable />;
+  if (!sharedContent) {
+    return <ShareUnavailable />;
+  }
+  if (!rawContent) {
+    return <ShareUnavailable />;
+  }
 
   return <MarkdownRenderer />;
 }
@@ -148,9 +152,13 @@ function App() {
 
   const handleHostSelect = useCallback(
     (path: string) => {
-      if (!tab) return;
+      if (!tab) {
+        return;
+      }
       const node = findFileInTree(tab.fileTree, path);
-      if (node) selectFile(node);
+      if (node) {
+        selectFile(node);
+      }
     },
     [tab, selectFile],
   );
@@ -163,8 +171,9 @@ function App() {
   );
 
   const hostTree: FileTreeNode[] = useMemo(() => {
-    if (!tab || !tab.directoryName || tab.fileTree.length === 0)
+    if (!tab || !tab.directoryName || tab.fileTree.length === 0) {
       return tab?.fileTree ?? [];
+    }
     return [
       {
         kind: "directory",
@@ -188,7 +197,9 @@ function App() {
   );
 
   const peerTree = useMemo(() => {
-    if (!sharedContent) return [];
+    if (!sharedContent) {
+      return [];
+    }
     return buildVirtualTree(Object.keys(sharedContent.tree));
   }, [sharedContent]);
 
@@ -197,6 +208,7 @@ function App() {
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
+
 
   // Check for peer mode URL on mount and on hash change
   useEffect(() => {
@@ -226,11 +238,15 @@ function App() {
       } else if (meta && e.key === "w") {
         e.preventDefault();
         const { activeTabId } = useAppStore.getState();
-        if (activeTabId) removeTab(activeTabId);
+        if (activeTabId) {
+          removeTab(activeTabId);
+        }
       } else if (e.ctrlKey && e.key === "Tab") {
         e.preventDefault();
         const state = useAppStore.getState();
-        if (state.tabs.length < 2) return;
+        if (state.tabs.length < 2) {
+          return;
+        }
         const idx = state.tabs.findIndex((t) => t.id === state.activeTabId);
         const next = e.shiftKey
           ? (idx - 1 + state.tabs.length) % state.tabs.length
@@ -245,9 +261,13 @@ function App() {
   // Watch the active tab's open file for external changes
   const fileHandle = tab?.fileHandle ?? null;
   useEffect(() => {
-    if (!fileHandle || !supportsFileObserver) return;
+    if (!fileHandle || !supportsFileObserver) {
+      return;
+    }
     const FSObserver = window.FileSystemObserver;
-    if (!FSObserver) return;
+    if (!FSObserver) {
+      return;
+    }
     let observer: FileSystemObserver | null = null;
     try {
       observer = new FSObserver((records: FileSystemObserverRecord[]) => {
@@ -270,9 +290,13 @@ function App() {
   // Watch the active tab's open directory for new/removed files
   const directoryHandle = tab?.directoryHandle ?? null;
   useEffect(() => {
-    if (!directoryHandle || !supportsFileObserver) return;
+    if (!directoryHandle || !supportsFileObserver) {
+      return;
+    }
     const FSObserver = window.FileSystemObserver;
-    if (!FSObserver) return;
+    if (!FSObserver) {
+      return;
+    }
     let observer: FileSystemObserver | null = null;
     try {
       observer = new FSObserver((records: FileSystemObserverRecord[]) => {
@@ -301,8 +325,12 @@ function App() {
 
   // ── Peer mode (full-screen takeover, no tabs) ──
   if (isPeerMode) {
-    if (!peerModeChecked) return null;
-    if (!peerName) return <PeerNamePrompt />;
+    if (!peerModeChecked) {
+      return null;
+    }
+    if (!peerName) {
+      return <PeerNamePrompt />;
+    }
     return (
       <div className="app-layout">
         <Header peerMode />
@@ -325,7 +353,9 @@ function App() {
     );
   }
 
-  if (!peerModeChecked) return null;
+  if (!peerModeChecked) {
+    return null;
+  }
 
   // ── Host mode requires File System Access API (Chrome/Edge over HTTPS) ──
   if (typeof window.showOpenFilePicker !== "function") {
@@ -359,10 +389,14 @@ function App() {
   }
 
   // ── No tabs open → show FilePicker ──
-  if (tabs.length === 0) return <FilePicker />;
+  if (tabs.length === 0) {
+    return <FilePicker />;
+  }
 
   // ── Presentation mode (fullscreen slideshow) ──
-  if (presentationMode) return <PresentationMode />;
+  if (presentationMode) {
+    return <PresentationMode />;
+  }
 
   // ── Host mode with tabs ──
   const hasFolderOpen = (tab?.fileTree.length ?? 0) > 0;

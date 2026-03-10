@@ -7,10 +7,14 @@ import { buildShareUrlFromOrigin } from "../../utils/shareUrl";
 
 function formatExpiry(expiresAt: string): string {
   const diff = new Date(expiresAt).getTime() - Date.now();
-  if (diff <= 0) return "Expired";
+  if (diff <= 0) {
+    return "Expired";
+  }
   const days = Math.floor(diff / 86400000);
   const hours = Math.floor((diff % 86400000) / 3600000);
-  if (days > 0) return `Expires in ${days}d ${hours}h`;
+  if (days > 0) {
+    return `Expires in ${days}d ${hours}h`;
+  }
   return `Expires in ${hours}h`;
 }
 

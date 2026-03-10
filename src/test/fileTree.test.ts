@@ -22,7 +22,9 @@ function makeDir(
           return this
         },
         async next() {
-          if (i < entries.length) return { value: entries[i++], done: false as const }
+          if (i < entries.length) {
+            return { value: entries[i++], done: false as const }
+          }
           return { value: undefined as unknown as FileSystemHandle, done: true as const }
         },
       }

@@ -39,7 +39,9 @@ export async function openFile(): Promise<OpenedFile | null> {
     return { handle, name: handle.name };
   } catch (err) {
     // User cancelled the picker — not an error
-    if (err instanceof DOMException && err.name === "AbortError") return null;
+    if (err instanceof DOMException && err.name === "AbortError") {
+      return null;
+    }
     throw err;
   }
 }
@@ -80,7 +82,9 @@ export async function buildFileTree(
   const files: FileNode[] = [];
 
   for await (const entry of dirHandle.values()) {
-    if (isIgnored(entry.name)) continue;
+    if (isIgnored(entry.name)) {
+      continue;
+    }
     const entryPath = basePath ? `${basePath}/${entry.name}` : entry.name;
 
     if (isDirectoryHandle(entry)) {
@@ -144,12 +148,15 @@ export function buildVirtualTree(paths: string[]): SidebarTreeNode[] {
   function sortNodes(nodes: SidebarTreeNode[]): SidebarTreeNode[] {
     return nodes
       .sort((a, b) => {
-        if (a.kind !== b.kind) return a.kind === "directory" ? -1 : 1;
+        if (a.kind !== b.kind) {
+          return a.kind === "directory" ? -1 : 1;
+        }
         return a.name.localeCompare(b.name);
       })
       .map((n) => {
-        if (n.kind === "directory")
+        if (n.kind === "directory") {
           return { ...n, children: sortNodes(n.children) };
+        }
         return n;
       });
   }
@@ -169,7 +176,9 @@ export async function openDirectory(): Promise<{
     const handle = await window.showDirectoryPicker({ mode: "readwrite" });
     return { handle, name: handle.name };
   } catch (err) {
-    if (err instanceof DOMException && err.name === "AbortError") return null;
+    if (err instanceof DOMException && err.name === "AbortError") {
+      return null;
+    }
     throw err;
   }
 }

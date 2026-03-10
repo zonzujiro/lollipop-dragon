@@ -2,7 +2,9 @@ import { compress, decompress } from './compress'
 import type { SharePayload } from '../types/share'
 
 function isSharePayload(value: unknown): value is SharePayload {
-  if (typeof value !== 'object' || value === null) return false
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
   return (
     'version' in value && value.version === '2.0' &&
     'created_at' in value && typeof value.created_at === 'string' &&
@@ -24,6 +26,8 @@ export async function serializePayload(tree: Record<string, string>): Promise<Ui
 export async function deserializePayload(compressed: Uint8Array): Promise<SharePayload> {
   const raw = await decompress(compressed)
   const parsed: unknown = JSON.parse(new TextDecoder().decode(raw))
-  if (!isSharePayload(parsed)) throw new Error('Invalid share payload')
+  if (!isSharePayload(parsed)) {
+    throw new Error('Invalid share payload')
+  }
   return parsed
 }

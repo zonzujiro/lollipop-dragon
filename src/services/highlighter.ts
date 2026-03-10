@@ -42,7 +42,9 @@ export function useShikiRehypePlugin(): RehypePlugin | null {
     let cancelled = false;
     getHighlighter()
       .then((h) => {
-        if (!cancelled) setHighlighter(h);
+        if (!cancelled) {
+          setHighlighter(h);
+        }
       })
       .catch(() => {
         // Allow retry on next mount by clearing the cached promise
@@ -51,6 +53,8 @@ export function useShikiRehypePlugin(): RehypePlugin | null {
     return () => { cancelled = true; };
   }, []);
 
-  if (!highlighter) return null;
+  if (!highlighter) {
+    return null;
+  }
   return [rehypeShikiFromHighlighter, highlighter, { theme: "github-light", missingLang: "ignore" }];
 }

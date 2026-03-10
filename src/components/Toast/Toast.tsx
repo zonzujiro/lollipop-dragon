@@ -9,12 +9,16 @@ export function Toast() {
   const dismissToast = useAppStore((s) => s.dismissToast)
 
   useEffect(() => {
-    if (!toast) return
+    if (!toast) {
+      return
+    }
     const timer = setTimeout(dismissToast, TOAST_DURATION_MS)
     return () => clearTimeout(timer)
   }, [toast, dismissToast])
 
-  if (!toast) return null
+  if (!toast) {
+    return null
+  }
 
   return (
     <div className="toast" role="status" aria-live="polite">

@@ -28,9 +28,13 @@ export function getBlockPositions(cleanMarkdown: string): BlockPosition[] {
 
 // Assign a blockIndex to each comment based on where its cleanStart falls.
 export function assignBlockIndices(comments: Comment[], cleanMarkdown: string): Comment[] {
-  if (comments.length === 0) return comments
+  if (comments.length === 0) {
+    return comments
+  }
   const positions = getBlockPositions(cleanMarkdown)
-  if (positions.length === 0) return comments
+  if (positions.length === 0) {
+    return comments
+  }
 
   return comments.map((comment) => {
     const { cleanStart } = comment
@@ -38,7 +42,9 @@ export function assignBlockIndices(comments: Comment[], cleanMarkdown: string): 
       ({ start, end }) => cleanStart >= start && cleanStart <= end,
     )
     // Fallback: position is past the last block (e.g. trailing comment)
-    if (blockIndex === -1) blockIndex = positions.length - 1
+    if (blockIndex === -1) {
+      blockIndex = positions.length - 1
+    }
     return { ...comment, blockIndex }
   })
 }

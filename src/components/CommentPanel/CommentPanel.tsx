@@ -35,7 +35,9 @@ const COMMENT_TYPES: CommentType[] = [
 const EDITABLE_CRITIC_TYPES: Comment["criticType"][] = ["comment", "highlight"];
 
 function scrollToBlock(blockIndex: number | undefined) {
-  if (blockIndex === undefined) return;
+  if (blockIndex === undefined) {
+    return;
+  }
   document
     .querySelector(`[data-block-index="${blockIndex}"]`)
     ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -80,7 +82,9 @@ export function CommentPanel({ peerMode = false }: Props) {
 
   // In peer mode, map PeerComment[] to a unified display shape
   const peerDisplayComments: DisplayComment[] = useMemo(() => {
-    if (!peerMode) return [];
+    if (!peerMode) {
+      return [];
+    }
     // In multi-file mode show all; in single-file mode filter to active file
     const filtered = isPeerMultiFile
       ? myPeerComments
@@ -97,10 +101,14 @@ export function CommentPanel({ peerMode = false }: Props) {
 
   // Build peer cross-file entries grouped by path
   const peerCrossFileEntries = useMemo(() => {
-    if (!isPeerMultiFile) return [];
+    if (!isPeerMultiFile) {
+      return [];
+    }
     const byPath: Record<string, DisplayComment[]> = {};
     for (const c of myPeerComments) {
-      if (!byPath[c.path]) byPath[c.path] = [];
+      if (!byPath[c.path]) {
+      byPath[c.path] = [];
+    }
       byPath[c.path].push({
         id: c.id,
         type: c.commentType,
@@ -119,7 +127,9 @@ export function CommentPanel({ peerMode = false }: Props) {
 
   // Build cross-file flat list for folder mode (only files with comments)
   const crossFileComments = useMemo(() => {
-    if (!isFolderMode) return [];
+    if (!isFolderMode) {
+      return [];
+    }
     const entries = Object.values(allFileComments).filter(
       (e) => e.comments.length > 0,
     );
@@ -129,8 +139,12 @@ export function CommentPanel({ peerMode = false }: Props) {
 
   // Total count across all files for folder/peer-multi-file mode
   const totalCrossFileCount = useMemo(() => {
-    if (isPeerMultiFile) return myPeerComments.length;
-    if (!isFolderMode) return 0;
+    if (isPeerMultiFile) {
+      return myPeerComments.length;
+    }
+    if (!isFolderMode) {
+      return 0;
+    }
     return crossFileComments.reduce((sum, e) => sum + e.comments.length, 0);
   }, [isPeerMultiFile, myPeerComments.length, isFolderMode, crossFileComments]);
 
@@ -138,8 +152,12 @@ export function CommentPanel({ peerMode = false }: Props) {
 
   // All comments flat for counting types in folder/peer-multi-file mode
   const allCommentsFlat = useMemo(() => {
-    if (isPeerMultiFile) return peerDisplayComments;
-    if (!isFolderMode) return sourceComments;
+    if (isPeerMultiFile) {
+      return peerDisplayComments;
+    }
+    if (!isFolderMode) {
+      return sourceComments;
+    }
     return crossFileComments.flatMap((e) => e.comments);
   }, [isPeerMultiFile, peerDisplayComments, isFolderMode, crossFileComments, sourceComments]);
 
@@ -163,7 +181,9 @@ export function CommentPanel({ peerMode = false }: Props) {
 
   // For folder mode: filter cross-file entries
   const filteredCrossFile = useMemo(() => {
-    if (!isFolderMode || isResolved) return crossFileComments;
+    if (!isFolderMode || isResolved) {
+      return crossFileComments;
+    }
     if (commentFilter === "all" || commentFilter === "pending")
       return crossFileComments;
     return crossFileComments
@@ -176,7 +196,9 @@ export function CommentPanel({ peerMode = false }: Props) {
 
   // For peer multi-file mode: filter peer cross-file entries
   const filteredPeerCrossFile = useMemo(() => {
-    if (!isPeerMultiFile) return peerCrossFileEntries;
+    if (!isPeerMultiFile) {
+      return peerCrossFileEntries;
+    }
     if (commentFilter === "all" || commentFilter === "pending")
       return peerCrossFileEntries;
     return peerCrossFileEntries
@@ -207,7 +229,9 @@ export function CommentPanel({ peerMode = false }: Props) {
   }
 
   useEffect(() => {
-    if (!activeCommentId) return;
+    if (!activeCommentId) {
+      return;
+    }
     const el = document.querySelector(
       `.comment-panel [data-comment-id="${activeCommentId}"]`,
     );
@@ -366,7 +390,9 @@ function InlineEditForm({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     e.stopPropagation();
-    if (!editText.trim()) return;
+    if (!editText.trim()) {
+      return;
+    }
     onSave(editType, editText.trim());
   }
 
@@ -506,7 +532,9 @@ function CommentEntry({
       className={`comment-panel__entry${isActive ? " comment-panel__entry--active" : ""}${isOtherFile ? " comment-panel__entry--other-file" : ""}`}
       onClick={onClick}
       onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") onClick();
+        if (e.key === "Enter" || e.key === " ") {
+          onClick();
+        }
       }}
     >
       <span

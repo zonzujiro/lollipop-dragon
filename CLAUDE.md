@@ -7,6 +7,7 @@ Read the [contribution guide](./docs/contributing.md) and review the docs in [`d
 ## TypeScript
 
 - **Never use `as` for type assertions.** Use type guards, proper narrowing, or helper functions instead.
+- **Always use braces `{}` for `if`/`else`/`for`/`while` blocks.** No single-line bodies without braces.
 
 ## Architecture Overview
 

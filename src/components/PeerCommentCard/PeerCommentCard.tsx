@@ -39,7 +39,9 @@ export function PeerCommentCard({ docId, comment, currentPath }: Props) {
       tabIndex={0}
       onClick={handleNavigate}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') handleNavigate()
+        if (e.key === 'Enter' || e.key === ' ') {
+          handleNavigate()
+        }
       }}
     >
       <div className="peer-card__meta">

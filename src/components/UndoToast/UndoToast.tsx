@@ -12,12 +12,16 @@ export function UndoToast() {
   const clearUndo = useAppStore((s) => s.clearUndo)
 
   useEffect(() => {
-    if (!undoState) return
+    if (!undoState) {
+      return
+    }
     const timer = setTimeout(clearUndo, TOAST_DURATION_MS)
     return () => clearTimeout(timer)
   }, [undoState, clearUndo])
 
-  if (!undoState) return null
+  if (!undoState) {
+    return null
+  }
 
   return (
     <div className="undo-toast" role="status" aria-live="polite">

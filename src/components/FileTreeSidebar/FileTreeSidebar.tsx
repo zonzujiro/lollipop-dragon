@@ -13,7 +13,9 @@ function loadWidth(): number {
     const v = localStorage.getItem(WIDTH_KEY);
     if (v) {
       const n = Number(v);
-      if (n >= MIN_WIDTH && n <= MAX_WIDTH) return n;
+      if (n >= MIN_WIDTH && n <= MAX_WIDTH) {
+        return n;
+      }
     }
   } catch {
     /* ignore */
@@ -115,7 +117,9 @@ function SharedBadge() {
 
 /** Compute whether this exact node has a share link */
 function isNodeShared(node: SidebarTreeNode, shares: ShareRecord[]): boolean {
-  if (shares.length === 0) return false;
+  if (shares.length === 0) {
+    return false;
+  }
   const now = new Date();
   return shares.some(
     (s) => new Date(s.expiresAt) > now && s.label === node.name,

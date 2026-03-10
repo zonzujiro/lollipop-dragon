@@ -66,7 +66,9 @@ export function insertComment(
   text: string,
 ): string {
   const blocks = getBlockPositions(cleanMarkdown)
-  if (blockIndex < 0 || blockIndex >= blocks.length) return rawContent
+  if (blockIndex < 0 || blockIndex >= blocks.length) {
+    return rawContent
+  }
 
   const blockEnd = blocks[blockIndex].end
   const segments = buildSegments(rawContent, existingComments)

@@ -45,7 +45,9 @@ export function ShareDialog({ onClose, scope, scopeLabel }: Props) {
   }
 
   async function handleCopy() {
-    if (!link) return
+    if (!link) {
+      return
+    }
     await navigator.clipboard.writeText(link)
     showToast('Link copied to clipboard')
     onClose()

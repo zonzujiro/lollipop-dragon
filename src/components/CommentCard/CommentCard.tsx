@@ -60,7 +60,9 @@ export function CommentCard({ comment, top, onClose, onEdit, onDelete }: Props) 
   function handleEditSubmit(e: React.FormEvent) {
     e.preventDefault()
     e.stopPropagation()
-    if (!editText.trim()) return
+    if (!editText.trim()) {
+      return
+    }
     onEdit?.(editType, editText.trim())
     setEditing(false)
   }

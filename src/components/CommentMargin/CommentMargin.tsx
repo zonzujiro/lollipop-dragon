@@ -30,7 +30,9 @@ function AddCommentForm({ top, onSubmit, onCancel }: AddCommentFormProps) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     e.stopPropagation();
-    if (!text.trim()) return;
+    if (!text.trim()) {
+      return;
+    }
     onSubmit(type, text.trim());
   }
 
@@ -166,7 +168,9 @@ export function CommentMargin({
       return byBlock;
     }
     // Host sees pending peer comments
-    if (!activeDocId) return new Map<number, PeerComment[]>();
+    if (!activeDocId) {
+      return new Map<number, PeerComment[]>();
+    }
     const all = pendingComments[activeDocId] ?? [];
     const currentPath = activeFilePath ?? fileName ?? "";
     const forFile = currentPath
@@ -192,11 +196,15 @@ export function CommentMargin({
   useEffect(() => {
     measureRef.current = () => {
       const container = containerRef.current;
-      if (!container) return;
+      if (!container) {
+        return;
+      }
 
       const byBlock = new Map<number, Comment[]>();
       for (const c of comments) {
-        if (c.blockIndex === undefined) continue;
+        if (c.blockIndex === undefined) {
+          continue;
+        }
         const arr = byBlock.get(c.blockIndex) ?? [];
         arr.push(c);
         byBlock.set(c.blockIndex, arr);
@@ -210,7 +218,9 @@ export function CommentMargin({
         const idx = Number(el.getAttribute("data-block-index"));
         tops.set(idx, el.offsetTop);
         const group = byBlock.get(idx);
-        if (!group) continue;
+        if (!group) {
+          continue;
+        }
         next.push({ top: el.offsetTop, comments: group });
       }
       setGroups(next);
@@ -220,7 +230,9 @@ export function CommentMargin({
     measureRef.current();
 
     const container = containerRef.current;
-    if (!container) return;
+    if (!container) {
+      return;
+    }
     const ro = new ResizeObserver(() => measureRef.current());
     ro.observe(container);
     return () => ro.disconnect();
@@ -333,10 +345,13 @@ export function CommentMargin({
       {/* Peer-only blocks (no host comments at this block) */}
       {Array.from(peerDotGroups.entries()).map(([blockIdx, peerComments]) => {
         // Skip blocks already rendered with host groups
-        if (groups.some((g) => g.comments[0]?.blockIndex === blockIdx))
+        if (groups.some((g) => g.comments[0]?.blockIndex === blockIdx)) {
           return null;
+        }
         const top = blockTops.get(blockIdx);
-        if (top == null) return null;
+        if (top == null) {
+          return null;
+        }
         return (
           <div key={`peer-${blockIdx}`}>
             <div className="comment-margin__dots" style={{ top }}>

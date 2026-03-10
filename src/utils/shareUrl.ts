@@ -58,7 +58,9 @@ export function parseShareHash(): ShareUrlParams | null {
 export function isShareHash(): boolean {
   const hash = window.location.hash;
   // New format
-  if (/^#s=[A-Za-z0-9_-]/.test(hash)) return true;
+  if (/^#s=[A-Za-z0-9_-]/.test(hash)) {
+    return true;
+  }
   // Old format
   return hash.includes("share=") && hash.includes("key=");
 }

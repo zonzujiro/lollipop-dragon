@@ -33,7 +33,9 @@ function splitIntoSlides(markdown: string): string[] {
 
   if (current.length > 0) {
     const text = current.join("\n").trim();
-    if (text) slides.push(text);
+    if (text) {
+      slides.push(text);
+    }
   }
 
   return slides.length > 0 ? slides : [""];
@@ -100,7 +102,9 @@ export function PresentationMode() {
   const lastMoveRef = useRef(0);
   const resetControlsTimer = useCallback(() => {
     const now = Date.now();
-    if (now - lastMoveRef.current < 200) return;
+    if (now - lastMoveRef.current < 200) {
+      return;
+    }
     lastMoveRef.current = now;
     setControlsVisible(true);
     clearTimeout(hideTimerRef.current);
@@ -114,7 +118,9 @@ export function PresentationMode() {
 
   const goTo = useCallback(
     (index: number, dir: SlideDirection) => {
-      if (index < 0 || index >= slides.length || index === currentSlide) return;
+      if (index < 0 || index >= slides.length || index === currentSlide) {
+        return;
+      }
       setCurrentSlide(index);
       if (viewportRef.current) {
         viewportRef.current.scrollTop = 0;

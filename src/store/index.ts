@@ -41,16 +41,22 @@ function stableShareKey(tab: {
 }
 
 function isShareRecordMap(v: unknown): v is Record<string, ShareRecord[]> {
-  if (typeof v !== "object" || v === null || Array.isArray(v)) return false;
+  if (typeof v !== "object" || v === null || Array.isArray(v)) {
+    return false;
+  }
   return Object.values(v).every((val) => Array.isArray(val));
 }
 
 function loadAllShares(): Record<string, ShareRecord[]> {
   try {
     const raw = localStorage.getItem(SHARES_KEY);
-    if (!raw) return {};
+    if (!raw) {
+      return {};
+    }
     const parsed: unknown = JSON.parse(raw);
-    if (isShareRecordMap(parsed)) return parsed;
+    if (isShareRecordMap(parsed)) {
+      return parsed;
+    }
     return {};
   } catch {
     return {};
@@ -75,9 +81,13 @@ function loadAndCleanShares(tabs: TabState[]): Record<string, ShareRecord[]> {
   // Migrate old tabId-keyed entries to stable keys
   for (const tab of tabs) {
     const stableKey = stableShareKey(tab);
-    if (tab.id === stableKey) continue;
+    if (tab.id === stableKey) {
+      continue;
+    }
     const oldShares = all[tab.id];
-    if (!oldShares || oldShares.length === 0) continue;
+    if (!oldShares || oldShares.length === 0) {
+      continue;
+    }
     const existing = all[stableKey] ?? [];
     const existingDocIds = new Set(existing.map((s) => s.docId));
     const merged = [
@@ -93,7 +103,9 @@ function loadAndCleanShares(tabs: TabState[]): Record<string, ShareRecord[]> {
   const now = new Date();
   for (const key of Object.keys(all)) {
     const live = all[key].filter((s) => new Date(s.expiresAt) > now);
-    if (live.length !== all[key].length) changed = true;
+    if (live.length !== all[key].length) {
+      changed = true;
+    }
     if (live.length === 0) {
       delete all[key];
     } else {
@@ -101,7 +113,9 @@ function loadAndCleanShares(tabs: TabState[]): Record<string, ShareRecord[]> {
     }
   }
 
-  if (changed) saveAllShares(all);
+  if (changed) {
+    saveAllShares(all);
+  }
   return all;
 }
 
@@ -117,7 +131,9 @@ async function collectTreeContents(
     for (const node of items) {
       if (node.kind === "file") {
         const path = node.path;
-        if (allowedPaths && !allowedPaths.has(path)) continue;
+        if (allowedPaths && !allowedPaths.has(path)) {
+          continue;
+        }
         if (path === activeFilePath && rawContent) {
           tree[path] = rawContent;
         } else {
@@ -147,7 +163,9 @@ async function restoreShareKeys(
   const keys: Record<string, CryptoKey> = {};
   const now = new Date();
   for (const share of shares) {
-    if (new Date(share.expiresAt) <= now) continue;
+    if (new Date(share.expiresAt) <= now) {
+      continue;
+    }
     try {
       keys[share.docId] = await base64urlToKey(share.keyB64);
     } catch {
@@ -261,7 +279,9 @@ function getStorage(): ShareStorage | null {
 }
 
 function scrollToBlock(blockIndex: number | undefined) {
-  if (blockIndex === undefined) return;
+  if (blockIndex === undefined) {
+    return;
+  }
   document
     .querySelector(`[data-block-index="${blockIndex}"]`)
     ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -283,7 +303,9 @@ function updateActiveTab(
   updater: (tab: TabState) => Partial<TabState>,
 ) {
   const { activeTabId, tabs } = get();
-  if (!activeTabId) return;
+  if (!activeTabId) {
+    return;
+  }
   set({
     tabs: tabs.map((t) => (t.id === activeTabId ? { ...t, ...updater(t) } : t)),
   });
@@ -390,7 +412,9 @@ export const useAppStore = create<AppState>()(
       removeTab: (tabId) => {
         const { tabs, activeTabId } = get();
         const idx = tabs.findIndex((t) => t.id === tabId);
-        if (idx === -1) return;
+        if (idx === -1) {
+          return;
+        }
         const updated = tabs.filter((t) => t.id !== tabId);
         let newActiveId: string | null = null;
         if (updated.length > 0) {
@@ -418,7 +442,9 @@ export const useAppStore = create<AppState>()(
 
       openFileInNewTab: async () => {
         const result = await fsOpenFile();
-        if (!result) return;
+        if (!result) {
+          return;
+        }
         const raw = await readFile(result.handle);
         const tab = createDefaultTab({
           label: result.name,
@@ -432,7 +458,9 @@ export const useAppStore = create<AppState>()(
 
       openDirectoryInNewTab: async () => {
         const result = await fsOpenDirectory();
-        if (!result) return;
+        if (!result) {
+          return;
+        }
         const tab = createDefaultTab({
           label: result.name,
           directoryHandle: result.handle,
@@ -476,7 +504,9 @@ export const useAppStore = create<AppState>()(
 
       setComments: (comments) => {
         const tab = activeTab(get);
-        if (!tab) return;
+        if (!tab) {
+          return;
+        }
         const path = tab.activeFilePath ?? tab.fileName;
         const updated = path
           ? {
@@ -521,7 +551,9 @@ export const useAppStore = create<AppState>()(
 
       scanAllFileComments: async () => {
         const tab = activeTab(get);
-        if (!tab) return;
+        if (!tab) {
+          return;
+        }
         const tabId = tab.id;
         const result: Record<string, FileCommentEntry> = {};
         const scanNodes = async (nodes: FileTreeNode[]) => {
@@ -557,7 +589,9 @@ export const useAppStore = create<AppState>()(
         await scanNodes(tab.fileTree);
         // Preserve the active file's entry set by setComments
         const currentTab = get().tabs.find((t) => t.id === tabId);
-        if (!currentTab) return;
+        if (!currentTab) {
+          return;
+        }
         const activePath = currentTab.activeFilePath ?? currentTab.fileName;
         const merged = { ...result };
         if (activePath && currentTab.allFileComments[activePath]) {
@@ -568,7 +602,9 @@ export const useAppStore = create<AppState>()(
 
       navigateToComment: (filePath, rawStart) => {
         const tab = activeTab(get);
-        if (!tab) return;
+        if (!tab) {
+          return;
+        }
         if (filePath === tab.activeFilePath) {
           const comment = tab.comments.find((c) => c.rawStart === rawStart);
           if (comment) {
@@ -590,7 +626,9 @@ export const useAppStore = create<AppState>()(
 
       navigateToBlock: (filePath, blockIndex) => {
         const tab = activeTab(get);
-        if (!tab) return;
+        if (!tab) {
+          return;
+        }
         if (filePath === tab.activeFilePath) {
           scrollToBlock(blockIndex);
           return;
@@ -609,9 +647,13 @@ export const useAppStore = create<AppState>()(
 
       deleteComment: async (id) => {
         const tab = activeTab(get);
-        if (!tab?.fileHandle) return;
+        if (!tab?.fileHandle) {
+          return;
+        }
         const comment = tab.comments.find((c) => c.id === id);
-        if (!comment) return;
+        if (!comment) {
+          return;
+        }
         await writeAndUpdate(
           get,
           set,
@@ -622,9 +664,13 @@ export const useAppStore = create<AppState>()(
 
       editComment: async (id, type, text) => {
         const tab = activeTab(get);
-        if (!tab?.fileHandle) return;
+        if (!tab?.fileHandle) {
+          return;
+        }
         const comment = tab.comments.find((c) => c.id === id);
-        if (!comment) return;
+        if (!comment) {
+          return;
+        }
         await writeAndUpdate(
           get,
           set,
@@ -635,7 +681,9 @@ export const useAppStore = create<AppState>()(
 
       addComment: async (blockIndex, type, text) => {
         const tab = activeTab(get);
-        if (!tab?.fileHandle) return;
+        if (!tab?.fileHandle) {
+          return;
+        }
         const { cleanMarkdown } = parseCriticMarkup(tab.rawContent);
         const newRaw = insertCommentService(
           tab.rawContent,
@@ -650,7 +698,9 @@ export const useAppStore = create<AppState>()(
 
       undo: async () => {
         const tab = activeTab(get);
-        if (!tab?.undoState || !tab.fileHandle) return;
+        if (!tab?.undoState || !tab.fileHandle) {
+          return;
+        }
         try {
           await writeFile(tab.fileHandle, tab.undoState.rawContent);
           updateActiveTab(get, set, (t) => ({
@@ -671,7 +721,9 @@ export const useAppStore = create<AppState>()(
 
       refreshFile: async () => {
         const tab = activeTab(get);
-        if (!tab?.fileHandle) return;
+        if (!tab?.fileHandle) {
+          return;
+        }
         try {
           const newRaw = await readFile(tab.fileHandle);
           const changed = newRaw !== tab.rawContent;
@@ -692,7 +744,9 @@ export const useAppStore = create<AppState>()(
 
       refreshFileTree: async () => {
         const tab = activeTab(get);
-        if (!tab?.directoryHandle) return;
+        if (!tab?.directoryHandle) {
+          return;
+        }
         const tabId = tab.id;
         try {
           const tree = await buildFileTree(tab.directoryHandle);
@@ -711,9 +765,13 @@ export const useAppStore = create<AppState>()(
               const handle = await getHandle<FileSystemDirectoryHandle>(
                 `tab:${tab.id}:directory`,
               );
-              if (!handle) continue;
+              if (!handle) {
+                continue;
+              }
               const perm = await handle.queryPermission({ mode: "read" });
-              if (perm !== "granted") continue;
+              if (perm !== "granted") {
+                continue;
+              }
               const tree = await buildFileTree(handle);
               // Re-select the previously active file to restore its fileHandle
               let restoredFileHandle: FileSystemFileHandle | null = null;
@@ -753,9 +811,13 @@ export const useAppStore = create<AppState>()(
               const handle = await getHandle<FileSystemFileHandle>(
                 `tab:${tab.id}:file`,
               );
-              if (!handle) continue;
+              if (!handle) {
+                continue;
+              }
               const perm = await handle.queryPermission({ mode: "readwrite" });
-              if (perm !== "granted") continue;
+              if (perm !== "granted") {
+                continue;
+              }
               let restoredRaw: string | null = null;
               try {
                 restoredRaw = await readFile(handle);
@@ -782,7 +844,9 @@ export const useAppStore = create<AppState>()(
         const allShares = loadAndCleanShares(get().tabs);
         for (const tab of get().tabs) {
           const tabShares = allShares[stableShareKey(tab)] ?? [];
-          if (tabShares.length === 0) continue;
+          if (tabShares.length === 0) {
+            continue;
+          }
           const restoredKeys = await restoreShareKeys(tabShares);
           updateTab(get, set, tab.id, (t) => ({
             shares: tabShares,
@@ -793,7 +857,9 @@ export const useAppStore = create<AppState>()(
 
       restoreShareSessions: async () => {
         const tab = activeTab(get);
-        if (!tab) return;
+        if (!tab) {
+          return;
+        }
         const restoredKeys = await restoreShareKeys(tab.shares);
         if (Object.keys(restoredKeys).length > 0) {
           updateActiveTab(get, set, (t) => ({
@@ -818,9 +884,13 @@ export const useAppStore = create<AppState>()(
 
       shareContent: async ({ ttl, nodes, label: scopeLabel }) => {
         const storage = getStorage();
-        if (!storage) throw new Error("Worker URL not configured");
+        if (!storage) {
+          throw new Error("Worker URL not configured");
+        }
         const tab = activeTab(get);
-        if (!tab) throw new Error("No active tab");
+        if (!tab) {
+          throw new Error("No active tab");
+        }
         const tabId = tab.id;
         const label =
           scopeLabel ?? tab.directoryName ?? tab.fileName ?? "document";
@@ -861,7 +931,9 @@ export const useAppStore = create<AppState>()(
           sharedPaths: Object.keys(tree),
         };
         const currentTab = get().tabs.find((t) => t.id === tabId);
-        if (!currentTab) throw new Error("Tab disappeared");
+        if (!currentTab) {
+          throw new Error("Tab disappeared");
+        }
         const shares = [...currentTab.shares, record];
         saveShares(stableShareKey(currentTab), shares);
         updateTab(get, set, tabId, (t) => ({
@@ -876,10 +948,14 @@ export const useAppStore = create<AppState>()(
       revokeShare: async (docId) => {
         const storage = getStorage();
         const tab = activeTab(get);
-        if (!tab) return;
+        if (!tab) {
+          return;
+        }
         const tabId = tab.id;
         const record = tab.shares.find((s) => s.docId === docId);
-        if (!record) return;
+        if (!record) {
+          return;
+        }
 
         try {
           await storage?.deleteContent(docId, record.hostSecret);
@@ -909,11 +985,17 @@ export const useAppStore = create<AppState>()(
 
       updateShare: async (docId) => {
         const storage = getStorage();
-        if (!storage) throw new Error("Worker URL not configured");
+        if (!storage) {
+          throw new Error("Worker URL not configured");
+        }
         const tab = activeTab(get);
-        if (!tab) throw new Error("No active tab");
+        if (!tab) {
+          throw new Error("No active tab");
+        }
         const record = tab.shares.find((s) => s.docId === docId);
-        if (!record) throw new Error("Share not found");
+        if (!record) {
+          throw new Error("Share not found");
+        }
         const key = tab.shareKeys[docId];
         if (!key)
           throw new Error(
@@ -943,15 +1025,21 @@ export const useAppStore = create<AppState>()(
 
       fetchPendingComments: async (docId) => {
         const storage = getStorage();
-        if (!storage) return;
+        if (!storage) {
+          return;
+        }
         const tab = activeTab(get);
-        if (!tab) return;
+        if (!tab) {
+          return;
+        }
         const tabId = tab.id;
         let key = tab.shareKeys[docId];
         // Fallback: restore key from the share record if not yet in memory
         if (!key) {
           const share = tab.shares.find((s) => s.docId === docId);
-          if (!share?.keyB64) return;
+          if (!share?.keyB64) {
+            return;
+          }
           key = await base64urlToKey(share.keyB64);
           updateTab(get, set, tabId, (t) => ({
             shareKeys: { ...t.shareKeys, [docId]: key },
@@ -959,7 +1047,9 @@ export const useAppStore = create<AppState>()(
         }
         const comments = await storage.fetchComments(docId, key);
         const currentTab = get().tabs.find((t) => t.id === tabId);
-        if (!currentTab) return;
+        if (!currentTab) {
+          return;
+        }
         const pc = { ...currentTab.pendingComments, [docId]: comments };
         const shares = currentTab.shares.map((s) =>
           s.docId === docId
@@ -975,9 +1065,13 @@ export const useAppStore = create<AppState>()(
 
       mergeComment: async (docId, comment) => {
         const tab = activeTab(get);
-        if (!tab?.fileHandle) return;
+        if (!tab?.fileHandle) {
+          return;
+        }
         const currentPath = tab.activeFilePath ?? tab.fileName ?? "";
-        if (comment.path !== currentPath) return;
+        if (comment.path !== currentPath) {
+          return;
+        }
 
         const { cleanMarkdown } = parseCriticMarkup(tab.rawContent);
         const attribution = ` — ${comment.peerName}`;
@@ -995,7 +1089,9 @@ export const useAppStore = create<AppState>()(
 
       dismissComment: (docId, cmtId) => {
         const tab = activeTab(get);
-        if (!tab) return;
+        if (!tab) {
+          return;
+        }
         const tabId = tab.id;
         const pc = { ...tab.pendingComments };
         pc[docId] = (pc[docId] ?? []).filter((c) => c.id !== cmtId);
@@ -1023,7 +1119,9 @@ export const useAppStore = create<AppState>()(
       clearPendingComments: async (docId) => {
         const storage = getStorage();
         const tab = activeTab(get);
-        if (!tab) return;
+        if (!tab) {
+          return;
+        }
         const tabId = tab.id;
         const record = tab.shares.find((s) => s.docId === docId);
         if (record && storage) {
@@ -1057,8 +1155,12 @@ export const useAppStore = create<AppState>()(
 
       syncActiveShares: async () => {
         const tab = activeTab(get);
-        if (!tab) return;
-        if (get().isPeerMode) return;
+        if (!tab) {
+          return;
+        }
+        if (get().isPeerMode) {
+          return;
+        }
         const now = new Date();
         const active = tab.shares.filter((s) => new Date(s.expiresAt) > now);
         for (const share of active) {
@@ -1076,9 +1178,13 @@ export const useAppStore = create<AppState>()(
 
       selectPeerFile: (path) => {
         const { sharedContent } = get();
-        if (!sharedContent) return;
+        if (!sharedContent) {
+          return;
+        }
         const content = sharedContent.tree[path];
-        if (content === undefined) return;
+        if (content === undefined) {
+          return;
+        }
         set({
           peerRawContent: content,
           peerFileName: path,
@@ -1089,10 +1195,14 @@ export const useAppStore = create<AppState>()(
 
       loadSharedContent: async () => {
         const parsed = parseShareHash();
-        if (!parsed) return;
+        if (!parsed) {
+          return;
+        }
         const { keyB64 } = parsed;
         const storage = getStorage();
-        if (!storage) return;
+        if (!storage) {
+          return;
+        }
         try {
           const key = await base64urlToKey(keyB64);
           const docId = await docIdFromKey(key);
@@ -1153,14 +1263,20 @@ export const useAppStore = create<AppState>()(
 
       syncPeerComments: async () => {
         const parsed = parseShareHash();
-        if (!parsed) return;
+        if (!parsed) {
+          return;
+        }
         const { keyB64 } = parsed;
         const storage = getStorage();
-        if (!storage) return;
+        if (!storage) {
+          return;
+        }
         const key = await base64urlToKey(keyB64);
         const docId = await docIdFromKey(key);
         const unsubmitted = getUnsubmittedPeerComments(get());
-        if (unsubmitted.length === 0) return;
+        if (unsubmitted.length === 0) {
+          return;
+        }
         for (const comment of unsubmitted) {
           await storage.postComment(docId, comment, key);
         }
@@ -1282,7 +1398,9 @@ export const useAppStore = create<AppState>()(
         submittedPeerCommentIds: s.submittedPeerCommentIds,
       }),
       merge: (persisted, current) => {
-        if (typeof persisted !== "object" || persisted === null) return current;
+        if (typeof persisted !== "object" || persisted === null) {
+          return current;
+        }
         const p: Partial<AppState> = persisted;
         // Tabs need special handling: fill in defaults for non-persisted fields
         const tabs = Array.isArray(p.tabs)
@@ -1302,3 +1420,4 @@ export const useAppStore = create<AppState>()(
     },
   ),
 );
+

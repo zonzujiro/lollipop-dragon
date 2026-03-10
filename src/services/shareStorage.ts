@@ -16,7 +16,9 @@ function hasCmtId(value: unknown): value is { cmtId: string } {
 }
 
 function isPeerComment(value: unknown): value is PeerComment {
-  if (typeof value !== 'object' || value === null) return false
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
   return (
     'id' in value && typeof value.id === 'string' &&
     'peerName' in value && typeof value.peerName === 'string' &&
@@ -55,13 +57,17 @@ export class ShareStorage {
       headers: { 'Content-Type': 'application/octet-stream', 'X-Host-Secret': hostSecret },
       body: blob,
     })
-    if (!res.ok) throw new Error(`Upload failed: ${res.status}`)
+    if (!res.ok) {
+      throw new Error(`Upload failed: ${res.status}`)
+    }
     return { hostSecret }
   }
 
   async fetchContent(docId: string, key: CryptoKey): Promise<SharePayload> {
     const res = await fetch(`${this.workerUrl}/share/${docId}`)
-    if (!res.ok) throw new Error(res.status === 404 ? 'Share not found or expired' : `Fetch failed: ${res.status}`)
+    if (!res.ok) {
+      throw new Error(res.status === 404 ? 'Share not found or expired' : `Fetch failed: ${res.status}`)
+    }
     const blob = await res.arrayBuffer()
     const decrypted = await decrypt(blob, key)
     return deserializePayload(decrypted)
@@ -80,7 +86,9 @@ export class ShareStorage {
       headers: { 'Content-Type': 'application/octet-stream', 'X-Host-Secret': hostSecret },
       body: blob,
     })
-    if (!res.ok) throw new Error(`Update failed: ${res.status}`)
+    if (!res.ok) {
+      throw new Error(`Update failed: ${res.status}`)
+    }
   }
 
   async deleteContent(docId: string, hostSecret: string): Promise<void> {
@@ -88,7 +96,9 @@ export class ShareStorage {
       method: 'DELETE',
       headers: { 'X-Host-Secret': hostSecret },
     })
-    if (!res.ok) throw new Error(`Delete failed: ${res.status}`)
+    if (!res.ok) {
+      throw new Error(`Delete failed: ${res.status}`)
+    }
   }
 
   // ── Comments ─────────────────────────────────────────────────────────
@@ -101,23 +111,33 @@ export class ShareStorage {
       headers: { 'Content-Type': 'application/octet-stream' },
       body: blob,
     })
-    if (!res.ok) throw new Error(`Post comment failed: ${res.status}`)
+    if (!res.ok) {
+      throw new Error(`Post comment failed: ${res.status}`)
+    }
     const responseJson: unknown = await res.json()
-    if (!hasCmtId(responseJson)) throw new Error('Invalid response: missing cmtId')
+    if (!hasCmtId(responseJson)) {
+      throw new Error('Invalid response: missing cmtId')
+    }
     return responseJson.cmtId
   }
 
   async fetchComments(docId: string, key: CryptoKey): Promise<PeerComment[]> {
     const res = await fetch(`${this.workerUrl}/comments/${docId}`)
-    if (!res.ok) throw new Error(`Fetch comments failed: ${res.status}`)
+    if (!res.ok) {
+      throw new Error(`Fetch comments failed: ${res.status}`)
+    }
     const json: unknown = await res.json()
-    if (!isStringArray(json)) throw new Error('Invalid comments response')
+    if (!isStringArray(json)) {
+      throw new Error('Invalid comments response')
+    }
     return Promise.all(
       json.map(async (b64) => {
         const blob = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)).buffer
         const decrypted = await decrypt(blob, key)
         const parsed: unknown = JSON.parse(new TextDecoder().decode(decrypted))
-        if (!isPeerComment(parsed)) throw new Error('Invalid peer comment data')
+        if (!isPeerComment(parsed)) {
+          throw new Error('Invalid peer comment data')
+        }
         return parsed
       }),
     )
@@ -128,7 +148,9 @@ export class ShareStorage {
       method: 'DELETE',
       headers: { 'X-Host-Secret': hostSecret },
     })
-    if (!res.ok) throw new Error(`Delete comments failed: ${res.status}`)
+    if (!res.ok) {
+      throw new Error(`Delete comments failed: ${res.status}`)
+    }
   }
 }
 

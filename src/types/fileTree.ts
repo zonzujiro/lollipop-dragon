@@ -20,10 +20,14 @@ export function findFileInTree(
 ): FileNode | null {
   for (const node of nodes) {
     if (node.kind === "file") {
-      if (node.path === path) return node;
+      if (node.path === path) {
+        return node;
+      }
     } else {
       const found = findFileInTree(node.children, path);
-      if (found) return found;
+      if (found) {
+        return found;
+      }
     }
   }
   return null;
@@ -47,7 +51,9 @@ export type SidebarTreeNode = SidebarFileNode | SidebarDirectoryNode
 
 /** Type guard: checks whether a SidebarTreeNode is actually a FileTreeNode (has handle on file nodes). */
 function isSidebarNodeFileTreeNode(node: SidebarTreeNode): node is FileTreeNode {
-  if (node.kind === 'file') return 'handle' in node
+  if (node.kind === 'file') {
+    return 'handle' in node
+  }
   return node.children.every(isSidebarNodeFileTreeNode)
 }
 

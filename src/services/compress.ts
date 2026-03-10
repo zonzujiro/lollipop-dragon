@@ -6,7 +6,9 @@ async function readStream(stream: ReadableStream<Uint8Array>): Promise<Uint8Arra
   const reader = stream.getReader()
   for (;;) {
     const { done, value } = await reader.read()
-    if (done) break
+    if (done) {
+      break
+    }
     chunks.push(value)
   }
   const total = chunks.reduce((n, c) => n + c.length, 0)

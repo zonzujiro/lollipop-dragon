@@ -15,7 +15,9 @@ export function isCommentType(value: string): value is CommentType {
 // Returns the matched type and the text with the prefix stripped.
 export function parseCommentType(text: string): { type: CommentType; text: string } {
   const m = PREFIX_RE.exec(text)
-  if (!m) return { type: 'note', text }
+  if (!m) {
+    return { type: 'note', text }
+  }
   const lower = m[1].toLowerCase()
   return {
     type: isCommentType(lower) ? lower : 'note',
@@ -92,7 +94,9 @@ export function parseCriticMarkup(source: string): {
     const rawEnd = rawStart + match[0].length
 
     // Preserve CriticMarkup inside fenced code blocks verbatim
-    if (inCodeBlock(rawStart, codeRanges)) continue
+    if (inCodeBlock(rawStart, codeRanges)) {
+      continue
+    }
 
     // Text between previous match and this one goes into the clean output as-is
     const before = source.slice(lastRawEnd, rawStart)

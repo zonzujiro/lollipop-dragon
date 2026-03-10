@@ -100,15 +100,23 @@ export function MarkdownRenderer() {
 
   const handleBodyMouseOver = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!shouldTrackHover) return;
+      if (!shouldTrackHover) {
+        return;
+      }
       const target = e.target;
-      if (!(target instanceof HTMLElement)) return;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
       const block = target.closest("[data-block-index]");
-      if (!(block instanceof HTMLElement)) return;
+      if (!(block instanceof HTMLElement)) {
+        return;
+      }
       const index = Number(block.getAttribute("data-block-index"));
       const top = block.offsetTop;
       setHoveredBlock((prev) => {
-        if (prev && prev.index === index && prev.top === top) return prev;
+        if (prev && prev.index === index && prev.top === top) {
+          return prev;
+        }
         return { index, top };
       });
     },
@@ -119,7 +127,9 @@ export function MarkdownRenderer() {
 
   const handleAddComment = useCallback(
     (blockIndex: number, type: string, text: string) => {
-      if (!isCommentType(type)) return;
+      if (!isCommentType(type)) {
+        return;
+      }
       addCommentAction(blockIndex, type, text);
     },
     [addCommentAction],
@@ -127,7 +137,9 @@ export function MarkdownRenderer() {
 
   const handlePostPeerComment = useCallback(
     (blockIndex: number, type: string, text: string) => {
-      if (!isCommentType(type)) return;
+      if (!isCommentType(type)) {
+        return;
+      }
       const path = activeFilePath ?? fileName ?? "";
       postPeerCommentAction(blockIndex, type, text, path);
     },
@@ -151,8 +163,12 @@ export function MarkdownRenderer() {
 
   // Handle cross-file navigation: after switching to target file, find comment and scroll
   useEffect(() => {
-    if (!pendingScrollTarget) return;
-    if (pendingScrollTarget.filePath !== activeFilePath) return;
+    if (!pendingScrollTarget) {
+      return;
+    }
+    if (pendingScrollTarget.filePath !== activeFilePath) {
+      return;
+    }
 
     let scrollBlock: number | undefined;
 

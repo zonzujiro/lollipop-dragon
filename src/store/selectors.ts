@@ -6,7 +6,9 @@ export function getActiveTab(state: {
   tabs: TabState[];
   activeTabId: string | null;
 }): TabState | null {
-  if (!state.activeTabId) return null;
+  if (!state.activeTabId) {
+    return null;
+  }
   return state.tabs.find((t) => t.id === state.activeTabId) ?? null;
 }
 

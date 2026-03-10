@@ -9,7 +9,9 @@ export function PeerNamePrompt() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     const trimmed = name.trim()
-    if (!trimmed) return
+    if (!trimmed) {
+      return
+    }
     setPeerName(trimmed)
   }
 

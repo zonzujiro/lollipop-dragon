@@ -10,7 +10,9 @@ type Direction = 'TD' | 'LR'
 
 function parseDirection(code: string): Direction | null {
   const match = DIR_RE.exec(code.trimStart())
-  if (!match) return null
+  if (!match) {
+    return null
+  }
   const dir = match[2].toUpperCase()
   // Normalise TB → TD (both mean top-to-bottom)
   return dir === 'TB' ? 'TD' : dir === 'TD' ? 'TD' : dir === 'LR' ? 'LR' : null
@@ -50,7 +52,9 @@ export function MermaidBlock({ code }: Props) {
     mermaid
       .render(`mermaid-${uid}`, effectiveCode)
       .then(({ svg: result }) => {
-        if (!cancelled) setSvg(result)
+        if (!cancelled) {
+          setSvg(result)
+        }
       })
       .catch((err: unknown) => {
         if (!cancelled) {
@@ -74,7 +78,9 @@ export function MermaidBlock({ code }: Props) {
     )
   }
 
-  if (!svg) return null
+  if (!svg) {
+    return null
+  }
 
   return (
     <div className="mermaid-diagram">

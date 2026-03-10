@@ -29,8 +29,12 @@ export async function saveHandle(key: string, handle: FileSystemHandle): Promise
 }
 
 function isFileSystemHandle(value: unknown): value is FileSystemHandle {
-  if (value == null || typeof value !== 'object') return false
-  if (!('kind' in value) || !('name' in value)) return false
+  if (value == null || typeof value !== 'object') {
+    return false
+  }
+  if (!('kind' in value) || !('name' in value)) {
+    return false
+  }
   const { kind } = value
   return kind === 'file' || kind === 'directory'
 }
