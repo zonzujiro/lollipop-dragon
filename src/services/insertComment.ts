@@ -1,42 +1,60 @@
-import { getBlockPositions } from './blockIndex'
-import type { Comment, CommentType } from '../types/criticmarkup'
+import { getBlockPositions } from "./blockIndex";
+import type { Comment, CommentType } from "../types/criticmarkup";
 
 // A segment maps a range of cleanMarkdown offsets to a range of raw offsets.
 // Plain segments are 1:1; replaced segments (CriticMarkup spans) map any
 // position within the clean replacement to the raw end of the markup.
 interface Segment {
-  cleanStart: number
-  cleanEnd: number
-  rawStart: number
-  rawEnd: number
-  isPlain: boolean
+  cleanStart: number;
+  cleanEnd: number;
+  rawStart: number;
+  rawEnd: number;
+  isPlain: boolean;
 }
 
 function buildSegments(source: string, comments: Comment[]): Segment[] {
-  const sorted = [...comments].sort((a, b) => a.rawStart - b.rawStart)
-  const segs: Segment[] = []
-  let rawPos = 0
-  let cleanPos = 0
+  const sorted = [...comments].sort((a, b) => a.rawStart - b.rawStart);
+  const segs: Segment[] = [];
+  let rawPos = 0;
+  let cleanPos = 0;
 
   for (const c of sorted) {
     if (c.rawStart > rawPos) {
-      const len = c.rawStart - rawPos
-      segs.push({ cleanStart: cleanPos, cleanEnd: cleanPos + len, rawStart: rawPos, rawEnd: c.rawStart, isPlain: true })
-      cleanPos += len
-      rawPos = c.rawStart
+      const len = c.rawStart - rawPos;
+      segs.push({
+        cleanStart: cleanPos,
+        cleanEnd: cleanPos + len,
+        rawStart: rawPos,
+        rawEnd: c.rawStart,
+        isPlain: true,
+      });
+      cleanPos += len;
+      rawPos = c.rawStart;
     }
-    const cleanLen = c.cleanEnd - c.cleanStart
-    segs.push({ cleanStart: cleanPos, cleanEnd: cleanPos + cleanLen, rawStart: rawPos, rawEnd: c.rawEnd, isPlain: false })
-    cleanPos += cleanLen
-    rawPos = c.rawEnd
+    const cleanLen = c.cleanEnd - c.cleanStart;
+    segs.push({
+      cleanStart: cleanPos,
+      cleanEnd: cleanPos + cleanLen,
+      rawStart: rawPos,
+      rawEnd: c.rawEnd,
+      isPlain: false,
+    });
+    cleanPos += cleanLen;
+    rawPos = c.rawEnd;
   }
 
   if (rawPos < source.length) {
-    const len = source.length - rawPos
-    segs.push({ cleanStart: cleanPos, cleanEnd: cleanPos + len, rawStart: rawPos, rawEnd: source.length, isPlain: true })
+    const len = source.length - rawPos;
+    segs.push({
+      cleanStart: cleanPos,
+      cleanEnd: cleanPos + len,
+      rawStart: rawPos,
+      rawEnd: source.length,
+      isPlain: true,
+    });
   }
 
-  return segs
+  return segs;
 }
 
 // Convert a cleanMarkdown offset to the corresponding raw content offset.
@@ -46,13 +64,13 @@ function buildSegments(source: string, comments: Comment[]): Segment[] {
 function cleanToRaw(cleanOffset: number, segments: Segment[]): number {
   for (let i = segments.length - 1; i >= 0; i--) {
     if (segments[i].cleanStart <= cleanOffset) {
-      const seg = segments[i]
+      const seg = segments[i];
       return seg.isPlain
         ? seg.rawStart + (cleanOffset - seg.cleanStart)
-        : seg.rawEnd
+        : seg.rawEnd;
     }
   }
-  return cleanOffset
+  return cleanOffset;
 }
 
 // Insert a new CriticMarkup comment after the block at blockIndex.
@@ -65,16 +83,20 @@ export function insertComment(
   type: CommentType,
   text: string,
 ): string {
-  const blocks = getBlockPositions(cleanMarkdown)
+  const blocks = getBlockPositions(cleanMarkdown);
   if (blockIndex < 0 || blockIndex >= blocks.length) {
-    return rawContent
+    console.error("[insertComment] blockIndex out of range", {
+      blockIndex,
+      totalBlocks: blocks.length,
+    });
+    return rawContent;
   }
 
-  const blockEnd = blocks[blockIndex].end
-  const segments = buildSegments(rawContent, existingComments)
-  const rawPos = cleanToRaw(blockEnd, segments)
+  const blockEnd = blocks[blockIndex].end;
+  const segments = buildSegments(rawContent, existingComments);
+  const rawPos = cleanToRaw(blockEnd, segments);
 
-  const prefix = type === 'note' ? '' : `${type}: `
-  const markup = `{>>${prefix}${text}<<}`
-  return rawContent.slice(0, rawPos) + markup + rawContent.slice(rawPos)
+  const prefix = type === "note" ? "" : `${type}: `;
+  const markup = `{>>${prefix}${text}<<}`;
+  return rawContent.slice(0, rawPos) + markup + rawContent.slice(rawPos);
 }

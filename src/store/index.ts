@@ -1071,10 +1071,18 @@ export const useAppStore = create<AppState>()(
       mergeComment: async (docId, comment) => {
         const tab = activeTab(get);
         if (!tab?.fileHandle) {
+          console.error("[mergeComment] no active tab or fileHandle", {
+            hasTab: !!tab,
+            hasHandle: !!tab?.fileHandle,
+          });
           return;
         }
         const currentPath = tab.activeFilePath ?? tab.fileName ?? "";
         if (comment.path !== currentPath) {
+          console.error("[mergeComment] path mismatch", {
+            commentPath: comment.path,
+            currentPath,
+          });
           return;
         }
 
@@ -1088,6 +1096,13 @@ export const useAppStore = create<AppState>()(
           comment.commentType,
           comment.text + attribution,
         );
+        if (newRaw === tab.rawContent) {
+          console.error("[mergeComment] insert had no effect", {
+            blockIndex: comment.blockRef.blockIndex,
+            commentType: comment.commentType,
+            contentLength: tab.rawContent.length,
+          });
+        }
         await writeAndUpdate(get, set, tab.fileHandle, newRaw);
         get().dismissComment(docId, comment.id);
       },
