@@ -203,6 +203,14 @@ interface AppState {
   peerComments: Comment[];
   peerCommentPanelOpen: boolean;
 
+  // Block highlight (transient UI state for comment hover)
+  hoveredBlockHighlight: { blockIndex: number; color: string } | null;
+  setHoveredBlockHighlight: (
+    blockIndex: number | undefined,
+    color: string,
+  ) => void;
+  clearHoveredBlockHighlight: () => void;
+
   // Tab management actions
   addTab: (tab: TabState) => void;
   removeTab: (tabId: string) => void;
@@ -404,6 +412,16 @@ export const useAppStore = create<AppState>()(
       peerResolvedComments: [],
       peerComments: [],
       peerCommentPanelOpen: false,
+
+      hoveredBlockHighlight: null,
+      setHoveredBlockHighlight: (blockIndex, color) => {
+        if (blockIndex === undefined) {
+          set({ hoveredBlockHighlight: null });
+          return;
+        }
+        set({ hoveredBlockHighlight: { blockIndex, color } });
+      },
+      clearHoveredBlockHighlight: () => set({ hoveredBlockHighlight: null }),
 
       // ── Tab management ──────────────────────────────────────────────────
 

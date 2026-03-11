@@ -1,4 +1,4 @@
-import './CommentPanel.css'
+import "./CommentPanel.css";
 import { useEffect, useMemo, useState } from "react";
 import { useAppStore } from "../../store";
 import { useActiveTab } from "../../store/selectors";
@@ -65,7 +65,9 @@ export function CommentPanel({ peerMode = false }: Props) {
   const toggleCommentPanel = useAppStore((s) => s.toggleCommentPanel);
   const myPeerComments = useAppStore((s) => s.myPeerComments);
   const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
-  const activeFilePath = peerMode ? peerActiveFilePath : (tab?.activeFilePath ?? null);
+  const activeFilePath = peerMode
+    ? peerActiveFilePath
+    : (tab?.activeFilePath ?? null);
   const fileTree = tab?.fileTree ?? [];
   const allFileComments = tab?.allFileComments ?? {};
   const navigateToComment = useAppStore((s) => s.navigateToComment);
@@ -107,8 +109,8 @@ export function CommentPanel({ peerMode = false }: Props) {
     const byPath: Record<string, DisplayComment[]> = {};
     for (const c of myPeerComments) {
       if (!byPath[c.path]) {
-      byPath[c.path] = [];
-    }
+        byPath[c.path] = [];
+      }
       byPath[c.path].push({
         id: c.id,
         type: c.commentType,
@@ -159,7 +161,13 @@ export function CommentPanel({ peerMode = false }: Props) {
       return sourceComments;
     }
     return crossFileComments.flatMap((e) => e.comments);
-  }, [isPeerMultiFile, peerDisplayComments, isFolderMode, crossFileComments, sourceComments]);
+  }, [
+    isPeerMultiFile,
+    peerDisplayComments,
+    isFolderMode,
+    crossFileComments,
+    sourceComments,
+  ]);
 
   // Count per type
   const counts = useMemo(() => {
@@ -240,9 +248,10 @@ export function CommentPanel({ peerMode = false }: Props) {
     }
   }, [activeCommentId]);
 
-  const displayCount = isPeerMultiFile || isFolderMode
-    ? totalCrossFileCount
-    : sourceComments.length;
+  const displayCount =
+    isPeerMultiFile || isFolderMode
+      ? totalCrossFileCount
+      : sourceComments.length;
   const showTypeFilters = !isResolved && activeTypes.length > 1;
   const showStatusFilters = !peerMode && resolvedComments.length > 0;
 
@@ -489,11 +498,17 @@ function CommentEntry({
   const [confirming, setConfirming] = useState(false);
 
   const isFullComment = "criticType" in comment;
-  const label = comment.text || (isFullComment ? comment.highlightedText : undefined) || (isFullComment ? comment.from : undefined) || "";
+  const label =
+    comment.text ||
+    (isFullComment ? comment.highlightedText : undefined) ||
+    (isFullComment ? comment.from : undefined) ||
+    "";
   const displayText = label.length > 72 ? label.slice(0, 72) + "…" : label;
   const isEditable =
     canEdit &&
-    (!isFullComment || !comment.criticType || EDITABLE_CRITIC_TYPES.includes(comment.criticType));
+    (!isFullComment ||
+      !comment.criticType ||
+      EDITABLE_CRITIC_TYPES.includes(comment.criticType));
 
   if (editing) {
     return (
@@ -524,6 +539,9 @@ function CommentEntry({
     );
   }
 
+  const setHighlight = useAppStore((s) => s.setHoveredBlockHighlight);
+  const clearHighlight = useAppStore((s) => s.clearHoveredBlockHighlight);
+
   return (
     <div
       data-comment-id={comment.id}
@@ -536,6 +554,12 @@ function CommentEntry({
           onClick();
         }
       }}
+      onMouseEnter={() => {
+        if (!isOtherFile) {
+          setHighlight(comment.blockIndex, TYPE_COLOR[comment.type]);
+        }
+      }}
+      onMouseLeave={clearHighlight}
     >
       <span
         className="comment-panel__badge"
@@ -585,7 +609,11 @@ function CrossFileList({
   onEdit,
   onDelete,
 }: {
-  entries: { filePath: string; fileName: string; comments: (Comment | DisplayComment)[] }[];
+  entries: {
+    filePath: string;
+    fileName: string;
+    comments: (Comment | DisplayComment)[];
+  }[];
   activeFilePath: string | null;
   activeCommentId: string | null;
   onEntryClick: (id: string, blockIndex: number | undefined) => void;
@@ -700,7 +728,11 @@ function SingleFileList({
               <span className="comment-panel__ref">¶{c.blockIndex + 1}</span>
             )}
             <span className="comment-panel__text comment-panel__text--resolved">
-              {peerMode ? entryLabel(c) : "criticType" in c ? hostEntryLabel(c) : entryLabel(c)}
+              {peerMode
+                ? entryLabel(c)
+                : "criticType" in c
+                  ? hostEntryLabel(c)
+                  : entryLabel(c)}
             </span>
           </div>
         ) : (

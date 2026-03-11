@@ -1,4 +1,4 @@
-import './MarkdownRenderer.css'
+import "./MarkdownRenderer.css";
 import {
   type ComponentPropsWithoutRef,
   useCallback,
@@ -202,6 +202,27 @@ export function MarkdownRenderer() {
     setActiveCommentId,
     clearPendingScrollTarget,
   ]);
+
+  // Highlight the block when hovering a comment in the panel
+  const hoveredBlockHighlight = useAppStore((s) => s.hoveredBlockHighlight);
+  useEffect(() => {
+    if (!hoveredBlockHighlight) {
+      return;
+    }
+    const el = viewerRef.current?.querySelector(
+      `[data-block-index="${hoveredBlockHighlight.blockIndex}"]`,
+    );
+    if (!(el instanceof HTMLElement)) {
+      return;
+    }
+    el.style.backgroundColor = `color-mix(in srgb, ${hoveredBlockHighlight.color} 15%, transparent)`;
+    el.style.borderRadius = "4px";
+    el.style.transition = "background-color 0.15s ease";
+    return () => {
+      el.style.backgroundColor = "";
+      el.style.borderRadius = "";
+    };
+  }, [hoveredBlockHighlight]);
 
   const rehypePlugins = shikiPlugin
     ? ([rehypeBlockIndex, shikiPlugin] as const)
