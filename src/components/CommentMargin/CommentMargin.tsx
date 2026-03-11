@@ -1,9 +1,10 @@
-import './CommentMargin.css'
+import "./CommentMargin.css";
 import { useEffect, useRef, useMemo, useState } from "react";
 import { useAppStore } from "../../store";
 import { useActiveTab } from "../../store/selectors";
 import { CommentCard } from "../CommentCard";
 import { peerColor, initials } from "../../utils/peerDisplay";
+import { COMMENT_TYPE_COLOR } from "../../types/criticmarkup";
 import type { Comment, CommentType } from "../../types/criticmarkup";
 import type { PeerComment } from "../../types/share";
 
@@ -82,16 +83,6 @@ function AddCommentForm({ top, onSubmit, onCancel }: AddCommentFormProps) {
     </form>
   );
 }
-
-const TYPE_COLOR: Record<CommentType, string> = {
-  fix: "var(--c-red)",
-  rewrite: "var(--c-orange)",
-  expand: "var(--accent)",
-  clarify: "var(--c-purple)",
-  question: "var(--c-cyan)",
-  remove: "var(--text-muted)",
-  note: "var(--c-green)",
-};
 
 interface DotGroup {
   top: number;
@@ -184,7 +175,15 @@ export function CommentMargin({
       byBlock.set(idx, arr);
     }
     return byBlock;
-  }, [peerMode, myPeerComments, peerActiveFilePath, pendingComments, activeDocId, activeFilePath, fileName]);
+  }, [
+    peerMode,
+    myPeerComments,
+    peerActiveFilePath,
+    pendingComments,
+    activeDocId,
+    activeFilePath,
+    fileName,
+  ]);
 
   // Close card when clicking outside
   useEffect(() => {
@@ -289,7 +288,7 @@ export function CommentMargin({
         // Find peer comments for the same block
         const blockIdx = groupComments[0]?.blockIndex;
         const peerForBlock =
-          blockIdx !== undefined ? peerDotGroups.get(blockIdx) ?? [] : [];
+          blockIdx !== undefined ? (peerDotGroups.get(blockIdx) ?? []) : [];
         return (
           <div key={i}>
             <div className="comment-margin__dots" style={{ top }}>
@@ -297,7 +296,7 @@ export function CommentMargin({
                 <button
                   key={c.id}
                   className={`comment-margin__dot${activeId === c.id ? " comment-margin__dot--active" : ""}`}
-                  style={{ backgroundColor: TYPE_COLOR[c.type] }}
+                  style={{ backgroundColor: COMMENT_TYPE_COLOR[c.type] }}
                   aria-label={`${c.type}: ${c.text}`}
                   title={`${c.type}: ${c.text}`}
                   onClick={(e) => {

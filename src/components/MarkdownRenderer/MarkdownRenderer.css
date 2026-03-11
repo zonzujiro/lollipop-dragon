@@ -270,6 +270,33 @@
   font-style: italic;
 }
 
+/* ── Block highlight (comment hover) ─────────────────────────── */
+[data-highlight-type] {
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+}
+[data-highlight-type="fix"] {
+  background-color: color-mix(in srgb, var(--c-red) 15%, transparent);
+}
+[data-highlight-type="rewrite"] {
+  background-color: color-mix(in srgb, var(--c-orange) 15%, transparent);
+}
+[data-highlight-type="expand"] {
+  background-color: color-mix(in srgb, var(--accent) 15%, transparent);
+}
+[data-highlight-type="clarify"] {
+  background-color: color-mix(in srgb, var(--c-purple) 15%, transparent);
+}
+[data-highlight-type="question"] {
+  background-color: color-mix(in srgb, var(--c-cyan) 15%, transparent);
+}
+[data-highlight-type="remove"] {
+  background-color: color-mix(in srgb, var(--text-muted) 15%, transparent);
+}
+[data-highlight-type="note"] {
+  background-color: color-mix(in srgb, var(--c-green) 15%, transparent);
+}
+
 /* ── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .markdown-body h1 {

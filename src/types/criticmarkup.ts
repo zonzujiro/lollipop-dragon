@@ -16,6 +16,17 @@ export type CommentType =
   | "question"
   | "remove";
 
+/** CSS color variable for each comment type. */
+export const COMMENT_TYPE_COLOR: Record<CommentType, string> = {
+  fix: "var(--c-red)",
+  rewrite: "var(--c-orange)",
+  expand: "var(--accent)",
+  clarify: "var(--c-purple)",
+  question: "var(--c-cyan)",
+  remove: "var(--text-muted)",
+  note: "var(--c-green)",
+};
+
 export interface Comment {
   id: string;
   criticType: CriticType;

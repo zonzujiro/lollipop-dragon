@@ -42,6 +42,10 @@ If a component reads tab state while in peer mode (or vice versa), it will get s
 - Decide whether it is tab-scoped or global. If it only matters in host mode, put it on `TabState`. If it only matters in peer mode or is truly global, put it on `AppState` root.
 - Put shared selectors in `src/store/selectors.ts` to avoid logic duplication.
 
+## Styling
+
+- **Always prefer CSS over JS for visual changes.** Use classes, data attributes, and CSS variables for styling, transitions, and conditional visuals. Inline styles via JS are a last resort — only use them when there is genuinely no CSS-only solution (e.g., values computed at runtime that cannot be expressed as CSS variables or attributes).
+
 ## Component Conventions
 
 - Components that work in both modes (`CommentPanel`, `Header`, `CommentMargin`, `MarkdownRenderer`) receive a **`peerMode` prop**.

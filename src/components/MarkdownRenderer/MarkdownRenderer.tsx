@@ -215,12 +215,9 @@ export function MarkdownRenderer() {
     if (!(el instanceof HTMLElement)) {
       return;
     }
-    el.style.backgroundColor = `color-mix(in srgb, ${hoveredBlockHighlight.color} 15%, transparent)`;
-    el.style.borderRadius = "4px";
-    el.style.transition = "background-color 0.15s ease";
+    el.setAttribute("data-highlight-type", hoveredBlockHighlight.commentType);
     return () => {
-      el.style.backgroundColor = "";
-      el.style.borderRadius = "";
+      el.removeAttribute("data-highlight-type");
     };
   }, [hoveredBlockHighlight]);
 

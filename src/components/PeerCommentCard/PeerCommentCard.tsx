@@ -1,19 +1,18 @@
 import "./PeerCommentCard.css";
 import { useAppStore } from "../../store";
+import { COMMENT_TYPE_COLOR } from "../../types/criticmarkup";
+import type { CommentType } from "../../types/criticmarkup";
 import type { PeerComment } from "../../types/share";
-
-const TYPE_COLORS: Record<string, string> = {
-  fix: "var(--c-red)",
-  rewrite: "var(--c-orange)",
-  expand: "var(--accent)",
-  clarify: "var(--c-purple)",
-  question: "var(--c-cyan)",
-  remove: "var(--text-muted)",
-  note: "var(--c-green)",
-};
 
 function fileBaseName(path: string): string {
   return path.split("/").pop() ?? path;
+}
+
+function commentTypeColor(type: string): string {
+  if (type in COMMENT_TYPE_COLOR) {
+    return COMMENT_TYPE_COLOR[type as CommentType];
+  }
+  return "inherit";
 }
 
 interface Props {
@@ -27,7 +26,6 @@ export function PeerCommentCard({ docId, comment, currentPath }: Props) {
   const dismissComment = useAppStore((s) => s.dismissComment);
   const navigateToBlock = useAppStore((s) => s.navigateToBlock);
   const setHighlight = useAppStore((s) => s.setHoveredBlockHighlight);
-  const clearHighlight = useAppStore((s) => s.clearHoveredBlockHighlight);
   const canMerge = comment.path === currentPath;
 
   function handleNavigate() {
@@ -46,14 +44,14 @@ export function PeerCommentCard({ docId, comment, currentPath }: Props) {
         }
       }}
       onMouseEnter={() => {
-        if (canMerge) {
-          setHighlight(
-            comment.blockRef.blockIndex,
-            TYPE_COLORS[comment.commentType] ?? "var(--accent)",
-          );
+        if (canMerge && comment.commentType in COMMENT_TYPE_COLOR) {
+          setHighlight({
+            blockIndex: comment.blockRef.blockIndex,
+            commentType: comment.commentType as CommentType,
+          });
         }
       }}
-      onMouseLeave={clearHighlight}
+      onMouseLeave={() => setHighlight(null)}
     >
       <div className="peer-card__meta">
         <span className="peer-card__peer">{comment.peerName}</span>
@@ -62,7 +60,7 @@ export function PeerCommentCard({ docId, comment, currentPath }: Props) {
         </span>
         <span
           className="peer-card__type"
-          style={{ color: TYPE_COLORS[comment.commentType] ?? "inherit" }}
+          style={{ color: commentTypeColor(comment.commentType) }}
         >
           {comment.commentType}
         </span>

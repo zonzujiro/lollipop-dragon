@@ -2,17 +2,8 @@ import "./CommentPanel.css";
 import { useEffect, useMemo, useState } from "react";
 import { useAppStore } from "../../store";
 import { useActiveTab } from "../../store/selectors";
+import { COMMENT_TYPE_COLOR } from "../../types/criticmarkup";
 import type { Comment, CommentType } from "../../types/criticmarkup";
-
-const TYPE_COLOR: Record<CommentType, string> = {
-  fix: "var(--c-red)",
-  rewrite: "var(--c-orange)",
-  expand: "var(--accent)",
-  clarify: "var(--c-purple)",
-  question: "var(--c-cyan)",
-  remove: "var(--text-muted)",
-  note: "var(--c-green)",
-};
 
 const ALL_TYPES: CommentType[] = [
   "fix",
@@ -322,8 +313,8 @@ export function CommentPanel({ peerMode = false }: Props) {
                   style={
                     commentFilter === type
                       ? {
-                          borderColor: TYPE_COLOR[type],
-                          color: TYPE_COLOR[type],
+                          borderColor: COMMENT_TYPE_COLOR[type],
+                          color: COMMENT_TYPE_COLOR[type],
                         }
                       : {}
                   }
@@ -496,6 +487,7 @@ function CommentEntry({
 }) {
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const setHighlight = useAppStore((s) => s.setHoveredBlockHighlight);
 
   const isFullComment = "criticType" in comment;
   const label =
@@ -539,9 +531,6 @@ function CommentEntry({
     );
   }
 
-  const setHighlight = useAppStore((s) => s.setHoveredBlockHighlight);
-  const clearHighlight = useAppStore((s) => s.clearHoveredBlockHighlight);
-
   return (
     <div
       data-comment-id={comment.id}
@@ -555,15 +544,21 @@ function CommentEntry({
         }
       }}
       onMouseEnter={() => {
-        if (!isOtherFile) {
-          setHighlight(comment.blockIndex, TYPE_COLOR[comment.type]);
+        if (!isOtherFile && comment.blockIndex !== undefined) {
+          setHighlight({
+            blockIndex: comment.blockIndex,
+            commentType: comment.type,
+          });
         }
       }}
-      onMouseLeave={clearHighlight}
+      onMouseLeave={() => setHighlight(null)}
     >
       <span
         className="comment-panel__badge"
-        style={{ backgroundColor: TYPE_COLOR[comment.type], color: "#fff" }}
+        style={{
+          backgroundColor: COMMENT_TYPE_COLOR[comment.type],
+          color: "#fff",
+        }}
       >
         {comment.type}
       </span>
@@ -717,7 +712,7 @@ function SingleFileList({
             <span
               className="comment-panel__badge"
               style={{
-                backgroundColor: TYPE_COLOR[c.type],
+                backgroundColor: COMMENT_TYPE_COLOR[c.type],
                 color: "#fff",
                 opacity: 0.6,
               }}
