@@ -1074,6 +1074,14 @@ export const useAppStore = create<AppState>()(
           console.error("[mergeComment] no active tab or fileHandle", {
             hasTab: !!tab,
             hasHandle: !!tab?.fileHandle,
+            tabId: tab?.id,
+            activeTabId: get().activeTabId,
+            tabFileName: tab?.fileName,
+            allTabs: get().tabs.map((t) => ({
+              id: t.id,
+              fileName: t.fileName,
+              hasHandle: !!t.fileHandle,
+            })),
           });
           return;
         }
