@@ -817,10 +817,29 @@ export const useAppStore = create<AppState>()(
                 `tab:${tab.id}:file`,
               );
               if (!handle) {
+                console.warn(
+                  "[restoreTabs] no handle in IndexedDB for file tab:",
+                  tab.id,
+                  tab.fileName,
+                );
                 continue;
               }
-              const perm = await handle.queryPermission({ mode: "readwrite" });
-              if (perm !== "granted") {
+              const readPerm = await handle.queryPermission({ mode: "read" });
+              const writePerm = await handle.queryPermission({
+                mode: "readwrite",
+              });
+              console.log("[restoreTabs] file tab permissions", {
+                tabId: tab.id,
+                fileName: tab.fileName,
+                readPerm,
+                writePerm,
+              });
+              if (writePerm !== "granted") {
+                console.warn(
+                  "[restoreTabs] skipping file tab — readwrite not granted:",
+                  tab.id,
+                  tab.fileName,
+                );
                 continue;
               }
               let restoredRaw: string | null = null;
@@ -836,6 +855,11 @@ export const useAppStore = create<AppState>()(
                 fileHandle: handle,
                 ...(restoredRaw !== null ? { rawContent: restoredRaw } : {}),
               }));
+              console.log(
+                "[restoreTabs] file tab restored successfully:",
+                tab.id,
+                tab.fileName,
+              );
             } catch (e) {
               console.error(
                 "[restoreTabs] failed to restore file tab:",
@@ -1093,6 +1117,22 @@ export const useAppStore = create<AppState>()(
           });
           return;
         }
+
+        const readPerm = await tab.fileHandle.queryPermission({
+          mode: "read",
+        });
+        const writePerm = await tab.fileHandle.queryPermission({
+          mode: "readwrite",
+        });
+        console.log("[mergeComment] proceeding", {
+          tabId: tab.id,
+          fileName: tab.fileName,
+          activeFilePath: tab.activeFilePath,
+          readPerm,
+          writePerm,
+          commentPath: comment.path,
+          blockIndex: comment.blockRef.blockIndex,
+        });
 
         const { cleanMarkdown } = parseCriticMarkup(tab.rawContent);
         const attribution = ` — ${comment.peerName}`;
