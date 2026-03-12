@@ -64,6 +64,7 @@ export function CommentPanel({ peerMode = false }: Props) {
   const navigateToComment = useAppStore((s) => s.navigateToComment);
   const editComment = useAppStore((s) => s.editComment);
   const deleteComment = useAppStore((s) => s.deleteComment);
+  const deleteAllComments = useAppStore((s) => s.deleteAllComments);
   const editPeerComment = useAppStore((s) => s.editPeerComment);
   const deletePeerComment = useAppStore((s) => s.deletePeerComment);
   const selectPeerFile = useAppStore((s) => s.selectPeerFile);
@@ -255,6 +256,15 @@ export function CommentPanel({ peerMode = false }: Props) {
             <span className="comment-panel__count">{displayCount}</span>
           )}
         </span>
+        {!peerMode && displayCount > 0 && (
+          <button
+            className="comment-panel__delete-all"
+            onClick={deleteAllComments}
+            title="Delete all comments from the file"
+          >
+            Delete all
+          </button>
+        )}
         <button
           className="comment-panel__close"
           onClick={toggleCommentPanel}

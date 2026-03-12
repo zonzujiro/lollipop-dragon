@@ -1,4 +1,4 @@
-import './SharedPanel.css'
+import "./SharedPanel.css";
 import { useState } from "react";
 import { useAppStore } from "../../store";
 import { useActiveTab } from "../../store/selectors";
@@ -37,13 +37,20 @@ export function SharedPanel() {
   const toggleSharedPanel = useAppStore((s) => s.toggleSharedPanel);
   const revokeShare = useAppStore((s) => s.revokeShare);
   const fetchPendingComments = useAppStore((s) => s.fetchPendingComments);
+  const fetchAllPendingComments = useAppStore((s) => s.fetchAllPendingComments);
   const pendingComments = tab?.pendingComments ?? {};
 
   const showToast = useAppStore((s) => s.showToast);
 
   const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
   const [loadingDocId, setLoadingDocId] = useState<string | null>(null);
+  const [loadingAll, setLoadingAll] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+
+  const hasActiveShares = shares.some(
+    (s) => new Date(s.expiresAt) > new Date(),
+  );
+
   async function handleFetch(docId: string) {
     setLoadingDocId(docId);
     setFetchError(null);
@@ -51,17 +58,42 @@ export function SharedPanel() {
       await fetchPendingComments(docId);
       setExpandedDocId(docId);
     } catch (e) {
-      setFetchError(e instanceof Error ? e.message : "Failed to fetch comments");
+      setFetchError(
+        e instanceof Error ? e.message : "Failed to fetch comments",
+      );
     } finally {
       setLoadingDocId(null);
     }
   }
 
+  async function handleFetchAll() {
+    setLoadingAll(true);
+    setFetchError(null);
+    try {
+      await fetchAllPendingComments();
+    } catch (e) {
+      setFetchError(
+        e instanceof Error ? e.message : "Failed to fetch comments",
+      );
+    } finally {
+      setLoadingAll(false);
+    }
+  }
 
   return (
     <aside className="shared-panel" aria-label="Shared documents">
       <div className="shared-panel__header">
         <h2 className="shared-panel__title">Shared</h2>
+        {hasActiveShares && (
+          <button
+            className="shared-panel__btn shared-panel__btn--check-all"
+            onClick={handleFetchAll}
+            disabled={loadingAll}
+            title="Fetch comments for all active shares"
+          >
+            {loadingAll ? "Checking…" : "Check all"}
+          </button>
+        )}
         <button
           className="shared-panel__close"
           onClick={toggleSharedPanel}
@@ -71,9 +103,7 @@ export function SharedPanel() {
         </button>
       </div>
 
-      {fetchError && (
-        <p className="shared-panel__error">{fetchError}</p>
-      )}
+      {fetchError && <p className="shared-panel__error">{fetchError}</p>}
 
       {shares.length === 0 ? (
         <p className="shared-panel__empty">

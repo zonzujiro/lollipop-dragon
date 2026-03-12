@@ -239,6 +239,7 @@ interface AppState {
   ) => Promise<void>;
   editComment: (id: string, type: CommentType, text: string) => Promise<void>;
   deleteComment: (id: string) => Promise<void>;
+  deleteAllComments: () => Promise<void>;
   undo: () => Promise<void>;
   clearUndo: () => void;
   scanAllFileComments: () => Promise<void>;
@@ -265,6 +266,7 @@ interface AppState {
   revokeShare: (docId: string) => Promise<void>;
   updateShare: (docId: string) => Promise<void>;
   fetchPendingComments: (docId: string) => Promise<void>;
+  fetchAllPendingComments: () => Promise<void>;
   mergeComment: (docId: string, comment: PeerComment) => Promise<void>;
   dismissComment: (docId: string, cmtId: string) => void;
   clearPendingComments: (docId: string) => Promise<void>;
@@ -681,6 +683,22 @@ export const useAppStore = create<AppState>()(
           tab.fileHandle,
           applyDelete(tab.rawContent, comment),
         );
+      },
+
+      deleteAllComments: async () => {
+        const tab = activeTab(get);
+        if (!tab?.fileHandle || tab.comments.length === 0) {
+          return;
+        }
+        // Apply deletions from end to start to preserve offsets
+        const sorted = [...tab.comments].sort(
+          (a, b) => b.rawStart - a.rawStart,
+        );
+        let raw = tab.rawContent;
+        for (const comment of sorted) {
+          raw = applyDelete(raw, comment);
+        }
+        await writeAndUpdate(get, set, tab.fileHandle, raw);
       },
 
       editComment: async (id, type, text) => {
@@ -1106,6 +1124,19 @@ export const useAppStore = create<AppState>()(
           pendingComments: pc,
           shares,
         }));
+      },
+
+      fetchAllPendingComments: async () => {
+        const tab = activeTab(get);
+        if (!tab) {
+          return;
+        }
+        const active = tab.shares.filter(
+          (s) => new Date(s.expiresAt) > new Date(),
+        );
+        for (const share of active) {
+          await get().fetchPendingComments(share.docId);
+        }
       },
 
       mergeComment: async (docId, comment) => {

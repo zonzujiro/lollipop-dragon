@@ -141,6 +141,10 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+.shared-panel__btn--check-all {
+  margin-left: auto;
+}
+
 .shared-panel__btn--revoke {
   color: var(--c-red);
   border-color: var(--c-red);

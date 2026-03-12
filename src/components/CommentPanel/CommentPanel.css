@@ -45,6 +45,20 @@
   color: var(--text-secondary);
 }
 
+.comment-panel__delete-all {
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  color: var(--c-red);
+}
+.comment-panel__delete-all:hover {
+  background-color: color-mix(in srgb, var(--c-red) 10%, transparent);
+}
+
 .comment-panel__close {
   background: none;
   border: none;
