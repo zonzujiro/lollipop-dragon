@@ -8,6 +8,7 @@ Read the [contribution guide](./docs/contributing.md) and review the docs in [`d
 
 - **Never use `as` for type assertions.** Use type guards, proper narrowing, or helper functions instead.
 - **Always use braces `{}` for `if`/`else`/`for`/`while` blocks.** No single-line bodies without braces.
+- **No IIFEs.** Extract async logic into named functions instead of `(async () => { ... })()`.
 
 ## Architecture Overview
 
@@ -41,6 +42,11 @@ If a component reads tab state while in peer mode (or vice versa), it will get s
 
 - Decide whether it is tab-scoped or global. If it only matters in host mode, put it on `TabState`. If it only matters in peer mode or is truly global, put it on `AppState` root.
 - Put shared selectors in `src/store/selectors.ts` to avoid logic duplication.
+
+## Error Handling
+
+- **Never swallow errors silently.** Empty `catch {}` blocks hide real bugs. Always log or re-throw. If an error is expected (e.g., optional API unavailable), log a warning with context.
+- **Handle environment guards at the boundary, not at every call site.** If a service (e.g., IndexedDB) may be unavailable, make the service itself return a rejected promise or no-op — don't wrap every caller in try/catch.
 
 ## Styling
 

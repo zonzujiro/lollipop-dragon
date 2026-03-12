@@ -5,6 +5,7 @@ import {
   getUnsubmittedPeerComments,
 } from "../../store/selectors";
 import { SunIcon, MoonIcon } from "../Icons";
+import { HistoryDropdown } from "../HistoryDropdown";
 import { WORKER_URL } from "../../config";
 
 function FocusIcon() {
@@ -169,6 +170,8 @@ export function Header({ peerMode = false, onShare, onPresent }: Props) {
               >
                 Open folder
               </button>
+
+              <HistoryDropdown />
 
               {WORKER_URL && hasContent && (
                 <>

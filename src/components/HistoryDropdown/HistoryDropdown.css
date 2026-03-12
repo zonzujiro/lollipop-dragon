@@ -1,0 +1,120 @@
+.history-dropdown {
+  position: relative;
+}
+
+.history-dropdown__menu {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  right: 0;
+  z-index: 100;
+  width: 260px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.history-dropdown__header {
+  padding: 0.5rem 0.75rem 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.history-dropdown__list {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.history-dropdown__item {
+  display: flex;
+  align-items: center;
+}
+
+.history-dropdown__entry {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+}
+
+.history-dropdown__entry:hover {
+  background-color: var(--surface-alt);
+}
+
+.history-dropdown__icon {
+  flex-shrink: 0;
+  font-size: 0.9rem;
+}
+
+.history-dropdown__info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.history-dropdown__name {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-dropdown__meta {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.history-dropdown__remove {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  line-height: 1;
+  opacity: 0;
+}
+
+.history-dropdown__item:hover .history-dropdown__remove {
+  opacity: 1;
+}
+
+.history-dropdown__remove:hover {
+  color: var(--c-red);
+  background-color: color-mix(in srgb, var(--c-red) 10%, transparent);
+}
+
+.history-dropdown__clear {
+  display: block;
+  width: 100%;
+  padding: 0.45rem 0.75rem;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--border-light);
+  cursor: pointer;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.history-dropdown__clear:hover {
+  background-color: var(--surface-alt);
+  color: var(--c-red);
+}

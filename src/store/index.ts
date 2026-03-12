@@ -27,6 +27,7 @@ import type { Comment, CommentType } from "../types/criticmarkup";
 import type { ShareRecord, SharePayload, PeerComment } from "../types/share";
 import type { TabState, FileCommentEntry } from "../types/tab";
 import { createDefaultTab } from "../types/tab";
+import type { HistoryEntry } from "../types/history";
 import { getActiveTab, getUnsubmittedPeerComments } from "./selectors";
 import { WORKER_URL } from "../config";
 
@@ -71,6 +72,73 @@ function saveShares(key: string, shares: ShareRecord[]) {
   const all = loadAllShares();
   all[key] = shares;
   saveAllShares(all);
+}
+
+// ── History localStorage helpers ────────────────────────────────────────────
+
+const HISTORY_KEY = "markreview-history";
+const HISTORY_LIMIT = 20;
+const HISTORY_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+function loadHistory(): HistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) {
+      return [];
+    }
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+function saveHistory(entries: HistoryEntry[]) {
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(entries));
+}
+
+async function migrateHandleToHistory(
+  handleKey: string,
+  historyEntryId: string,
+  history: HistoryEntry[],
+  get: () => AppState,
+) {
+  const h = await getHandle(handleKey);
+  if (h) {
+    await saveHandle(`history:${historyEntryId}`, h);
+  }
+  await removeHandle(handleKey);
+
+  // Clean up evicted entries' handles
+  const evicted = get().history.filter(
+    (e) => !history.some((h) => h.id === e.id),
+  );
+  for (const ev of evicted) {
+    await removeHandle(`history:${ev.id}`).catch((e) =>
+      console.warn("[history] failed to remove evicted handle:", e),
+    );
+  }
+}
+
+function cleanExpiredHistory(): HistoryEntry[] {
+  const entries = loadHistory();
+  const cutoff = Date.now() - HISTORY_MAX_AGE_MS;
+  const live = entries.filter((e) => new Date(e.closedAt).getTime() > cutoff);
+  // Clean up IndexedDB handles for expired entries
+  for (const e of entries) {
+    if (new Date(e.closedAt).getTime() <= cutoff) {
+      removeHandle(`history:${e.id}`).catch((err) =>
+        console.warn("[history] failed to remove expired handle:", err),
+      );
+    }
+  }
+  if (live.length !== entries.length) {
+    saveHistory(live);
+  }
+  return live;
 }
 
 /** Load shares, migrate old tabId keys to stable keys, prune expired entries. */
@@ -214,6 +282,14 @@ interface AppState {
       commentType: CommentType;
     } | null,
   ) => void;
+
+  // History
+  history: HistoryEntry[];
+  historyDropdownOpen: boolean;
+  reopenFromHistory: (entryId: string) => Promise<void>;
+  removeHistoryEntry: (entryId: string) => void;
+  clearHistory: () => void;
+  toggleHistoryDropdown: () => void;
 
   // Tab management actions
   addTab: (tab: TabState) => void;
@@ -423,6 +499,143 @@ export const useAppStore = create<AppState>()(
       setHoveredBlockHighlight: (highlight) =>
         set({ hoveredBlockHighlight: highlight }),
 
+      // ── History ───────────────────────────────────────────────────────────
+
+      history: loadHistory(),
+      historyDropdownOpen: false,
+
+      toggleHistoryDropdown: () =>
+        set((s) => ({ historyDropdownOpen: !s.historyDropdownOpen })),
+
+      reopenFromHistory: async (entryId) => {
+        const entry = get().history.find((e) => e.id === entryId);
+        if (!entry) {
+          return;
+        }
+        const handle = await getHandle(`history:${entryId}`);
+        if (!handle) {
+          // Handle gone — remove entry and notify
+          const updated = get().history.filter((e) => e.id !== entryId);
+          saveHistory(updated);
+          set({ history: updated });
+          get().showToast("File access expired — please reopen manually");
+          return;
+        }
+
+        // Request permission (requires user gesture — this is called from a click)
+        let writeAllowed = false;
+        try {
+          const writePerm = await (
+            handle as FileSystemFileHandle
+          ).requestPermission({ mode: "readwrite" });
+          writeAllowed = writePerm === "granted";
+        } catch {
+          // readwrite not supported or denied
+        }
+        if (!writeAllowed) {
+          try {
+            const readPerm = await (
+              handle as FileSystemFileHandle
+            ).requestPermission({ mode: "read" });
+            if (readPerm !== "granted") {
+              get().showToast("Permission denied");
+              return;
+            }
+          } catch {
+            get().showToast("Permission denied");
+            return;
+          }
+        }
+
+        if (entry.type === "directory") {
+          const dirHandle = handle as FileSystemDirectoryHandle;
+          const tab = createDefaultTab({
+            label: entry.name,
+            directoryHandle: dirHandle,
+            directoryName: entry.name,
+            sidebarOpen: true,
+            writeAllowed,
+          });
+          get().addTab(tab);
+          await saveHandle(`tab:${tab.id}:directory`, dirHandle);
+          const tree = await buildFileTree(dirHandle);
+          updateTab(get, set, tab.id, () => ({ fileTree: tree }));
+
+          // Restore previously active file if available
+          if (entry.activeFilePath) {
+            const fileNode = findFileInTree(tree, entry.activeFilePath);
+            if (fileNode) {
+              const raw = await readFile(fileNode.handle);
+              updateTab(get, set, tab.id, () => ({
+                fileHandle: fileNode.handle,
+                fileName: fileNode.name,
+                rawContent: raw,
+                activeFilePath: fileNode.path,
+              }));
+            }
+          }
+
+          // Scan comments
+          if (get().activeTabId === tab.id) {
+            get().scanAllFileComments();
+          }
+        } else {
+          const fileHandle = handle as FileSystemFileHandle;
+          const raw = await readFile(fileHandle);
+          const tab = createDefaultTab({
+            label: entry.name,
+            fileHandle,
+            fileName: entry.name,
+            rawContent: raw,
+            writeAllowed,
+          });
+          get().addTab(tab);
+          await saveHandle(`tab:${tab.id}:file`, fileHandle);
+        }
+
+        // Remove from history and clean up history handle
+        const updated = get().history.filter((e) => e.id !== entryId);
+        saveHistory(updated);
+        set({ history: updated, historyDropdownOpen: false });
+        removeHandle(`history:${entryId}`).catch((e) =>
+          console.warn("[history] failed to remove handle:", e),
+        );
+
+        // Restore shares (they reconnect via stableKey)
+        const allShares = loadAndCleanShares(get().tabs);
+        const currentTab = activeTab(get);
+        if (currentTab) {
+          const tabShares = allShares[stableShareKey(currentTab)] ?? [];
+          if (tabShares.length > 0) {
+            const restoredKeys = await restoreShareKeys(tabShares);
+            updateActiveTab(get, set, (t) => ({
+              shares: tabShares,
+              shareKeys: { ...t.shareKeys, ...restoredKeys },
+            }));
+          }
+        }
+      },
+
+      removeHistoryEntry: (entryId) => {
+        const updated = get().history.filter((e) => e.id !== entryId);
+        saveHistory(updated);
+        set({ history: updated });
+        removeHandle(`history:${entryId}`).catch((e) =>
+          console.warn("[history] failed to remove handle:", e),
+        );
+      },
+
+      clearHistory: () => {
+        const entries = get().history;
+        for (const e of entries) {
+          removeHandle(`history:${e.id}`).catch((err) =>
+            console.warn("[history] failed to remove handle:", err),
+          );
+        }
+        saveHistory([]);
+        set({ history: [], historyDropdownOpen: false });
+      },
+
       // ── Tab management ──────────────────────────────────────────────────
 
       addTab: (tab) => {
@@ -438,25 +651,61 @@ export const useAppStore = create<AppState>()(
         if (idx === -1) {
           return;
         }
+        const tab = tabs[idx];
         const updated = tabs.filter((t) => t.id !== tabId);
         let newActiveId: string | null = null;
         if (updated.length > 0) {
           if (activeTabId === tabId) {
-            // Switch to adjacent tab
             const newIdx = Math.min(idx, updated.length - 1);
             newActiveId = updated[newIdx].id;
           } else {
             newActiveId = activeTabId;
           }
         }
-        // Clean up IndexedDB handles for the removed tab
-        removeHandle(`tab:${tabId}:directory`).catch((e) =>
-          console.warn("[handleStore] cleanup failed:", e),
-        );
-        removeHandle(`tab:${tabId}:file`).catch((e) =>
-          console.warn("[handleStore] cleanup failed:", e),
-        );
-        set({ tabs: updated, activeTabId: newActiveId });
+
+        // Archive to history
+        const isDir = !!tab.directoryName;
+        const name = tab.directoryName ?? tab.fileName;
+        if (name) {
+          const hasActiveShares = tab.shares.some(
+            (s) => new Date(s.expiresAt) > new Date(),
+          );
+          const entry: HistoryEntry = {
+            id: crypto.randomUUID(),
+            type: isDir ? "directory" : "file",
+            name,
+            stableKey: stableShareKey(tab),
+            closedAt: new Date().toISOString(),
+            activeFilePath: tab.activeFilePath,
+            hasActiveShares,
+          };
+
+          // Deduplicate by stableKey, enforce limit
+          let history = get().history.filter(
+            (e) => e.stableKey !== entry.stableKey,
+          );
+          history = [entry, ...history].slice(0, HISTORY_LIMIT);
+
+          // Move handle from tab: key to history: key (fire-and-forget)
+          const handleKey = isDir
+            ? `tab:${tabId}:directory`
+            : `tab:${tabId}:file`;
+          migrateHandleToHistory(handleKey, entry.id, history, get).catch((e) =>
+            console.warn("[history] handle migration failed:", e),
+          );
+
+          saveHistory(history);
+          set({ tabs: updated, activeTabId: newActiveId, history });
+        } else {
+          // No name — nothing to archive, just clean up
+          removeHandle(`tab:${tabId}:directory`).catch((e) =>
+            console.warn("[handleStore] cleanup failed:", e),
+          );
+          removeHandle(`tab:${tabId}:file`).catch((e) =>
+            console.warn("[handleStore] cleanup failed:", e),
+          );
+          set({ tabs: updated, activeTabId: newActiveId });
+        }
       },
 
       switchTab: (tabId) => {
@@ -797,6 +1046,10 @@ export const useAppStore = create<AppState>()(
       },
 
       restoreTabs: async () => {
+        // Prune expired history entries
+        const cleanedHistory = cleanExpiredHistory();
+        set({ history: cleanedHistory });
+
         const { tabs } = get();
         for (const tab of tabs) {
           if (tab.directoryName) {

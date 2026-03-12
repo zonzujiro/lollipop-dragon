@@ -106,5 +106,7 @@ export function resetTestStore() {
     peerResolvedComments: [],
     peerComments: [],
     peerCommentPanelOpen: false,
+    history: [],
+    historyDropdownOpen: false,
   });
 }
