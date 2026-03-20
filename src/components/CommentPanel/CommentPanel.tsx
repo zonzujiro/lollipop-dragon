@@ -639,7 +639,7 @@ function CrossFileList({
         return (
           <div key={entry.filePath}>
             <div className="comment-panel__file-header">
-              <span className="comment-panel__file-name">{entry.fileName}</span>
+              <span className="comment-panel__file-name">{entry.filePath}</span>
               <span className="comment-panel__file-count">
                 {entry.comments.length}
               </span>

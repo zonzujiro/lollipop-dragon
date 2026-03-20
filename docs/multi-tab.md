@@ -16,12 +16,12 @@ v4 addresses this by introducing browser-style tabs. Each tab encapsulates a com
 
 ## 3. User Decisions
 
-| Decision | Choice |
-|----------|--------|
-| Comment scope | Independent per tab — each tab owns its own comments |
-| Sharing scope | Per tab — each tab can be shared independently |
+| Decision          | Choice                                                    |
+| ----------------- | --------------------------------------------------------- |
+| Comment scope     | Independent per tab — each tab owns its own comments      |
+| Sharing scope     | Per tab — each tab can be shared independently            |
 | Tab bar placement | Horizontal strip below the header, above the content area |
-| Peer mode | Stays as full-screen takeover, not in tabs |
+| Peer mode         | Stays as full-screen takeover, not in tabs                |
 
 ---
 
@@ -101,8 +101,10 @@ myPeerComments: PeerComment[]
 A convenience selector `useActiveTab()` (in `src/store/selectors.ts`) returns the active `TabState` or `null`. Components use this instead of reading tab-scoped fields directly from the store. Individual field selectors are also provided:
 
 ```ts
-export function useActiveTab(): TabState | null
-export function useActiveTabField<K extends keyof TabState>(field: K): TabState[K] | undefined
+export function useActiveTab(): TabState | null;
+export function useActiveTabField<K extends keyof TabState>(
+  field: K,
+): TabState[K] | undefined;
 ```
 
 ### 4.3 Store Helper: `updateActiveTab`
@@ -113,8 +115,8 @@ An internal helper wraps the common pattern of updating the active tab within th
 function updateActiveTab(
   get: () => AppState,
   set: SetState<AppState>,
-  updater: (tab: TabState) => Partial<TabState>
-)
+  updater: (tab: TabState) => Partial<TabState>,
+);
 ```
 
 All existing actions that modify tab-scoped fields use this helper.
@@ -123,13 +125,13 @@ All existing actions that modify tab-scoped fields use this helper.
 
 ## 5. Tab Management Actions
 
-| Action | Behavior |
-|--------|----------|
-| `addTab(tab)` | Create tab with new UUID, push to `tabs[]`, set as `activeTabId` |
-| `removeTab(tabId)` | Stop polling, remove from `tabs[]`, switch to adjacent tab or show FilePicker if last |
-| `switchTab(tabId)` | Set `activeTabId` — no save/restore needed, all state lives in `tabs[]` |
-| `openFileInNewTab()` | Show file picker dialog, create tab with result |
-| `openDirectoryInNewTab()` | Show directory picker dialog, create tab with result |
+| Action                    | Behavior                                                                                                                                              |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `addTab(tab)`             | Create tab with new UUID, push to `tabs[]`, set as `activeTabId`                                                                                      |
+| `removeTab(tabId)`        | Stop polling, remove from `tabs[]`, switch to adjacent tab or show FilePicker if last                                                                 |
+| `switchTab(tabId)`        | Set `activeTabId` — no save/restore needed, all state lives in `tabs[]`                                                                               |
+| `openFileInNewTab()`      | Show file picker dialog; if a tab with the same file is already open (compared via `isSameEntry`), focus it instead of creating a duplicate           |
+| `openDirectoryInNewTab()` | Show directory picker dialog; if a tab with the same directory is already open (compared via `isSameEntry`), focus it instead of creating a duplicate |
 
 Existing `openFile()` and `openDirectory()` become wrappers that create new tabs.
 
@@ -172,12 +174,12 @@ The active tab's state drives which sidebar, comments, and panels are shown.
 
 ## 8. Keyboard Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| `Cmd+W` / `Ctrl+W` | Close active tab |
-| `Cmd+T` / `Ctrl+T` | Open new tab (file picker) |
-| `Ctrl+Tab` / `Ctrl+Shift+Tab` | Cycle through tabs |
-| `Cmd+B` / `Ctrl+B` | Toggle sidebar (active tab) — unchanged |
+| Shortcut                      | Action                                  |
+| ----------------------------- | --------------------------------------- |
+| `Cmd+W` / `Ctrl+W`            | Close active tab                        |
+| `Cmd+T` / `Ctrl+T`            | Open new tab (file picker)              |
+| `Ctrl+Tab` / `Ctrl+Shift+Tab` | Cycle through tabs                      |
+| `Cmd+B` / `Ctrl+B`            | Toggle sidebar (active tab) — unchanged |
 
 ---
 
@@ -204,6 +206,7 @@ The active tab's state drives which sidebar, comments, and panels are shown.
 ## 10. Startup & Restore
 
 On page load:
+
 1. Zustand hydrates `tabs[]` and `activeTabId` from localStorage
 2. Migration runs if old format detected
 3. `restoreAllTabs()` iterates persisted tabs and restores each directory handle from IndexedDB
@@ -213,37 +216,38 @@ On page load:
 
 ## 11. Component Impact
 
-| Component | Scope of change |
-|-----------|----------------|
-| `App.tsx` | Add TabBar, update selectors to use activeTab, update FileSystemObserver effects |
-| `Header.tsx` | Switch all tab-scoped selectors to useActiveTab, open-in-new-tab actions |
-| `FilePicker.tsx` | Use `openFileInNewTab` / `openDirectoryInNewTab` |
-| `MarkdownRenderer.tsx` | Update selectors to read from active tab |
-| `CommentPanel.tsx` | Update selectors to read from active tab |
-| `CommentMargin.tsx` | Update selectors to read from active tab |
-| `SharedPanel.tsx` | Update selectors to read from active tab |
-| `ShareDialog.tsx` | Update selectors to read from active tab |
-| `UndoToast.tsx` | Update selectors to read from active tab |
-| `PendingCommentReview.tsx` | Update selectors to read from active tab |
-| `PeerCommentCard.tsx` | Update selectors to read from active tab |
-| `Toast.tsx` | No change (global state) |
-| `PeerNamePrompt.tsx` | No change (global state) |
+| Component                  | Scope of change                                                                  |
+| -------------------------- | -------------------------------------------------------------------------------- |
+| `App.tsx`                  | Add TabBar, update selectors to use activeTab, update FileSystemObserver effects |
+| `Header.tsx`               | Switch all tab-scoped selectors to useActiveTab, open-in-new-tab actions         |
+| `FilePicker.tsx`           | Use `openFileInNewTab` / `openDirectoryInNewTab`                                 |
+| `MarkdownRenderer.tsx`     | Update selectors to read from active tab                                         |
+| `CommentPanel.tsx`         | Update selectors to read from active tab                                         |
+| `CommentMargin.tsx`        | Update selectors to read from active tab                                         |
+| `SharedPanel.tsx`          | Update selectors to read from active tab                                         |
+| `ShareDialog.tsx`          | Update selectors to read from active tab                                         |
+| `UndoToast.tsx`            | Update selectors to read from active tab                                         |
+| `PendingCommentReview.tsx` | Update selectors to read from active tab                                         |
+| `PeerCommentCard.tsx`      | Update selectors to read from active tab                                         |
+| `Toast.tsx`                | No change (global state)                                                         |
+| `PeerNamePrompt.tsx`       | No change (global state)                                                         |
 
 ---
 
 ## 12. New Files
 
-| File | Purpose |
-|------|---------|
-| `src/types/tab.ts` | `TabState` interface, `createDefaultTab()` factory |
-| `src/store/selectors.ts` | `useActiveTab()`, `useActiveTabField()` hooks |
-| `src/components/TabBar.tsx` | Tab bar UI component |
+| File                        | Purpose                                            |
+| --------------------------- | -------------------------------------------------- |
+| `src/types/tab.ts`          | `TabState` interface, `createDefaultTab()` factory |
+| `src/store/selectors.ts`    | `useActiveTab()`, `useActiveTabField()` hooks      |
+| `src/components/TabBar.tsx` | Tab bar UI component                               |
 
 ---
 
 ## 13. Implementation Order
 
 ### Phase 1: Foundation (store refactoring)
+
 1. Define `TabState` type
 2. Restructure store: `tabs[]` + `activeTabId` + global fields
 3. Add `updateActiveTab` helper
@@ -256,10 +260,12 @@ On page load:
 10. Update debounced auto-sync subscription
 
 ### Phase 2: Tab bar UI
+
 11. Create `TabBar.tsx` component
 12. Add tab bar CSS
 
 ### Phase 3: Component migration
+
 13. Update `App.tsx`
 14. Update `FilePicker.tsx`
 15. Update `Header.tsx`
@@ -268,6 +274,7 @@ On page load:
 18. Update `PendingCommentReview.tsx`, `PeerCommentCard.tsx`
 
 ### Phase 4: Polish
+
 19. Add keyboard shortcuts (Cmd+W, Cmd+T, Ctrl+Tab)
 20. Update tests
 
@@ -278,8 +285,10 @@ On page load:
 1. Open a single file → appears in a tab, all comments/sharing works as before
 2. Open a folder → appears as a tab with sidebar
 3. Open another file/folder → second tab appears, switching works
+   3a. Re-open the same file/folder → existing tab is focused, no duplicate created
 4. Close a tab → adjacent tab becomes active, or FilePicker if last
 5. Comments in each tab are independent
+   5a. In folder mode, comments on files with the same name in different directories show distinct file paths in the comment panel
 6. Share from tab A, switch to tab B, switch back — share tracked in tab A
 7. Refresh page → tabs restore, directory handles restored from IndexedDB
 8. Peer mode via URL → full-screen takeover, tabs hidden, works as before

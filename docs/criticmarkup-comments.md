@@ -67,6 +67,7 @@ MarkReview uses CriticMarkup, an open plain-text annotation standard. The releva
 ### 6.2 Type Prefixes
 
 Inside comments, MarkReview uses Conventional Comments-style type prefixes to categorize feedback:
+
 ```
 {==PostgreSQL is the best choice.==}{>>fix: This claim needs evidence. Compare PostgreSQL, MySQL, and SQLite.<<}
 
@@ -113,7 +114,7 @@ No server required. The editor runs as a client-side application in Chrome/Edge 
 - Rich markdown rendering: tables, syntax-highlighted code blocks, Mermaid diagrams, KaTeX math, footnotes, task lists, admonitions
 - CriticMarkup parsing — annotations are hidden from the rendered view and displayed as margin comments
 - Block-level commenting UI — hover to reveal comment button, select type, write comment, and CriticMarkup is inserted into the file
-- Comment panel (right sidebar) showing all comments in document order with filtering by type and status
+- Comment panel (right sidebar) showing all comments in document order with filtering by type and status. In folder mode, comments are grouped by file — file headers display the full relative path (not just the filename) to distinguish files with identical names in different directories
 - Clean, Typeform-inspired reading-first design
 - Optional `.markreview/config.json` for editor preferences (theme, default comment types, file filters)
 

@@ -425,6 +425,21 @@ function activeTab(get: () => AppState): TabState | null {
   return getActiveTab(get());
 }
 
+/** Find an existing tab whose handle matches via isSameEntry. */
+async function findTabByHandle(
+  tabs: TabState[],
+  handle: FileSystemFileHandle | FileSystemDirectoryHandle,
+  kind: "file" | "directory",
+): Promise<TabState | null> {
+  for (const tab of tabs) {
+    const existing = kind === "file" ? tab.fileHandle : tab.directoryHandle;
+    if (existing && (await existing.isSameEntry(handle))) {
+      return tab;
+    }
+  }
+  return null;
+}
+
 // Helper: write file, update tab state with undo, handle permission errors
 async function writeAndUpdate(
   get: () => AppState,
@@ -717,6 +732,15 @@ export const useAppStore = create<AppState>()(
         if (!result) {
           return;
         }
+        const existing = await findTabByHandle(
+          get().tabs,
+          result.handle,
+          "file",
+        );
+        if (existing) {
+          set({ activeTabId: existing.id });
+          return;
+        }
         const raw = await readFile(result.handle);
         const tab = createDefaultTab({
           label: result.name,
@@ -731,6 +755,15 @@ export const useAppStore = create<AppState>()(
       openDirectoryInNewTab: async () => {
         const result = await fsOpenDirectory();
         if (!result) {
+          return;
+        }
+        const existing = await findTabByHandle(
+          get().tabs,
+          result.handle,
+          "directory",
+        );
+        if (existing) {
+          set({ activeTabId: existing.id });
           return;
         }
         const tab = createDefaultTab({
