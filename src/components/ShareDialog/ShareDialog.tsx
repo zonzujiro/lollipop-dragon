@@ -4,6 +4,7 @@ import { useAppStore } from "../../store";
 import { useActiveTab } from "../../store/selectors";
 import { buildShareUrlFromOrigin } from "../../utils/shareUrl";
 import type { FileTreeNode } from "../../types/fileTree";
+import type { ShareRecord } from "../../types/share";
 
 const TTL_OPTIONS = [
   { label: "1 day", value: 86400 },
@@ -17,6 +18,50 @@ interface Props {
   scopeLabel?: string;
 }
 
+function collectFilePaths(nodes: FileTreeNode[]): string[] {
+  const paths: string[] = [];
+  for (const node of nodes) {
+    if (node.kind === "file") {
+      paths.push(node.path);
+    } else {
+      paths.push(...collectFilePaths(node.children));
+    }
+  }
+  return paths;
+}
+
+function commonPathPrefix(paths: string[]): string {
+  if (paths.length === 0) {
+    return "";
+  }
+  let prefix = paths[0];
+  for (const path of paths.slice(1)) {
+    while (prefix.length > 0 && !path.startsWith(prefix)) {
+      const lastSlash = prefix.lastIndexOf("/");
+      prefix = lastSlash >= 0 ? prefix.slice(0, lastSlash + 1) : "";
+    }
+  }
+  return prefix;
+}
+
+function entityPathFromScope(
+  scope: FileTreeNode[],
+  activeFilePath: string | null,
+): string {
+  const paths = collectFilePaths(scope);
+  if (paths.length > 0) {
+    return commonPathPrefix(paths);
+  }
+  return activeFilePath ?? "";
+}
+
+function entityPathFromRecord(record: ShareRecord): string | null {
+  if (!record.sharedPaths || record.sharedPaths.length === 0) {
+    return null;
+  }
+  return commonPathPrefix(record.sharedPaths);
+}
+
 export function ShareDialog({ onClose, scope, scopeLabel }: Props) {
   const tab = useActiveTab();
   const fileName = tab?.fileName ?? null;
@@ -25,7 +70,21 @@ export function ShareDialog({ onClose, scope, scopeLabel }: Props) {
   const showToast = useAppStore((s) => s.showToast);
 
   const shares = tab?.shares ?? [];
-  const existingShare = shares.find((s) => new Date(s.expiresAt) > new Date());
+  const label = scopeLabel ?? directoryName ?? fileName ?? "document";
+  const currentEntityPath = entityPathFromScope(
+    scope ?? [],
+    tab?.activeFilePath ?? null,
+  );
+  const existingShare = shares.find((s) => {
+    if (new Date(s.expiresAt) <= new Date()) {
+      return false;
+    }
+    const recordPath = entityPathFromRecord(s);
+    if (recordPath === null) {
+      return s.label === label;
+    }
+    return recordPath === currentEntityPath;
+  });
   const existingLink = existingShare
     ? buildShareUrlFromOrigin({
         keyB64: existingShare.keyB64,
@@ -37,8 +96,6 @@ export function ShareDialog({ onClose, scope, scopeLabel }: Props) {
   const [link, setLink] = useState<string | null>(existingLink);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const label = scopeLabel ?? directoryName ?? fileName ?? "document";
 
   async function handleShare() {
     setLoading(true);
