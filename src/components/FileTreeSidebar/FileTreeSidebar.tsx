@@ -1,11 +1,5 @@
-import "./FileTreeSidebar.css";
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import './FileTreeSidebar.css'
+import { useCallback, useRef, useState, type ReactNode } from "react";
 import type { SidebarTreeNode } from "../../types/fileTree";
 import type { ShareRecord } from "../../types/share";
 
@@ -74,6 +68,27 @@ function FileIcon() {
   );
 }
 
+function ShareIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+      <polyline points="16 6 12 2 8 6" />
+      <line x1="12" x2="12" y1="2" y2="15" />
+    </svg>
+  );
+}
+
 function SharedBadge() {
   return (
     <span
@@ -111,100 +126,12 @@ function isNodeShared(node: SidebarTreeNode, shares: ShareRecord[]): boolean {
   );
 }
 
-interface ContextMenuState {
-  node: SidebarTreeNode;
-  x: number;
-  y: number;
-}
-
-interface ContextMenuProps {
-  state: ContextMenuState;
-  onClose: () => void;
-  onShare?: (nodes: SidebarTreeNode[], label: string) => void;
-}
-
-function ContextMenu({ state, onClose, onShare }: ContextMenuProps) {
-  const { node, x, y } = state;
-  const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState({ x, y });
-
-  useEffect(() => {
-    if (!ref.current) {
-      return;
-    }
-    const rect = ref.current.getBoundingClientRect();
-    setPos({
-      x: rect.right > window.innerWidth ? x - rect.width : x,
-      y: rect.bottom > window.innerHeight ? y - rect.height : y,
-    });
-  }, [x, y]);
-
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        onClose();
-      }
-    }
-    function handlePointerDown(e: PointerEvent) {
-      if (!(e.target instanceof Node)) {
-        return;
-      }
-      if (ref.current && !ref.current.contains(e.target)) {
-        onClose();
-      }
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    document.addEventListener("pointerdown", handlePointerDown);
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      document.removeEventListener("pointerdown", handlePointerDown);
-    };
-  }, [onClose]);
-
-  async function handleCopyName() {
-    await navigator.clipboard.writeText(node.name);
-    onClose();
-  }
-
-  function handleShare() {
-    if (!onShare) {
-      return;
-    }
-    if (node.kind === "file") {
-      onShare([node], node.name);
-    } else {
-      onShare(node.children, node.name);
-    }
-    onClose();
-  }
-
-  return (
-    <div
-      ref={ref}
-      className="tree-context-menu"
-      style={{ left: pos.x, top: pos.y }}
-    >
-      <button className="tree-context-menu__item" onClick={handleCopyName}>
-        Copy name
-      </button>
-      {onShare && (
-        <>
-          <div className="tree-context-menu__separator" />
-          <button className="tree-context-menu__item" onClick={handleShare}>
-            Share
-          </button>
-        </>
-      )}
-    </div>
-  );
-}
-
 interface TreeItemProps {
   node: SidebarTreeNode;
   depth: number;
   activeFilePath: string | null;
   onSelect: (path: string) => void;
-  onShowContextMenu: (node: SidebarTreeNode, x: number, y: number) => void;
+  onShare?: (nodes: SidebarTreeNode[], label: string) => void;
   shares: ShareRecord[];
 }
 
@@ -213,22 +140,26 @@ function TreeItem({
   depth,
   activeFilePath,
   onSelect,
-  onShowContextMenu,
+  onShare,
   shares,
 }: TreeItemProps) {
   const [expanded, setExpanded] = useState(true);
   const indent = depth * 1 + 0.75;
   const shared = isNodeShared(node, shares);
 
-  function handleContextMenu(e: React.MouseEvent) {
-    e.preventDefault();
-    onShowContextMenu(node, e.clientX, e.clientY);
+  function handleShare(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (node.kind === "file") {
+      onShare!([node], node.name);
+    } else if (node.kind === "directory") {
+      onShare!(node.children, node.name);
+    }
   }
 
   if (node.kind === "file") {
     const isActive = activeFilePath === node.path;
     return (
-      <div className="tree-item-row" onContextMenu={handleContextMenu}>
+      <div className="tree-item-row">
         <button
           className={`tree-item tree-item--file${isActive ? " tree-item--active" : ""}`}
           style={{ paddingLeft: `${indent}rem` }}
@@ -239,13 +170,23 @@ function TreeItem({
           <span className="tree-item__name">{node.name}</span>
           {shared && <SharedBadge />}
         </button>
+        {onShare && (
+          <button
+            className="tree-item-share-btn"
+            onClick={handleShare}
+            title={`Share ${node.name}`}
+            aria-label={`Share ${node.name}`}
+          >
+            <ShareIcon />
+          </button>
+        )}
       </div>
     );
   }
 
   return (
     <div className="tree-item-group">
-      <div className="tree-item-row" onContextMenu={handleContextMenu}>
+      <div className="tree-item-row">
         <button
           className="tree-item tree-item--dir"
           style={{ paddingLeft: `${indent}rem` }}
@@ -255,6 +196,16 @@ function TreeItem({
           <span className="tree-item__name">{node.name}</span>
           {shared && <SharedBadge />}
         </button>
+        {onShare && (
+          <button
+            className="tree-item-share-btn"
+            onClick={handleShare}
+            title={`Share ${node.name}`}
+            aria-label={`Share ${node.name}`}
+          >
+            <ShareIcon />
+          </button>
+        )}
       </div>
       {expanded && (
         <div>
@@ -265,7 +216,7 @@ function TreeItem({
               depth={depth + 1}
               activeFilePath={activeFilePath}
               onSelect={onSelect}
-              onShowContextMenu={onShowContextMenu}
+              onShare={onShare}
               shares={shares}
             />
           ))}
@@ -298,18 +249,6 @@ export function FileTreeSidebar({
   const [width, setWidth] = useState(loadWidth);
   const dragging = useRef(false);
   const latestWidth = useRef(width);
-  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
-
-  const handleShowContextMenu = useCallback(
-    (node: SidebarTreeNode, x: number, y: number) => {
-      setContextMenu({ node, x, y });
-    },
-    [],
-  );
-
-  const handleCloseContextMenu = useCallback(() => {
-    setContextMenu(null);
-  }, []);
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
@@ -367,7 +306,7 @@ export function FileTreeSidebar({
             depth={0}
             activeFilePath={activeFilePath}
             onSelect={onSelect}
-            onShowContextMenu={handleShowContextMenu}
+            onShare={onShare}
             shares={shares}
           />
         ))}
@@ -379,13 +318,6 @@ export function FileTreeSidebar({
         aria-orientation="vertical"
         aria-label="Resize sidebar"
       />
-      {contextMenu && (
-        <ContextMenu
-          state={contextMenu}
-          onClose={handleCloseContextMenu}
-          onShare={onShare}
-        />
-      )}
     </aside>
   );
 }
