@@ -34,6 +34,11 @@ Pre-commit hooks (Husky + lint-staged) will auto-format staged files with Pretti
 
 - **Never use `as` for type assertions.** Use type guards, proper narrowing, or helper functions.
 - Prefer `async/await` over `.then()` where possible. Exception: `useEffect` callbacks can't be async, so `.then()` is acceptable there.
+- Prefer named boolean variables or small predicate helpers for non-trivial conditions instead of embedding complex checks inline.
+
+### Compatibility
+
+- If a change may remove backward-compatibility logic, stop and confirm first. Do not remove migrations, persisted-state compatibility, or legacy restore paths without explicit approval.
 
 ### Components
 
@@ -51,7 +56,7 @@ If a component has local helpers too large for the main file, place them in the 
 Import components through barrel files:
 
 ```ts
-import { MyComponent } from '../MyComponent';   // resolves to index.ts
+import { MyComponent } from "../MyComponent"; // resolves to index.ts
 ```
 
 ### CSS

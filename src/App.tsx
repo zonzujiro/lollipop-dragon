@@ -15,7 +15,7 @@ import { Toast } from "./components/Toast";
 import { PeerNamePrompt } from "./components/PeerNamePrompt";
 import { buildVirtualTree } from "./services/fileSystem";
 import { isShareHash } from "./utils/shareUrl";
-import { findFileInTree, toFileTreeNodes } from "./types/fileTree";
+import { findLiveFileInTree, toFileTreeNodes } from "./types/fileTree";
 import type { FileTreeNode, SidebarTreeNode } from "./types/fileTree";
 import { WORKER_URL } from "./config";
 
@@ -130,10 +130,12 @@ function App() {
   const enterPresentationMode = useAppStore((s) => s.enterPresentationMode);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const selectFile = useAppStore((s) => s.selectFile);
+  const showToast = useAppStore((s) => s.showToast);
   const openDirectoryInNewTab = useAppStore((s) => s.openDirectoryInNewTab);
   const refreshFile = useAppStore((s) => s.refreshFile);
   const refreshFileTree = useAppStore((s) => s.refreshFileTree);
   const restoreTabs = useAppStore((s) => s.restoreTabs);
+  const switchTab = useAppStore((s) => s.switchTab);
 
   // Peer mode
   const isPeerMode = useAppStore((s) => s.isPeerMode);
@@ -151,16 +153,34 @@ function App() {
   } | null>(null);
 
   const handleHostSelect = useCallback(
-    (path: string) => {
+    async (path: string) => {
       if (!tab) {
         return;
       }
-      const node = findFileInTree(tab.fileTree, path);
+
+      const node = findLiveFileInTree(tab.fileTree, path);
       if (node) {
-        selectFile(node);
+        await selectFile(node);
+        return;
       }
+
+      await switchTab(tab.id);
+      const restoredTab = useAppStore
+        .getState()
+        .tabs.find((currentTab) => currentTab.id === tab.id);
+      if (!restoredTab) {
+        return;
+      }
+
+      const restoredNode = findLiveFileInTree(restoredTab.fileTree, path);
+      if (restoredNode) {
+        await useAppStore.getState().selectFile(restoredNode);
+        return;
+      }
+
+      showToast("Folder access expired — reopen the folder to restore files");
     },
-    [tab, selectFile],
+    [tab, selectFile, showToast, switchTab],
   );
 
   const handleHostShare = useCallback(
@@ -170,16 +190,17 @@ function App() {
     [],
   );
 
-  const hostTree: FileTreeNode[] = useMemo(() => {
-    if (!tab || !tab.directoryName || tab.fileTree.length === 0) {
-      return tab?.fileTree ?? [];
+  const hostTree = useMemo<SidebarTreeNode[]>(() => {
+    const fileTree = tab?.fileTree ?? [];
+    if (!tab || !tab.directoryName || fileTree.length === 0) {
+      return fileTree;
     }
     return [
       {
         kind: "directory",
         name: tab.directoryName,
         path: "",
-        children: tab.fileTree,
+        children: fileTree,
       },
     ];
   }, [tab]);
@@ -208,7 +229,6 @@ function App() {
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
-
 
   // Check for peer mode URL on mount and on hash change
   useEffect(() => {

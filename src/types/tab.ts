@@ -1,4 +1,4 @@
-import type { FileTreeNode } from "./fileTree";
+import type { HydratedSidebarTreeNode } from "./fileTree";
 import type { Comment, CommentType } from "./criticmarkup";
 import type { ShareRecord, PeerComment } from "./share";
 
@@ -20,7 +20,7 @@ export interface TabState {
   // Folder
   directoryHandle: FileSystemDirectoryHandle | null;
   directoryName: string | null;
-  fileTree: FileTreeNode[];
+  fileTree: HydratedSidebarTreeNode[];
   activeFilePath: string | null;
   sidebarOpen: boolean;
 

@@ -21,8 +21,17 @@ import {
   docIdFromKey,
 } from "../services/crypto";
 import { buildShareUrlFromOrigin, parseShareHash } from "../utils/shareUrl";
-import { findFileInTree } from "../types/fileTree";
-import type { FileTreeNode, FileNode } from "../types/fileTree";
+import {
+  findLiveFileInTree,
+  toFileTreeNodes,
+  toPersistedTree,
+} from "../types/fileTree";
+import type {
+  FileTreeNode,
+  FileNode,
+  HydratedSidebarTreeNode,
+  SidebarTreeNode,
+} from "../types/fileTree";
 import type { Comment, CommentType } from "../types/criticmarkup";
 import type { ShareRecord, SharePayload, PeerComment } from "../types/share";
 import type { TabState, FileCommentEntry } from "../types/tab";
@@ -294,7 +303,7 @@ interface AppState {
   // Tab management actions
   addTab: (tab: TabState) => void;
   removeTab: (tabId: string) => void;
-  switchTab: (tabId: string) => void;
+  switchTab: (tabId: string) => Promise<void>;
   openFileInNewTab: () => Promise<void>;
   openDirectoryInNewTab: () => Promise<void>;
 
@@ -423,6 +432,120 @@ function updateTab(
 // Helper: get the active tab state
 function activeTab(get: () => AppState): TabState | null {
   return getActiveTab(get());
+}
+
+function getLiveFileTree(tab: TabState): FileTreeNode[] {
+  return toFileTreeNodes(tab.fileTree);
+}
+
+function needsDirectoryTabRestore(tab: TabState): boolean {
+  const isMissingDirectoryHandle = tab.directoryHandle === null;
+  const isMissingLiveFileTree = getLiveFileTree(tab).length === 0;
+  const isMissingActiveFileHandle =
+    tab.activeFilePath !== null && tab.fileHandle === null;
+
+  return (
+    isMissingDirectoryHandle ||
+    isMissingLiveFileTree ||
+    isMissingActiveFileHandle
+  );
+}
+
+function getPersistedTabFileTree(
+  tab: TabState & { sidebarTree?: SidebarTreeNode[] },
+): HydratedSidebarTreeNode[] {
+  if (Array.isArray(tab.fileTree)) {
+    return tab.fileTree;
+  }
+  if (Array.isArray(tab.sidebarTree)) {
+    return tab.sidebarTree;
+  }
+  return [];
+}
+
+async function restoreDirectoryTabState(
+  get: () => AppState,
+  set: (
+    partial: Partial<AppState> | ((s: AppState) => Partial<AppState>),
+  ) => void,
+  tabId: string,
+  requestPermission: boolean,
+): Promise<void> {
+  const tab = get().tabs.find((currentTab) => currentTab.id === tabId);
+  if (!tab?.directoryName) {
+    return;
+  }
+
+  try {
+    const handle = await getHandle<FileSystemDirectoryHandle>(
+      `tab:${tab.id}:directory`,
+    );
+    if (!handle) {
+      console.debug(
+        "[restoreDirectoryTabState] no saved directory handle:",
+        tab.id,
+        tab.directoryName,
+      );
+      return;
+    }
+
+    let readPermission = await handle.queryPermission({ mode: "read" });
+    if (readPermission !== "granted" && requestPermission) {
+      readPermission = await handle.requestPermission({ mode: "read" });
+    }
+    if (readPermission !== "granted") {
+      console.debug(
+        "[restoreDirectoryTabState] directory permission not granted:",
+        {
+          tabId: tab.id,
+          directoryName: tab.directoryName,
+          requestPermission,
+          readPermission,
+        },
+      );
+      return;
+    }
+
+    const tree = await buildFileTree(handle);
+    let restoredFileHandle: FileSystemFileHandle | null = null;
+    let restoredFileName: string | null = null;
+    let restoredRaw: string | null = null;
+
+    if (tab.activeFilePath) {
+      const fileNode = findLiveFileInTree(tree, tab.activeFilePath);
+      if (fileNode) {
+        restoredFileHandle = fileNode.handle;
+        restoredFileName = fileNode.name;
+        try {
+          restoredRaw = await readFile(fileNode.handle);
+        } catch (e) {
+          console.warn(
+            "[restoreDirectoryTabState] file read failed, keeping persisted content:",
+            e,
+          );
+        }
+      }
+    }
+
+    updateTab(get, set, tab.id, () => ({
+      directoryHandle: handle,
+      directoryName: handle.name,
+      fileTree: tree,
+      ...(restoredFileHandle ? { fileHandle: restoredFileHandle } : {}),
+      ...(restoredFileName ? { fileName: restoredFileName } : {}),
+      ...(restoredRaw !== null ? { rawContent: restoredRaw } : {}),
+    }));
+
+    if (get().activeTabId === tab.id && tree.length > 0) {
+      await get().scanAllFileComments();
+    }
+  } catch (e) {
+    console.error(
+      "[restoreDirectoryTabState] failed to restore directory tab:",
+      tabId,
+      e,
+    );
+  }
 }
 
 /** Find an existing tab whose handle matches via isSameEntry. */
@@ -578,7 +701,7 @@ export const useAppStore = create<AppState>()(
 
           // Restore previously active file if available
           if (entry.activeFilePath) {
-            const fileNode = findFileInTree(tree, entry.activeFilePath);
+            const fileNode = findLiveFileInTree(tree, entry.activeFilePath);
             if (fileNode) {
               const raw = await readFile(fileNode.handle);
               updateTab(get, set, tab.id, () => ({
@@ -723,8 +846,19 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      switchTab: (tabId) => {
+      switchTab: async (tabId) => {
         set({ activeTabId: tabId });
+        const tab = get().tabs.find((currentTab) => currentTab.id === tabId);
+        if (!tab?.directoryName) {
+          return;
+        }
+
+        const shouldRestoreDirectoryTab = needsDirectoryTabRestore(tab);
+        if (!shouldRestoreDirectoryTab) {
+          return;
+        }
+
+        await restoreDirectoryTabState(get, set, tabId, true);
       },
 
       openFileInNewTab: async () => {
@@ -891,7 +1025,7 @@ export const useAppStore = create<AppState>()(
             }
           }
         };
-        await scanNodes(tab.fileTree);
+        await scanNodes(getLiveFileTree(tab));
         // Preserve the active file's entry set by setComments
         const currentTab = get().tabs.find((t) => t.id === tabId);
         if (!currentTab) {
@@ -920,7 +1054,7 @@ export const useAppStore = create<AppState>()(
           }
           return;
         }
-        const fileNode = findFileInTree(tab.fileTree, filePath);
+        const fileNode = findLiveFileInTree(tab.fileTree, filePath);
         if (fileNode) {
           updateActiveTab(get, set, () => ({
             pendingScrollTarget: { filePath, rawStart },
@@ -938,7 +1072,7 @@ export const useAppStore = create<AppState>()(
           scrollToBlock(blockIndex);
           return;
         }
-        const fileNode = findFileInTree(tab.fileTree, filePath);
+        const fileNode = findLiveFileInTree(tab.fileTree, filePath);
         if (fileNode) {
           updateActiveTab(get, set, () => ({
             pendingScrollTarget: { filePath, blockIndex },
@@ -1087,43 +1221,7 @@ export const useAppStore = create<AppState>()(
         for (const tab of tabs) {
           if (tab.directoryName) {
             try {
-              const handle = await getHandle<FileSystemDirectoryHandle>(
-                `tab:${tab.id}:directory`,
-              );
-              if (!handle) {
-                continue;
-              }
-              const perm = await handle.queryPermission({ mode: "read" });
-              if (perm !== "granted") {
-                continue;
-              }
-              const tree = await buildFileTree(handle);
-              // Re-select the previously active file to restore its fileHandle
-              let restoredFileHandle: FileSystemFileHandle | null = null;
-              let restoredRaw: string | null = null;
-              if (tab.activeFilePath) {
-                const fileNode = findFileInTree(tree, tab.activeFilePath);
-                if (fileNode) {
-                  restoredFileHandle = fileNode.handle;
-                  try {
-                    restoredRaw = await readFile(fileNode.handle);
-                  } catch (e) {
-                    console.warn(
-                      "[restoreTabs] file read failed, keeping persisted content:",
-                      e,
-                    );
-                  }
-                }
-              }
-              updateTab(get, set, tab.id, () => ({
-                directoryHandle: handle,
-                directoryName: handle.name,
-                fileTree: tree,
-                ...(restoredFileHandle
-                  ? { fileHandle: restoredFileHandle }
-                  : {}),
-                ...(restoredRaw !== null ? { rawContent: restoredRaw } : {}),
-              }));
+              await restoreDirectoryTabState(get, set, tab.id, false);
             } catch (e) {
               console.error(
                 "[restoreTabs] failed to restore directory tab:",
@@ -1243,10 +1341,11 @@ export const useAppStore = create<AppState>()(
         const tabId = tab.id;
         const label =
           scopeLabel ?? tab.directoryName ?? tab.fileName ?? "document";
+        const liveFileTree = getLiveFileTree(tab);
 
         const sourceNodes =
           nodes ??
-          (tab.directoryName && tab.fileTree.length > 0 ? tab.fileTree : null);
+          (tab.directoryName && liveFileTree.length > 0 ? liveFileTree : null);
         const tree = sourceNodes
           ? await collectTreeContents(
               sourceNodes,
@@ -1352,10 +1451,11 @@ export const useAppStore = create<AppState>()(
           );
 
         const allowed = record.sharedPaths ? new Set(record.sharedPaths) : null;
+        const liveFileTree = getLiveFileTree(tab);
         const tree =
-          tab.fileTree.length > 0
+          liveFileTree.length > 0
             ? await collectTreeContents(
-                tab.fileTree,
+                liveFileTree,
                 tab.activeFilePath,
                 tab.rawContent,
                 allowed,
@@ -1788,6 +1888,7 @@ export const useAppStore = create<AppState>()(
           rawContent: t.rawContent,
           directoryName: t.directoryName,
           activeFilePath: t.activeFilePath,
+          fileTree: toPersistedTree(t.fileTree),
           sidebarOpen: t.sidebarOpen,
           commentPanelOpen: t.commentPanelOpen,
           commentFilter: t.commentFilter,
@@ -1806,7 +1907,11 @@ export const useAppStore = create<AppState>()(
         // Tabs need special handling: fill in defaults for non-persisted fields
         const tabs = Array.isArray(p.tabs)
           ? p.tabs.map((t) =>
-              createDefaultTab({ ...t, label: t.label ?? "document" }),
+              createDefaultTab({
+                ...t,
+                label: t.label ?? "document",
+                fileTree: getPersistedTabFileTree(t),
+              }),
             )
           : current.tabs;
         return {
