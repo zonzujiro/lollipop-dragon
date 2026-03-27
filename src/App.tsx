@@ -17,6 +17,7 @@ import { buildVirtualTree } from "./services/fileSystem";
 import { isShareHash } from "./utils/shareUrl";
 import { findLiveFileInTree, toFileTreeNodes } from "./types/fileTree";
 import type { FileTreeNode, SidebarTreeNode } from "./types/fileTree";
+import { RestoreError } from "./components/RestoreError";
 import { WORKER_URL } from "./config";
 
 const PEER_HEADER = { title: "Shared files" };
@@ -136,6 +137,7 @@ function App() {
   const refreshFileTree = useAppStore((s) => s.refreshFileTree);
   const restoreTabs = useAppStore((s) => s.restoreTabs);
   const switchTab = useAppStore((s) => s.switchTab);
+  const reopenTab = useAppStore((s) => s.reopenTab);
 
   // Peer mode
   const isPeerMode = useAppStore((s) => s.isPeerMode);
@@ -447,7 +449,17 @@ function App() {
           />
         )}
         <main className="app-main">
-          {tab?.fileName ? <MarkdownRenderer /> : <NoFileSelected />}
+          {tab?.restoreError ? (
+            <RestoreError
+              message={tab.restoreError}
+              isDirectory={tab.directoryName !== null}
+              onReopen={() => reopenTab(tab.id)}
+            />
+          ) : tab?.fileName ? (
+            <MarkdownRenderer />
+          ) : (
+            <NoFileSelected />
+          )}
         </main>
         {tab?.commentPanelOpen && !focusMode && <CommentPanel />}
         {tab?.sharedPanelOpen && !focusMode && <SharedPanel />}

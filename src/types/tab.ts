@@ -49,6 +49,9 @@ export interface TabState {
   pendingComments: Record<string, PeerComment[]>;
   shareKeys: Record<string, CryptoKey>;
   activeDocId: string | null;
+
+  // Restore
+  restoreError: string | null;
 }
 
 export function createDefaultTab(
@@ -79,6 +82,7 @@ export function createDefaultTab(
     pendingComments: {},
     shareKeys: {},
     activeDocId: null,
+    restoreError: null,
     ...overrides,
   };
 }
