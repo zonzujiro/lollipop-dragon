@@ -225,3 +225,69 @@ describe("store.restoreTabs", () => {
     expect(tab?.rawContent).toBe("# Fresh content");
   });
 });
+
+describe("store.refreshFileTree", () => {
+  it("updates file tree when new files appear in directory", async () => {
+    const dirHandle = {
+      kind: "directory",
+      name: "project",
+    };
+    const initialTree: FileTreeNode[] = [
+      {
+        kind: "file",
+        name: "readme.md",
+        path: "readme.md",
+        handle: { kind: "file", name: "readme.md" },
+      },
+    ];
+    const updatedTree: FileTreeNode[] = [
+      ...initialTree,
+      {
+        kind: "file",
+        name: "new-file.md",
+        path: "new-file.md",
+        handle: { kind: "file", name: "new-file.md" },
+      },
+    ];
+
+    const tab = createDefaultTab({
+      id: "dir-tab",
+      label: "project",
+      directoryHandle: dirHandle as unknown as FileSystemDirectoryHandle,
+      directoryName: "project",
+      fileTree:
+        initialTree as unknown as import("../types/fileTree").HydratedSidebarTreeNode[],
+      sidebarOpen: true,
+    });
+
+    useAppStore.setState({
+      tabs: [tab],
+      activeTabId: tab.id,
+    });
+
+    vi.mocked(buildFileTree).mockResolvedValue(updatedTree);
+
+    await useAppStore.getState().refreshFileTree();
+
+    const result = getActiveTab(useAppStore.getState());
+    expect(result?.fileTree).toEqual(updatedTree);
+    expect(buildFileTree).toHaveBeenCalledWith(dirHandle);
+  });
+
+  it("does nothing when active tab has no directory handle", async () => {
+    const tab = createDefaultTab({
+      id: "file-tab",
+      label: "notes.md",
+      fileName: "notes.md",
+    });
+
+    useAppStore.setState({
+      tabs: [tab],
+      activeTabId: tab.id,
+    });
+
+    await useAppStore.getState().refreshFileTree();
+
+    expect(buildFileTree).not.toHaveBeenCalled();
+  });
+});

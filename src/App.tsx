@@ -280,69 +280,171 @@ function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [toggleSidebar]);
 
-  // Watch the active tab's open file for external changes
+  // Watch the active tab's open file for external changes.
+  // Uses FileSystemObserver when available, falls back to polling.
   const fileHandle = tab?.fileHandle ?? null;
   useEffect(() => {
-    if (!fileHandle || !supportsFileObserver) {
+    if (!fileHandle) {
       return;
     }
+
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+    function startPolling() {
+      if (pollTimer) {
+        return;
+      }
+      pollTimer = setInterval(() => refreshFile(), 2000);
+    }
+
+    if (!supportsFileObserver) {
+      startPolling();
+      return () => {
+        if (pollTimer) {
+          clearInterval(pollTimer);
+        }
+      };
+    }
+
     const FSObserver = window.FileSystemObserver;
     if (!FSObserver) {
-      return;
+      startPolling();
+      return () => {
+        if (pollTimer) {
+          clearInterval(pollTimer);
+        }
+      };
     }
+
     let observer: FileSystemObserver | null = null;
     try {
       observer = new FSObserver((records: FileSystemObserverRecord[]) => {
-        if (
-          records.some((r) => r.type === "modified" || r.type === "appeared")
-        ) {
+        const hasRelevant = records.some(
+          (r) =>
+            r.type === "modified" ||
+            r.type === "appeared" ||
+            r.type === "unknown",
+        );
+        const hasErrored = records.some((r) => r.type === "errored");
+
+        if (hasRelevant) {
           refreshFile();
+        }
+        if (hasErrored) {
+          console.warn(
+            "[FileSystemObserver] file observer errored, falling back to polling",
+          );
+          observer?.disconnect();
+          observer = null;
+          startPolling();
         }
       });
       observer.observe(fileHandle).catch((e: unknown) => {
-        console.warn("[FileSystemObserver] file observe failed:", e);
+        console.warn(
+          "[FileSystemObserver] file observe failed, falling back to polling:",
+          e,
+        );
+        startPolling();
       });
     } catch (e) {
-      console.warn("[FileSystemObserver] file setup failed:", e);
-      return;
+      console.warn(
+        "[FileSystemObserver] file setup failed, falling back to polling:",
+        e,
+      );
+      startPolling();
     }
-    return () => observer?.disconnect();
+
+    return () => {
+      observer?.disconnect();
+      if (pollTimer) {
+        clearInterval(pollTimer);
+      }
+    };
   }, [fileHandle, refreshFile]);
 
-  // Watch the active tab's open directory for new/removed files
+  // Watch the active tab's open directory for new/removed files.
+  // Uses FileSystemObserver when available, falls back to polling.
   const directoryHandle = tab?.directoryHandle ?? null;
   useEffect(() => {
-    if (!directoryHandle || !supportsFileObserver) {
+    if (!directoryHandle) {
       return;
     }
+
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+    function startPolling() {
+      if (pollTimer) {
+        return;
+      }
+      pollTimer = setInterval(() => refreshFileTree(), 5000);
+    }
+
+    if (!supportsFileObserver) {
+      startPolling();
+      return () => {
+        if (pollTimer) {
+          clearInterval(pollTimer);
+        }
+      };
+    }
+
     const FSObserver = window.FileSystemObserver;
     if (!FSObserver) {
-      return;
+      startPolling();
+      return () => {
+        if (pollTimer) {
+          clearInterval(pollTimer);
+        }
+      };
     }
+
     let observer: FileSystemObserver | null = null;
     try {
       observer = new FSObserver((records: FileSystemObserverRecord[]) => {
-        if (
-          records.some(
-            (r) =>
-              r.type === "appeared" ||
-              r.type === "disappeared" ||
-              r.type === "modified",
-          )
-        ) {
+        const hasRelevant = records.some(
+          (r) =>
+            r.type === "appeared" ||
+            r.type === "disappeared" ||
+            r.type === "modified" ||
+            r.type === "unknown",
+        );
+        const hasErrored = records.some((r) => r.type === "errored");
+
+        if (hasRelevant) {
           refreshFileTree();
+        }
+        if (hasErrored) {
+          console.warn(
+            "[FileSystemObserver] directory observer errored, falling back to polling",
+          );
+          observer?.disconnect();
+          observer = null;
+          startPolling();
         }
       });
       observer
         .observe(directoryHandle, { recursive: true })
         .catch((e: unknown) => {
-          console.warn("[FileSystemObserver] directory observe failed:", e);
+          console.warn(
+            "[FileSystemObserver] directory observe failed, falling back to polling:",
+            e,
+          );
+          startPolling();
         });
     } catch (e) {
-      console.warn("[FileSystemObserver] directory setup failed:", e);
-      return;
+      console.warn(
+        "[FileSystemObserver] directory setup failed, falling back to polling:",
+        e,
+      );
+      startPolling();
     }
-    return () => observer?.disconnect();
+
+    return () => {
+      observer?.disconnect();
+      if (pollTimer) {
+        clearInterval(pollTimer);
+      }
+    };
   }, [directoryHandle, refreshFileTree]);
 
   // ── Peer mode (full-screen takeover, no tabs) ──
