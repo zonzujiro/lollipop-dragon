@@ -18,10 +18,12 @@ import { findLiveFileInTree, toFileTreeNodes } from "./types/fileTree";
 import type { FileTreeNode, SidebarTreeNode } from "./types/fileTree";
 import { RestoreError } from "./components/RestoreError";
 import { WORKER_URL } from "./config";
-import { useThemeSync } from "./hooks/useThemeSync";
-import { useHashRouter } from "./hooks/useHashRouter";
-import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
-import { useFileSystemWatcher } from "./hooks/useFileSystemWatcher";
+import {
+  useThemeSync,
+  useHashRouter,
+  useKeyboardShortcuts,
+  useFileSystemWatcher,
+} from "./hooks";
 
 const PEER_HEADER = { title: "Shared files" };
 
