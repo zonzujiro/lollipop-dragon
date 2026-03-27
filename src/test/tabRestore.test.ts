@@ -22,7 +22,7 @@ import { getActiveTab } from "../store/selectors";
 import { getHandle } from "../services/handleStore";
 import { buildFileTree, readFile } from "../services/fileSystem";
 import { createDefaultTab } from "../types/tab";
-import { resetTestStore } from "./testHelpers";
+import { resetTestStore, setTestState } from "./testHelpers";
 import type { FileTreeNode } from "../types/fileTree";
 
 beforeEach(() => {
@@ -250,19 +250,11 @@ describe("store.refreshFileTree", () => {
       },
     ];
 
-    const tab = createDefaultTab({
-      id: "dir-tab",
-      label: "project",
-      directoryHandle: dirHandle as unknown as FileSystemDirectoryHandle,
+    setTestState({
+      directoryHandle: dirHandle,
       directoryName: "project",
-      fileTree:
-        initialTree as unknown as import("../types/fileTree").HydratedSidebarTreeNode[],
+      fileTree: initialTree,
       sidebarOpen: true,
-    });
-
-    useAppStore.setState({
-      tabs: [tab],
-      activeTabId: tab.id,
     });
 
     vi.mocked(buildFileTree).mockResolvedValue(updatedTree);
@@ -275,16 +267,7 @@ describe("store.refreshFileTree", () => {
   });
 
   it("does nothing when active tab has no directory handle", async () => {
-    const tab = createDefaultTab({
-      id: "file-tab",
-      label: "notes.md",
-      fileName: "notes.md",
-    });
-
-    useAppStore.setState({
-      tabs: [tab],
-      activeTabId: tab.id,
-    });
+    setTestState({ fileName: "notes.md" });
 
     await useAppStore.getState().refreshFileTree();
 

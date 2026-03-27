@@ -52,30 +52,40 @@ export function useFileSystemWatcher({
       return;
     }
 
-    let pollTimer: ReturnType<typeof setInterval> | null = null;
+    let pollTimer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
 
-    function startPolling() {
-      if (pollTimer) {
+    function schedulePoll() {
+      if (cancelled || pollTimer) {
         return;
       }
-      pollTimer = setInterval(() => onRefresh(), pollIntervalMs);
+      pollTimer = setTimeout(async () => {
+        pollTimer = null;
+        if (cancelled) {
+          return;
+        }
+        await onRefresh();
+        schedulePoll();
+      }, pollIntervalMs);
     }
 
     if (!supportsFileObserver) {
-      startPolling();
+      schedulePoll();
       return () => {
+        cancelled = true;
         if (pollTimer) {
-          clearInterval(pollTimer);
+          clearTimeout(pollTimer);
         }
       };
     }
 
     const FSObserver = window.FileSystemObserver;
     if (!FSObserver) {
-      startPolling();
+      schedulePoll();
       return () => {
+        cancelled = true;
         if (pollTimer) {
-          clearInterval(pollTimer);
+          clearTimeout(pollTimer);
         }
       };
     }
@@ -96,7 +106,7 @@ export function useFileSystemWatcher({
           );
           observer?.disconnect();
           observer = null;
-          startPolling();
+          schedulePoll();
         }
       });
 
@@ -117,9 +127,10 @@ export function useFileSystemWatcher({
     }
 
     return () => {
+      cancelled = true;
       observer?.disconnect();
       if (pollTimer) {
-        clearInterval(pollTimer);
+        clearTimeout(pollTimer);
       }
     };
   }, [handle, onRefresh, pollIntervalMs, recursive, relevantTypes]);
