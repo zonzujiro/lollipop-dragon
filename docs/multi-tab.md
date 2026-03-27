@@ -211,6 +211,20 @@ On page load:
 2. Migration runs if old format detected
 3. `restoreAllTabs()` iterates persisted tabs and restores each directory handle from IndexedDB
 4. If a handle can't be restored (permission denied), tab keeps `null` handle — user re-grants when switching to it
+5. If the file or folder no longer exists on disk (`NotFoundError`), or the handle is missing from IndexedDB, the tab's `restoreError` field is set with a user-facing message
+
+### 10.1 Restore Error UX
+
+When a tab's file or folder cannot be accessed after a browser reopen (moved, renamed, or deleted on disk), the tab shows a **RestoreError placeholder** instead of content:
+
+- **Icon**: a refresh/retry icon (muted)
+- **Title**: "File not found" or "Folder not found"
+- **Message**: `The file/folder "{name}" could not be accessed. It may have been moved, renamed, or deleted.`
+- **Action**: "Reopen file" / "Reopen folder" button — opens the file/directory picker and restores the broken tab **in-place** (via `reopenTab(tabId)`), preserving the tab's position in the tab bar
+
+While `restoreError` is set, all comment operations (add, edit, delete) are effectively disabled because the tab has no live `fileHandle`.
+
+The `restoreError` field is runtime-only (not persisted to localStorage). On each app load, restoration is re-attempted from IndexedDB handles.
 
 ---
 
@@ -291,5 +305,8 @@ On page load:
    5a. In folder mode, comments on files with the same name in different directories show distinct file paths in the comment panel
 6. Share from tab A, switch to tab B, switch back — share tracked in tab A
 7. Refresh page → tabs restore, directory handles restored from IndexedDB
-8. Peer mode via URL → full-screen takeover, tabs hidden, works as before
-9. Keyboard shortcuts (Cmd+W, Ctrl+Tab) work correctly
+8. Delete/move a folder on disk, then refresh → tab shows "Folder not found" placeholder with Reopen button
+   8a. Click "Reopen folder" → directory picker opens, selecting a folder restores the tab in-place
+   8b. Same behavior for single file tabs: "File not found" placeholder with "Reopen file" button
+9. Peer mode via URL → full-screen takeover, tabs hidden, works as before
+10. Keyboard shortcuts (Cmd+W, Ctrl+Tab) work correctly
