@@ -487,6 +487,9 @@ async function restoreDirectoryTabState(
         tab.id,
         tab.directoryName,
       );
+      updateTab(get, set, tab.id, () => ({
+        restoreError: `The folder "${tab.directoryName}" could not be accessed. It may have been moved, renamed, or deleted.`,
+      }));
       return;
     }
 
@@ -549,6 +552,8 @@ async function restoreDirectoryTabState(
       e,
     );
     updateTab(get, set, tabId, () => ({
+      directoryHandle: null,
+      fileHandle: null,
       restoreError: `The folder "${name}" could not be accessed. It may have been moved, renamed, or deleted.`,
     }));
   }
@@ -930,40 +935,58 @@ export const useAppStore = create<AppState>()(
         }
 
         if (tab.directoryName) {
-          const result = await fsOpenDirectory();
-          if (!result) {
-            return;
-          }
-          await saveHandle(`tab:${tabId}:directory`, result.handle);
-          const tree = await buildFileTree(result.handle);
-          updateTab(get, set, tabId, () => ({
-            directoryHandle: result.handle,
-            directoryName: result.name,
-            label: result.name,
-            fileTree: tree,
-            fileHandle: null,
-            fileName: null,
-            rawContent: "",
-            activeFilePath: null,
-            restoreError: null,
-          }));
-          if (get().activeTabId === tabId && tree.length > 0) {
-            await get().scanAllFileComments();
+          try {
+            const result = await fsOpenDirectory();
+            if (!result) {
+              return;
+            }
+            await saveHandle(`tab:${tabId}:directory`, result.handle);
+            const tree = await buildFileTree(result.handle);
+            updateTab(get, set, tabId, () => ({
+              directoryHandle: result.handle,
+              directoryName: result.name,
+              label: result.name,
+              fileTree: tree,
+              fileHandle: null,
+              fileName: null,
+              rawContent: "",
+              activeFilePath: null,
+              restoreError: null,
+            }));
+            if (get().activeTabId === tabId && tree.length > 0) {
+              await get().scanAllFileComments();
+            }
+          } catch (e) {
+            console.error(
+              "[reopenTab] failed to reopen directory tab:",
+              tabId,
+              e,
+            );
+            updateTab(get, set, tabId, () => ({
+              restoreError: `The folder "${tab.directoryName}" could not be opened. Please try again.`,
+            }));
           }
         } else {
-          const result = await fsOpenFile();
-          if (!result) {
-            return;
+          try {
+            const result = await fsOpenFile();
+            if (!result) {
+              return;
+            }
+            await saveHandle(`tab:${tabId}:file`, result.handle);
+            const raw = await readFile(result.handle);
+            updateTab(get, set, tabId, () => ({
+              fileHandle: result.handle,
+              fileName: result.name,
+              label: result.name,
+              rawContent: raw,
+              restoreError: null,
+            }));
+          } catch (e) {
+            console.error("[reopenTab] failed to reopen file tab:", tabId, e);
+            updateTab(get, set, tabId, () => ({
+              restoreError: `The file "${tab.fileName}" could not be opened. Please try again.`,
+            }));
           }
-          await saveHandle(`tab:${tabId}:file`, result.handle);
-          const raw = await readFile(result.handle);
-          updateTab(get, set, tabId, () => ({
-            fileHandle: result.handle,
-            fileName: result.name,
-            label: result.name,
-            rawContent: raw,
-            restoreError: null,
-          }));
         }
       },
 
@@ -1887,6 +1910,7 @@ export const useAppStore = create<AppState>()(
                     pendingComments: {},
                     shareKeys: {},
                     activeDocId: null,
+                    restoreError: null,
                   },
                 ]
               : [];
