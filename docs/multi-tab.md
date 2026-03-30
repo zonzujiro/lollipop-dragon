@@ -226,6 +226,16 @@ While `restoreError` is set, all comment operations (add, edit, delete) are effe
 
 The `restoreError` field is runtime-only (not persisted to localStorage). On each app load, restoration is re-attempted from IndexedDB handles.
 
+### 10.2 Live File Tree Refresh
+
+The active tab's directory and open file are watched for external changes (e.g., files added by CLI tools):
+
+1. **FileSystemObserver** (Chrome only) — watches the directory recursively for `appeared`, `disappeared`, `modified`, and `unknown` events. On `unknown` (missed events), triggers an immediate rescan. On `errored` (observer died), falls back to polling.
+2. **Polling fallback** — when FileSystemObserver is unavailable or fails, the app polls:
+   - Directory tree: every 5 seconds via `refreshFileTree()`
+   - Open file content: every 2 seconds via `refreshFile()`
+3. Observers and polling timers are scoped to the **active tab only** and are cleaned up on tab switch.
+
 ---
 
 ## 11. Component Impact

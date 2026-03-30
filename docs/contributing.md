@@ -112,7 +112,7 @@ Tests use helpers from `src/test/testHelpers.ts`:
 
 - **Host mode** requires Chrome or Edge over HTTPS (localhost works). The File System Access API is not available in Firefox or Safari.
 - **Peer mode** works in any modern browser.
-- The experimental `FileSystemObserver` API (auto-refresh on external file changes) only works in Chrome. The app gracefully degrades when it's unavailable.
+- The experimental `FileSystemObserver` API (auto-refresh on external file changes) only works in Chrome. When unavailable, or when the observer errors out, the app falls back to polling (every 5s for directory trees, every 2s for open files). The observer also handles `"unknown"` records (missed events) by triggering an immediate rescan.
 
 ## Architecture reference
 

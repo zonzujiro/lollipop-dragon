@@ -22,7 +22,7 @@ import { getActiveTab } from "../store/selectors";
 import { getHandle } from "../services/handleStore";
 import { buildFileTree, readFile } from "../services/fileSystem";
 import { createDefaultTab } from "../types/tab";
-import { resetTestStore } from "./testHelpers";
+import { resetTestStore, setTestState } from "./testHelpers";
 import type { FileTreeNode } from "../types/fileTree";
 
 beforeEach(() => {
@@ -223,5 +223,54 @@ describe("store.restoreTabs", () => {
     const tab = useAppStore.getState().tabs.find((t) => t.id === "file-tab");
     expect(tab?.restoreError).toBeNull();
     expect(tab?.rawContent).toBe("# Fresh content");
+  });
+});
+
+describe("store.refreshFileTree", () => {
+  it("updates file tree when new files appear in directory", async () => {
+    const dirHandle = {
+      kind: "directory",
+      name: "project",
+    };
+    const initialTree: FileTreeNode[] = [
+      {
+        kind: "file",
+        name: "readme.md",
+        path: "readme.md",
+        handle: { kind: "file", name: "readme.md" },
+      },
+    ];
+    const updatedTree: FileTreeNode[] = [
+      ...initialTree,
+      {
+        kind: "file",
+        name: "new-file.md",
+        path: "new-file.md",
+        handle: { kind: "file", name: "new-file.md" },
+      },
+    ];
+
+    setTestState({
+      directoryHandle: dirHandle,
+      directoryName: "project",
+      fileTree: initialTree,
+      sidebarOpen: true,
+    });
+
+    vi.mocked(buildFileTree).mockResolvedValue(updatedTree);
+
+    await useAppStore.getState().refreshFileTree();
+
+    const result = getActiveTab(useAppStore.getState());
+    expect(result?.fileTree).toEqual(updatedTree);
+    expect(buildFileTree).toHaveBeenCalledWith(dirHandle);
+  });
+
+  it("does nothing when active tab has no directory handle", async () => {
+    setTestState({ fileName: "notes.md" });
+
+    await useAppStore.getState().refreshFileTree();
+
+    expect(buildFileTree).not.toHaveBeenCalled();
   });
 });

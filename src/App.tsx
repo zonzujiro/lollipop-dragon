@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useAppStore } from "./store";
 import { useActiveTab } from "./store/selectors";
 import { FilePicker } from "./components/FilePicker";
@@ -14,43 +14,18 @@ import { UndoToast } from "./components/UndoToast";
 import { Toast } from "./components/Toast";
 import { PeerNamePrompt } from "./components/PeerNamePrompt";
 import { buildVirtualTree } from "./services/fileSystem";
-import { isShareHash } from "./utils/shareUrl";
 import { findLiveFileInTree, toFileTreeNodes } from "./types/fileTree";
 import type { FileTreeNode, SidebarTreeNode } from "./types/fileTree";
 import { RestoreError } from "./components/RestoreError";
 import { WORKER_URL } from "./config";
+import {
+  useThemeSync,
+  useHashRouter,
+  useKeyboardShortcuts,
+  useFileSystemWatcher,
+} from "./hooks";
 
 const PEER_HEADER = { title: "Shared files" };
-
-// FileSystemObserver is experimental; Edge exposes it but crashes on use
-const supportsFileObserver =
-  typeof window !== "undefined" &&
-  "FileSystemObserver" in window &&
-  !/\bEdg\//.test(navigator.userAgent);
-
-// FileSystemObserver is an experimental browser API not yet in TypeScript's
-// lib types. Declare a minimal interface so we can avoid `as any`.
-interface FileSystemObserverRecord {
-  type: string;
-}
-interface FileSystemObserver {
-  observe(
-    handle: FileSystemHandle,
-    opts?: { recursive: boolean },
-  ): Promise<void>;
-  disconnect(): void;
-}
-interface FileSystemObserverConstructor {
-  new (
-    callback: (records: FileSystemObserverRecord[]) => void,
-  ): FileSystemObserver;
-}
-
-declare global {
-  interface Window {
-    FileSystemObserver?: FileSystemObserverConstructor;
-  }
-}
 
 const folderIcon = (
   <svg
@@ -121,34 +96,35 @@ function PeerViewer() {
   return <MarkdownRenderer />;
 }
 
+const FILE_OBSERVER_TYPES = ["modified", "appeared"];
+const DIR_OBSERVER_TYPES = ["appeared", "disappeared", "modified"];
+
 function App() {
   const tab = useActiveTab();
   const tabs = useAppStore((s) => s.tabs);
-  const theme = useAppStore((s) => s.theme);
   const focusMode = useAppStore((s) => s.focusMode);
   const presentationMode = useAppStore((s) => s.presentationMode);
   const toggleFocusMode = useAppStore((s) => s.toggleFocusMode);
   const enterPresentationMode = useAppStore((s) => s.enterPresentationMode);
-  const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const selectFile = useAppStore((s) => s.selectFile);
   const showToast = useAppStore((s) => s.showToast);
   const openDirectoryInNewTab = useAppStore((s) => s.openDirectoryInNewTab);
   const refreshFile = useAppStore((s) => s.refreshFile);
   const refreshFileTree = useAppStore((s) => s.refreshFileTree);
-  const restoreTabs = useAppStore((s) => s.restoreTabs);
   const switchTab = useAppStore((s) => s.switchTab);
   const reopenTab = useAppStore((s) => s.reopenTab);
 
   // Peer mode
   const isPeerMode = useAppStore((s) => s.isPeerMode);
   const peerName = useAppStore((s) => s.peerName);
-  const loadSharedContent = useAppStore((s) => s.loadSharedContent);
   const sharedContent = useAppStore((s) => s.sharedContent);
   const selectPeerFile = useAppStore((s) => s.selectPeerFile);
   const peerCommentPanelOpen = useAppStore((s) => s.peerCommentPanelOpen);
   const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
 
-  const [peerModeChecked, setPeerModeChecked] = useState(false);
+  useThemeSync();
+  const peerModeChecked = useHashRouter();
+  useKeyboardShortcuts();
   const [shareScope, setShareScope] = useState<{
     nodes: FileTreeNode[];
     label: string;
@@ -228,122 +204,20 @@ function App() {
 
   const peerHeader = PEER_HEADER;
 
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-  }, [theme]);
+  useFileSystemWatcher({
+    handle: tab?.fileHandle ?? null,
+    onRefresh: refreshFile,
+    pollIntervalMs: 2000,
+    relevantTypes: FILE_OBSERVER_TYPES,
+  });
 
-  // Check for peer mode URL on mount and on hash change
-  useEffect(() => {
-    function checkHash() {
-      if (isShareHash() && WORKER_URL) {
-        loadSharedContent().finally(() => setPeerModeChecked(true));
-      } else {
-        setPeerModeChecked(true);
-        restoreTabs();
-      }
-    }
-    checkHash();
-    window.addEventListener("hashchange", checkHash);
-    return () => window.removeEventListener("hashchange", checkHash);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Keyboard shortcuts: Cmd+B toggles sidebar, Cmd+W closes tab, Ctrl+Tab cycles tabs
-  useEffect(() => {
-    const removeTab = useAppStore.getState().removeTab;
-    const switchTab = useAppStore.getState().switchTab;
-    const onKey = (e: KeyboardEvent) => {
-      const meta = e.metaKey || e.ctrlKey;
-      if (meta && e.key === "b") {
-        e.preventDefault();
-        toggleSidebar();
-      } else if (meta && e.key === "w") {
-        e.preventDefault();
-        const { activeTabId } = useAppStore.getState();
-        if (activeTabId) {
-          removeTab(activeTabId);
-        }
-      } else if (e.ctrlKey && e.key === "Tab") {
-        e.preventDefault();
-        const state = useAppStore.getState();
-        if (state.tabs.length < 2) {
-          return;
-        }
-        const idx = state.tabs.findIndex((t) => t.id === state.activeTabId);
-        const next = e.shiftKey
-          ? (idx - 1 + state.tabs.length) % state.tabs.length
-          : (idx + 1) % state.tabs.length;
-        switchTab(state.tabs[next].id);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [toggleSidebar]);
-
-  // Watch the active tab's open file for external changes
-  const fileHandle = tab?.fileHandle ?? null;
-  useEffect(() => {
-    if (!fileHandle || !supportsFileObserver) {
-      return;
-    }
-    const FSObserver = window.FileSystemObserver;
-    if (!FSObserver) {
-      return;
-    }
-    let observer: FileSystemObserver | null = null;
-    try {
-      observer = new FSObserver((records: FileSystemObserverRecord[]) => {
-        if (
-          records.some((r) => r.type === "modified" || r.type === "appeared")
-        ) {
-          refreshFile();
-        }
-      });
-      observer.observe(fileHandle).catch((e: unknown) => {
-        console.warn("[FileSystemObserver] file observe failed:", e);
-      });
-    } catch (e) {
-      console.warn("[FileSystemObserver] file setup failed:", e);
-      return;
-    }
-    return () => observer?.disconnect();
-  }, [fileHandle, refreshFile]);
-
-  // Watch the active tab's open directory for new/removed files
-  const directoryHandle = tab?.directoryHandle ?? null;
-  useEffect(() => {
-    if (!directoryHandle || !supportsFileObserver) {
-      return;
-    }
-    const FSObserver = window.FileSystemObserver;
-    if (!FSObserver) {
-      return;
-    }
-    let observer: FileSystemObserver | null = null;
-    try {
-      observer = new FSObserver((records: FileSystemObserverRecord[]) => {
-        if (
-          records.some(
-            (r) =>
-              r.type === "appeared" ||
-              r.type === "disappeared" ||
-              r.type === "modified",
-          )
-        ) {
-          refreshFileTree();
-        }
-      });
-      observer
-        .observe(directoryHandle, { recursive: true })
-        .catch((e: unknown) => {
-          console.warn("[FileSystemObserver] directory observe failed:", e);
-        });
-    } catch (e) {
-      console.warn("[FileSystemObserver] directory setup failed:", e);
-      return;
-    }
-    return () => observer?.disconnect();
-  }, [directoryHandle, refreshFileTree]);
+  useFileSystemWatcher({
+    handle: tab?.directoryHandle ?? null,
+    onRefresh: refreshFileTree,
+    pollIntervalMs: 5000,
+    recursive: true,
+    relevantTypes: DIR_OBSERVER_TYPES,
+  });
 
   // ── Peer mode (full-screen takeover, no tabs) ──
   if (isPeerMode) {
