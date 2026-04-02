@@ -40,7 +40,7 @@ v2 adds encrypted async peer sharing on top of the v1 local editing experience. 
 │  │  MarkReview App  │    │       ShareService               │  │
 │  │  (v1 unchanged)  │    │  encrypt() / decrypt()          │  │
 │  │                  │───▶│  compress() / decompress()      │  │
-│  │  + Share button  │    │  upload() / download()          │  │
+│  │  + Share icons   │    │  upload() / download()          │  │
 │  │  + Shared panel  │    │  postComment() / fetchComments() │  │
 │  │  + Merge UI      │    └──────────────┬──────────────────┘  │
 │  └──────────────────┘                   │ HTTPS                │
@@ -455,7 +455,7 @@ loadSharedContent: () => Promise<void>                       // peer mode init
 
 **2a.4 — Share dialog (host)**
 
-- "Share" button in header (only shown when a file or folder is open)
+- "Share file" and "Share folder" icon buttons in header (each hidden when not applicable)
 - `ShareDialog` modal: shows file/folder name, expiry selector (1 day / 7 days / 30 days), "Generate Link" button
 - On confirm: call `shareContent()`, copy link to clipboard, show toast "Link copied"
 - Store `ShareRecord` in localStorage

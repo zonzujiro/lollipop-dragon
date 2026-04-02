@@ -200,8 +200,8 @@ The host has a "Shared" panel showing all active shares:
 ### 8.1 Host Shares a Document
 
 1. Host opens folder in MarkReview, navigates to a file or folder.
-2. Host clicks "Share" (top bar button).
-3. App prompts: share this file or the entire folder. Optional: set expiry (default 7 days).
+2. Host clicks the "Share file" or "Share folder" icon button in the header (each button is only visible when applicable).
+3. App opens the share dialog. Optional: set expiry (default 7 days).
 4. App encrypts content, uploads to Worker, generates link.
 5. Link is copied to clipboard. Toast: "Link copied. Share it with your reviewers."
 6. Host sends link via Slack/Telegram/email.
@@ -330,7 +330,7 @@ If the storage backend needs to change in the future, only the implementation of
 ### Phase 2a — Cloudflare Worker + Encrypted Sharing
 
 - Deploy the Cloudflare Worker with KV namespace.
-- "Share" button: encrypt content, upload to Worker, generate link.
+- "Share file" / "Share folder" icon buttons: encrypt content, upload to Worker, generate link.
 - Peer view: fetch, decrypt, render with full v1 reading experience.
 - Shared panel for host to manage, update, and revoke shares.
 - Auto-purge via KV TTL.
