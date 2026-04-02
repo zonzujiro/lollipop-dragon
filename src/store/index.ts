@@ -470,7 +470,6 @@ async function restoreDirectoryTabState(
     partial: Partial<AppState> | ((s: AppState) => Partial<AppState>),
   ) => void,
   tabId: string,
-  requestPermission: boolean,
 ): Promise<void> {
   const tab = get().tabs.find((currentTab) => currentTab.id === tabId);
   if (!tab?.directoryName) {
@@ -494,7 +493,7 @@ async function restoreDirectoryTabState(
     }
 
     let readPermission = await handle.queryPermission({ mode: "read" });
-    if (readPermission !== "granted" && requestPermission) {
+    if (readPermission !== "granted") {
       readPermission = await handle.requestPermission({ mode: "read" });
     }
     if (readPermission !== "granted") {
@@ -503,10 +502,12 @@ async function restoreDirectoryTabState(
         {
           tabId: tab.id,
           directoryName: tab.directoryName,
-          requestPermission,
           readPermission,
         },
       );
+      updateTab(get, set, tab.id, () => ({
+        restoreError: `The folder "${tab.directoryName}" requires permission to access. Please reopen it.`,
+      }));
       return;
     }
 
@@ -869,7 +870,7 @@ export const useAppStore = create<AppState>()(
           return;
         }
 
-        await restoreDirectoryTabState(get, set, tabId, true);
+        await restoreDirectoryTabState(get, set, tabId);
       },
 
       openFileInNewTab: async () => {
@@ -1294,7 +1295,7 @@ export const useAppStore = create<AppState>()(
         for (const tab of tabs) {
           if (tab.directoryName) {
             try {
-              await restoreDirectoryTabState(get, set, tab.id, false);
+              await restoreDirectoryTabState(get, set, tab.id);
             } catch (e) {
               console.error(
                 "[restoreTabs] failed to restore directory tab:",
@@ -1318,14 +1319,17 @@ export const useAppStore = create<AppState>()(
                 }));
                 continue;
               }
-              const readPerm = await handle.queryPermission({ mode: "read" });
-              const writePerm = await handle.queryPermission({
+              let writePerm = await handle.queryPermission({
                 mode: "readwrite",
               });
+              if (writePerm !== "granted") {
+                writePerm = await handle.requestPermission({
+                  mode: "readwrite",
+                });
+              }
               console.log("[restoreTabs] file tab permissions", {
                 tabId: tab.id,
                 fileName: tab.fileName,
-                readPerm,
                 writePerm,
               });
               if (writePerm !== "granted") {
@@ -1334,6 +1338,9 @@ export const useAppStore = create<AppState>()(
                   tab.id,
                   tab.fileName,
                 );
+                updateTab(get, set, tab.id, () => ({
+                  restoreError: `The file "${tab.fileName}" requires permission to access. Please reopen it.`,
+                }));
                 continue;
               }
               let restoredRaw: string | null = null;
