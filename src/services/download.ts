@@ -23,9 +23,13 @@ export function downloadActiveFile(): void {
     return;
   }
   const tab = getActiveTab(state);
-  if (!tab || !tab.activeFilePath) {
+  if (!tab) {
     return;
   }
-  const fileName = tab.activeFilePath.split("/").pop() ?? tab.activeFilePath;
+  const filePath = tab.activeFilePath ?? tab.fileName;
+  if (!filePath) {
+    return;
+  }
+  const fileName = filePath.split("/").pop() ?? filePath;
   downloadFile(fileName, tab.rawContent);
 }
