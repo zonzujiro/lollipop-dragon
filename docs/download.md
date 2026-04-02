@@ -34,11 +34,10 @@ Peers viewing shared content have no way to save it locally. This feature adds b
 
 ### Files
 
-| File                               | Role                                                                   |
-| ---------------------------------- | ---------------------------------------------------------------------- |
-| `src/services/download.ts`         | `downloadFile(filename, content)` — creates Blob and triggers download |
-| `src/store/index.ts`               | `downloadActiveFile()` — reads active file from correct state source   |
-| `src/components/Header/Header.tsx` | "Save file" button with floppy disk icon in peer mode section          |
+| File                               | Role                                                                 |
+| ---------------------------------- | -------------------------------------------------------------------- |
+| `src/store/index.ts`               | `downloadActiveFile()` — resolves file content and triggers download |
+| `src/components/Header/Header.tsx` | "Save file" button with floppy disk icon in peer mode section        |
 
 ### Download flow
 
