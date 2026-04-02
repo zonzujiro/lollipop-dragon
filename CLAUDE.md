@@ -38,6 +38,10 @@ If a component reads tab state while in peer mode (or vice versa), it will get s
 
 - Accessed directly from the store root: `peerRawContent`, `peerFileName`, `peerActiveFilePath`, `peerComments`, `peerResolvedComments`, `peerCommentPanelOpen`, `myPeerComments`, `submittedPeerCommentIds`, `sharedContent`, etc.
 
+### Store actions must mutate state
+
+- **Every store action must call `set()`.** Functions that only read state and perform side effects (downloads, DOM manipulation, network calls) do not belong in the store. Put them in `src/services/` and read state via `useAppStore.getState()`.
+
 ### When adding new state
 
 - Decide whether it is tab-scoped or global. If it only matters in host mode, put it on `TabState`. If it only matters in peer mode or is truly global, put it on `AppState` root.
