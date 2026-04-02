@@ -375,6 +375,16 @@ interface AppState {
   downloadActiveFile: () => void;
 }
 
+function downloadFile(filename: string, content: string): void {
+  const blob = new Blob([content], { type: "text/markdown" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename.endsWith(".md") ? filename : `${filename}.md`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 function getStorage(): ShareStorage | null {
   return WORKER_URL ? new ShareStorage(WORKER_URL) : null;
 }
@@ -1852,29 +1862,22 @@ export const useAppStore = create<AppState>()(
 
       downloadActiveFile: () => {
         const { isPeerMode, peerActiveFilePath, peerRawContent } = get();
-        let name: string;
-        let content: string;
         if (isPeerMode) {
           if (!peerActiveFilePath) {
             return;
           }
-          name = peerActiveFilePath.split("/").pop() ?? peerActiveFilePath;
-          content = peerRawContent;
-        } else {
-          const tab = getActiveTab(get());
-          if (!tab || !tab.activeFilePath) {
-            return;
-          }
-          name = tab.activeFilePath.split("/").pop() ?? tab.activeFilePath;
-          content = tab.rawContent;
+          const fileName =
+            peerActiveFilePath.split("/").pop() ?? peerActiveFilePath;
+          downloadFile(fileName, peerRawContent);
+          return;
         }
-        const blob = new Blob([content], { type: "text/markdown" });
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement("a");
-        anchor.href = url;
-        anchor.download = name.endsWith(".md") ? name : `${name}.md`;
-        anchor.click();
-        URL.revokeObjectURL(url);
+        const tab = getActiveTab(get());
+        if (!tab || !tab.activeFilePath) {
+          return;
+        }
+        const fileName =
+          tab.activeFilePath.split("/").pop() ?? tab.activeFilePath;
+        downloadFile(fileName, tab.rawContent);
       },
 
       syncPeerComments: async () => {
