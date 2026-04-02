@@ -301,10 +301,16 @@ function App() {
     <div className="app-layout">
       {!focusMode && (
         <Header
-          onShare={() =>
+          onShareFile={() =>
             setShareScope({
               nodes: [],
               label: tab?.fileName ?? "document",
+            })
+          }
+          onShareFolder={() =>
+            setShareScope({
+              nodes: toFileTreeNodes(hostTree),
+              label: tab?.directoryName ?? "folder",
             })
           }
           onPresent={enterPresentationMode}
