@@ -191,7 +191,7 @@ export function MarkdownRenderer() {
       requestAnimationFrame(() => {
         document
           .querySelector(`[data-block-index="${bi}"]`)
-          ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     }
     clearPendingScrollTarget();

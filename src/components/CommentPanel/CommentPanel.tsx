@@ -31,7 +31,7 @@ function scrollToBlock(blockIndex: number | undefined) {
   }
   document
     .querySelector(`[data-block-index="${blockIndex}"]`)
-    ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    ?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 interface DisplayComment {
