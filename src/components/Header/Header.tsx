@@ -8,6 +8,7 @@ import { SunIcon, MoonIcon } from "../Icons";
 import { HistoryDropdown } from "../HistoryDropdown";
 import { TableOfContents } from "../TableOfContents";
 import { WORKER_URL } from "../../config";
+import { downloadActiveFile } from "../../services/download";
 
 function FocusIcon() {
   return (
@@ -110,7 +111,7 @@ export function Header({ peerMode = false, onShare, onPresent }: Props) {
   const refreshFile = useAppStore((s) => s.refreshFile);
   const loadSharedContent = useAppStore((s) => s.loadSharedContent);
   const syncPeerComments = useAppStore((s) => s.syncPeerComments);
-  const downloadActiveFile = useAppStore((s) => s.downloadActiveFile);
+
   const myPeerComments = useAppStore((s) => s.myPeerComments);
   const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
   const unsubmittedPeerCount = useAppStore(

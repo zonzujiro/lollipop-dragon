@@ -372,17 +372,6 @@ interface AppState {
   deletePeerComment: (commentId: string) => void;
   editPeerComment: (commentId: string, type: CommentType, text: string) => void;
   syncPeerComments: () => Promise<void>;
-  downloadActiveFile: () => void;
-}
-
-function downloadFile(filename: string, content: string): void {
-  const blob = new Blob([content], { type: "text/markdown" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename.endsWith(".md") ? filename : `${filename}.md`;
-  anchor.click();
-  URL.revokeObjectURL(url);
 }
 
 function getStorage(): ShareStorage | null {
@@ -1858,26 +1847,6 @@ export const useAppStore = create<AppState>()(
           c.id === commentId ? { ...c, commentType: type, text } : c,
         );
         set({ myPeerComments: updated });
-      },
-
-      downloadActiveFile: () => {
-        const { isPeerMode, peerActiveFilePath, peerRawContent } = get();
-        if (isPeerMode) {
-          if (!peerActiveFilePath) {
-            return;
-          }
-          const fileName =
-            peerActiveFilePath.split("/").pop() ?? peerActiveFilePath;
-          downloadFile(fileName, peerRawContent);
-          return;
-        }
-        const tab = getActiveTab(get());
-        if (!tab || !tab.activeFilePath) {
-          return;
-        }
-        const fileName =
-          tab.activeFilePath.split("/").pop() ?? tab.activeFilePath;
-        downloadFile(fileName, tab.rawContent);
       },
 
       syncPeerComments: async () => {
