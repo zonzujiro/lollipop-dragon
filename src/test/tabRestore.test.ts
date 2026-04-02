@@ -197,6 +197,64 @@ describe("store.restoreTabs", () => {
     expect(tab?.restoreError).toContain("gone.md");
   });
 
+  it("requests permission and restores file tab when query returns prompt", async () => {
+    const fileTab = createDefaultTab({
+      id: "file-tab",
+      label: "notes.md",
+      fileName: "notes.md",
+    });
+
+    useAppStore.setState({
+      tabs: [fileTab],
+      activeTabId: fileTab.id,
+    });
+
+    const handle = {
+      kind: "file",
+      name: "notes.md",
+      queryPermission: vi.fn().mockResolvedValue("prompt"),
+      requestPermission: vi.fn().mockResolvedValue("granted"),
+    };
+    vi.mocked(getHandle).mockResolvedValue(handle);
+    vi.mocked(readFile).mockResolvedValue("# Restored content");
+
+    await useAppStore.getState().restoreTabs();
+
+    const tab = useAppStore.getState().tabs.find((t) => t.id === "file-tab");
+    expect(handle.requestPermission).toHaveBeenCalledWith({
+      mode: "readwrite",
+    });
+    expect(tab?.restoreError).toBeNull();
+    expect(tab?.rawContent).toBe("# Restored content");
+  });
+
+  it("sets restoreError on file tab when permission is denied", async () => {
+    const fileTab = createDefaultTab({
+      id: "file-tab",
+      label: "notes.md",
+      fileName: "notes.md",
+    });
+
+    useAppStore.setState({
+      tabs: [fileTab],
+      activeTabId: fileTab.id,
+    });
+
+    const handle = {
+      kind: "file",
+      name: "notes.md",
+      queryPermission: vi.fn().mockResolvedValue("prompt"),
+      requestPermission: vi.fn().mockResolvedValue("denied"),
+    };
+    vi.mocked(getHandle).mockResolvedValue(handle);
+
+    await useAppStore.getState().restoreTabs();
+
+    const tab = useAppStore.getState().tabs.find((t) => t.id === "file-tab");
+    expect(tab?.restoreError).toContain("notes.md");
+    expect(tab?.restoreError).toContain("permission");
+  });
+
   it("clears restoreError on successful file tab restore", async () => {
     const fileTab = createDefaultTab({
       id: "file-tab",
