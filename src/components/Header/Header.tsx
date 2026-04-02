@@ -249,7 +249,7 @@ export function Header({
               {WORKER_URL && hasContent && (
                 <>
                   <div className="app-header__divider" aria-hidden="true" />
-                  {fileName && (
+                  {fileName && onShareFile && (
                     <button
                       className="app-header__btn app-header__btn--icon"
                       onClick={onShareFile}
@@ -259,7 +259,7 @@ export function Header({
                       <ShareFileIcon />
                     </button>
                   )}
-                  {hasFolderOpen && (
+                  {hasFolderOpen && onShareFolder && (
                     <button
                       className="app-header__btn app-header__btn--icon"
                       onClick={onShareFolder}
