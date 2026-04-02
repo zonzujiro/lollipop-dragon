@@ -9,6 +9,7 @@ import { HistoryDropdown } from "../HistoryDropdown";
 import { TableOfContents } from "../TableOfContents";
 import { WORKER_URL } from "../../config";
 import { downloadActiveFile } from "../../services/download";
+import { syncActiveShares } from "../../services/shareSync";
 
 function FocusIcon() {
   return (
@@ -131,7 +132,6 @@ export function Header({ peerMode = false, onShare, onPresent }: Props) {
   const fileHandle = tab?.fileHandle ?? null;
   const shares = tab?.shares ?? [];
   const sharedPanelOpen = tab?.sharedPanelOpen ?? false;
-  const syncActiveShares = useAppStore((s) => s.syncActiveShares);
   const hasActiveShares = shares.some(
     (s) => new Date(s.expiresAt) > new Date(),
   );
