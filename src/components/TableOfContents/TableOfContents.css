@@ -1,0 +1,77 @@
+.toc {
+  position: relative;
+}
+
+.toc__menu {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  right: 0;
+  z-index: 100;
+  width: 280px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.toc__header {
+  padding: 0.5rem 0.75rem 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.toc__list {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem 0;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.toc__entry {
+  display: block;
+  width: 100%;
+  padding: 0.35rem 0.75rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.8rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toc__entry:hover {
+  background-color: var(--surface-alt);
+}
+
+.toc__entry[data-level="1"] {
+  padding-left: 0.75rem;
+  font-weight: 600;
+}
+
+.toc__entry[data-level="2"] {
+  padding-left: 1.5rem;
+}
+
+.toc__entry[data-level="3"] {
+  padding-left: 2.25rem;
+}
+
+.toc__entry[data-level="4"] {
+  padding-left: 3rem;
+}
+
+.toc__entry[data-level="5"] {
+  padding-left: 3.75rem;
+}
+
+.toc__entry[data-level="6"] {
+  padding-left: 4.5rem;
+}

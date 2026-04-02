@@ -389,7 +389,7 @@ function scrollToBlock(blockIndex: number | undefined) {
     );
     return;
   }
-  el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function isPermissionError(e: unknown): boolean {
