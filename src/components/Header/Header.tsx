@@ -8,6 +8,8 @@ import { SunIcon, MoonIcon } from "../Icons";
 import { HistoryDropdown } from "../HistoryDropdown";
 import { TableOfContents } from "../TableOfContents";
 import { WORKER_URL } from "../../config";
+import { downloadActiveFile } from "../../services/download";
+import { syncActiveShares } from "../../services/shareSync";
 
 function FocusIcon() {
   return (
@@ -51,6 +53,27 @@ function SidebarIcon() {
   );
 }
 
+function FloppyDiskIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
+      <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7" />
+      <path d="M7 3v4a1 1 0 0 0 1 1h7" />
+    </svg>
+  );
+}
+
 function PresentIcon() {
   return (
     <svg
@@ -89,6 +112,7 @@ export function Header({ peerMode = false, onShare, onPresent }: Props) {
   const refreshFile = useAppStore((s) => s.refreshFile);
   const loadSharedContent = useAppStore((s) => s.loadSharedContent);
   const syncPeerComments = useAppStore((s) => s.syncPeerComments);
+
   const myPeerComments = useAppStore((s) => s.myPeerComments);
   const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
   const unsubmittedPeerCount = useAppStore(
@@ -108,7 +132,6 @@ export function Header({ peerMode = false, onShare, onPresent }: Props) {
   const fileHandle = tab?.fileHandle ?? null;
   const shares = tab?.shares ?? [];
   const sharedPanelOpen = tab?.sharedPanelOpen ?? false;
-  const syncActiveShares = useAppStore((s) => s.syncActiveShares);
   const hasActiveShares = shares.some(
     (s) => new Date(s.expiresAt) > new Date(),
   );
@@ -243,6 +266,15 @@ export function Header({ peerMode = false, onShare, onPresent }: Props) {
                   Submit comments ({unsubmittedPeerCount})
                 </button>
               )}
+              <button
+                onClick={downloadActiveFile}
+                aria-label="Save file"
+                title="Download current file as .md"
+                className="app-header__btn app-header__btn--text"
+              >
+                <FloppyDiskIcon />
+                Save file
+              </button>
             </>
           )}
 

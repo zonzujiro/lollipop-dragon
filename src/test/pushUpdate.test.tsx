@@ -35,6 +35,7 @@ vi.mock("../config", () => ({
 
 import { Header } from "../components/Header";
 import { useAppStore } from "../store";
+import { syncActiveShares } from "../services/shareSync";
 import { setTestState, resetTestStore, makeShare } from "./testHelpers";
 
 beforeEach(() => {
@@ -207,13 +208,13 @@ describe("store.loadSharedContent — preserves active file", () => {
   });
 });
 
-// ── Store: syncActiveShares ──────────────────────────────────────────
+// ── syncActiveShares ────────────────────────────────────────────────
 
-describe("store.syncActiveShares", () => {
+describe("syncActiveShares", () => {
   it("does nothing in peer mode", async () => {
     setTestState({ shares: [makeShare()] }, { isPeerMode: true });
 
-    await useAppStore.getState().syncActiveShares();
+    await syncActiveShares();
     expect(mockUpdateContent).not.toHaveBeenCalled();
   });
 
@@ -228,7 +229,7 @@ describe("store.syncActiveShares", () => {
       activeFilePath: "readme.md",
     });
 
-    await useAppStore.getState().syncActiveShares();
+    await syncActiveShares();
     expect(mockUpdateContent).not.toHaveBeenCalled();
   });
 });

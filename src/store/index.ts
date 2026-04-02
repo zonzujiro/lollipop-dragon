@@ -21,6 +21,7 @@ import {
   docIdFromKey,
 } from "../services/crypto";
 import { buildShareUrlFromOrigin, parseShareHash } from "../utils/shareUrl";
+import { syncActiveShares as syncActiveSharesService } from "../services/shareSync";
 import {
   findLiveFileInTree,
   toFileTreeNodes,
@@ -350,14 +351,12 @@ interface AppState {
     label?: string;
   }) => Promise<string>;
   revokeShare: (docId: string) => Promise<void>;
-  updateShare: (docId: string) => Promise<void>;
   fetchPendingComments: (docId: string) => Promise<void>;
   fetchAllPendingComments: () => Promise<void>;
   mergeComment: (docId: string, comment: PeerComment) => Promise<void>;
   dismissComment: (docId: string, cmtId: string) => void;
   clearPendingComments: (docId: string) => Promise<void>;
   toggleSharedPanel: () => void;
-  syncActiveShares: () => Promise<void>;
 
   // Peer actions
   setPeerName: (name: string) => void;
@@ -1264,7 +1263,7 @@ export const useAppStore = create<AppState>()(
             resolvedComments: newlyResolved,
           }));
           if (changed) {
-            get().syncActiveShares();
+            syncActiveSharesService();
           }
         } catch (e) {
           console.error("[refreshFile] file read failed:", e);
@@ -1518,47 +1517,6 @@ export const useAppStore = create<AppState>()(
         });
       },
 
-      updateShare: async (docId) => {
-        const storage = getStorage();
-        if (!storage) {
-          throw new Error("Worker URL not configured");
-        }
-        const tab = activeTab(get);
-        if (!tab) {
-          throw new Error("No active tab");
-        }
-        const record = tab.shares.find((s) => s.docId === docId);
-        if (!record) {
-          throw new Error("Share not found");
-        }
-        const key = tab.shareKeys[docId];
-        if (!key)
-          throw new Error(
-            "Encryption key not available (session may have expired)",
-          );
-
-        const allowed = record.sharedPaths ? new Set(record.sharedPaths) : null;
-        const liveFileTree = getLiveFileTree(tab);
-        const tree =
-          liveFileTree.length > 0
-            ? await collectTreeContents(
-                liveFileTree,
-                tab.activeFilePath,
-                tab.rawContent,
-                allowed,
-              )
-            : {};
-        if (Object.keys(tree).length === 0 && tab.rawContent) {
-          const fallbackPath =
-            tab.activeFilePath ?? tab.fileName ?? "document.md";
-          if (!allowed || allowed.has(fallbackPath)) {
-            tree[fallbackPath] = tab.rawContent;
-          }
-        }
-
-        await storage.updateContent(docId, record.hostSecret, tree, key);
-      },
-
       fetchPendingComments: async (docId) => {
         const storage = getStorage();
         if (!storage) {
@@ -1740,25 +1698,6 @@ export const useAppStore = create<AppState>()(
           sharedPanelOpen: !t.sharedPanelOpen,
           commentPanelOpen: !t.sharedPanelOpen ? false : t.commentPanelOpen,
         })),
-
-      syncActiveShares: async () => {
-        const tab = activeTab(get);
-        if (!tab) {
-          return;
-        }
-        if (get().isPeerMode) {
-          return;
-        }
-        const now = new Date();
-        const active = tab.shares.filter((s) => new Date(s.expiresAt) > now);
-        for (const share of active) {
-          try {
-            await get().updateShare(share.docId);
-          } catch (e) {
-            console.warn("[sync] failed to push update for", share.docId, e);
-          }
-        }
-      },
 
       // ── Peer actions ──────────────────────────────────────────────────
 
