@@ -825,16 +825,30 @@ try {
 }
 
 // In mergeComment (host resolves a peer comment):
-// ORDERING: push content to KV FIRST, then broadcast.
-// This ensures that if a peer reloads during the resolve window,
-// the durable KV content already reflects the resolve.
+// DURABLE RESOLVE SEQUENCE — three steps in order:
+// 1. Delete the specific comment from KV (prevents reconnect reimport)
+// 2. Push updated content to KV (reflects resolve in shared content)
+// 3. Broadcast comment:resolved (notifies connected peers)
+// This ordering ensures KV is fully durable before any peer is notified.
+
+// Step 1: Delete the resolved comment from KV
+try {
+  const storage = getStorage();
+  if (storage) {
+    await storage.deleteComment(docId, comment.id, record.hostSecret);
+  }
+} catch (deleteError) {
+  console.warn("[relay] per-comment KV delete failed:", deleteError);
+}
+
+// Step 2: Push updated content to KV
 try {
   await updateShare(docId);
 } catch (pushError) {
   console.warn("[relay] auto-push after resolve failed:", pushError);
 }
 
-// Now broadcast — the relay notification comes after KV is durable.
+// Step 3: Broadcast — relay notification comes after KV is durable
 try {
   const { rtSocket } = get();
   if (rtSocket) {
@@ -850,11 +864,14 @@ try {
 }
 ```
 
-- [ ] Auto-push share content after host resolves a comment, BEFORE broadcasting `comment:resolved`
-  - `mergeComment` should call `updateShare(docId)` after writing CriticMarkup to the local file
-  - The push must complete before the relay broadcast — this ensures KV is durable before peers are notified
-  - If a peer reloads during the resolve window, the KV content already reflects the resolve (transient `resolvedCommentIds` is not needed)
-  - Without this ordering, `loadSharedContent()` on peer reconnect may return stale content
+- [ ] Implement durable resolve sequence in `mergeComment` (3 steps in order, all before relay broadcast)
+  1. Delete the resolved comment from KV (`DELETE /comments/:docId/:cmtId`) — prevents reconnect catch-up from reimporting it
+  2. Push updated content to KV (`updateShare(docId)`) — ensures `loadSharedContent()` reflects the resolve
+  3. Broadcast `comment:resolved` via relay — notifies connected peers
+  - All three steps must succeed in order before peers are notified
+  - If a peer reloads at any point during this sequence, KV is already durable
+  - Requires: per-comment delete endpoint in Worker, `updateShare` from `shareSync.ts`
+  - Depends on: Worker changes (per-comment delete route)
   - Depends on: `updateShare` from `src/services/shareSync.ts`
 
 - [ ] Integrate relay broadcast into `updateShare` flow: after KV write, broadcast `document:updated`

@@ -142,7 +142,11 @@ These must be done before the relay feature can ship safely:
 
 1. **Per-comment KV deletion** — Add `DELETE /comments/:docId/:cmtId` to the Worker. Change `mergeComment`/`dismissComment` to delete only the resolved comment, not all comments for the share.
 
-2. **Auto-push after resolve, before broadcast** — `mergeComment` must call `updateShare(docId)` after resolving and **before** broadcasting `comment:resolved`. This ordering ensures that if a peer reloads during the resolve window, the durable KV content already reflects the resolve. The relay broadcast is the notification; KV is the durable record.
+2. **Durable resolve sequence** — When the host resolves a comment, three things must happen in this order before broadcasting `comment:resolved`:
+   a. **Delete the comment from KV** (`DELETE /comments/:docId/:cmtId`) — prevents reconnect catch-up from reimporting a resolved comment.
+   b. **Push updated content to KV** (`updateShare(docId)`) — ensures `loadSharedContent()` reflects the resolve.
+   c. **Broadcast `comment:resolved`** — notifies connected peers.
+   This ordering ensures that if a peer reloads at any point during the sequence, the durable KV state (both comment blobs and shared content) already reflects the resolve. The relay broadcast is the notification; KV is the durable record.
 
 ---
 
@@ -162,7 +166,7 @@ These must be done before the relay feature can ship safely:
 
 | File | Change |
 |------|--------|
-| `worker/src/index.ts` | Add `/relay` WebSocket upgrade route; export `RelayHub`; add `RELAY_HUB` to `Env` |
+| `worker/src/index.ts` | Add `/relay` WebSocket upgrade route; export `RelayHub`; add `RELAY_HUB` to `Env`; add `DELETE /comments/:docId/:cmtId` per-comment delete route |
 | `worker/wrangler.toml` | Add DO binding and `new_sqlite_classes` migration |
 | `src/store/index.ts` | Add relay state fields, actions (`openRelay`, `subscribeDoc`, `closeRelay`), message handlers |
 | `src/store/selectors.ts` | Add `allVisiblePeerComments` selector combining `myPeerComments` + `remotePeerComments` |
@@ -190,7 +194,7 @@ These must be done before the relay feature can ship safely:
 |----------|-------|----------------|
 | DO requests/day | 100,000 (20:1 WS ratio = ~2M messages) | ~200–500 messages/hour per active session |
 | DO duration/day | 13,000 GB-s | Low — Hibernation API minimizes wakeups; 30s ping adds ~2 msg/30s idle cost |
-| KV reads/day | 100,000 | Unchanged from v2 + reconnect catch-up reads |
-| KV writes/day | 1,000 | Unchanged from v2 (comment persistence) |
+| KV reads/day | 100,000 | v2 baseline + reconnect catch-up reads |
+| KV writes/day | 1,000 | v2 baseline + auto-push content after each resolve + per-comment delete on resolve. Estimate: ~10–50 additional writes/day for a typical review session. |
 
 Well within free tier for the 2–5 peer target.

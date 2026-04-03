@@ -1664,3 +1664,105 @@ Suggested fix:
 ### Residual note
 
 This technical-design review is separate from the earlier spec/todo-only rounds. The dedicated design set is mostly consistent, but the resolve durability window still needs a stronger answer before implementation.
+
+## Eleventh Review (Technical Design)
+
+This pass reviews the updated dedicated design set:
+
+- `docs/features/realtime-comments/technical-design.md`
+- `docs/features/realtime-comments/spec.md`
+- `docs/features/realtime-comments/todos.md`
+
+Several prior technical-design findings are fixed:
+
+- the summary no longer overstates KV as the sole reconnect truth source
+- the “everything from v2 remains unchanged” wording is tightened
+- modified-file ownership for `comment:added` vs `document:updated` is now corrected
+- the resolve flow now requires auto-push before broadcasting `comment:resolved`
+
+## BLOCKING
+
+### 1. Auto-push-before-broadcast is still not enough to make resolves durable
+
+Reference:
+
+- `docs/features/realtime-comments/technical-design.md:112-145`
+- `docs/features/realtime-comments/todos.md:827-858`
+- `docs/features/realtime-comments/todos.md:904-914`
+
+Problem:
+
+The updated design now treats “push content to KV before broadcasting `comment:resolved`” as the durable protection against zombie comments. That is only half the story.
+
+Peer reconnect catch-up still does two separate things:
+
+- fetch comment blobs from KV
+- reload shared content from KV
+
+Even if the content push happens before the resolve broadcast, the resolved comment can still be resurrected after a reload if the comment blob remains in KV when reconnect catch-up runs. `resolvedCommentIds` is transient and disappears on reload, so it cannot protect that case.
+
+In other words:
+
+- content durability alone is not sufficient
+- comment persistence also has to reflect the resolve durably before reconnect catch-up reads it
+
+Why it matters:
+
+The current design still has a reload/reconnect path where a resolved comment can come back unless per-comment deletion or a durable tombstone/version is ordered correctly with the resolve flow.
+
+Suggested fix:
+
+- Define the full durable resolve sequence, not just the content push sequence.
+- Either:
+  - delete the specific comment from KV before broadcasting `comment:resolved`, or
+  - write a durable tombstone/version that reconnect catch-up can use to suppress the stale KV comment blob.
+- Make that ordering explicit in the technical design, not just in the todos.
+
+## MEDIUM
+
+### 2. The modified-files table still omits the Worker comment-route change required by the design
+
+Reference:
+
+- `docs/features/realtime-comments/technical-design.md:143`
+- `docs/features/realtime-comments/technical-design.md:165`
+
+Problem:
+
+Section 8 says per-comment KV deletion is a required pre-implementation change and explicitly requires a new `DELETE /comments/:docId/:cmtId` Worker endpoint. But the modified-files table only describes `worker/src/index.ts` as adding the `/relay` route/export and does not mention the comment-route change.
+
+Why it matters:
+
+This under-scopes the Worker changes in the design inventory and can mislead an implementer into thinking the Worker entrypoint only needs relay wiring.
+
+Suggested fix:
+
+- Update the `worker/src/index.ts` row to include the new per-comment delete route as well as the relay route/export.
+
+### 3. The cost estimate is no longer internally consistent with the required resolve flow
+
+Reference:
+
+- `docs/features/realtime-comments/technical-design.md:145`
+- `docs/features/realtime-comments/technical-design.md:143`
+- `docs/features/realtime-comments/technical-design.md:191-193`
+
+Problem:
+
+The cost table still says KV writes are “unchanged from v2 (comment persistence),” but the design now requires at least two additional write-producing behaviors:
+
+- pushing updated share content after resolves
+- per-comment delete/tombstone work for resolved comments
+
+Why it matters:
+
+This does not make the design invalid, but it does mean the capacity/cost section is understating the new storage traffic introduced by the design itself.
+
+Suggested fix:
+
+- Update the KV write estimate to account for share-content updates after resolve and per-comment resolve persistence work.
+- If the exact number is unknown, mark it as increased-from-v2 and estimate by resolved-comment frequency.
+
+### Residual note
+
+This eleventh review focuses on the updated technical design. The docs are in better shape, but the design still needs one complete durable-resolve story that covers both content KV and comment KV together.
