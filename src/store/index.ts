@@ -1501,6 +1501,20 @@ export const useAppStore = create<AppState>()(
             shareKeys: { ...t.shareKeys, ...restoredKeys },
           }));
         }
+
+        // Auto-connect relay for active shares
+        const restoredState = get();
+        const allActiveShares = restoredState.tabs.flatMap((tab) => tab.shares);
+        const now = new Date();
+        const nonExpiredShares = allActiveShares.filter(
+          (share) => new Date(share.expiresAt) > now,
+        );
+        if (nonExpiredShares.length > 0) {
+          get().openRelay();
+          for (const share of nonExpiredShares) {
+            get().subscribeDoc(share.docId);
+          }
+        }
       },
 
       restoreShareSessions: async () => {
@@ -1590,6 +1604,9 @@ export const useAppStore = create<AppState>()(
           shareKeys: { ...t.shareKeys, [docId]: key },
           activeDocId: docId,
         }));
+
+        get().openRelay();
+        get().subscribeDoc(docId);
 
         return buildShareUrlFromOrigin({ keyB64, name: label });
       },
@@ -1889,6 +1906,9 @@ export const useAppStore = create<AppState>()(
             peerActiveFilePath: activePath,
             peerActiveDocId: docId,
           });
+
+          get().openRelay();
+          get().subscribeDoc(docId);
         } catch (e) {
           set({ isPeerMode: true, sharedContent: null });
           console.error("[share] Failed to load shared content:", e);

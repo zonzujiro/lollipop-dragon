@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAppStore } from "./store";
 import { useActiveTab } from "./store/selectors";
 import { FilePicker } from "./components/FilePicker";
@@ -218,6 +218,16 @@ function App() {
     recursive: true,
     relevantTypes: DIR_OBSERVER_TYPES,
   });
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      useAppStore.getState().closeRelay();
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
 
   // ── Peer mode (full-screen takeover, no tabs) ──
   if (isPeerMode) {
