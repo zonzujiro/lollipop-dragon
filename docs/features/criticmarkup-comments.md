@@ -58,11 +58,11 @@ Developers and technical professionals who use LLM CLIs to generate structured r
 
 MarkReview uses CriticMarkup, an open plain-text annotation standard. The relevant syntax:
 
-- Highlight + comment: `{==highlighted text==}{>>comment about it<<}`
-- Standalone comment (not attached to specific text): `{>>comment<<}`
-- Suggested addition: `{++added text++}`
-- Suggested deletion: `{--removed text--}`
-- Suggested substitution: `{~~old text~>new text~~}`
+- Highlight + comment: ``
+- Standalone comment (not attached to specific text): ``
+- Suggested addition: ``
+- Suggested deletion: ``
+- Suggested substitution: ``
 
 ### 6.2 Type Prefixes
 

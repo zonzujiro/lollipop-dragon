@@ -35,6 +35,8 @@ Pre-commit hooks (Husky + lint-staged) will auto-format staged files with Pretti
 - **Never use `as` for type assertions.** Use type guards, proper narrowing, or helper functions.
 - Prefer `async/await` over `.then()` where possible. Exception: `useEffect` callbacks can't be async, so `.then()` is acceptable there.
 - Prefer named boolean variables or small predicate helpers for non-trivial conditions instead of embedding complex checks inline.
+- **No `switch`/`case`.** Use object maps (e.g., `Record<Type, Handler>`) for dispatch instead.
+- **No single-letter variable names.** Use descriptive names — `comment` not `c`, `state` not `s`, `error` not `e`.
 
 ### Compatibility
 

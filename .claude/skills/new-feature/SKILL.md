@@ -49,7 +49,7 @@ Do not proceed until the user confirms the stories are correct.
 
 ## Phase 3 — Cross-check with existing docs
 
-Read all docs in `docs/` and cross-check the confirmed user stories against them. Look for:
+Read all docs in `docs/features/` and `docs/design/` and cross-check the confirmed user stories against them. Look for:
 
 - Conflicts with existing features or architectural decisions
 - Assumptions the new feature makes that existing features contradict
@@ -105,4 +105,4 @@ Before writing code:
 2. Follow the implementation order from the Phase 5 plan.
 3. Follow all code guidelines (braces on all blocks, no `as` casts, CSS over JS for visuals).
 
-After implementation, ask the user if they want a spec doc written to `docs/` to capture what was built.
+After implementation, ask the user if they want a spec doc written to `docs/features/` to capture what was built. If a spec is written, include a **References** section listing all external links consulted during research (docs, repos, articles, git commits) and a **Methodology** section summarizing the problem-solving approach, shortcuts taken, and blockers resolved.

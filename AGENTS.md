@@ -11,6 +11,8 @@ If a change may remove backward-compatibility logic, pause and ask for confirmat
 - **Never use `as` for type assertions.** Use type guards, proper narrowing, or helper functions instead.
 - **Always use braces `{}` for `if`/`else`/`for`/`while` blocks.** No single-line bodies without braces.
 - **No IIFEs.** Extract async logic into named functions instead of `(async () => { ... })()`.
+- **No `switch`/`case`.** Use object maps (e.g., `Record<Type, Handler>`) for dispatch instead.
+- **No single-letter variable names.** Use descriptive names — `comment` not `c`, `state` not `s`, `error` not `e`.
 
 ## Architecture Overview
 
@@ -71,7 +73,9 @@ If a component reads tab state while in peer mode (or vice versa), it will get s
 ## File Organization
 
 ```
-docs/            -- Feature specs, technical designs, roadmap (read before building)
+docs/            -- Contributing guide, iteration roadmap (read before building)
+docs/features/   -- Feature specs and task lists
+docs/design/     -- Technical design documents (v1, v2)
 src/store/       -- Zustand store (index.ts) and selectors (selectors.ts)
 src/components/  -- React components (folder-per-component: Name/Name.tsx, Name.css, index.ts)
 src/services/    -- API/storage services (shareStorage, crypto, handleStore, fileSystem)
