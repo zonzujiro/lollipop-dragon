@@ -55,6 +55,7 @@ export function CommentPanel({ peerMode = false }: Props) {
   const setCommentFilter = useAppStore((s) => s.setCommentFilter);
   const toggleCommentPanel = useAppStore((s) => s.toggleCommentPanel);
   const myPeerComments = useAppStore((s) => s.myPeerComments);
+  const remotePeerComments = useAppStore((s) => s.remotePeerComments);
   const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
   const activeFilePath = peerMode
     ? peerActiveFilePath
@@ -74,6 +75,18 @@ export function CommentPanel({ peerMode = false }: Props) {
   const isPeerMultiFile =
     peerMode && !!sharedContent && Object.keys(sharedContent.tree).length > 1;
 
+  // Set of own peer comment IDs for edit/delete ownership checks
+  const myPeerCommentIds = useMemo(
+    () => new Set(myPeerComments.map((c) => c.id)),
+    [myPeerComments],
+  );
+
+  // Combined peer comments (own + remote) for display
+  const allPeerComments = useMemo(
+    () => [...myPeerComments, ...remotePeerComments],
+    [myPeerComments, remotePeerComments],
+  );
+
   // In peer mode, map PeerComment[] to a unified display shape
   const peerDisplayComments: DisplayComment[] = useMemo(() => {
     if (!peerMode) {
@@ -81,15 +94,15 @@ export function CommentPanel({ peerMode = false }: Props) {
     }
     // In multi-file mode show all; in single-file mode filter to active file
     const filtered = isPeerMultiFile
-      ? myPeerComments
-      : myPeerComments.filter((c) => c.path === activeFilePath);
+      ? allPeerComments
+      : allPeerComments.filter((c) => c.path === activeFilePath);
     return filtered.map((c) => ({
       id: c.id,
       type: c.commentType,
       text: c.text,
       blockIndex: c.blockRef.blockIndex,
     }));
-  }, [peerMode, isPeerMultiFile, myPeerComments, activeFilePath]);
+  }, [peerMode, isPeerMultiFile, allPeerComments, activeFilePath]);
 
   const sourceComments = peerMode ? peerDisplayComments : comments;
 
@@ -99,7 +112,7 @@ export function CommentPanel({ peerMode = false }: Props) {
       return [];
     }
     const byPath: Record<string, DisplayComment[]> = {};
-    for (const c of myPeerComments) {
+    for (const c of allPeerComments) {
       if (!byPath[c.path]) {
         byPath[c.path] = [];
       }
@@ -117,7 +130,7 @@ export function CommentPanel({ peerMode = false }: Props) {
         fileName: path.split("/").pop() ?? path,
         comments: cmts,
       }));
-  }, [isPeerMultiFile, myPeerComments]);
+  }, [isPeerMultiFile, allPeerComments]);
 
   // Build cross-file flat list for folder mode (only files with comments)
   const crossFileComments = useMemo(() => {
@@ -134,13 +147,13 @@ export function CommentPanel({ peerMode = false }: Props) {
   // Total count across all files for folder/peer-multi-file mode
   const totalCrossFileCount = useMemo(() => {
     if (isPeerMultiFile) {
-      return myPeerComments.length;
+      return allPeerComments.length;
     }
     if (!isFolderMode) {
       return 0;
     }
     return crossFileComments.reduce((sum, e) => sum + e.comments.length, 0);
-  }, [isPeerMultiFile, myPeerComments.length, isFolderMode, crossFileComments]);
+  }, [isPeerMultiFile, allPeerComments.length, isFolderMode, crossFileComments]);
 
   const isResolved = !peerMode && commentFilter === "resolved";
 
@@ -353,6 +366,7 @@ export function CommentPanel({ peerMode = false }: Props) {
             onCrossFileClick={(filePath) => selectPeerFile(filePath)}
             onEdit={editPeerComment}
             onDelete={deletePeerComment}
+            ownIds={myPeerCommentIds}
           />
         ) : isFolderMode ? (
           <CrossFileList
@@ -376,6 +390,7 @@ export function CommentPanel({ peerMode = false }: Props) {
             hostEntryLabel={hostEntryLabel}
             onEdit={peerMode ? editPeerComment : editComment}
             onDelete={peerMode ? deletePeerComment : deleteComment}
+            ownIds={peerMode ? myPeerCommentIds : undefined}
           />
         )}
       </div>
@@ -613,6 +628,7 @@ function CrossFileList({
   onCrossFileClick,
   onEdit,
   onDelete,
+  ownIds,
 }: {
   entries: {
     filePath: string;
@@ -625,6 +641,7 @@ function CrossFileList({
   onCrossFileClick: (filePath: string, rawStart: number) => void;
   onEdit: (id: string, type: CommentType, text: string) => void;
   onDelete: (id: string) => void;
+  ownIds?: Set<string>;
 }) {
   const totalCount = entries.reduce((sum, e) => sum + e.comments.length, 0);
 
@@ -646,13 +663,14 @@ function CrossFileList({
             </div>
             {entry.comments.map((c) => {
               const rawStart = "rawStart" in c ? c.rawStart : 0;
+              const canEdit = ownIds === undefined || ownIds.has(c.id);
               return (
                 <CommentEntry
                   key={`${entry.filePath}:${c.id}`}
                   comment={c}
                   isActive={isActiveFile && activeCommentId === c.id}
                   isOtherFile={!isActiveFile}
-                  canEdit={true}
+                  canEdit={canEdit}
                   onClick={() => {
                     if (isActiveFile) {
                       onEntryClick(c.id, c.blockIndex);
@@ -685,6 +703,7 @@ function SingleFileList({
   hostEntryLabel,
   onEdit,
   onDelete,
+  ownIds,
 }: {
   visible: (Comment | DisplayComment)[];
   isResolved: boolean;
@@ -696,6 +715,7 @@ function SingleFileList({
   hostEntryLabel: (c: Comment) => string;
   onEdit: (id: string, type: CommentType, text: string) => void;
   onDelete: (id: string) => void;
+  ownIds?: Set<string>;
 }) {
   if (visible.length === 0) {
     return (
@@ -746,7 +766,7 @@ function SingleFileList({
             comment={c}
             isActive={activeCommentId === c.id}
             isOtherFile={false}
-            canEdit={true}
+            canEdit={ownIds === undefined || ownIds.has(c.id)}
             onClick={() => onEntryClick(c.id, c.blockIndex)}
             onEdit={onEdit}
             onDelete={onDelete}

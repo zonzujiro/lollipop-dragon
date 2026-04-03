@@ -164,6 +164,7 @@ export function Header({
   const syncPeerComments = useAppStore((s) => s.syncPeerComments);
 
   const myPeerComments = useAppStore((s) => s.myPeerComments);
+  const remotePeerComments = useAppStore((s) => s.remotePeerComments);
   const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
   const unsubmittedPeerCount = useAppStore(
     (s) => getUnsubmittedPeerComments(s).length,
@@ -193,8 +194,13 @@ export function Header({
         0,
       )
     : 0;
+  const allPeerCommentsForFile = peerMode
+    ? [...myPeerComments, ...remotePeerComments].filter(
+        (c) => c.path === peerActiveFilePath,
+      )
+    : [];
   const commentCount = peerMode
-    ? myPeerComments.filter((c) => c.path === peerActiveFilePath).length
+    ? allPeerCommentsForFile.length
     : hasFolderComments
       ? crossFileTotal
       : comments.length;

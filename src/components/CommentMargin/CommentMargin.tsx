@@ -137,18 +137,20 @@ export function CommentMargin({
   const [groups, setGroups] = useState<DotGroup[]>([]);
   const measureRef = useRef<() => void>(() => {});
 
-  // In peer mode, show the peer's own comments as dots
+  // In peer mode, show the peer's own and remote comments as dots
   const myPeerComments = useAppStore((s) => s.myPeerComments);
+  const remotePeerComments = useAppStore((s) => s.remotePeerComments);
   const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
 
   // Peer comments for the current file, grouped by blockIndex
   const peerDotGroups = useMemo(() => {
     if (peerMode) {
-      // Peer sees their own comments
+      // Peer sees own + remote comments
+      const allPeerComments = [...myPeerComments, ...remotePeerComments];
       const currentPath = peerActiveFilePath ?? "";
       const forFile = currentPath
-        ? myPeerComments.filter((c) => c.path === currentPath)
-        : myPeerComments;
+        ? allPeerComments.filter((c) => c.path === currentPath)
+        : allPeerComments;
       const byBlock = new Map<number, PeerComment[]>();
       for (const c of forFile) {
         const idx = c.blockRef.blockIndex;
@@ -178,6 +180,7 @@ export function CommentMargin({
   }, [
     peerMode,
     myPeerComments,
+    remotePeerComments,
     peerActiveFilePath,
     pendingComments,
     activeDocId,
