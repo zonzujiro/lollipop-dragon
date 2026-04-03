@@ -108,7 +108,7 @@ No new npm dependencies. Existing platform choices (Web Crypto, Cloudflare Worke
 | Single hub vs per-doc DO | Single hub | Avoids N WebSocket connections per client; host gets comments from all shares on one socket |
 | Yjs CRDT vs plain events | Plain events | No concurrent editing — each author owns their comments; host resolves unilaterally |
 | Subscribe ACK | `subscribe:ok` / `error` with retry | KV eventual consistency can reject valid subscriptions; client must not show false-connected state |
-| Intentional close flag | `closedIntentionally` boolean | Distinguishes lazy disconnect from unexpected failure; prevents reconnect after deliberate close |
+| Intentional close flag | `closedIntentionally` boolean | Distinguishes deliberate close (all subscriptions removed) from unexpected failure; prevents reconnect after intentional shutdown |
 | Zombie comment prevention | `resolvedCommentIds` set (session-scoped) | Tracks resolved IDs so late-arriving `comment:added` (from KV catch-up) is skipped after a resolve. Session-scoped only — does not survive page reload. The durable protection is the auto-push: `mergeComment` pushes updated content to KV before broadcasting `comment:resolved`, so a reloading peer gets the resolved state from KV. See §8. |
 | Peer reconnect catch-up | Fetch comments from KV + reload content | Two-step: KV catches missed adds, content reload catches missed resolves (requires host auto-push) |
 | Host reconnect catch-up | Active tab only | `fetchAllPendingComments` is tab-scoped; background tabs catch up on switch (documented limitation) |

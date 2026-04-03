@@ -1873,3 +1873,66 @@ Suggested fix:
 ### Residual note
 
 This twelfth review is still docs-only. The earlier technical-design blockers look fixed; the remaining issues are mostly scope/lifecycle wording gaps between the spec and todo plan.
+
+## Thirteenth Review (Technical Design)
+
+This pass reviews the current dedicated design set again:
+
+- `docs/features/realtime-comments/spec.md`
+- `docs/features/realtime-comments/technical-design.md`
+- `docs/features/realtime-comments/todos.md`
+
+The three latest findings from the prior round are now fixed:
+
+- the debounce example no longer refers to edit traffic
+- the excluded-scope wording now distinguishes the fallback model from the KV endpoint changes
+- the lifecycle now explicitly says inactivity-based disconnect is deferred from v1
+
+No blocking or medium-severity design inconsistencies remain in this pass. What remains is small wording cleanup.
+
+## LOW
+
+### 1. The user-decisions table still says the async KV layer “stays as-is”
+
+Reference:
+
+- `docs/features/realtime-comments/spec.md:51`
+- `docs/features/realtime-comments/spec.md:37-38`
+
+Problem:
+
+The scope section now correctly explains that the async KV fallback model remains the same while the KV comment endpoints themselves do change. But the user-decisions table still says the async KV layer "stays as-is."
+
+Why it matters:
+
+This is minor, but it reintroduces the same ambiguity in a higher-level summary table that many readers will scan first.
+
+Suggested fix:
+
+- Reword this to something like:
+  - "Remains the persistence backend and offline fallback"
+  - or "Fallback model unchanged; KV endpoints extended for per-comment resolve handling"
+
+### 2. The technical-design rationale still mentions “lazy disconnect” even though v1 explicitly defers it
+
+Reference:
+
+- `docs/features/realtime-comments/technical-design.md:111`
+- `docs/features/realtime-comments/spec.md:218`
+- `docs/features/realtime-comments/todos.md:539`
+
+Problem:
+
+The technical-design decision row for `closedIntentionally` says it distinguishes "lazy disconnect" from unexpected failure. But the spec and todo now explicitly say inactivity-based disconnect is deferred from v1.
+
+Why it matters:
+
+This is only wording drift, but it can make the reader think lazy disconnect is still part of the current implementation model.
+
+Suggested fix:
+
+- Rephrase the rationale to focus on intentional close after unsubscribing / no remaining subscriptions, rather than lazy disconnect.
+
+### Residual note
+
+This thirteenth review is docs-only. The substantive design issues from the previous rounds appear resolved; the remaining feedback is wording cleanup rather than architectural correctness.

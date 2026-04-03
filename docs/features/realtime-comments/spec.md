@@ -48,7 +48,7 @@ The new approach uses a Cloudflare Durable Object as a WebSocket relay. WebSocke
 | DO placement | Same Worker as existing REST API (single deployment, shared KV access) |
 | Presence | Not in this iteration — comments only |
 | Live content updates | Yes — 1 message per update, negligible cost |
-| Async KV layer | Stays as-is — persistence backend and offline fallback |
+| Async KV layer | Remains the persistence backend and offline fallback. KV endpoints extended for per-comment resolve handling. |
 
 ## 5. Architecture
 
