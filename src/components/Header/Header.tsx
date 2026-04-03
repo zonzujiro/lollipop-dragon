@@ -7,6 +7,7 @@ import {
 import { SunIcon, MoonIcon } from "../Icons";
 import { HistoryDropdown } from "../HistoryDropdown";
 import { TableOfContents } from "../TableOfContents";
+import { ConnectionStatus } from "../ConnectionStatus";
 import { WORKER_URL } from "../../config";
 import { downloadActiveFile } from "../../services/download";
 import { syncActiveShares } from "../../services/shareSync";
@@ -294,6 +295,7 @@ export function Header({
               )}
 
               <div className="app-header__divider" aria-hidden="true" />
+              <ConnectionStatus />
             </>
           )}
 
@@ -310,6 +312,7 @@ export function Header({
 
           {peerMode && (
             <>
+              <ConnectionStatus />
               <button
                 onClick={loadSharedContent}
                 aria-label="Get latest content"

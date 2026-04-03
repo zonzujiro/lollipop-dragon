@@ -39,6 +39,7 @@ export function SharedPanel() {
   const fetchPendingComments = useAppStore((s) => s.fetchPendingComments);
   const fetchAllPendingComments = useAppStore((s) => s.fetchAllPendingComments);
   const pendingComments = tab?.pendingComments ?? {};
+  const rtStatus = useAppStore((state) => state.rtStatus);
 
   const showToast = useAppStore((s) => s.showToast);
 
@@ -162,15 +163,17 @@ export function SharedPanel() {
                     Copy link
                   </button>
 
-                  <button
-                    className="shared-panel__btn"
-                    onClick={() => handleFetch(share.docId)}
-                    disabled={isLoading}
-                    title="Fetch pending peer comments from the Worker"
-                  >
-                    {isLoading ? "…" : "Check comments"}
-                    {badge > 0 && !isLoading && ` (${badge})`}
-                  </button>
+                  {rtStatus !== "connected" && (
+                    <button
+                      className="shared-panel__btn"
+                      onClick={() => handleFetch(share.docId)}
+                      disabled={isLoading}
+                      title="Fetch pending peer comments from the Worker"
+                    >
+                      {isLoading ? "…" : "Check comments"}
+                      {badge > 0 && !isLoading && ` (${badge})`}
+                    </button>
+                  )}
 
                   <button
                     className="shared-panel__btn shared-panel__btn--revoke"

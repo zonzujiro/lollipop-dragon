@@ -17,6 +17,7 @@ import { buildVirtualTree } from "./services/fileSystem";
 import { findLiveFileInTree, toFileTreeNodes } from "./types/fileTree";
 import type { FileTreeNode, SidebarTreeNode } from "./types/fileTree";
 import { RestoreError } from "./components/RestoreError";
+import { ContentUpdateBanner } from "./components/ContentUpdateBanner";
 import { WORKER_URL } from "./config";
 import {
   useThemeSync,
@@ -250,6 +251,7 @@ function App() {
             />
           )}
           <main className="app-main">
+            <ContentUpdateBanner />
             <PeerViewer />
           </main>
           {peerCommentPanelOpen && <CommentPanel peerMode />}
