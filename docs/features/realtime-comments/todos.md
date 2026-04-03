@@ -825,6 +825,16 @@ try {
 }
 
 // In mergeComment (host resolves a peer comment):
+// ORDERING: push content to KV FIRST, then broadcast.
+// This ensures that if a peer reloads during the resolve window,
+// the durable KV content already reflects the resolve.
+try {
+  await updateShare(docId);
+} catch (pushError) {
+  console.warn("[relay] auto-push after resolve failed:", pushError);
+}
+
+// Now broadcast — the relay notification comes after KV is durable.
 try {
   const { rtSocket } = get();
   if (rtSocket) {
@@ -838,20 +848,13 @@ try {
 } catch (relayError) {
   console.warn("[relay] resolve broadcast setup failed:", relayError);
 }
-
-// After resolving, auto-push the affected share so peers can catch up
-// on missed comment:resolved events via loadSharedContent().
-try {
-  await updateShare(docId);
-} catch (pushError) {
-  console.warn("[relay] auto-push after resolve failed:", pushError);
-}
 ```
 
-- [ ] Auto-push share content after host resolves a comment
+- [ ] Auto-push share content after host resolves a comment, BEFORE broadcasting `comment:resolved`
   - `mergeComment` should call `updateShare(docId)` after writing CriticMarkup to the local file
-  - This ensures that peers who missed the `comment:resolved` relay event can recover by re-fetching shared content
-  - Without this, `loadSharedContent()` on peer reconnect only catches resolves if the host manually clicked "Push update"
+  - The push must complete before the relay broadcast — this ensures KV is durable before peers are notified
+  - If a peer reloads during the resolve window, the KV content already reflects the resolve (transient `resolvedCommentIds` is not needed)
+  - Without this ordering, `loadSharedContent()` on peer reconnect may return stale content
   - Depends on: `updateShare` from `src/services/shareSync.ts`
 
 - [ ] Integrate relay broadcast into `updateShare` flow: after KV write, broadcast `document:updated`

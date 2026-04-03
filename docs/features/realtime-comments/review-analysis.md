@@ -1553,3 +1553,114 @@ At this point, the remaining concerns are documented limitations or planned impl
 ### Residual note
 
 This ninth review is docs-only and found no fresh design inconsistencies in the current spec/todo set.
+
+## Tenth Review (Technical Design)
+
+This pass reviews the dedicated technical design set:
+
+- `docs/features/realtime-comments/technical-design.md`
+- `docs/features/realtime-comments/spec.md`
+- `docs/features/realtime-comments/todos.md`
+
+## BLOCKING
+
+### 1. Resolve tombstone is still session-scoped
+
+Reference:
+
+- `docs/features/realtime-comments/technical-design.md:112-145`
+- `docs/features/realtime-comments/technical-design.md:120-128`
+- `docs/features/realtime-comments/todos.md:827-847`
+
+Problem:
+
+The technical design describes `resolvedCommentIds` as the mitigation for relay/KV reordering, but it also says that set is global non-persisted state. The implementation plan broadcasts `comment:resolved` first and only then auto-pushes updated content with `updateShare(docId)`.
+
+That leaves a reload window:
+
+- peer receives `comment:resolved`
+- peer stores the tombstone only in transient memory
+- peer reloads before `updateShare(docId)` finishes and the new content is durable
+- tombstone is gone, KV/content are still stale, and the comment can reappear on reconnect
+
+Why it matters:
+
+The current zombie-comment mitigation is only reliable within the same session. It does not fully protect against reloads or tab crashes in the resolve-before-push window.
+
+Suggested fix:
+
+- Make resolution durable before broadcasting, or
+- introduce a durable tombstone/version mechanism instead of relying only on transient `resolvedCommentIds`.
+
+## MEDIUM
+
+### 2. “KV is the source of truth on reconnect” overstates the actual recovery model
+
+Reference:
+
+- `docs/features/realtime-comments/technical-design.md:56`
+- `docs/features/realtime-comments/technical-design.md:114`
+- `docs/features/realtime-comments/spec.md:239`
+
+Problem:
+
+The summary says KV is the source of truth on reconnect, but the actual design also depends on:
+
+- transient `resolvedCommentIds`
+- content reload to recover missed resolves
+- an active-tab-only host catch-up limitation
+
+That is more nuanced than a pure KV truth model.
+
+Why it matters:
+
+This can mislead an implementer into assuming reconnect state is fully reconstructible from KV alone, which the current design does not actually guarantee.
+
+Suggested fix:
+
+- Rephrase this as something like “KV is the primary durable catch-up layer on reconnect.”
+
+### 3. Modified-files ownership points to the wrong module
+
+Reference:
+
+- `docs/features/realtime-comments/technical-design.md:169`
+- `docs/features/realtime-comments/todos.md:803-824`
+- `docs/features/realtime-comments/todos.md:856-873`
+
+Problem:
+
+The modified-files table says `src/services/shareSync.ts` handles broadcasting `comment:added` after KV post in `syncPeerComments`, but the implementation plan places that work in the store action and uses `shareSync.ts` only for `document:updated` after `updateShare()`.
+
+Why it matters:
+
+This sends an implementer to the wrong module and blurs ownership between store/state logic and share-sync service logic.
+
+Suggested fix:
+
+- Change the table entry so `src/services/shareSync.ts` is responsible only for `document:updated` after `updateShare()`.
+- Attribute `comment:added` post-sync broadcasting to `src/store/index.ts`.
+
+## LOW
+
+### 4. “Everything from v2 remains unchanged” is misleading
+
+Reference:
+
+- `docs/features/realtime-comments/technical-design.md:70`
+
+Problem:
+
+This sentence sits directly above sections that add new state, new files, modified files, and required pre-implementation changes. It reads like a broader behavioral claim than intended.
+
+Why it matters:
+
+It adds avoidable ambiguity to a design doc whose job is to clarify exactly what changes.
+
+Suggested fix:
+
+- Narrow the wording to something like “No new npm dependencies” or “Existing platform choices remain.”
+
+### Residual note
+
+This technical-design review is separate from the earlier spec/todo-only rounds. The dedicated design set is mostly consistent, but the resolve durability window still needs a stronger answer before implementation.

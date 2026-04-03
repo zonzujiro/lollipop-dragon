@@ -53,7 +53,7 @@ Analysis of [claude-duet](https://github.com/EliranG/claude-duet) showed the key
 
 **Topology:** Single relay hub DO, multiplexed by `docId`. Each client opens one WebSocket. The DO routes messages by checking per-socket subscription attachments (`serializeAttachment`/`deserializeAttachment` — survives hibernation).
 
-**Dual-layer:** Comments are posted to KV (persistence) AND broadcast via WebSocket (delivery). KV is the source of truth on reconnect.
+**Dual-layer:** Comments are posted to KV (persistence) AND broadcast via WebSocket (delivery). KV is the primary durable catch-up layer on reconnect, supplemented by transient `resolvedCommentIds` for relay/KV reorder protection within a session.
 
 ---
 
@@ -67,7 +67,7 @@ Analysis of [claude-duet](https://github.com/EliranG/claude-duet) showed the key
 | Keep-alive | Application-level ping/pong (30s) | Prevents VPN proxy idle timeouts |
 | Client state | Zustand (existing store) | New fields on AppState root |
 
-No new npm dependencies. Everything from v2 remains unchanged.
+No new npm dependencies. Existing platform choices (Web Crypto, Cloudflare Worker + KV, GitHub Pages) remain unchanged.
 
 ---
 
@@ -109,7 +109,7 @@ No new npm dependencies. Everything from v2 remains unchanged.
 | Yjs CRDT vs plain events | Plain events | No concurrent editing — each author owns their comments; host resolves unilaterally |
 | Subscribe ACK | `subscribe:ok` / `error` with retry | KV eventual consistency can reject valid subscriptions; client must not show false-connected state |
 | Intentional close flag | `closedIntentionally` boolean | Distinguishes lazy disconnect from unexpected failure; prevents reconnect after deliberate close |
-| Zombie comment prevention | `resolvedCommentIds` set | Tracks resolved IDs so late-arriving `comment:added` (from KV catch-up) is skipped after a resolve |
+| Zombie comment prevention | `resolvedCommentIds` set (session-scoped) | Tracks resolved IDs so late-arriving `comment:added` (from KV catch-up) is skipped after a resolve. Session-scoped only — does not survive page reload. The durable protection is the auto-push: `mergeComment` pushes updated content to KV before broadcasting `comment:resolved`, so a reloading peer gets the resolved state from KV. See §8. |
 | Peer reconnect catch-up | Fetch comments from KV + reload content | Two-step: KV catches missed adds, content reload catches missed resolves (requires host auto-push) |
 | Host reconnect catch-up | Active tab only | `fetchAllPendingComments` is tab-scoped; background tabs catch up on switch (documented limitation) |
 
@@ -142,7 +142,7 @@ These must be done before the relay feature can ship safely:
 
 1. **Per-comment KV deletion** — Add `DELETE /comments/:docId/:cmtId` to the Worker. Change `mergeComment`/`dismissComment` to delete only the resolved comment, not all comments for the share.
 
-2. **Auto-push after resolve** — `mergeComment` must call `updateShare(docId)` after resolving, so peers can recover missed `comment:resolved` events by re-fetching content.
+2. **Auto-push after resolve, before broadcast** — `mergeComment` must call `updateShare(docId)` after resolving and **before** broadcasting `comment:resolved`. This ordering ensures that if a peer reloads during the resolve window, the durable KV content already reflects the resolve. The relay broadcast is the notification; KV is the durable record.
 
 ---
 
@@ -166,7 +166,8 @@ These must be done before the relay feature can ship safely:
 | `worker/wrangler.toml` | Add DO binding and `new_sqlite_classes` migration |
 | `src/store/index.ts` | Add relay state fields, actions (`openRelay`, `subscribeDoc`, `closeRelay`), message handlers |
 | `src/store/selectors.ts` | Add `allVisiblePeerComments` selector combining `myPeerComments` + `remotePeerComments` |
-| `src/services/shareSync.ts` | Broadcast `comment:added` after KV post in `syncPeerComments`; broadcast `document:updated` in `updateShare` |
+| `src/services/shareSync.ts` | Broadcast `document:updated` in `updateShare` |
+| `src/store/index.ts` (continued) | Broadcast `comment:added` after KV post in `syncPeerComments`; broadcast `comment:resolved` in `mergeComment` (after auto-push) |
 | `src/components/Header/Header.tsx` | Wire `ConnectionStatus`; hide "Check comments" when connected |
 | `src/components/CommentPanel/CommentPanel.tsx` | Read combined selector in peer mode |
 | `src/components/CommentMargin/CommentMargin.tsx` | Show margin dots for remote peer comments |
