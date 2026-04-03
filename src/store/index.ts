@@ -21,7 +21,7 @@ import {
   docIdFromKey,
 } from "../services/crypto";
 import { buildShareUrlFromOrigin, parseShareHash } from "../utils/shareUrl";
-import { syncActiveShares as syncActiveSharesService } from "../services/shareSync";
+import { syncActiveShares as syncActiveSharesService, updateShare as updateShareService } from "../services/shareSync";
 import {
   findLiveFileInTree,
   toFileTreeNodes,
@@ -1630,6 +1630,18 @@ export const useAppStore = create<AppState>()(
           });
         }
         await writeAndUpdate(get, set, tab.fileHandle, newRaw);
+
+        // Auto-push updated content to KV so peers can recover missed resolves.
+        // This must happen BEFORE any relay broadcast (added later).
+        const record = tab.shares.find((share) => share.docId === docId);
+        if (record) {
+          try {
+            await updateShareService(docId);
+          } catch (pushError) {
+            console.warn("[mergeComment] auto-push after resolve failed:", pushError);
+          }
+        }
+
         get().dismissComment(docId, comment.id);
       },
 
