@@ -108,5 +108,11 @@ export function resetTestStore() {
     peerCommentPanelOpen: false,
     history: [],
     historyDropdownOpen: false,
+    rtStatus: "disconnected",
+    rtSocket: null,
+    rtSubscriptions: new Set(),
+    documentUpdateAvailable: false,
+    remotePeerComments: [],
+    resolvedCommentIds: new Set(),
   });
 }

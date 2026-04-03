@@ -37,3 +37,11 @@ export function getUnsubmittedPeerComments(state: {
       !state.submittedPeerCommentIds.includes(c.id),
   );
 }
+
+/** All peer comments visible to the current user (own + remote). */
+export function getAllVisiblePeerComments(state: {
+  myPeerComments: PeerComment[];
+  remotePeerComments: PeerComment[];
+}): PeerComment[] {
+  return [...state.myPeerComments, ...state.remotePeerComments];
+}
