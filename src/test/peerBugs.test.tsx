@@ -3,9 +3,17 @@ import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 
 // ── Module-level mocks (hoisted before imports) ──────────────────────
 
-const mockPostComment = vi.fn().mockResolvedValue("server-cmt-id");
-const mockDeleteComments = vi.fn().mockResolvedValue(undefined);
-const mockDeleteComment = vi.fn().mockResolvedValue(undefined);
+const {
+  mockPostComment,
+  mockDeleteComments,
+  mockDeleteComment,
+  mockUpdateShare,
+} = vi.hoisted(() => ({
+  mockPostComment: vi.fn().mockResolvedValue("server-cmt-id"),
+  mockDeleteComments: vi.fn().mockResolvedValue(undefined),
+  mockDeleteComment: vi.fn().mockResolvedValue(undefined),
+  mockUpdateShare: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock("../services/shareStorage", () => ({
   ShareStorage: vi.fn().mockImplementation(() => ({
@@ -18,6 +26,11 @@ vi.mock("../services/shareStorage", () => ({
     updateContent: vi.fn(),
     deleteContent: vi.fn(),
   })),
+}));
+
+vi.mock("../services/shareSync", () => ({
+  syncActiveShares: vi.fn(),
+  updateShare: mockUpdateShare,
 }));
 
 vi.mock("../services/crypto", async (importOriginal) => {
@@ -45,6 +58,8 @@ beforeEach(() => {
   resetTestStore();
   mockPostComment.mockClear();
   mockDeleteComments.mockClear();
+  mockDeleteComment.mockClear();
+  mockUpdateShare.mockClear();
 });
 
 // ── Bug 1: CommentPanel peer mode uses peerActiveFilePath ────────────
@@ -362,7 +377,7 @@ describe("store.dismissComment — per-comment server delete", () => {
     useAppStore.getState().dismissComment("doc-1", "cmt-1");
 
     const tab = getActiveTab(useAppStore.getState());
-    expect(tab?.pendingComments["doc-1"]).toHaveLength(0);
+    expect(tab?.pendingComments["doc-1"]).toBeUndefined();
     expect(mockDeleteComment).toHaveBeenCalledWith("doc-1", "cmt-1", "host-sec");
   });
 
@@ -379,5 +394,96 @@ describe("store.dismissComment — per-comment server delete", () => {
     const tab = getActiveTab(useAppStore.getState());
     expect(tab?.pendingComments["doc-1"]).toHaveLength(1);
     expect(mockDeleteComment).toHaveBeenCalledWith("doc-1", "cmt-1", "host-sec");
+  });
+});
+
+function makeWritableStream() {
+  return Object.assign(new WritableStream(), {
+    write: vi.fn().mockResolvedValue(undefined),
+    close: vi.fn().mockResolvedValue(undefined),
+    seek: vi.fn().mockResolvedValue(undefined),
+    truncate: vi.fn().mockResolvedValue(undefined),
+  });
+}
+
+function makeFileHandle(name = "readme.md"): FileSystemFileHandle {
+  return {
+    kind: "file",
+    name,
+    createWritable: vi.fn().mockResolvedValue(makeWritableStream()),
+    getFile: vi.fn().mockResolvedValue(
+      new File(["# Hello\n"], name, { type: "text/markdown" }),
+    ),
+    isSameEntry: vi.fn().mockResolvedValue(false),
+    queryPermission: vi.fn().mockResolvedValue("granted"),
+    requestPermission: vi.fn().mockResolvedValue("granted"),
+  };
+}
+
+describe("store.mergeComment — durable resolve sequence", () => {
+  it("deletes from KV, pushes content, then broadcasts resolve", async () => {
+    const order: string[] = [];
+    mockDeleteComment.mockImplementation(async () => {
+      order.push("delete");
+    });
+    mockUpdateShare.mockImplementation(async () => {
+      order.push("update");
+    });
+    const relaySocket = {
+      subscribe: vi.fn(),
+      unsubscribe: vi.fn(),
+      send: vi.fn().mockImplementation(async () => {
+        order.push("send");
+      }),
+      close: vi.fn(),
+    };
+    const comment = makePeerComment({ id: "cmt-merge-1" });
+    setTestState(
+      {
+        fileHandle: makeFileHandle(),
+        fileName: "readme.md",
+        activeFilePath: "readme.md",
+        rawContent: "# Hello\n",
+        comments: [],
+        pendingComments: { "doc-1": [comment] },
+        shares: [makeShare({ hostSecret: "host-sec" })],
+      },
+      {
+        rtSocket: relaySocket,
+      },
+    );
+
+    await useAppStore.getState().mergeComment("doc-1", comment);
+
+    expect(order).toEqual(["delete", "update", "send"]);
+    expect(mockDeleteComment).toHaveBeenCalledWith("doc-1", "cmt-merge-1", "host-sec");
+    expect(mockUpdateShare).toHaveBeenCalledWith("doc-1");
+    expect(relaySocket.send).toHaveBeenCalledWith("doc-1", {
+      type: "comment:resolved",
+      commentId: "cmt-merge-1",
+    });
+    expect(useAppStore.getState().resolvedCommentIds.has("cmt-merge-1")).toBe(true);
+    const tab = getActiveTab(useAppStore.getState());
+    expect(tab?.pendingComments["doc-1"]).toBeUndefined();
+  });
+});
+
+describe("store.clearPendingComments — deletes visible comments individually", () => {
+  it("calls deleteComment for each visible pending comment instead of bulk delete", async () => {
+    const c1 = makePeerComment({ id: "clear-1" });
+    const c2 = makePeerComment({ id: "clear-2" });
+    setTestState({
+      pendingComments: { "doc-1": [c1, c2] },
+      shares: [makeShare({ hostSecret: "host-sec", pendingCommentCount: 2 })],
+    });
+
+    await useAppStore.getState().clearPendingComments("doc-1");
+
+    expect(mockDeleteComment).toHaveBeenCalledTimes(2);
+    expect(mockDeleteComment).toHaveBeenNthCalledWith(1, "doc-1", "clear-1", "host-sec");
+    expect(mockDeleteComment).toHaveBeenNthCalledWith(2, "doc-1", "clear-2", "host-sec");
+    expect(mockDeleteComments).not.toHaveBeenCalled();
+    const tab = getActiveTab(useAppStore.getState());
+    expect(tab?.pendingComments["doc-1"]).toBeUndefined();
   });
 });

@@ -73,6 +73,29 @@ describe("SharedPanel — share list", () => {
     expect(screen.getByRole("button", { name: /Revoke/ })).toBeInTheDocument();
   });
 
+  it("hides Check comments when relay is connected for this share", () => {
+    useAppStore.setState({
+      rtStatus: "connected",
+      rtSubscriptions: new Set(["doc-1"]),
+    });
+    render(<SharedPanel />);
+    expect(
+      screen.queryByRole("button", { name: /Check comments/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Revoke/ })).toBeInTheDocument();
+  });
+
+  it("still shows Check comments when relay is connected but this share is not subscribed", () => {
+    useAppStore.setState({
+      rtStatus: "connected",
+      rtSubscriptions: new Set(["other-doc"]),
+    });
+    render(<SharedPanel />);
+    expect(
+      screen.getByRole("button", { name: /Check comments/ }),
+    ).toBeInTheDocument();
+  });
+
   it("calls revokeShare when Revoke is clicked", async () => {
     const revokeShare = vi.fn();
     useAppStore.setState({ revokeShare });

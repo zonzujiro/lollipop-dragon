@@ -505,6 +505,31 @@ function handleHostMessage(
   // document:updated and comment:resolved are not applicable in host mode
 }
 
+function removePendingCommentState(
+  tab: TabState,
+  docId: string,
+  cmtId: string,
+): Pick<TabState, "pendingComments" | "shares"> {
+  const nextPendingComments = { ...tab.pendingComments };
+  const remainingComments = (nextPendingComments[docId] ?? []).filter(
+    (comment) => comment.id !== cmtId,
+  );
+  if (remainingComments.length > 0) {
+    nextPendingComments[docId] = remainingComments;
+  } else {
+    delete nextPendingComments[docId];
+  }
+  const nextShares = tab.shares.map((share) =>
+    share.docId === docId
+      ? { ...share, pendingCommentCount: remainingComments.length }
+      : share,
+  );
+  return {
+    pendingComments: nextPendingComments,
+    shares: nextShares,
+  };
+}
+
 // Helper: update the active tab within the tabs array
 function updateActiveTab(
   get: () => AppState,
@@ -917,6 +942,14 @@ export const useAppStore = create<AppState>()(
         }
         const tab = tabs[idx];
         const updated = tabs.filter((t) => t.id !== tabId);
+        const docIdsToUnsubscribe = tab.shares
+          .map((share) => share.docId)
+          .filter(
+            (docId) =>
+              !updated.some((currentTab) =>
+                currentTab.shares.some((share) => share.docId === docId),
+              ),
+          );
         let newActiveId: string | null = null;
         if (updated.length > 0) {
           if (activeTabId === tabId) {
@@ -969,6 +1002,9 @@ export const useAppStore = create<AppState>()(
             console.warn("[handleStore] cleanup failed:", e),
           );
           set({ tabs: updated, activeTabId: newActiveId });
+        }
+        for (const docId of docIdsToUnsubscribe) {
+          get().unsubscribeDoc(docId);
         }
       },
 
@@ -1647,6 +1683,7 @@ export const useAppStore = create<AppState>()(
             activeDocId: t.activeDocId === docId ? null : t.activeDocId,
           };
         });
+        get().unsubscribeDoc(docId);
       },
 
       fetchPendingComments: async (docId) => {
@@ -1763,32 +1800,66 @@ export const useAppStore = create<AppState>()(
         }
         await writeAndUpdate(get, set, tab.fileHandle, newRaw);
 
-        // Auto-push updated content to KV so peers can recover missed resolves.
         const record = tab.shares.find((share) => share.docId === docId);
-        if (record) {
+        const storage = getStorage();
+        let canBroadcastResolve = false;
+        if (record && storage) {
+          try {
+            await storage.deleteComment(docId, comment.id, record.hostSecret);
+            canBroadcastResolve = true;
+          } catch (deleteError) {
+            console.warn("[mergeComment] per-comment KV delete failed:", deleteError);
+          }
+        } else {
+          canBroadcastResolve = true;
+        }
+
+        if (canBroadcastResolve) {
           try {
             await updateShareService(docId);
           } catch (pushError) {
             console.warn("[mergeComment] auto-push after resolve failed:", pushError);
+            canBroadcastResolve = false;
           }
         }
 
-        // Broadcast comment:resolved via relay — after KV is durable
-        try {
-          const { rtSocket: relaySocket } = get();
-          if (relaySocket) {
-            relaySocket.send(docId, {
-              type: "comment:resolved",
-              commentId: comment.id,
-            }).catch((relayError) => {
-              console.warn("[relay] resolve broadcast failed:", relayError);
-            });
+        if (canBroadcastResolve) {
+          try {
+            const { rtSocket: relaySocket } = get();
+            if (relaySocket) {
+              relaySocket.send(docId, {
+                type: "comment:resolved",
+                commentId: comment.id,
+              }).catch((relayError) => {
+                console.warn("[relay] resolve broadcast failed:", relayError);
+              });
+            }
+          } catch (relayError) {
+            console.warn("[relay] resolve broadcast setup failed:", relayError);
           }
-        } catch (relayError) {
-          console.warn("[relay] resolve broadcast setup failed:", relayError);
         }
 
-        get().dismissComment(docId, comment.id);
+        set((state) => {
+          const nextResolvedCommentIds = new Set(state.resolvedCommentIds);
+          nextResolvedCommentIds.add(comment.id);
+          const tabIndex = state.tabs.findIndex((currentTab) => currentTab.id === tab.id);
+          if (tabIndex === -1) {
+            return { resolvedCommentIds: nextResolvedCommentIds };
+          }
+          const nextTabState = removePendingCommentState(state.tabs[tabIndex], docId, comment.id);
+          return {
+            tabs: state.tabs.map((currentTab, index) =>
+              index === tabIndex
+                ? { ...currentTab, ...nextTabState }
+                : currentTab,
+            ),
+            resolvedCommentIds: nextResolvedCommentIds,
+          };
+        });
+        const updatedTab = get().tabs.find((currentTab) => currentTab.id === tab.id);
+        if (updatedTab) {
+          saveShares(stableShareKey(updatedTab), updatedTab.shares);
+        }
       },
 
       dismissComment: (docId, cmtId) => {
@@ -1797,18 +1868,9 @@ export const useAppStore = create<AppState>()(
           return;
         }
         const tabId = tab.id;
-        const pc = { ...tab.pendingComments };
-        pc[docId] = (pc[docId] ?? []).filter((c) => c.id !== cmtId);
-        const shares = tab.shares.map((s) =>
-          s.docId === docId
-            ? { ...s, pendingCommentCount: pc[docId].length }
-            : s,
-        );
-        saveShares(stableShareKey(tab), shares);
-        updateTab(get, set, tabId, () => ({
-          pendingComments: pc,
-          shares,
-        }));
+        const nextTabState = removePendingCommentState(tab, docId, cmtId);
+        saveShares(stableShareKey(tab), nextTabState.shares);
+        updateTab(get, set, tabId, () => nextTabState);
 
         const record = tab.shares.find((s) => s.docId === docId);
         const storage = getStorage();
@@ -1827,15 +1889,19 @@ export const useAppStore = create<AppState>()(
         }
         const tabId = tab.id;
         const record = tab.shares.find((s) => s.docId === docId);
+        const pendingForDoc = tab.pendingComments[docId] ?? [];
         if (record && storage) {
-          try {
-            await storage.deleteComments(docId, record.hostSecret);
-          } catch (e) {
-            console.error(
-              "[clearPendingComments] failed to delete comments:",
-              docId,
-              e,
-            );
+          for (const pendingComment of pendingForDoc) {
+            try {
+              await storage.deleteComment(docId, pendingComment.id, record.hostSecret);
+            } catch (error) {
+              console.error(
+                "[clearPendingComments] failed to delete comment:",
+                docId,
+                pendingComment.id,
+                error,
+              );
+            }
           }
         }
         const pc = { ...tab.pendingComments };
@@ -2095,6 +2161,15 @@ export const useAppStore = create<AppState>()(
         rtSocket.unsubscribe(docId);
         const next = new Set(rtSubscriptions);
         next.delete(docId);
+        if (next.size === 0) {
+          rtSocket.close();
+          set({
+            rtSocket: null,
+            rtStatus: "disconnected",
+            rtSubscriptions: new Set(),
+          });
+          return;
+        }
         set({ rtSubscriptions: next });
       },
 

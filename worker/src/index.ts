@@ -52,10 +52,43 @@ async function sha256hex(text: string): Promise<string> {
     .join("");
 }
 
+function isShareMeta(value: unknown): value is ShareMeta {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  if (!("hostSecretHash" in value) || typeof value.hostSecretHash !== "string") {
+    return false;
+  }
+  if (!("createdAt" in value) || typeof value.createdAt !== "string") {
+    return false;
+  }
+  if (!("ttl" in value) || typeof value.ttl !== "number") {
+    return false;
+  }
+  if (!("label" in value) || typeof value.label !== "string") {
+    return false;
+  }
+  if ("updatedAt" in value && value.updatedAt !== undefined && typeof value.updatedAt !== "string") {
+    return false;
+  }
+  return true;
+}
+
 async function getMeta(env: Env, docId: string): Promise<ShareMeta | null> {
   const raw = await env.LOLLIPOP_DRAGON.get(`share:${docId}:meta`);
-  if (!raw) return null;
-  return JSON.parse(raw) as ShareMeta;
+  if (!raw) {
+    return null;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!isShareMeta(parsed)) {
+    return null;
+  }
+  return parsed;
 }
 
 async function verifySecret(

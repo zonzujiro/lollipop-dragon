@@ -10,10 +10,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
 function getAttachment(ws: WebSocket): SocketAttachment {
   const raw = ws.deserializeAttachment();
-  if (isRecord(raw) && Array.isArray(raw.subscriptions)) {
-    return { subscriptions: raw.subscriptions as string[] };
+  if (isRecord(raw) && isStringArray(raw.subscriptions)) {
+    return { subscriptions: raw.subscriptions };
   }
   return { subscriptions: [] };
 }

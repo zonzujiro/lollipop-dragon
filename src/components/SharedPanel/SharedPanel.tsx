@@ -40,6 +40,7 @@ export function SharedPanel() {
   const fetchAllPendingComments = useAppStore((s) => s.fetchAllPendingComments);
   const pendingComments = tab?.pendingComments ?? {};
   const rtStatus = useAppStore((state) => state.rtStatus);
+  const rtSubscriptions = useAppStore((state) => state.rtSubscriptions);
 
   const showToast = useAppStore((s) => s.showToast);
 
@@ -50,6 +51,10 @@ export function SharedPanel() {
 
   const hasActiveShares = shares.some(
     (s) => new Date(s.expiresAt) > new Date(),
+  );
+  const needsManualFetch = shares.some(
+    (share) =>
+      rtStatus !== "connected" || !rtSubscriptions.has(share.docId),
   );
 
   async function handleFetch(docId: string) {
@@ -85,7 +90,7 @@ export function SharedPanel() {
     <aside className="shared-panel" aria-label="Shared documents">
       <div className="shared-panel__header">
         <h2 className="shared-panel__title">Shared</h2>
-        {hasActiveShares && (
+        {hasActiveShares && needsManualFetch && (
           <button
             className="shared-panel__btn shared-panel__btn--check-all"
             onClick={handleFetchAll}
@@ -117,6 +122,8 @@ export function SharedPanel() {
             const badge = share.pendingCommentCount;
             const isExpanded = expandedDocId === share.docId;
             const isLoading = loadingDocId === share.docId;
+            const relayConnectedForShare =
+              rtStatus === "connected" && rtSubscriptions.has(share.docId);
 
             return (
               <li key={share.docId} className="shared-panel__entry">
@@ -163,7 +170,7 @@ export function SharedPanel() {
                     Copy link
                   </button>
 
-                  {rtStatus !== "connected" && (
+                  {!relayConnectedForShare && (
                     <button
                       className="shared-panel__btn"
                       onClick={() => handleFetch(share.docId)}
