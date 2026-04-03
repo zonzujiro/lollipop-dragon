@@ -1,6 +1,7 @@
 interface Env {
   LOLLIPOP_DRAGON: KVNamespace;
   ALLOWED_ORIGINS: string;
+  RELAY_HUB: DurableObjectNamespace;
 }
 
 interface ShareMeta {
@@ -80,6 +81,8 @@ function arrayBufferToBase64(buf: ArrayBuffer): string {
   return btoa(binary);
 }
 
+export { RelayHub } from "./relay";
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
@@ -93,6 +96,16 @@ export default {
     try {
       const parts = url.pathname.replace(/^\//, "").split("/");
       const [resource, docId] = parts;
+
+      // --- /relay (WebSocket upgrade to Durable Object) ---
+      if (resource === "relay") {
+        if (req.headers.get("Upgrade") !== "websocket") {
+          return errRes(426, "WebSocket upgrade required", cors);
+        }
+        const hubId = env.RELAY_HUB.idFromName("hub");
+        const hub = env.RELAY_HUB.get(hubId);
+        return hub.fetch(req);
+      }
 
       // ── /share ──────────────────────────────────────────────────────────
       if (resource === "share") {

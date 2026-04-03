@@ -8,3 +8,11 @@ id = "d1299f23b0084de49ddd80728cc1b3bc"
 
 [vars]
 ALLOWED_ORIGINS = "https://critiq.ink,https://zonzujiro.github.io"
+
+[[durable_objects.bindings]]
+name = "RELAY_HUB"
+class_name = "RelayHub"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RelayHub"]
