@@ -1,6 +1,6 @@
 # Todos — Real-Time Comment Sync
 
-> Spec: [realtime-comments-spec.md](./realtime-comments-spec.md)
+> Spec: [spec.md](./spec.md)
 
 ## Types & Data (spec §5.2)
 
