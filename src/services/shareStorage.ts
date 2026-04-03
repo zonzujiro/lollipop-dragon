@@ -152,6 +152,20 @@ export class ShareStorage {
       throw new Error(`Delete comments failed: ${res.status}`)
     }
   }
+
+  async deleteComment(
+    docId: string,
+    cmtId: string,
+    hostSecret: string,
+  ): Promise<void> {
+    const res = await fetch(`${this.workerUrl}/comments/${docId}/${cmtId}`, {
+      method: 'DELETE',
+      headers: { 'X-Host-Secret': hostSecret },
+    })
+    if (!res.ok) {
+      throw new Error(`Delete comment failed: ${res.status}`)
+    }
+  }
 }
 
 function generateSecret(): string {
