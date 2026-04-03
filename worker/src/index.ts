@@ -238,6 +238,16 @@ export default {
           });
         }
 
+        // DELETE /comments/:docId/:cmtId  — delete a specific comment
+        if (req.method === "DELETE" && parts[2]) {
+          if (!(await verifySecret(req, env, docId))) {
+            return errRes(403, "Forbidden", cors);
+          }
+          const cmtId = parts[2];
+          await env.LOLLIPOP_DRAGON.delete(`comments:${docId}:${cmtId}`);
+          return jsonRes({ ok: true }, cors);
+        }
+
         // DELETE /comments/:docId  — clear all comments for a share
         if (req.method === "DELETE") {
           if (!(await verifySecret(req, env, docId)))
