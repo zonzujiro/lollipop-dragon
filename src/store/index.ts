@@ -1652,13 +1652,12 @@ export const useAppStore = create<AppState>()(
           shares,
         }));
 
-        // When all comments for this docId are gone locally, clear from server
-        if (pc[docId].length === 0) {
-          const record = tab.shares.find((s) => s.docId === docId);
-          const storage = getStorage();
-          if (record && storage) {
-            storage.deleteComments(docId, record.hostSecret).catch(() => {});
-          }
+        const record = tab.shares.find((s) => s.docId === docId);
+        const storage = getStorage();
+        if (record && storage) {
+          storage.deleteComment(docId, cmtId, record.hostSecret).catch((error) => {
+            console.warn("[dismissComment] per-comment KV delete failed:", error);
+          });
         }
       },
 

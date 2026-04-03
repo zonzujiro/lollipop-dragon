@@ -5,11 +5,13 @@ import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 
 const mockPostComment = vi.fn().mockResolvedValue("server-cmt-id");
 const mockDeleteComments = vi.fn().mockResolvedValue(undefined);
+const mockDeleteComment = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("../services/shareStorage", () => ({
   ShareStorage: vi.fn().mockImplementation(() => ({
     postComment: mockPostComment,
     deleteComments: mockDeleteComments,
+    deleteComment: mockDeleteComment,
     fetchComments: vi.fn().mockResolvedValue([]),
     uploadContent: vi.fn(),
     fetchContent: vi.fn(),
@@ -347,10 +349,10 @@ describe("Header — peer mode submit button", () => {
   });
 });
 
-// ── Bug 4: dismissComment clears server when last comment dismissed ──
+// ── Bug 4: dismissComment deletes individual comment from server ──
 
-describe("store.dismissComment — server cleanup on last dismiss", () => {
-  it("calls deleteComments on server when last comment is dismissed", () => {
+describe("store.dismissComment — per-comment server delete", () => {
+  it("calls deleteComment on server when a comment is dismissed", () => {
     const comment = makePeerComment({ id: "cmt-1" });
     setTestState({
       pendingComments: { "doc-1": [comment] },
@@ -361,10 +363,10 @@ describe("store.dismissComment — server cleanup on last dismiss", () => {
 
     const tab = getActiveTab(useAppStore.getState());
     expect(tab?.pendingComments["doc-1"]).toHaveLength(0);
-    expect(mockDeleteComments).toHaveBeenCalledWith("doc-1", "host-sec");
+    expect(mockDeleteComment).toHaveBeenCalledWith("doc-1", "cmt-1", "host-sec");
   });
 
-  it("does not call deleteComments when other comments remain", () => {
+  it("calls deleteComment even when other comments remain", () => {
     const c1 = makePeerComment({ id: "cmt-1" });
     const c2 = makePeerComment({ id: "cmt-2" });
     setTestState({
@@ -376,6 +378,6 @@ describe("store.dismissComment — server cleanup on last dismiss", () => {
 
     const tab = getActiveTab(useAppStore.getState());
     expect(tab?.pendingComments["doc-1"]).toHaveLength(1);
-    expect(mockDeleteComments).not.toHaveBeenCalled();
+    expect(mockDeleteComment).toHaveBeenCalledWith("doc-1", "cmt-1", "host-sec");
   });
 });
