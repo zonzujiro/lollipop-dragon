@@ -536,7 +536,7 @@ window.addEventListener("beforeunload", () => {
 });
 ```
 
-- [ ] Add `close()` cleanup and lazy connect/disconnect (5-min tab inactivity timeout)
+- [ ] Add `close()` cleanup (inactivity-based disconnect deferred to future optimization)
   - Depends on: Types & Data
 
 ## Store / State (spec §5.3)

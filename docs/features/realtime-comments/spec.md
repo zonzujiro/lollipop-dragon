@@ -34,7 +34,7 @@ The new approach uses a Cloudflare Durable Object as a WebSocket relay. WebSocke
 - Typing indicators
 - Yjs / CRDT — plain JSON events are sufficient (no concurrent editing conflicts)
 - Multi-reviewer merge UI changes
-- Changes to the async KV comment flow (it stays as-is for persistence and offline)
+- Changes to the async KV fallback model (peer POST / host GET semantics remain). Note: the KV comment endpoints themselves DO change — per-comment deletion is added and resolve triggers auto-push. See §5.3 host flow.
 - Real-time edit/delete — KV persistence is append-only; supporting relay-only edits/deletes creates an inconsistency with KV as reconnect source of truth. Deferred until KV supports per-comment mutation.
 
 ## 4. User Decisions
@@ -212,8 +212,10 @@ Both host and peer share a single WebSocket connection to the relay hub. The con
 2. Client sends `{ type: "subscribe", docId: "..." }` for each docId it cares about.
 3. The DO verifies the doc exists in KV. On success, it adds the connection to that docId's subscriber list and responds with `{ type: "subscribe:ok", docId }`. On failure, it responds with `{ type: "error", docId, message: "Doc not found" }`. The client only adds the docId to its local subscription state after receiving `subscribe:ok`. If subscribe fails, the client retries with backoff while the socket remains open.
 4. When the client no longer needs a docId (e.g., tab closed, share revoked), it sends `{ type: "unsubscribe", docId: "..." }`.
-5. When no subscriptions remain, the client closes the WebSocket.
+5. When no subscriptions remain, the client closes the WebSocket (intentional close — no reconnect).
 6. The client sends a lightweight ping frame every 30 seconds to prevent corporate proxies from killing the idle connection. This is separate from WebSocket protocol-level pings — it's an application-level `{ type: "ping" }` message. The DO responds with `{ type: "pong" }`. This ensures the connection survives VPN/proxy idle timeouts (commonly 30–120 seconds).
+
+**v1 lifecycle model:** The socket stays open for as long as the client has active subscriptions. There is no inactivity-based disconnect in v1 — the 5-minute lazy disconnect is deferred to a future optimization. Reopening after an intentional close (e.g., all shares revoked, then a new share created) triggers a fresh `openRelay()` → subscribe flow.
 
 #### Host flow
 
@@ -445,9 +447,9 @@ These strategies keep WebSocket message volume low to stay well within the free 
 |----------|-----|--------|
 | Minimal keep-alive | Client sends a lightweight ping every 30s to survive VPN proxy idle timeouts. The DO responds with pong. No application-level polling beyond this. | 2 messages/30s when idle (negligible) |
 | Echo suppression | DO does not relay a message back to the sender. | 50% reduction in relay traffic |
-| Debounced sending | Client collects events within a 500ms window before flushing. Prevents bursts from rapid edits — a peer typing 5 edits in 500ms sends them in one flush rather than 5 separate sends. Individual events remain separate WebSocket frames. | Reduces burst traffic from rapid edits |
+| Debounced sending | Client collects events within a 500ms window before flushing. Prevents bursts from rapid comment additions. Individual events remain separate WebSocket frames. | Reduces burst traffic |
 | Send diffs | Only the changed comment is sent, not the full comment list. Full state sync only on reconnect (via KV). | Minimal payload per event |
-| Lazy connect | WebSocket opens only when viewing a shared doc. Closes after 5 minutes of tab inactivity (blur/hidden). | Zero connections for idle tabs |
+| Lazy connect | WebSocket opens only when the client has active subscriptions. Closes when all subscriptions are removed. Inactivity-based disconnect deferred to future optimization. | Zero connections when not sharing |
 | KV dedup on reconnect | On reconnect, fetch from KV and deduplicate by comment ID against already-known comments. | No redundant processing |
 
 ## 11. Methodology

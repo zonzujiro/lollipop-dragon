@@ -1766,3 +1766,110 @@ Suggested fix:
 ### Residual note
 
 This eleventh review focuses on the updated technical design. The docs are in better shape, but the design still needs one complete durable-resolve story that covers both content KV and comment KV together.
+
+## Twelfth Review (Technical Design)
+
+This pass reviews the current dedicated design set:
+
+- `docs/features/realtime-comments/technical-design.md`
+- `docs/features/realtime-comments/spec.md`
+- `docs/features/realtime-comments/todos.md`
+
+Several earlier technical-design findings are now resolved:
+
+- the durable resolve sequence now explicitly includes per-comment KV delete, content push, then relay broadcast
+- the modified-files table now includes the Worker delete route and correct file ownership for `comment:added` vs `document:updated`
+- the summary/cost wording is now much tighter and more accurate
+
+No blocking findings remain in `technical-design.md` itself. The remaining issues are smaller docs-only inconsistencies in the broader spec/todo set.
+
+## MEDIUM
+
+### 1. The scope section still says the async KV comment flow stays unchanged, but the design now requires changing it
+
+Reference:
+
+- `docs/features/realtime-comments/spec.md:37-38`
+- `docs/features/realtime-comments/technical-design.md:143-149`
+- `docs/features/realtime-comments/todos.md:867-875`
+- `docs/features/realtime-comments/todos.md:927-932`
+
+Problem:
+
+The spec's excluded-scope section still says:
+
+- changes to the async KV comment flow are excluded
+- the KV flow "stays as-is"
+
+But the current design now explicitly requires:
+
+- a per-comment delete endpoint
+- changing resolve handling from bulk cleanup to per-comment persistence updates
+- auto-pushing updated content after resolve
+
+Why it matters:
+
+This is no longer just an implementation detail. It changes the scope boundary and can mislead planning, estimates, and rollout expectations.
+
+Suggested fix:
+
+- Reword the exclusion to something narrower, such as:
+  - the async fallback model remains
+  - peer POST / host GET fallback semantics remain
+- Remove the claim that the KV comment flow stays entirely unchanged.
+
+### 2. Lazy disconnect is still underspecified across the lifecycle docs
+
+Reference:
+
+- `docs/features/realtime-comments/spec.md:209-215`
+- `docs/features/realtime-comments/spec.md:450`
+- `docs/features/realtime-comments/todos.md:539`
+- `docs/features/realtime-comments/technical-design.md:111`
+
+Problem:
+
+The lifecycle section says the socket stays open as long as subscriptions are active. The optimization section and todo plan also say the socket should close after 5 minutes of tab inactivity.
+
+Those two behaviors are not the same, and the docs still do not define the missing half of the lifecycle:
+
+- whether subscriptions remain logically desired after the inactivity close
+- what event reopens the socket
+- what event replays subscriptions after an intentional inactivity close
+
+Why it matters:
+
+An implementer can reasonably build either:
+
+- keep the socket open for any active share, or
+- intentionally close hidden tabs and reopen on focus/visibilitychange
+
+Those models have different reliability and fallback behavior.
+
+Suggested fix:
+
+- Pick one model explicitly for v1.
+- If inactivity-close stays, document the reopen trigger and clarify the difference between desired subscriptions and confirmed subscriptions.
+
+## LOW
+
+### 3. The optimization example still talks about rapid edits even though edits are out of scope
+
+Reference:
+
+- `docs/features/realtime-comments/spec.md:22`
+- `docs/features/realtime-comments/spec.md:38`
+- `docs/features/realtime-comments/spec.md:448`
+
+Problem:
+
+The debounced-sending row still uses "rapid edits" as its example traffic pattern even though realtime edit/delete are explicitly deferred from v1.
+
+Suggested fix:
+
+- Change the example to rapid adds/resolves, or
+- use generic "burst traffic" wording instead of edit-specific language.
+
+### Residual note
+
+This twelfth review is still docs-only. The earlier technical-design blockers look fixed; the remaining issues are mostly scope/lifecycle wording gaps between the spec and todo plan.
