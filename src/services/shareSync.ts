@@ -108,6 +108,29 @@ export async function updateShare(docId: string): Promise<void> {
   }
 }
 
+/**
+ * Durable resolve: delete comment from KV, push updated share content.
+ * Returns true if both steps succeeded (caller can then broadcast + clear state).
+ */
+export async function durableResolveComment(
+  docId: string,
+  commentId: string,
+  hostSecret: string,
+): Promise<boolean> {
+  const storage = getStorage();
+  if (!storage) {
+    return false;
+  }
+  try {
+    await storage.deleteComment(docId, commentId, hostSecret);
+    await updateShare(docId);
+    return true;
+  } catch (error) {
+    console.warn("[durableResolve] failed:", error);
+    return false;
+  }
+}
+
 export async function syncActiveShares(): Promise<void> {
   const state = useAppStore.getState();
   if (state.isPeerMode) {

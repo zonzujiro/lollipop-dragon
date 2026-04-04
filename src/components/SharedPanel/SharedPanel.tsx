@@ -4,6 +4,7 @@ import { useAppStore } from "../../store";
 import { useActiveTab } from "../../store/selectors";
 import { PendingCommentReview } from "../PendingCommentReview";
 import { buildShareUrlFromOrigin } from "../../utils/shareUrl";
+import { isDocSubscribed } from "../../services/relay";
 
 function formatExpiry(expiresAt: string): string {
   const diff = new Date(expiresAt).getTime() - Date.now();
@@ -39,8 +40,6 @@ export function SharedPanel() {
   const fetchPendingComments = useAppStore((s) => s.fetchPendingComments);
   const fetchAllPendingComments = useAppStore((s) => s.fetchAllPendingComments);
   const pendingComments = tab?.pendingComments ?? {};
-  const relayStatus = useAppStore((state) => state.relayStatus);
-
   const showToast = useAppStore((s) => s.showToast);
 
   const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
@@ -48,10 +47,13 @@ export function SharedPanel() {
   const [loadingAll, setLoadingAll] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const hasActiveShares = shares.some(
-    (s) => new Date(s.expiresAt) > new Date(),
+  const activeShares = shares.filter(
+    (share) => new Date(share.expiresAt) > new Date(),
   );
-  const needsManualFetch = relayStatus !== "connected";
+  const hasActiveShares = activeShares.length > 0;
+  const someSharesUnsubscribed = activeShares.some(
+    (share) => !isDocSubscribed(share.docId),
+  );
 
   async function handleFetch(docId: string) {
     setLoadingDocId(docId);
@@ -86,7 +88,7 @@ export function SharedPanel() {
     <aside className="shared-panel" aria-label="Shared documents">
       <div className="shared-panel__header">
         <h2 className="shared-panel__title">Shared</h2>
-        {hasActiveShares && needsManualFetch && (
+        {hasActiveShares && someSharesUnsubscribed && (
           <button
             className="shared-panel__btn shared-panel__btn--check-all"
             onClick={handleFetchAll}
@@ -118,7 +120,7 @@ export function SharedPanel() {
             const badge = share.pendingCommentCount;
             const isExpanded = expandedDocId === share.docId;
             const isLoading = loadingDocId === share.docId;
-            const relayConnectedForShare = relayStatus === "connected";
+            const subscribed = isDocSubscribed(share.docId);
 
             return (
               <li key={share.docId} className="shared-panel__entry">
@@ -165,7 +167,7 @@ export function SharedPanel() {
                     Copy link
                   </button>
 
-                  {!relayConnectedForShare && (
+                  {!subscribed && (
                     <button
                       className="shared-panel__btn"
                       onClick={() => handleFetch(share.docId)}

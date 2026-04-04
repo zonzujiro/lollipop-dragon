@@ -8,11 +8,17 @@ const {
   mockDeleteComments,
   mockDeleteComment,
   mockUpdateShare,
+  mockDurableResolveComment,
+  mockBroadcastCommentResolved,
+  mockBroadcastCommentsAdded,
 } = vi.hoisted(() => ({
   mockPostComment: vi.fn().mockResolvedValue("server-cmt-id"),
   mockDeleteComments: vi.fn().mockResolvedValue(undefined),
   mockDeleteComment: vi.fn().mockResolvedValue(undefined),
   mockUpdateShare: vi.fn().mockResolvedValue(undefined),
+  mockDurableResolveComment: vi.fn().mockResolvedValue(true),
+  mockBroadcastCommentResolved: vi.fn(),
+  mockBroadcastCommentsAdded: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("../services/shareStorage", () => ({
@@ -31,6 +37,7 @@ vi.mock("../services/shareStorage", () => ({
 vi.mock("../services/shareSync", () => ({
   syncActiveShares: vi.fn(),
   updateShare: mockUpdateShare,
+  durableResolveComment: mockDurableResolveComment,
 }));
 
 vi.mock("../services/crypto", async (importOriginal) => {
@@ -57,11 +64,13 @@ vi.mock("../services/relay", () => ({
     send: mockRelaySend,
     close: vi.fn(),
     hasActiveSubscriptions: () => false,
+    isSubscribed: () => false,
   }),
-  startRelay: vi.fn(),
-  subscribeToDoc: vi.fn(),
+  ensureRelaySubscriptions: vi.fn(),
+  startRelayForDoc: vi.fn(),
   unsubscribeFromDoc: vi.fn(),
-  stopRelay: vi.fn(),
+  broadcastCommentResolved: mockBroadcastCommentResolved,
+  broadcastCommentsAdded: mockBroadcastCommentsAdded,
 }));
 
 // ── Imports (after mocks) ────────────────────────────────────────────
@@ -84,6 +93,9 @@ beforeEach(() => {
   mockDeleteComment.mockClear();
   mockUpdateShare.mockClear();
   mockRelaySend.mockClear();
+  mockDurableResolveComment.mockClear().mockResolvedValue(true);
+  mockBroadcastCommentResolved.mockClear();
+  mockBroadcastCommentsAdded.mockClear().mockResolvedValue(undefined);
 });
 
 // ── Bug 1: CommentPanel peer mode uses peerActiveFilePath ────────────
@@ -497,17 +509,7 @@ function makeFileHandle(name = "readme.md"): FileSystemFileHandle {
 }
 
 describe("store.mergeComment — durable resolve sequence", () => {
-  it("deletes from KV, pushes content, then broadcasts resolve", async () => {
-    const order: string[] = [];
-    mockDeleteComment.mockImplementation(async () => {
-      order.push("delete");
-    });
-    mockUpdateShare.mockImplementation(async () => {
-      order.push("update");
-    });
-    mockRelaySend.mockImplementation(async () => {
-      order.push("send");
-    });
+  it("calls durableResolveComment, then broadcasts and clears pending", async () => {
     const comment = makePeerComment({ id: "cmt-merge-1" });
     setTestState({
       fileHandle: makeFileHandle(),
@@ -521,17 +523,15 @@ describe("store.mergeComment — durable resolve sequence", () => {
 
     await useAppStore.getState().mergeComment("doc-1", comment);
 
-    expect(order).toEqual(["delete", "update", "send"]);
-    expect(mockDeleteComment).toHaveBeenCalledWith(
+    expect(mockDurableResolveComment).toHaveBeenCalledWith(
       "doc-1",
       "cmt-merge-1",
       "host-sec",
     );
-    expect(mockUpdateShare).toHaveBeenCalledWith("doc-1");
-    expect(mockRelaySend).toHaveBeenCalledWith("doc-1", {
-      type: "comment:resolved",
-      commentId: "cmt-merge-1",
-    });
+    expect(mockBroadcastCommentResolved).toHaveBeenCalledWith(
+      "doc-1",
+      "cmt-merge-1",
+    );
     const tab = getActiveTab(useAppStore.getState());
     expect(tab?.pendingComments["doc-1"]).toBeUndefined();
   });

@@ -183,13 +183,13 @@ export function Header({
   const shares = tab?.shares ?? [];
   const sharedPanelOpen = tab?.sharedPanelOpen ?? false;
   const hasActiveShares = shares.some(
-    (s) => new Date(s.expiresAt) > new Date(),
+    (share) => new Date(share.expiresAt) > new Date(),
   );
 
   const hasFolderComments = !peerMode && fileTree.length > 0;
   const crossFileTotal = hasFolderComments
     ? Object.values(allFileComments).reduce(
-        (sum, e) => sum + e.comments.length,
+        (sum, entry) => sum + entry.comments.length,
         0,
       )
     : 0;
@@ -204,7 +204,10 @@ export function Header({
   const isDark = theme === "dark";
   const hasFolderOpen = fileTree.length > 0;
   const hasContent = !!(fileName || directoryName);
-  const totalPending = shares.reduce((n, s) => n + s.pendingCommentCount, 0);
+  const totalPending = shares.reduce(
+    (total, share) => total + share.pendingCommentCount,
+    0,
+  );
 
   const displayName = peerMode
     ? (useAppStore.getState().peerFileName ?? "Shared document")

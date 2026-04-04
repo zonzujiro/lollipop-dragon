@@ -25,15 +25,15 @@ import {
 } from "../services/crypto";
 import { buildShareUrlFromOrigin, parseShareHash } from "../utils/shareUrl";
 import {
-  getRelay,
-  startRelay,
-  subscribeToDoc,
+  ensureRelaySubscriptions,
+  startRelayForDoc,
   unsubscribeFromDoc,
-  stopRelay,
+  broadcastCommentResolved,
+  broadcastCommentsAdded,
 } from "../services/relay";
 import {
   syncActiveShares as syncActiveSharesService,
-  updateShare as updateShareService,
+  durableResolveComment,
 } from "../services/shareSync";
 import {
   findLiveFileInTree,
@@ -1451,18 +1451,8 @@ export const useAppStore = create<AppState>()(
         }
 
         // Auto-connect relay for active shares
-        const restoredState = get();
-        const allActiveShares = restoredState.tabs.flatMap((tab) => tab.shares);
-        const now = new Date();
-        const nonExpiredShares = allActiveShares.filter(
-          (share) => new Date(share.expiresAt) > now,
-        );
-        if (nonExpiredShares.length > 0) {
-          startRelay();
-          for (const share of nonExpiredShares) {
-            subscribeToDoc(share.docId);
-          }
-        }
+        const activeShares = get().tabs.flatMap((tab) => tab.shares);
+        ensureRelaySubscriptions(activeShares);
       },
 
       restoreShareSessions: async () => {
@@ -1553,8 +1543,7 @@ export const useAppStore = create<AppState>()(
           activeDocId: docId,
         }));
 
-        startRelay();
-        subscribeToDoc(docId);
+        ensureRelaySubscriptions([record]);
 
         return buildShareUrlFromOrigin({ keyB64, name: label });
       },
@@ -1566,33 +1555,42 @@ export const useAppStore = create<AppState>()(
           return;
         }
         const tabId = tab.id;
-        const record = tab.shares.find((s) => s.docId === docId);
+        const record = tab.shares.find((share) => share.docId === docId);
         if (!record) {
           return;
         }
 
         try {
           await storage?.deleteContent(docId, record.hostSecret);
-        } catch (e) {
-          console.error("[revokeShare] failed to delete content:", docId, e);
+        } catch (error) {
+          console.error(
+            "[revokeShare] failed to delete content:",
+            docId,
+            error,
+          );
         }
         try {
           await storage?.deleteComments(docId, record.hostSecret);
-        } catch (e) {
-          console.error("[revokeShare] failed to delete comments:", docId, e);
+        } catch (error) {
+          console.error(
+            "[revokeShare] failed to delete comments:",
+            docId,
+            error,
+          );
         }
-        const updated = tab.shares.filter((s) => s.docId !== docId);
+        const updated = tab.shares.filter((share) => share.docId !== docId);
         saveShares(stableShareKey(tab), updated);
-        updateTab(get, set, tabId, (t) => {
-          const pc = { ...t.pendingComments };
-          delete pc[docId];
-          const sk = { ...t.shareKeys };
-          delete sk[docId];
+        updateTab(get, set, tabId, (tabState) => {
+          const nextPending = { ...tabState.pendingComments };
+          delete nextPending[docId];
+          const nextKeys = { ...tabState.shareKeys };
+          delete nextKeys[docId];
           return {
             shares: updated,
-            pendingComments: pc,
-            shareKeys: sk,
-            activeDocId: t.activeDocId === docId ? null : t.activeDocId,
+            pendingComments: nextPending,
+            shareKeys: nextKeys,
+            activeDocId:
+              tabState.activeDocId === docId ? null : tabState.activeDocId,
           };
         });
         unsubscribeFromDoc(docId);
@@ -1603,7 +1601,9 @@ export const useAppStore = create<AppState>()(
         if (!storage) {
           return;
         }
-        const tab = activeTab(get);
+        const tab = get().tabs.find((t) =>
+          t.shares.some((share) => share.docId === docId),
+        );
         if (!tab) {
           return;
         }
@@ -1639,15 +1639,15 @@ export const useAppStore = create<AppState>()(
       },
 
       fetchAllPendingComments: async () => {
-        const tab = activeTab(get);
-        if (!tab) {
-          return;
-        }
-        const active = tab.shares.filter(
-          (s) => new Date(s.expiresAt) > new Date(),
+        const now = new Date();
+        const docIds = new Set(
+          get()
+            .tabs.flatMap((tab) => tab.shares)
+            .filter((share) => new Date(share.expiresAt) > now)
+            .map((share) => share.docId),
         );
-        for (const share of active) {
-          await get().fetchPendingComments(share.docId);
+        for (const docId of docIds) {
+          await get().fetchPendingComments(docId);
         }
       },
 
@@ -1712,47 +1712,14 @@ export const useAppStore = create<AppState>()(
         }
         await writeAndUpdate(get, set, tab.fileHandle, newRaw);
 
-        // Durable resolve sequence: KV must be durable before relay broadcast
+        // Durable resolve: KV delete + share update, then broadcast
         const record = tab.shares.find((share) => share.docId === docId);
-        let kvDurable = false;
-        if (record) {
-          const storage = getStorage();
-          if (storage) {
-            try {
-              await storage.deleteComment(docId, comment.id, record.hostSecret);
-              await updateShareService(docId);
-              kvDurable = true;
-            } catch (durableError) {
-              console.warn(
-                "[mergeComment] durable resolve sequence failed:",
-                durableError,
-              );
-            }
-          }
-        }
+        const resolved = record
+          ? await durableResolveComment(docId, comment.id, record.hostSecret)
+          : false;
 
-        // Step 3: Broadcast only if KV is durable
-        if (kvDurable) {
-          try {
-            const relay = getRelay();
-            if (relay) {
-              relay
-                .send(docId, {
-                  type: "comment:resolved",
-                  commentId: comment.id,
-                })
-                .catch((relayError) => {
-                  console.warn("[relay] resolve broadcast failed:", relayError);
-                });
-            }
-          } catch (relayError) {
-            console.warn("[relay] resolve broadcast setup failed:", relayError);
-          }
-        }
-
-        // Only clear pending state and add tombstone when KV is durable.
-        // If !kvDurable, leave the comment in pending state — user can retry.
-        if (kvDurable) {
+        if (resolved) {
+          broadcastCommentResolved(docId, comment.id);
           const latestTab = activeTab(get);
           if (latestTab) {
             const nextTabState = removePendingCommentState(
@@ -1776,7 +1743,7 @@ export const useAppStore = create<AppState>()(
         saveShares(stableShareKey(tab), nextTabState.shares);
         updateTab(get, set, tabId, () => nextTabState);
 
-        const record = tab.shares.find((s) => s.docId === docId);
+        const record = tab.shares.find((share) => share.docId === docId);
         const storage = getStorage();
         if (record && storage) {
           storage
@@ -1886,11 +1853,10 @@ export const useAppStore = create<AppState>()(
             peerActiveDocId: docId,
           });
 
-          startRelay();
-          subscribeToDoc(docId);
-        } catch (e) {
+          startRelayForDoc(docId);
+        } catch (error) {
           set({ isPeerMode: true, sharedContent: null });
-          console.error("[share] Failed to load shared content:", e);
+          console.error("[share] Failed to load shared content:", error);
         }
       },
 
@@ -1912,7 +1878,9 @@ export const useAppStore = create<AppState>()(
       deletePeerComment: (commentId) => {
         const { myPeerComments, submittedPeerCommentIds } = get();
         set({
-          myPeerComments: myPeerComments.filter((c) => c.id !== commentId),
+          myPeerComments: myPeerComments.filter(
+            (comment) => comment.id !== commentId,
+          ),
           submittedPeerCommentIds: submittedPeerCommentIds.filter(
             (id) => id !== commentId,
           ),
@@ -1921,8 +1889,10 @@ export const useAppStore = create<AppState>()(
 
       editPeerComment: (commentId, type, text) => {
         const { myPeerComments } = get();
-        const updated = myPeerComments.map((c) =>
-          c.id === commentId ? { ...c, commentType: type, text } : c,
+        const updated = myPeerComments.map((comment) =>
+          comment.id === commentId
+            ? { ...comment, commentType: type, text }
+            : comment,
         );
         set({ myPeerComments: updated });
       },
@@ -1949,27 +1919,13 @@ export const useAppStore = create<AppState>()(
         set({
           submittedPeerCommentIds: [
             ...get().submittedPeerCommentIds,
-            ...unsubmitted.map((c) => c.id),
+            ...unsubmitted.map((comment) => comment.id),
           ],
         });
 
-        // Broadcast each comment to connected peers via relay
-        try {
-          const relay = getRelay();
-          const { peerActiveDocId } = get();
-          if (relay && peerActiveDocId) {
-            for (const comment of unsubmitted) {
-              await relay.send(peerActiveDocId, {
-                type: "comment:added",
-                comment,
-              });
-            }
-          }
-        } catch (relayError) {
-          console.warn(
-            "[relay] broadcast failed during syncPeerComments:",
-            relayError,
-          );
+        const { peerActiveDocId } = get();
+        if (peerActiveDocId) {
+          await broadcastCommentsAdded(peerActiveDocId, unsubmitted);
         }
       },
 

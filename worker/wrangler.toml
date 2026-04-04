@@ -15,4 +15,4 @@ class_name = "RelayHub"
 
 [[migrations]]
 tag = "v1"
-new_sqlite_classes = ["RelayHub"]
+new_classes = ["RelayHub"]

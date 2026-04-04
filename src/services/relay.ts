@@ -10,6 +10,7 @@ export interface RelayConnection {
   send(docId: string, message: RelayMessage): Promise<void>;
   close(): void;
   hasActiveSubscriptions(): boolean;
+  isSubscribed(docId: string): boolean;
 }
 
 const VALID_RELAY_TYPES = new Set([
@@ -338,6 +339,10 @@ class RelayConnectionImpl implements RelayConnection {
     return activeSubscriptions.size > 0;
   }
 
+  isSubscribed(docId: string): boolean {
+    return activeSubscriptions.has(docId);
+  }
+
   close(): void {
     this.closedIntentionally = true;
     this.flushBatch();
@@ -477,4 +482,73 @@ export function stopRelay(): void {
     relay.close(); // close() internally clears the module-level singleton
   }
   useAppStore.getState().setRelayStatus("disconnected");
+}
+
+/** Check whether a specific docId has an active relay subscription. */
+export function isDocSubscribed(docId: string): boolean {
+  const relay = getRelay();
+  if (!relay) {
+    return false;
+  }
+  return relay.isSubscribed(docId);
+}
+
+// ── High-level orchestration (called by store actions) ───────────────
+
+/** Start relay and subscribe a list of docIds. Filters expired shares. */
+export function ensureRelaySubscriptions(
+  shares: ReadonlyArray<{ docId: string; expiresAt: string }>,
+): void {
+  const now = new Date();
+  const active = shares.filter((share) => new Date(share.expiresAt) > now);
+  if (active.length === 0) {
+    return;
+  }
+  startRelay();
+  for (const share of active) {
+    subscribeToDoc(share.docId);
+  }
+}
+
+/** Start relay and subscribe a single docId (peer mode — no expiry check). */
+export function startRelayForDoc(docId: string): void {
+  startRelay();
+  subscribeToDoc(docId);
+}
+
+/** Broadcast comment:resolved to peers via relay. Swallows errors. */
+export function broadcastCommentResolved(
+  docId: string,
+  commentId: string,
+): void {
+  try {
+    const relay = getRelay();
+    if (relay) {
+      relay
+        .send(docId, { type: "comment:resolved", commentId })
+        .catch((error) => {
+          console.warn("[relay] resolve broadcast failed:", error);
+        });
+    }
+  } catch (error) {
+    console.warn("[relay] resolve broadcast setup failed:", error);
+  }
+}
+
+/** Broadcast comment:added for each comment to peers. Swallows errors. */
+export async function broadcastCommentsAdded(
+  docId: string,
+  comments: ReadonlyArray<PeerComment>,
+): Promise<void> {
+  try {
+    const relay = getRelay();
+    if (!relay) {
+      return;
+    }
+    for (const comment of comments) {
+      await relay.send(docId, { type: "comment:added", comment });
+    }
+  } catch (error) {
+    console.warn("[relay] broadcast failed during syncPeerComments:", error);
+  }
 }

@@ -5,6 +5,13 @@ import { SharedPanel } from "../components/SharedPanel";
 import { useAppStore } from "../store";
 import { setTestState, resetTestStore, makeShare } from "./testHelpers";
 
+vi.mock("../services/relay", () => ({
+  isDocSubscribed: vi.fn(() => false),
+}));
+
+import { isDocSubscribed } from "../services/relay";
+const mockIsDocSubscribed = vi.mocked(isDocSubscribed);
+
 beforeEach(() => {
   resetTestStore();
   setTestState({
@@ -73,15 +80,14 @@ describe("SharedPanel — share list", () => {
     expect(screen.getByRole("button", { name: /Revoke/ })).toBeInTheDocument();
   });
 
-  it("hides Check comments when relay is connected", () => {
-    useAppStore.setState({
-      relayStatus: "connected",
-    });
+  it("hides Check comments when docId is subscribed via relay", () => {
+    mockIsDocSubscribed.mockReturnValue(true);
     render(<SharedPanel />);
     expect(
       screen.queryByRole("button", { name: /Check comments/ }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Revoke/ })).toBeInTheDocument();
+    mockIsDocSubscribed.mockReturnValue(false);
   });
 
   it("calls revokeShare when Revoke is clicked", async () => {
