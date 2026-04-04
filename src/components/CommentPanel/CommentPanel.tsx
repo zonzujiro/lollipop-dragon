@@ -184,8 +184,9 @@ export function CommentPanel({ peerMode = false }: Props) {
     if (!isFolderMode || isResolved) {
       return crossFileComments;
     }
-    if (commentFilter === "all" || commentFilter === "pending")
+    if (commentFilter === "all" || commentFilter === "pending") {
       return crossFileComments;
+    }
     return crossFileComments
       .map((entry) => ({
         ...entry,
@@ -199,8 +200,9 @@ export function CommentPanel({ peerMode = false }: Props) {
     if (!isPeerMultiFile) {
       return peerCrossFileEntries;
     }
-    if (commentFilter === "all" || commentFilter === "pending")
+    if (commentFilter === "all" || commentFilter === "pending") {
       return peerCrossFileEntries;
+    }
     return peerCrossFileEntries
       .map((entry) => ({
         ...entry,
