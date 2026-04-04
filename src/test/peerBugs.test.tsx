@@ -52,7 +52,12 @@ import { CommentPanel } from "../components/CommentPanel";
 import { Header } from "../components/Header";
 import { useAppStore } from "../store";
 import { getActiveTab } from "../store/selectors";
-import { setTestState, resetTestStore, makePeerComment, makeShare } from "./testHelpers";
+import {
+  setTestState,
+  resetTestStore,
+  makePeerComment,
+  makeShare,
+} from "./testHelpers";
 
 beforeEach(() => {
   resetTestStore();
@@ -66,7 +71,10 @@ beforeEach(() => {
 
 describe("CommentPanel — peer mode filters by peerActiveFilePath", () => {
   it("shows peer comments matching peerActiveFilePath", () => {
-    const c1 = makePeerComment({ text: "comment on readme", path: "readme.md" });
+    const c1 = makePeerComment({
+      text: "comment on readme",
+      path: "readme.md",
+    });
     const c2 = makePeerComment({ text: "comment on other", path: "other.md" });
     setTestState(
       { commentPanelOpen: true },
@@ -165,7 +173,9 @@ describe("CommentPanel — peer multi-file shows all comments grouped", () => {
     const c3 = makePeerComment({ text: "c", path: "other.md" });
     setupMultiFile([c1, c2, c3]);
     const { container } = render(<CommentPanel peerMode />);
-    expect(container.querySelector(".comment-panel__count")?.textContent).toBe("3");
+    expect(container.querySelector(".comment-panel__count")?.textContent).toBe(
+      "3",
+    );
   });
 
   it("shows empty state when no peer comments exist", () => {
@@ -189,12 +199,19 @@ describe("store.syncPeerComments — no double submit", () => {
   it("sends only unsubmitted comments for the current file", async () => {
     const submitted = makePeerComment({ id: "old-1", text: "already sent" });
     const fresh = makePeerComment({ id: "new-1", text: "new comment" });
-    const otherFile = makePeerComment({ id: "other-1", text: "other file", path: "other.md" });
-    setTestState({}, {
-      peerActiveFilePath: "readme.md",
-      myPeerComments: [submitted, fresh, otherFile],
-      submittedPeerCommentIds: ["old-1"],
+    const otherFile = makePeerComment({
+      id: "other-1",
+      text: "other file",
+      path: "other.md",
     });
+    setTestState(
+      {},
+      {
+        peerActiveFilePath: "readme.md",
+        myPeerComments: [submitted, fresh, otherFile],
+        submittedPeerCommentIds: ["old-1"],
+      },
+    );
 
     await useAppStore.getState().syncPeerComments();
 
@@ -206,11 +223,14 @@ describe("store.syncPeerComments — no double submit", () => {
   it("marks submitted comment IDs after sync", async () => {
     const c1 = makePeerComment({ id: "c-1" });
     const c2 = makePeerComment({ id: "c-2" });
-    setTestState({}, {
-      peerActiveFilePath: "readme.md",
-      myPeerComments: [c1, c2],
-      submittedPeerCommentIds: [],
-    });
+    setTestState(
+      {},
+      {
+        peerActiveFilePath: "readme.md",
+        myPeerComments: [c1, c2],
+        submittedPeerCommentIds: [],
+      },
+    );
 
     await useAppStore.getState().syncPeerComments();
 
@@ -221,25 +241,31 @@ describe("store.syncPeerComments — no double submit", () => {
 
   it("does nothing when all comments are already submitted", async () => {
     const c = makePeerComment({ id: "c-1" });
-    setTestState({}, {
-      peerActiveFilePath: "readme.md",
-      myPeerComments: [c],
-      submittedPeerCommentIds: ["c-1"],
-    });
+    setTestState(
+      {},
+      {
+        peerActiveFilePath: "readme.md",
+        myPeerComments: [c],
+        submittedPeerCommentIds: ["c-1"],
+      },
+    );
 
     await useAppStore.getState().syncPeerComments();
     expect(mockPostComment).not.toHaveBeenCalled();
   });
 
   it("preserves previously submitted IDs when syncing new ones", async () => {
-    setTestState({}, {
-      peerActiveFilePath: "readme.md",
-      myPeerComments: [
-        makePeerComment({ id: "c-old" }),
-        makePeerComment({ id: "c-new" }),
-      ],
-      submittedPeerCommentIds: ["c-old"],
-    });
+    setTestState(
+      {},
+      {
+        peerActiveFilePath: "readme.md",
+        myPeerComments: [
+          makePeerComment({ id: "c-old" }),
+          makePeerComment({ id: "c-new" }),
+        ],
+        submittedPeerCommentIds: ["c-old"],
+      },
+    );
 
     await useAppStore.getState().syncPeerComments();
 
@@ -250,11 +276,14 @@ describe("store.syncPeerComments — no double submit", () => {
 
   it("does not send comments from other files", async () => {
     const otherFile = makePeerComment({ id: "other-1", path: "other.md" });
-    setTestState({}, {
-      peerActiveFilePath: "readme.md",
-      myPeerComments: [otherFile],
-      submittedPeerCommentIds: [],
-    });
+    setTestState(
+      {},
+      {
+        peerActiveFilePath: "readme.md",
+        myPeerComments: [otherFile],
+        submittedPeerCommentIds: [],
+      },
+    );
 
     await useAppStore.getState().syncPeerComments();
     expect(mockPostComment).not.toHaveBeenCalled();
@@ -266,10 +295,13 @@ describe("store.syncPeerComments — no double submit", () => {
 describe("store.deletePeerComment — cleans up submittedPeerCommentIds", () => {
   it("removes from both myPeerComments and submittedPeerCommentIds", () => {
     const c = makePeerComment({ id: "c-1" });
-    setTestState({}, {
-      myPeerComments: [c],
-      submittedPeerCommentIds: ["c-1"],
-    });
+    setTestState(
+      {},
+      {
+        myPeerComments: [c],
+        submittedPeerCommentIds: ["c-1"],
+      },
+    );
 
     useAppStore.getState().deletePeerComment("c-1");
 
@@ -281,10 +313,13 @@ describe("store.deletePeerComment — cleans up submittedPeerCommentIds", () => 
   it("leaves other submitted IDs intact", () => {
     const c1 = makePeerComment({ id: "c-1" });
     const c2 = makePeerComment({ id: "c-2" });
-    setTestState({}, {
-      myPeerComments: [c1, c2],
-      submittedPeerCommentIds: ["c-1", "c-2"],
-    });
+    setTestState(
+      {},
+      {
+        myPeerComments: [c1, c2],
+        submittedPeerCommentIds: ["c-1", "c-2"],
+      },
+    );
 
     useAppStore.getState().deletePeerComment("c-1");
 
@@ -301,13 +336,16 @@ describe("Header — peer mode submit button", () => {
     const c1 = makePeerComment({ id: "c-1", path: "readme.md" });
     const c2 = makePeerComment({ id: "c-2", path: "readme.md" });
     const c3 = makePeerComment({ id: "c-3", path: "readme.md" });
-    setTestState({}, {
-      isPeerMode: true,
-      peerActiveFilePath: "readme.md",
-      peerFileName: "readme.md",
-      myPeerComments: [c1, c2, c3],
-      submittedPeerCommentIds: ["c-1", "c-2"],
-    });
+    setTestState(
+      {},
+      {
+        isPeerMode: true,
+        peerActiveFilePath: "readme.md",
+        peerFileName: "readme.md",
+        myPeerComments: [c1, c2, c3],
+        submittedPeerCommentIds: ["c-1", "c-2"],
+      },
+    );
 
     render(<Header peerMode />);
     const btn = screen.getByRole("button", { name: "Submit comments" });
@@ -316,13 +354,16 @@ describe("Header — peer mode submit button", () => {
 
   it("hides submit button when all comments are submitted", () => {
     const c = makePeerComment({ id: "c-1", path: "readme.md" });
-    setTestState({}, {
-      isPeerMode: true,
-      peerActiveFilePath: "readme.md",
-      peerFileName: "readme.md",
-      myPeerComments: [c],
-      submittedPeerCommentIds: ["c-1"],
-    });
+    setTestState(
+      {},
+      {
+        isPeerMode: true,
+        peerActiveFilePath: "readme.md",
+        peerFileName: "readme.md",
+        myPeerComments: [c],
+        submittedPeerCommentIds: ["c-1"],
+      },
+    );
 
     render(<Header peerMode />);
     expect(
@@ -332,13 +373,16 @@ describe("Header — peer mode submit button", () => {
 
   it("shows submit button when there are unsubmitted comments", () => {
     const c = makePeerComment({ id: "c-1", path: "readme.md" });
-    setTestState({}, {
-      isPeerMode: true,
-      peerActiveFilePath: "readme.md",
-      peerFileName: "readme.md",
-      myPeerComments: [c],
-      submittedPeerCommentIds: [],
-    });
+    setTestState(
+      {},
+      {
+        isPeerMode: true,
+        peerActiveFilePath: "readme.md",
+        peerFileName: "readme.md",
+        myPeerComments: [c],
+        submittedPeerCommentIds: [],
+      },
+    );
 
     render(<Header peerMode />);
     expect(
@@ -349,13 +393,16 @@ describe("Header — peer mode submit button", () => {
   it("hides submit button when current file has no unsubmitted comments", () => {
     // Comments exist on other.md but we're viewing readme.md
     const c = makePeerComment({ id: "c-1", path: "other.md" });
-    setTestState({}, {
-      isPeerMode: true,
-      peerActiveFilePath: "readme.md",
-      peerFileName: "readme.md",
-      myPeerComments: [c],
-      submittedPeerCommentIds: [],
-    });
+    setTestState(
+      {},
+      {
+        isPeerMode: true,
+        peerActiveFilePath: "readme.md",
+        peerFileName: "readme.md",
+        myPeerComments: [c],
+        submittedPeerCommentIds: [],
+      },
+    );
 
     render(<Header peerMode />);
     expect(
@@ -378,7 +425,11 @@ describe("store.dismissComment — per-comment server delete", () => {
 
     const tab = getActiveTab(useAppStore.getState());
     expect(tab?.pendingComments["doc-1"]).toBeUndefined();
-    expect(mockDeleteComment).toHaveBeenCalledWith("doc-1", "cmt-1", "host-sec");
+    expect(mockDeleteComment).toHaveBeenCalledWith(
+      "doc-1",
+      "cmt-1",
+      "host-sec",
+    );
   });
 
   it("calls deleteComment even when other comments remain", () => {
@@ -393,7 +444,11 @@ describe("store.dismissComment — per-comment server delete", () => {
 
     const tab = getActiveTab(useAppStore.getState());
     expect(tab?.pendingComments["doc-1"]).toHaveLength(1);
-    expect(mockDeleteComment).toHaveBeenCalledWith("doc-1", "cmt-1", "host-sec");
+    expect(mockDeleteComment).toHaveBeenCalledWith(
+      "doc-1",
+      "cmt-1",
+      "host-sec",
+    );
   });
 });
 
@@ -411,9 +466,11 @@ function makeFileHandle(name = "readme.md"): FileSystemFileHandle {
     kind: "file",
     name,
     createWritable: vi.fn().mockResolvedValue(makeWritableStream()),
-    getFile: vi.fn().mockResolvedValue(
-      new File(["# Hello\n"], name, { type: "text/markdown" }),
-    ),
+    getFile: vi
+      .fn()
+      .mockResolvedValue(
+        new File(["# Hello\n"], name, { type: "text/markdown" }),
+      ),
     isSameEntry: vi.fn().mockResolvedValue(false),
     queryPermission: vi.fn().mockResolvedValue("granted"),
     requestPermission: vi.fn().mockResolvedValue("granted"),
@@ -456,13 +513,22 @@ describe("store.mergeComment — durable resolve sequence", () => {
     await useAppStore.getState().mergeComment("doc-1", comment);
 
     expect(order).toEqual(["delete", "update", "send"]);
-    expect(mockDeleteComment).toHaveBeenCalledWith("doc-1", "cmt-merge-1", "host-sec");
+    expect(mockDeleteComment).toHaveBeenCalledWith(
+      "doc-1",
+      "cmt-merge-1",
+      "host-sec",
+    );
     expect(mockUpdateShare).toHaveBeenCalledWith("doc-1");
     expect(relaySocket.send).toHaveBeenCalledWith("doc-1", {
       type: "comment:resolved",
       commentId: "cmt-merge-1",
     });
-    expect(useAppStore.getState().resolvedCommentIds.has("cmt-merge-1")).toBe(true);
+    expect(
+      useAppStore
+        .getState()
+        .resolvedCommentIds.get("doc-1")
+        ?.has("cmt-merge-1"),
+    ).toBe(true);
     const tab = getActiveTab(useAppStore.getState());
     expect(tab?.pendingComments["doc-1"]).toBeUndefined();
   });
@@ -480,8 +546,18 @@ describe("store.clearPendingComments — deletes visible comments individually",
     await useAppStore.getState().clearPendingComments("doc-1");
 
     expect(mockDeleteComment).toHaveBeenCalledTimes(2);
-    expect(mockDeleteComment).toHaveBeenNthCalledWith(1, "doc-1", "clear-1", "host-sec");
-    expect(mockDeleteComment).toHaveBeenNthCalledWith(2, "doc-1", "clear-2", "host-sec");
+    expect(mockDeleteComment).toHaveBeenNthCalledWith(
+      1,
+      "doc-1",
+      "clear-1",
+      "host-sec",
+    );
+    expect(mockDeleteComment).toHaveBeenNthCalledWith(
+      2,
+      "doc-1",
+      "clear-2",
+      "host-sec",
+    );
     expect(mockDeleteComments).not.toHaveBeenCalled();
     const tab = getActiveTab(useAppStore.getState());
     expect(tab?.pendingComments["doc-1"]).toBeUndefined();

@@ -24,7 +24,10 @@ import { buildShareUrlFromOrigin, parseShareHash } from "../utils/shareUrl";
 import { connectRelay } from "../services/relay";
 import type { RelayConnection } from "../services/relay";
 import type { RelayMessage } from "../types/relay";
-import { syncActiveShares as syncActiveSharesService, updateShare as updateShareService } from "../services/shareSync";
+import {
+  syncActiveShares as syncActiveSharesService,
+  updateShare as updateShareService,
+} from "../services/shareSync";
 import {
   findLiveFileInTree,
   toFileTreeNodes,
@@ -290,7 +293,7 @@ interface AppState {
   rtSubscriptions: Set<string>;
   documentUpdateAvailable: boolean;
   remotePeerComments: PeerComment[];
-  resolvedCommentIds: Set<string>;
+  resolvedCommentIds: Map<string, Set<string>>;
 
   // Block highlight (transient UI state for comment hover)
   hoveredBlockHighlight: {
@@ -419,7 +422,11 @@ function isPermissionError(e: unknown): boolean {
 
 // --- Peer mode message handler (module-level, returns a state patch) ---
 
-function handlePeerMessage(message: RelayMessage, state: AppState): Partial<AppState> {
+function handlePeerMessage(
+  docId: string,
+  message: RelayMessage,
+  state: AppState,
+): Partial<AppState> {
   if (message.type === "comment:added") {
     const isDuplicate = state.remotePeerComments.some(
       (comment) => comment.id === message.comment.id,
@@ -427,7 +434,7 @@ function handlePeerMessage(message: RelayMessage, state: AppState): Partial<AppS
     if (isDuplicate) {
       return {};
     }
-    if (state.resolvedCommentIds.has(message.comment.id)) {
+    if (state.resolvedCommentIds.get(docId)?.has(message.comment.id)) {
       return {};
     }
     return {
@@ -436,8 +443,10 @@ function handlePeerMessage(message: RelayMessage, state: AppState): Partial<AppS
   }
 
   if (message.type === "comment:resolved") {
-    const nextResolved = new Set(state.resolvedCommentIds);
-    nextResolved.add(message.commentId);
+    const nextResolved = new Map(state.resolvedCommentIds);
+    const docSet = new Set(nextResolved.get(docId));
+    docSet.add(message.commentId);
+    nextResolved.set(docId, docSet);
     return {
       myPeerComments: state.myPeerComments.filter(
         (comment) => comment.id !== message.commentId,
@@ -478,7 +487,7 @@ function handleHostMessage(
       if (existing.some((comment) => comment.id === message.comment.id)) {
         return {};
       }
-      if (state.resolvedCommentIds.has(message.comment.id)) {
+      if (state.resolvedCommentIds.get(docId)?.has(message.comment.id)) {
         return {};
       }
       const updatedComments = [...existing, message.comment];
@@ -492,7 +501,10 @@ function handleHostMessage(
           index === tabIndex
             ? {
                 ...tab,
-                pendingComments: { ...tab.pendingComments, [docId]: updatedComments },
+                pendingComments: {
+                  ...tab.pendingComments,
+                  [docId]: updatedComments,
+                },
                 shares: updatedShares,
               }
             : tab,
@@ -782,7 +794,7 @@ export const useAppStore = create<AppState>()(
       rtSubscriptions: new Set(),
       documentUpdateAvailable: false,
       remotePeerComments: [],
-      resolvedCommentIds: new Set(),
+      resolvedCommentIds: new Map(),
 
       hoveredBlockHighlight: null,
       setHoveredBlockHighlight: (highlight) =>
@@ -1684,6 +1696,11 @@ export const useAppStore = create<AppState>()(
           };
         });
         get().unsubscribeDoc(docId);
+        set((state) => {
+          const nextResolved = new Map(state.resolvedCommentIds);
+          nextResolved.delete(docId);
+          return { resolvedCommentIds: nextResolved };
+        });
       },
 
       fetchPendingComments: async (docId) => {
@@ -1811,7 +1828,10 @@ export const useAppStore = create<AppState>()(
               await updateShareService(docId);
               kvDurable = true;
             } catch (durableError) {
-              console.warn("[mergeComment] durable resolve sequence failed:", durableError);
+              console.warn(
+                "[mergeComment] durable resolve sequence failed:",
+                durableError,
+              );
             }
           }
         }
@@ -1821,12 +1841,14 @@ export const useAppStore = create<AppState>()(
           try {
             const { rtSocket: relaySocket } = get();
             if (relaySocket) {
-              relaySocket.send(docId, {
-                type: "comment:resolved",
-                commentId: comment.id,
-              }).catch((relayError) => {
-                console.warn("[relay] resolve broadcast failed:", relayError);
-              });
+              relaySocket
+                .send(docId, {
+                  type: "comment:resolved",
+                  commentId: comment.id,
+                })
+                .catch((relayError) => {
+                  console.warn("[relay] resolve broadcast failed:", relayError);
+                });
             }
           } catch (relayError) {
             console.warn("[relay] resolve broadcast setup failed:", relayError);
@@ -1836,15 +1858,21 @@ export const useAppStore = create<AppState>()(
         // Remove from pending state directly — dismissComment would re-delete from KV
         const latestTab = activeTab(get);
         if (latestTab) {
-          const nextTabState = removePendingCommentState(latestTab, docId, comment.id);
+          const nextTabState = removePendingCommentState(
+            latestTab,
+            docId,
+            comment.id,
+          );
           saveShares(stableShareKey(latestTab), nextTabState.shares);
           updateTab(get, set, latestTab.id, () => nextTabState);
         }
 
         set((state) => {
-          const nextResolvedCommentIds = new Set(state.resolvedCommentIds);
-          nextResolvedCommentIds.add(comment.id);
-          return { resolvedCommentIds: nextResolvedCommentIds };
+          const nextResolved = new Map(state.resolvedCommentIds);
+          const docSet = new Set(nextResolved.get(docId));
+          docSet.add(comment.id);
+          nextResolved.set(docId, docSet);
+          return { resolvedCommentIds: nextResolved };
         });
       },
 
@@ -1861,9 +1889,14 @@ export const useAppStore = create<AppState>()(
         const record = tab.shares.find((s) => s.docId === docId);
         const storage = getStorage();
         if (record && storage) {
-          storage.deleteComment(docId, cmtId, record.hostSecret).catch((error) => {
-            console.warn("[dismissComment] per-comment KV delete failed:", error);
-          });
+          storage
+            .deleteComment(docId, cmtId, record.hostSecret)
+            .catch((error) => {
+              console.warn(
+                "[dismissComment] per-comment KV delete failed:",
+                error,
+              );
+            });
         }
       },
 
@@ -1879,7 +1912,11 @@ export const useAppStore = create<AppState>()(
         if (record && storage) {
           for (const pendingComment of pendingForDoc) {
             try {
-              await storage.deleteComment(docId, pendingComment.id, record.hostSecret);
+              await storage.deleteComment(
+                docId,
+                pendingComment.id,
+                record.hostSecret,
+              );
             } catch (error) {
               console.error(
                 "[clearPendingComments] failed to delete comment:",
@@ -2031,11 +2068,17 @@ export const useAppStore = create<AppState>()(
           const { rtSocket, peerActiveDocId } = get();
           if (rtSocket && peerActiveDocId) {
             for (const comment of unsubmitted) {
-              await rtSocket.send(peerActiveDocId, { type: "comment:added", comment });
+              await rtSocket.send(peerActiveDocId, {
+                type: "comment:added",
+                comment,
+              });
             }
           }
         } catch (relayError) {
-          console.warn("[relay] broadcast failed during syncPeerComments:", relayError);
+          console.warn(
+            "[relay] broadcast failed during syncPeerComments:",
+            relayError,
+          );
         }
       },
 
@@ -2053,7 +2096,7 @@ export const useAppStore = create<AppState>()(
           (docId, message) => {
             const state = get();
             if (state.isPeerMode) {
-              const patch = handlePeerMessage(message, state);
+              const patch = handlePeerMessage(docId, message, state);
               set(patch);
             } else {
               handleHostMessage(docId, message, set);
@@ -2066,30 +2109,53 @@ export const useAppStore = create<AppState>()(
               if (reconnectedState.isPeerMode) {
                 // Peer mode catch-up: re-fetch comments from KV and reload shared content
                 const peerDocId = reconnectedState.peerActiveDocId;
-                const peerKey = peerDocId ? reconnectedState.peerShareKeys[peerDocId] : null;
+                const peerKey = peerDocId
+                  ? reconnectedState.peerShareKeys[peerDocId]
+                  : null;
                 if (peerDocId && peerKey) {
                   const storage = getStorage();
                   if (storage) {
-                    storage.fetchComments(peerDocId, peerKey).then((comments) => {
-                      const latestState = get();
-                      const ownIds = new Set(latestState.myPeerComments.map((comment) => comment.id));
-                      const submittedIds = new Set(latestState.submittedPeerCommentIds);
-                      const remoteIds = new Set(latestState.remotePeerComments.map((comment) => comment.id));
-                      const newComments = comments.filter(
-                        (comment) =>
-                          !ownIds.has(comment.id) &&
-                          !submittedIds.has(comment.id) &&
-                          !remoteIds.has(comment.id) &&
-                          !latestState.resolvedCommentIds.has(comment.id),
-                      );
-                      if (newComments.length > 0) {
-                        set((state) => ({
-                          remotePeerComments: [...state.remotePeerComments, ...newComments],
-                        }));
-                      }
-                    }).catch((error) => {
-                      console.warn("[relay] peer comment catch-up failed:", error);
-                    });
+                    storage
+                      .fetchComments(peerDocId, peerKey)
+                      .then((comments) => {
+                        const latestState = get();
+                        const ownIds = new Set(
+                          latestState.myPeerComments.map(
+                            (comment) => comment.id,
+                          ),
+                        );
+                        const submittedIds = new Set(
+                          latestState.submittedPeerCommentIds,
+                        );
+                        const remoteIds = new Set(
+                          latestState.remotePeerComments.map(
+                            (comment) => comment.id,
+                          ),
+                        );
+                        const newComments = comments.filter(
+                          (comment) =>
+                            !ownIds.has(comment.id) &&
+                            !submittedIds.has(comment.id) &&
+                            !remoteIds.has(comment.id) &&
+                            !latestState.resolvedCommentIds
+                              .get(peerDocId)
+                              ?.has(comment.id),
+                        );
+                        if (newComments.length > 0) {
+                          set((state) => ({
+                            remotePeerComments: [
+                              ...state.remotePeerComments,
+                              ...newComments,
+                            ],
+                          }));
+                        }
+                      })
+                      .catch((error) => {
+                        console.warn(
+                          "[relay] peer comment catch-up failed:",
+                          error,
+                        );
+                      });
                   }
                 }
                 reconnectedState.loadSharedContent().catch((error) => {
@@ -2100,7 +2166,10 @@ export const useAppStore = create<AppState>()(
                 // Background tabs recover when the user switches to them.
                 // See spec §5.3 and §9 for details.
                 reconnectedState.fetchAllPendingComments().catch((error) => {
-                  console.warn("[relay] host reconnect catch-up failed:", error);
+                  console.warn(
+                    "[relay] host reconnect catch-up failed:",
+                    error,
+                  );
                 });
               }
             }
@@ -2160,7 +2229,12 @@ export const useAppStore = create<AppState>()(
         if (rtSocket) {
           rtSocket.close();
         }
-        set({ rtSocket: null, rtStatus: "disconnected", rtSubscriptions: new Set() });
+        set({
+          rtSocket: null,
+          rtStatus: "disconnected",
+          rtSubscriptions: new Set(),
+          resolvedCommentIds: new Map(),
+        });
       },
 
       dismissDocumentUpdate: () => {
@@ -2307,7 +2381,7 @@ export const useAppStore = create<AppState>()(
           rtSubscriptions: new Set<string>(),
           documentUpdateAvailable: false,
           remotePeerComments: [],
-          resolvedCommentIds: new Set<string>(),
+          resolvedCommentIds: new Map<string, Set<string>>(),
         };
       },
     },

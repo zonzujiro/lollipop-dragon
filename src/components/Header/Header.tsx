@@ -1,8 +1,10 @@
 import "./Header.css";
+import { useMemo } from "react";
 import { useAppStore } from "../../store";
 import {
   useActiveTab,
   getUnsubmittedPeerComments,
+  getAllVisiblePeerComments,
 } from "../../store/selectors";
 import { SunIcon, MoonIcon } from "../Icons";
 import { HistoryDropdown } from "../HistoryDropdown";
@@ -166,6 +168,10 @@ export function Header({
   const myPeerComments = useAppStore((s) => s.myPeerComments);
   const remotePeerComments = useAppStore((s) => s.remotePeerComments);
   const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
+  const allPeerComments = useMemo(
+    () => getAllVisiblePeerComments({ myPeerComments, remotePeerComments }),
+    [myPeerComments, remotePeerComments],
+  );
   const unsubmittedPeerCount = useAppStore(
     (s) => getUnsubmittedPeerComments(s).length,
   );
@@ -194,11 +200,14 @@ export function Header({
         0,
       )
     : 0;
-  const allPeerCommentsForFile = peerMode
-    ? [...myPeerComments, ...remotePeerComments].filter(
-        (comment) => comment.path === peerActiveFilePath,
-      )
-    : [];
+  const allPeerCommentsForFile = useMemo(() => {
+    if (!peerMode) {
+      return [];
+    }
+    return allPeerComments.filter(
+      (comment) => comment.path === peerActiveFilePath,
+    );
+  }, [peerMode, allPeerComments, peerActiveFilePath]);
   const commentCount = peerMode
     ? allPeerCommentsForFile.length
     : hasFolderComments

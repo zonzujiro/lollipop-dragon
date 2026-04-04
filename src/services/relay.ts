@@ -19,7 +19,11 @@ function isValidRelayMessage(value: unknown): value is RelayMessage {
   if (typeof value !== "object" || value === null) {
     return false;
   }
-  return "type" in value && typeof value.type === "string" && VALID_RELAY_TYPES.has(value.type);
+  return (
+    "type" in value &&
+    typeof value.type === "string" &&
+    VALID_RELAY_TYPES.has(value.type)
+  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -27,27 +31,46 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isControlFrame(frame: Record<string, unknown>): boolean {
-  return frame.type === "pong" || frame.type === "error" || frame.type === "subscribe:ok";
+  return (
+    frame.type === "pong" ||
+    frame.type === "error" ||
+    frame.type === "subscribe:ok"
+  );
+}
+
+interface RelayContext {
+  confirmedSubscriptions: Set<string>;
+  activeSubscriptions: Set<string>;
+  socket: WebSocket | null;
+  onSubscribeResult: (docId: string, ok: boolean) => void;
 }
 
 function handleControlFrame(
   frame: Record<string, unknown>,
-  confirmedSubscriptions: Set<string>,
-  onSubscribeResult: (docId: string, ok: boolean) => void,
-  activeSubscriptions: Set<string>,
-  socket: WebSocket | null,
+  context: RelayContext,
 ): boolean {
   if (frame.type === "pong") {
     return true;
   }
 
   if (frame.type === "error" && typeof frame.docId === "string") {
-    console.warn("[relay] server error for docId", frame.docId, ":", frame.message);
-    onSubscribeResult(frame.docId, false);
-    if (activeSubscriptions.has(frame.docId)) {
+    console.warn(
+      "[relay] server error for docId",
+      frame.docId,
+      ":",
+      frame.message,
+    );
+    context.onSubscribeResult(frame.docId, false);
+    if (context.activeSubscriptions.has(frame.docId)) {
       setTimeout(() => {
-        if (socket && socket.readyState === WebSocket.OPEN && activeSubscriptions.has(frame.docId)) {
-          socket.send(JSON.stringify({ type: "subscribe", docId: frame.docId }));
+        if (
+          context.socket &&
+          context.socket.readyState === WebSocket.OPEN &&
+          context.activeSubscriptions.has(frame.docId)
+        ) {
+          context.socket.send(
+            JSON.stringify({ type: "subscribe", docId: frame.docId }),
+          );
         }
       }, 5000);
     }
@@ -55,8 +78,8 @@ function handleControlFrame(
   }
 
   if (frame.type === "subscribe:ok" && typeof frame.docId === "string") {
-    confirmedSubscriptions.add(frame.docId);
-    onSubscribeResult(frame.docId, true);
+    context.confirmedSubscriptions.add(frame.docId);
+    context.onSubscribeResult(frame.docId, true);
     return true;
   }
 
@@ -68,7 +91,12 @@ async function decryptAndDispatch(
   encryptionKeys: Map<string, CryptoKey>,
   onMessage: (docId: string, message: RelayMessage) => void,
 ): Promise<void> {
-  if (!frame.payload || !frame.docId || typeof frame.payload !== "string" || typeof frame.docId !== "string") {
+  if (
+    !frame.payload ||
+    !frame.docId ||
+    typeof frame.payload !== "string" ||
+    typeof frame.docId !== "string"
+  ) {
     return;
   }
 
@@ -77,7 +105,9 @@ async function decryptAndDispatch(
     return;
   }
 
-  const raw = Uint8Array.from(atob(frame.payload), (char) => char.charCodeAt(0));
+  const raw = Uint8Array.from(atob(frame.payload), (char) =>
+    char.charCodeAt(0),
+  );
   const decrypted = await decrypt(raw.buffer, key);
   const parsed: unknown = JSON.parse(new TextDecoder().decode(decrypted));
   if (!isValidRelayMessage(parsed)) {
@@ -110,8 +140,8 @@ export function connectRelay(
 
   const wsUrl = WORKER_URL.replace(/^http/, "ws") + "/relay";
   const encryptionKeys = new Map<string, CryptoKey>(); // docId → encryption key
-  const activeSubscriptions = new Set<string>();        // docIds to subscribe on (re)connect
-  const confirmedSubscriptions = new Set<string>();     // docIds confirmed by DO
+  const activeSubscriptions = new Set<string>(); // docIds to subscribe on (re)connect
+  const confirmedSubscriptions = new Set<string>(); // docIds confirmed by DO
   let socket: WebSocket | null = null;
   let backoff = 1000;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -126,7 +156,11 @@ export function connectRelay(
 
   function flushBatch(): void {
     batchTimer = null; // Always clear the timer reference first
-    if (outboundBatch.length === 0 || !socket || socket.readyState !== WebSocket.OPEN) {
+    if (
+      outboundBatch.length === 0 ||
+      !socket ||
+      socket.readyState !== WebSocket.OPEN
+    ) {
       return;
     }
     for (const frame of outboundBatch) {
@@ -175,11 +209,20 @@ export function connectRelay(
 
     socket.addEventListener("message", async (event) => {
       try {
-        const frame = JSON.parse(typeof event.data === "string" ? event.data : "");
+        const frame = JSON.parse(
+          typeof event.data === "string" ? event.data : "",
+        );
         if (!isRecord(frame)) {
           return;
         }
-        if (handleControlFrame(frame, confirmedSubscriptions, onSubscribeResult, activeSubscriptions, socket)) {
+        if (
+          handleControlFrame(frame, {
+            confirmedSubscriptions,
+            activeSubscriptions,
+            socket,
+            onSubscribeResult,
+          })
+        ) {
           return;
         }
         await decryptAndDispatch(frame, encryptionKeys, onMessage);

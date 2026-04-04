@@ -1,7 +1,7 @@
 import "./CommentMargin.css";
 import { useEffect, useRef, useMemo, useState } from "react";
 import { useAppStore } from "../../store";
-import { useActiveTab } from "../../store/selectors";
+import { useActiveTab, getAllVisiblePeerComments } from "../../store/selectors";
 import { CommentCard } from "../CommentCard";
 import { peerColor, initials } from "../../utils/peerDisplay";
 import { COMMENT_TYPE_COLOR } from "../../types/criticmarkup";
@@ -141,21 +141,23 @@ export function CommentMargin({
   const myPeerComments = useAppStore((s) => s.myPeerComments);
   const remotePeerComments = useAppStore((s) => s.remotePeerComments);
   const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
+  const allPeerComments = useMemo(
+    () => getAllVisiblePeerComments({ myPeerComments, remotePeerComments }),
+    [myPeerComments, remotePeerComments],
+  );
 
   // Peer comments for the current file, grouped by blockIndex
   const peerDotGroups = useMemo(() => {
     if (peerMode) {
-      // Peer sees own + remote comments
-      const allPeerComments = [...myPeerComments, ...remotePeerComments];
       const currentPath = peerActiveFilePath ?? "";
       const forFile = currentPath
-        ? allPeerComments.filter((c) => c.path === currentPath)
+        ? allPeerComments.filter((comment) => comment.path === currentPath)
         : allPeerComments;
       const byBlock = new Map<number, PeerComment[]>();
-      for (const c of forFile) {
-        const idx = c.blockRef.blockIndex;
+      for (const comment of forFile) {
+        const idx = comment.blockRef.blockIndex;
         const arr = byBlock.get(idx) ?? [];
-        arr.push(c);
+        arr.push(comment);
         byBlock.set(idx, arr);
       }
       return byBlock;
@@ -167,20 +169,19 @@ export function CommentMargin({
     const all = pendingComments[activeDocId] ?? [];
     const currentPath = activeFilePath ?? fileName ?? "";
     const forFile = currentPath
-      ? all.filter((c) => c.path === currentPath)
+      ? all.filter((comment) => comment.path === currentPath)
       : all;
     const byBlock = new Map<number, PeerComment[]>();
-    for (const c of forFile) {
-      const idx = c.blockRef.blockIndex;
+    for (const comment of forFile) {
+      const idx = comment.blockRef.blockIndex;
       const arr = byBlock.get(idx) ?? [];
-      arr.push(c);
+      arr.push(comment);
       byBlock.set(idx, arr);
     }
     return byBlock;
   }, [
     peerMode,
-    myPeerComments,
-    remotePeerComments,
+    allPeerComments,
     peerActiveFilePath,
     pendingComments,
     activeDocId,

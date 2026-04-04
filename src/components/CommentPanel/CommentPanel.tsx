@@ -1,7 +1,7 @@
 import "./CommentPanel.css";
 import { useEffect, useMemo, useState } from "react";
 import { useAppStore } from "../../store";
-import { useActiveTab } from "../../store/selectors";
+import { useActiveTab, getAllVisiblePeerComments } from "../../store/selectors";
 import { COMMENT_TYPE_COLOR } from "../../types/criticmarkup";
 import type { Comment, CommentType } from "../../types/criticmarkup";
 
@@ -41,6 +41,29 @@ interface DisplayComment {
   blockIndex: number | undefined;
 }
 
+interface CrossFileEntry<C extends { type: CommentType }> {
+  filePath: string;
+  fileName: string;
+  comments: C[];
+}
+
+function filterCrossFileByType<C extends { type: CommentType }>(
+  entries: CrossFileEntry<C>[],
+  commentFilter: string,
+): CrossFileEntry<C>[] {
+  if (commentFilter === "all" || commentFilter === "pending") {
+    return entries;
+  }
+  return entries
+    .map((entry) => ({
+      ...entry,
+      comments: entry.comments.filter(
+        (comment) => comment.type === commentFilter,
+      ),
+    }))
+    .filter((entry) => entry.comments.length > 0);
+}
+
 interface Props {
   peerMode?: boolean;
 }
@@ -57,6 +80,10 @@ export function CommentPanel({ peerMode = false }: Props) {
   const myPeerComments = useAppStore((s) => s.myPeerComments);
   const remotePeerComments = useAppStore((s) => s.remotePeerComments);
   const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
+  const allPeerComments = useMemo(
+    () => getAllVisiblePeerComments({ myPeerComments, remotePeerComments }),
+    [myPeerComments, remotePeerComments],
+  );
   const activeFilePath = peerMode
     ? peerActiveFilePath
     : (tab?.activeFilePath ?? null);
@@ -79,12 +106,6 @@ export function CommentPanel({ peerMode = false }: Props) {
   const myPeerCommentIds = useMemo(
     () => new Set(myPeerComments.map((comment) => comment.id)),
     [myPeerComments],
-  );
-
-  // Combined peer comments (own + remote) for display
-  const allPeerComments = useMemo(
-    () => [...myPeerComments, ...remotePeerComments],
-    [myPeerComments, remotePeerComments],
   );
 
   // In peer mode, map PeerComment[] to a unified display shape
@@ -153,7 +174,12 @@ export function CommentPanel({ peerMode = false }: Props) {
       return 0;
     }
     return crossFileComments.reduce((sum, e) => sum + e.comments.length, 0);
-  }, [isPeerMultiFile, allPeerComments.length, isFolderMode, crossFileComments]);
+  }, [
+    isPeerMultiFile,
+    allPeerComments.length,
+    isFolderMode,
+    crossFileComments,
+  ]);
 
   const isResolved = !peerMode && commentFilter === "resolved";
 
@@ -197,14 +223,7 @@ export function CommentPanel({ peerMode = false }: Props) {
     if (!isFolderMode || isResolved) {
       return crossFileComments;
     }
-    if (commentFilter === "all" || commentFilter === "pending")
-      return crossFileComments;
-    return crossFileComments
-      .map((entry) => ({
-        ...entry,
-        comments: entry.comments.filter((comment) => comment.type === commentFilter),
-      }))
-      .filter((entry) => entry.comments.length > 0);
+    return filterCrossFileByType(crossFileComments, commentFilter);
   }, [isFolderMode, isResolved, crossFileComments, commentFilter]);
 
   // For peer multi-file mode: filter peer cross-file entries
@@ -212,14 +231,7 @@ export function CommentPanel({ peerMode = false }: Props) {
     if (!isPeerMultiFile) {
       return peerCrossFileEntries;
     }
-    if (commentFilter === "all" || commentFilter === "pending")
-      return peerCrossFileEntries;
-    return peerCrossFileEntries
-      .map((entry) => ({
-        ...entry,
-        comments: entry.comments.filter((comment) => comment.type === commentFilter),
-      }))
-      .filter((entry) => entry.comments.length > 0);
+    return filterCrossFileByType(peerCrossFileEntries, commentFilter);
   }, [isPeerMultiFile, peerCrossFileEntries, commentFilter]);
 
   function handleEntryClick(id: string, blockIndex: number | undefined) {
@@ -750,7 +762,9 @@ function SingleFileList({
               {comment.type}
             </span>
             {comment.blockIndex !== undefined && (
-              <span className="comment-panel__ref">¶{comment.blockIndex + 1}</span>
+              <span className="comment-panel__ref">
+                ¶{comment.blockIndex + 1}
+              </span>
             )}
             <span className="comment-panel__text comment-panel__text--resolved">
               {peerMode

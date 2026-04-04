@@ -113,6 +113,6 @@ export function resetTestStore() {
     rtSubscriptions: new Set(),
     documentUpdateAvailable: false,
     remotePeerComments: [],
-    resolvedCommentIds: new Set(),
+    resolvedCommentIds: new Map(),
   });
 }
