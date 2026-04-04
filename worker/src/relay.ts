@@ -108,6 +108,12 @@ export class RelayHub implements DurableObject {
       return;
     }
 
+    // Verify sender is subscribed to this docId
+    const senderAttachment = getAttachment(ws);
+    if (!senderAttachment.subscriptions.includes(frame.docId)) {
+      return; // Sender not subscribed — don't relay
+    }
+
     // Forward to all OTHER connections subscribed to frame.docId
     const allSockets = this.state.getWebSockets();
     const serialized = JSON.stringify(data);

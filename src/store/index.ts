@@ -1800,30 +1800,26 @@ export const useAppStore = create<AppState>()(
         }
         await writeAndUpdate(get, set, tab.fileHandle, newRaw);
 
+        // Durable resolve sequence: KV must be durable before relay broadcast
         const record = tab.shares.find((share) => share.docId === docId);
-        const storage = getStorage();
-        let canBroadcastResolve = false;
-        if (record && storage) {
+        let kvDurable = false;
+        if (record) {
           try {
-            await storage.deleteComment(docId, comment.id, record.hostSecret);
-            canBroadcastResolve = true;
-          } catch (deleteError) {
-            console.warn("[mergeComment] per-comment KV delete failed:", deleteError);
-          }
-        } else {
-          canBroadcastResolve = true;
-        }
-
-        if (canBroadcastResolve) {
-          try {
+            // Step 1: Delete comment from KV
+            const storage = getStorage();
+            if (storage) {
+              await storage.deleteComment(docId, comment.id, record.hostSecret);
+            }
+            // Step 2: Push updated content
             await updateShareService(docId);
-          } catch (pushError) {
-            console.warn("[mergeComment] auto-push after resolve failed:", pushError);
-            canBroadcastResolve = false;
+            kvDurable = true;
+          } catch (durableError) {
+            console.warn("[mergeComment] durable resolve sequence failed:", durableError);
           }
         }
 
-        if (canBroadcastResolve) {
+        // Step 3: Broadcast only if KV is durable
+        if (kvDurable) {
           try {
             const { rtSocket: relaySocket } = get();
             if (relaySocket) {
@@ -1839,27 +1835,19 @@ export const useAppStore = create<AppState>()(
           }
         }
 
+        // Remove from pending state directly — dismissComment would re-delete from KV
+        const latestTab = activeTab(get);
+        if (latestTab) {
+          const nextTabState = removePendingCommentState(latestTab, docId, comment.id);
+          saveShares(stableShareKey(latestTab), nextTabState.shares);
+          updateTab(get, set, latestTab.id, () => nextTabState);
+        }
+
         set((state) => {
           const nextResolvedCommentIds = new Set(state.resolvedCommentIds);
           nextResolvedCommentIds.add(comment.id);
-          const tabIndex = state.tabs.findIndex((currentTab) => currentTab.id === tab.id);
-          if (tabIndex === -1) {
-            return { resolvedCommentIds: nextResolvedCommentIds };
-          }
-          const nextTabState = removePendingCommentState(state.tabs[tabIndex], docId, comment.id);
-          return {
-            tabs: state.tabs.map((currentTab, index) =>
-              index === tabIndex
-                ? { ...currentTab, ...nextTabState }
-                : currentTab,
-            ),
-            resolvedCommentIds: nextResolvedCommentIds,
-          };
+          return { resolvedCommentIds: nextResolvedCommentIds };
         });
-        const updatedTab = get().tabs.find((currentTab) => currentTab.id === tab.id);
-        if (updatedTab) {
-          saveShares(stableShareKey(updatedTab), updatedTab.shares);
-        }
       },
 
       dismissComment: (docId, cmtId) => {

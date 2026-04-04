@@ -9,7 +9,7 @@
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
-  background-color: var(--color-text-muted, #868e96);
+  background-color: var(--text-muted, #868e96);
 }
 
 .connection-status[data-status="connected"] .connection-status__dot {

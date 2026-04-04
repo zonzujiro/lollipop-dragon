@@ -135,6 +135,11 @@ export default {
         if (req.headers.get("Upgrade") !== "websocket") {
           return errRes(426, "WebSocket upgrade required", cors);
         }
+        // Validate origin for WebSocket upgrades (CORS doesn't protect WebSockets)
+        const wsOrigin = req.headers.get("Origin") ?? "";
+        if (!allowed.includes(wsOrigin)) {
+          return errRes(403, "Origin not allowed", cors);
+        }
         const hubId = env.RELAY_HUB.idFromName("hub");
         const hub = env.RELAY_HUB.get(hubId);
         return hub.fetch(req);
