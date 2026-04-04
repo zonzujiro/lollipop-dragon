@@ -1,7 +1,7 @@
 import "./CommentPanel.css";
 import { useEffect, useMemo, useState } from "react";
 import { useAppStore } from "../../store";
-import { useActiveTab, getAllVisiblePeerComments } from "../../store/selectors";
+import { useActiveTab } from "../../store/selectors";
 import { COMMENT_TYPE_COLOR } from "../../types/criticmarkup";
 import type { Comment, CommentType } from "../../types/criticmarkup";
 import type { PeerComment } from "../../types/share";
@@ -88,12 +88,7 @@ export function CommentPanel({ peerMode = false }: Props) {
   const setCommentFilter = useAppStore((s) => s.setCommentFilter);
   const toggleCommentPanel = useAppStore((s) => s.toggleCommentPanel);
   const myPeerComments = useAppStore((s) => s.myPeerComments);
-  const remotePeerComments = useAppStore((s) => s.remotePeerComments);
   const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
-  const allPeerComments = useMemo(
-    () => getAllVisiblePeerComments({ myPeerComments, remotePeerComments }),
-    [myPeerComments, remotePeerComments],
-  );
   const activeFilePath = peerMode
     ? peerActiveFilePath
     : (tab?.activeFilePath ?? null);
@@ -112,12 +107,6 @@ export function CommentPanel({ peerMode = false }: Props) {
   const isPeerMultiFile =
     peerMode && !!sharedContent && Object.keys(sharedContent.tree).length > 1;
 
-  // Set of own peer comment IDs for edit/delete ownership checks
-  const myPeerCommentIds = useMemo(
-    () => new Set(myPeerComments.map((comment) => comment.id)),
-    [myPeerComments],
-  );
-
   // In peer mode, map PeerComment[] to a unified display shape
   const peerDisplayComments: DisplayComment[] = useMemo(() => {
     if (!peerMode) {
@@ -125,10 +114,10 @@ export function CommentPanel({ peerMode = false }: Props) {
     }
     // In multi-file mode show all; in single-file mode filter to active file
     const filtered = isPeerMultiFile
-      ? allPeerComments
-      : allPeerComments.filter((comment) => comment.path === activeFilePath);
+      ? myPeerComments
+      : myPeerComments.filter((comment) => comment.path === activeFilePath);
     return filtered.map(peerCommentToDisplay);
-  }, [peerMode, isPeerMultiFile, allPeerComments, activeFilePath]);
+  }, [peerMode, isPeerMultiFile, myPeerComments, activeFilePath]);
 
   const sourceComments = peerMode ? peerDisplayComments : comments;
 
@@ -138,7 +127,7 @@ export function CommentPanel({ peerMode = false }: Props) {
       return [];
     }
     const byPath: Record<string, DisplayComment[]> = {};
-    for (const comment of allPeerComments) {
+    for (const comment of myPeerComments) {
       if (!byPath[comment.path]) {
         byPath[comment.path] = [];
       }
@@ -151,7 +140,7 @@ export function CommentPanel({ peerMode = false }: Props) {
         fileName: path.split("/").pop() ?? path,
         comments: cmts,
       }));
-  }, [isPeerMultiFile, allPeerComments]);
+  }, [isPeerMultiFile, myPeerComments]);
 
   // Build cross-file flat list for folder mode (only files with comments)
   const crossFileComments = useMemo(() => {
@@ -168,18 +157,13 @@ export function CommentPanel({ peerMode = false }: Props) {
   // Total count across all files for folder/peer-multi-file mode
   const totalCrossFileCount = useMemo(() => {
     if (isPeerMultiFile) {
-      return allPeerComments.length;
+      return myPeerComments.length;
     }
     if (!isFolderMode) {
       return 0;
     }
     return crossFileComments.reduce((sum, e) => sum + e.comments.length, 0);
-  }, [
-    isPeerMultiFile,
-    allPeerComments.length,
-    isFolderMode,
-    crossFileComments,
-  ]);
+  }, [isPeerMultiFile, myPeerComments.length, isFolderMode, crossFileComments]);
 
   const isResolved = !peerMode && commentFilter === "resolved";
 
@@ -378,7 +362,6 @@ export function CommentPanel({ peerMode = false }: Props) {
             onCrossFileClick={(filePath) => selectPeerFile(filePath)}
             onEdit={editPeerComment}
             onDelete={deletePeerComment}
-            ownIds={myPeerCommentIds}
           />
         ) : isFolderMode ? (
           <CrossFileList
@@ -402,7 +385,6 @@ export function CommentPanel({ peerMode = false }: Props) {
             hostEntryLabel={hostEntryLabel}
             onEdit={peerMode ? editPeerComment : editComment}
             onDelete={peerMode ? deletePeerComment : deleteComment}
-            ownIds={peerMode ? myPeerCommentIds : undefined}
           />
         )}
       </div>
@@ -640,7 +622,6 @@ function CrossFileList({
   onCrossFileClick,
   onEdit,
   onDelete,
-  ownIds,
 }: {
   entries: {
     filePath: string;
@@ -653,7 +634,6 @@ function CrossFileList({
   onCrossFileClick: (filePath: string, rawStart: number) => void;
   onEdit: (id: string, type: CommentType, text: string) => void;
   onDelete: (id: string) => void;
-  ownIds?: Set<string>;
 }) {
   const totalCount = entries.reduce((sum, e) => sum + e.comments.length, 0);
 
@@ -675,7 +655,7 @@ function CrossFileList({
             </div>
             {entry.comments.map((comment) => {
               const rawStart = "rawStart" in comment ? comment.rawStart : 0;
-              const canEdit = ownIds === undefined || ownIds.has(comment.id);
+              const canEdit = true;
               return (
                 <CommentEntry
                   key={`${entry.filePath}:${comment.id}`}
@@ -715,7 +695,6 @@ function SingleFileList({
   hostEntryLabel,
   onEdit,
   onDelete,
-  ownIds,
 }: {
   visible: (Comment | DisplayComment)[];
   isResolved: boolean;
@@ -727,7 +706,6 @@ function SingleFileList({
   hostEntryLabel: (c: Comment) => string;
   onEdit: (id: string, type: CommentType, text: string) => void;
   onDelete: (id: string) => void;
-  ownIds?: Set<string>;
 }) {
   if (visible.length === 0) {
     return (
@@ -780,7 +758,7 @@ function SingleFileList({
             comment={comment}
             isActive={activeCommentId === comment.id}
             isOtherFile={false}
-            canEdit={ownIds === undefined || ownIds.has(comment.id)}
+            canEdit={true}
             onClick={() => onEntryClick(comment.id, comment.blockIndex)}
             onEdit={onEdit}
             onDelete={onDelete}

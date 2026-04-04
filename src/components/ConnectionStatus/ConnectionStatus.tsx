@@ -2,7 +2,7 @@ import { useAppStore } from "../../store";
 import "./ConnectionStatus.css";
 
 export function ConnectionStatus() {
-  const rtStatus = useAppStore((state) => state.rtStatus);
+  const relayStatus = useAppStore((state) => state.relayStatus);
   const isPeerMode = useAppStore((state) => state.isPeerMode);
   const activeTabHasShares = useAppStore((state) => {
     if (state.isPeerMode) {
@@ -27,9 +27,9 @@ export function ConnectionStatus() {
   };
 
   return (
-    <span className="connection-status" data-status={rtStatus}>
+    <span className="connection-status" data-status={relayStatus}>
       <span className="connection-status__dot" />
-      <span className="connection-status__label">{labels[rtStatus]}</span>
+      <span className="connection-status__label">{labels[relayStatus]}</span>
     </span>
   );
 }

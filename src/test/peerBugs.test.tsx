@@ -46,13 +46,30 @@ vi.mock("../config", () => ({
   WORKER_URL: "https://mock-worker.test",
 }));
 
+const { mockRelaySend } = vi.hoisted(() => ({
+  mockRelaySend: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("../services/relay", () => ({
+  getRelay: () => ({
+    subscribe: vi.fn(),
+    unsubscribe: vi.fn(),
+    send: mockRelaySend,
+    close: vi.fn(),
+    hasActiveSubscriptions: () => false,
+  }),
+  startRelay: vi.fn(),
+  subscribeToDoc: vi.fn(),
+  unsubscribeFromDoc: vi.fn(),
+  stopRelay: vi.fn(),
+}));
+
 // ── Imports (after mocks) ────────────────────────────────────────────
 
 import { CommentPanel } from "../components/CommentPanel";
 import { Header } from "../components/Header";
 import { useAppStore } from "../store";
 import { getActiveTab } from "../store/selectors";
-import { setRelayForTesting } from "../services/relay";
 import {
   setTestState,
   resetTestStore,
@@ -62,11 +79,11 @@ import {
 
 beforeEach(() => {
   resetTestStore();
-  setRelayForTesting(null);
   mockPostComment.mockClear();
   mockDeleteComments.mockClear();
   mockDeleteComment.mockClear();
   mockUpdateShare.mockClear();
+  mockRelaySend.mockClear();
 });
 
 // ── Bug 1: CommentPanel peer mode uses peerActiveFilePath ────────────
@@ -488,15 +505,9 @@ describe("store.mergeComment — durable resolve sequence", () => {
     mockUpdateShare.mockImplementation(async () => {
       order.push("update");
     });
-    const relaySocket = {
-      subscribe: vi.fn(),
-      unsubscribe: vi.fn(),
-      send: vi.fn().mockImplementation(async () => {
-        order.push("send");
-      }),
-      close: vi.fn(),
-    };
-    setRelayForTesting(relaySocket);
+    mockRelaySend.mockImplementation(async () => {
+      order.push("send");
+    });
     const comment = makePeerComment({ id: "cmt-merge-1" });
     setTestState({
       fileHandle: makeFileHandle(),
@@ -517,16 +528,10 @@ describe("store.mergeComment — durable resolve sequence", () => {
       "host-sec",
     );
     expect(mockUpdateShare).toHaveBeenCalledWith("doc-1");
-    expect(relaySocket.send).toHaveBeenCalledWith("doc-1", {
+    expect(mockRelaySend).toHaveBeenCalledWith("doc-1", {
       type: "comment:resolved",
       commentId: "cmt-merge-1",
     });
-    expect(
-      useAppStore
-        .getState()
-        .resolvedCommentIds.get("doc-1")
-        ?.has("cmt-merge-1"),
-    ).toBe(true);
     const tab = getActiveTab(useAppStore.getState());
     expect(tab?.pendingComments["doc-1"]).toBeUndefined();
   });

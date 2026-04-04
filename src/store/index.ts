@@ -30,9 +30,7 @@ import {
   subscribeToDoc,
   unsubscribeFromDoc,
   stopRelay,
-  registerRelayStoreAccessor,
 } from "../services/relay";
-import type { RelayMessage } from "../types/relay";
 import {
   syncActiveShares as syncActiveSharesService,
   updateShare as updateShareService,
@@ -297,11 +295,8 @@ interface AppState {
   peerCommentPanelOpen: boolean;
 
   // Real-time relay
-  rtStatus: "disconnected" | "connecting" | "connected";
-  rtSubscriptions: Set<string>;
+  relayStatus: "disconnected" | "connecting" | "connected";
   documentUpdateAvailable: boolean;
-  remotePeerComments: PeerComment[];
-  resolvedCommentIds: Map<string, Set<string>>;
 
   // Block highlight (transient UI state for comment hover)
   hoveredBlockHighlight: {
@@ -395,12 +390,9 @@ interface AppState {
   syncPeerComments: () => Promise<void>;
 
   // Relay state actions (data only — orchestration lives in src/services/relay.ts)
-  setRtStatus: (status: "disconnected" | "connecting" | "connected") => void;
-  setRtSubscriptions: (subscriptions: Set<string>) => void;
-  addRtSubscription: (docId: string) => void;
-  addRemotePeerComments: (comments: PeerComment[]) => void;
-  applyPeerMessagePatch: (docId: string, message: RelayMessage) => void;
-  applyHostMessage: (docId: string, message: RelayMessage) => void;
+  setRelayStatus: (status: "disconnected" | "connecting" | "connected") => void;
+  setDocumentUpdateAvailable: (available: boolean) => void;
+  addPendingComment: (docId: string, comment: PeerComment) => void;
   dismissDocumentUpdate: () => void;
 }
 
@@ -427,103 +419,6 @@ function isPermissionError(e: unknown): boolean {
     e instanceof Error &&
     (e.name === "NotAllowedError" || e.name === "SecurityError")
   );
-}
-
-// --- Peer mode message handler (module-level, returns a state patch) ---
-
-function handlePeerMessage(
-  docId: string,
-  message: RelayMessage,
-  state: AppState,
-): Partial<AppState> {
-  if (message.type === "comment:added") {
-    const isDuplicate = state.remotePeerComments.some(
-      (comment) => comment.id === message.comment.id,
-    );
-    if (isDuplicate) {
-      return {};
-    }
-    if (state.resolvedCommentIds.get(docId)?.has(message.comment.id)) {
-      return {};
-    }
-    return {
-      remotePeerComments: [...state.remotePeerComments, message.comment],
-    };
-  }
-
-  if (message.type === "comment:resolved") {
-    const nextResolved = new Map(state.resolvedCommentIds);
-    const docSet = new Set(nextResolved.get(docId));
-    docSet.add(message.commentId);
-    nextResolved.set(docId, docSet);
-    return {
-      myPeerComments: state.myPeerComments.filter(
-        (comment) => comment.id !== message.commentId,
-      ),
-      remotePeerComments: state.remotePeerComments.filter(
-        (comment) => comment.id !== message.commentId,
-      ),
-      resolvedCommentIds: nextResolved,
-    };
-  }
-
-  if (message.type === "document:updated") {
-    return {
-      documentUpdateAvailable: true,
-    };
-  }
-
-  return {};
-}
-
-// --- Host mode message handler (module-level, uses functional set()) ---
-
-function handleHostMessage(
-  docId: string,
-  message: RelayMessage,
-  set: (fn: (state: AppState) => Partial<AppState>) => void,
-): void {
-  if (message.type === "comment:added") {
-    set((state) => {
-      const tabIndex = state.tabs.findIndex((tab) =>
-        tab.shares.some((share) => share.docId === docId),
-      );
-      if (tabIndex === -1) {
-        return {};
-      }
-      const targetTab = state.tabs[tabIndex];
-      const existing = targetTab.pendingComments[docId] ?? [];
-      if (existing.some((comment) => comment.id === message.comment.id)) {
-        return {};
-      }
-      if (state.resolvedCommentIds.get(docId)?.has(message.comment.id)) {
-        return {};
-      }
-      const updatedComments = [...existing, message.comment];
-      const updatedShares = targetTab.shares.map((share) =>
-        share.docId === docId
-          ? { ...share, pendingCommentCount: updatedComments.length }
-          : share,
-      );
-      return {
-        tabs: state.tabs.map((tab, index) =>
-          index === tabIndex
-            ? {
-                ...tab,
-                pendingComments: {
-                  ...tab.pendingComments,
-                  [docId]: updatedComments,
-                },
-                shares: updatedShares,
-              }
-            : tab,
-        ),
-      };
-    });
-    return;
-  }
-
-  // document:updated and comment:resolved are not applicable in host mode
 }
 
 function removePendingCommentState(
@@ -798,11 +693,8 @@ export const useAppStore = create<AppState>()(
       peerCommentPanelOpen: false,
 
       // Real-time relay
-      rtStatus: "disconnected",
-      rtSubscriptions: new Set(),
+      relayStatus: "disconnected",
       documentUpdateAvailable: false,
-      remotePeerComments: [],
-      resolvedCommentIds: new Map(),
 
       hoveredBlockHighlight: null,
       setHoveredBlockHighlight: (highlight) =>
@@ -1704,11 +1596,6 @@ export const useAppStore = create<AppState>()(
           };
         });
         unsubscribeFromDoc(docId);
-        set((state) => {
-          const nextResolved = new Map(state.resolvedCommentIds);
-          nextResolved.delete(docId);
-          return { resolvedCommentIds: nextResolved };
-        });
       },
 
       fetchPendingComments: async (docId) => {
@@ -1876,14 +1763,6 @@ export const useAppStore = create<AppState>()(
             saveShares(stableShareKey(latestTab), nextTabState.shares);
             updateTab(get, set, latestTab.id, () => nextTabState);
           }
-
-          set((state) => {
-            const nextResolved = new Map(state.resolvedCommentIds);
-            const docSet = new Set(nextResolved.get(docId));
-            docSet.add(comment.id);
-            nextResolved.set(docId, docSet);
-            return { resolvedCommentIds: nextResolved };
-          });
         }
       },
 
@@ -2096,30 +1975,45 @@ export const useAppStore = create<AppState>()(
 
       // ── Relay state actions (data only — orchestration lives in src/services/relay.ts) ──
 
-      setRtStatus: (status) => set({ rtStatus: status }),
+      setRelayStatus: (status) => set({ relayStatus: status }),
 
-      setRtSubscriptions: (subscriptions) =>
-        set({ rtSubscriptions: subscriptions }),
+      setDocumentUpdateAvailable: (available) =>
+        set({ documentUpdateAvailable: available }),
 
-      addRtSubscription: (docId) => {
-        const next = new Set(get().rtSubscriptions);
-        next.add(docId);
-        set({ rtSubscriptions: next });
-      },
-
-      addRemotePeerComments: (comments) =>
-        set((state) => ({
-          remotePeerComments: [...state.remotePeerComments, ...comments],
-        })),
-
-      applyPeerMessagePatch: (docId, message) => {
-        const state = get();
-        const patch = handlePeerMessage(docId, message, state);
-        set(patch);
-      },
-
-      applyHostMessage: (docId, message) => {
-        handleHostMessage(docId, message, set);
+      addPendingComment: (docId, comment) => {
+        set((state) => {
+          const tabIndex = state.tabs.findIndex((tab) =>
+            tab.shares.some((share) => share.docId === docId),
+          );
+          if (tabIndex === -1) {
+            return {};
+          }
+          const targetTab = state.tabs[tabIndex];
+          const existing = targetTab.pendingComments[docId] ?? [];
+          if (existing.some((pending) => pending.id === comment.id)) {
+            return {};
+          }
+          const updatedComments = [...existing, comment];
+          const updatedShares = targetTab.shares.map((share) =>
+            share.docId === docId
+              ? { ...share, pendingCommentCount: updatedComments.length }
+              : share,
+          );
+          return {
+            tabs: state.tabs.map((tab, index) =>
+              index === tabIndex
+                ? {
+                    ...tab,
+                    pendingComments: {
+                      ...tab.pendingComments,
+                      [docId]: updatedComments,
+                    },
+                    shares: updatedShares,
+                  }
+                : tab,
+            ),
+          };
+        });
       },
 
       dismissDocumentUpdate: () => {
@@ -2252,7 +2146,7 @@ export const useAppStore = create<AppState>()(
               }),
             )
           : current.tabs;
-        const rtStatusDefault: "disconnected" = "disconnected";
+        const relayStatusDefault: "disconnected" = "disconnected";
         return {
           ...current,
           ...p,
@@ -2261,19 +2155,13 @@ export const useAppStore = create<AppState>()(
             ? p.submittedPeerCommentIds
             : [],
           // Transient relay state must always reset on load
-          rtStatus: rtStatusDefault,
-          rtSubscriptions: new Set<string>(),
+          relayStatus: relayStatusDefault,
           documentUpdateAvailable: false,
-          remotePeerComments: [],
-          resolvedCommentIds: new Map<string, Set<string>>(),
         };
       },
     },
   ),
 );
-
-// Register store accessor for relay service (avoids circular import)
-registerRelayStoreAccessor(() => useAppStore.getState());
 
 // Keep browser tab title in sync with the active file
 const APP_TITLE = "critiq.ink";

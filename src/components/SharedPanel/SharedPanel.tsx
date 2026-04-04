@@ -39,8 +39,7 @@ export function SharedPanel() {
   const fetchPendingComments = useAppStore((s) => s.fetchPendingComments);
   const fetchAllPendingComments = useAppStore((s) => s.fetchAllPendingComments);
   const pendingComments = tab?.pendingComments ?? {};
-  const rtStatus = useAppStore((state) => state.rtStatus);
-  const rtSubscriptions = useAppStore((state) => state.rtSubscriptions);
+  const relayStatus = useAppStore((state) => state.relayStatus);
 
   const showToast = useAppStore((s) => s.showToast);
 
@@ -52,10 +51,7 @@ export function SharedPanel() {
   const hasActiveShares = shares.some(
     (s) => new Date(s.expiresAt) > new Date(),
   );
-  const needsManualFetch = shares.some(
-    (share) =>
-      rtStatus !== "connected" || !rtSubscriptions.has(share.docId),
-  );
+  const needsManualFetch = relayStatus !== "connected";
 
   async function handleFetch(docId: string) {
     setLoadingDocId(docId);
@@ -122,8 +118,7 @@ export function SharedPanel() {
             const badge = share.pendingCommentCount;
             const isExpanded = expandedDocId === share.docId;
             const isLoading = loadingDocId === share.docId;
-            const relayConnectedForShare =
-              rtStatus === "connected" && rtSubscriptions.has(share.docId);
+            const relayConnectedForShare = relayStatus === "connected";
 
             return (
               <li key={share.docId} className="shared-panel__entry">

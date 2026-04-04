@@ -1,7 +1,7 @@
 import "./CommentMargin.css";
 import { useEffect, useRef, useMemo, useState } from "react";
 import { useAppStore } from "../../store";
-import { useActiveTab, getAllVisiblePeerComments } from "../../store/selectors";
+import { useActiveTab } from "../../store/selectors";
 import { CommentCard } from "../CommentCard";
 import { peerColor, initials } from "../../utils/peerDisplay";
 import { COMMENT_TYPE_COLOR } from "../../types/criticmarkup";
@@ -137,22 +137,17 @@ export function CommentMargin({
   const [groups, setGroups] = useState<DotGroup[]>([]);
   const measureRef = useRef<() => void>(() => {});
 
-  // In peer mode, show the peer's own and remote comments as dots
+  // In peer mode, show the peer's own comments as dots
   const myPeerComments = useAppStore((s) => s.myPeerComments);
-  const remotePeerComments = useAppStore((s) => s.remotePeerComments);
   const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
-  const allPeerComments = useMemo(
-    () => getAllVisiblePeerComments({ myPeerComments, remotePeerComments }),
-    [myPeerComments, remotePeerComments],
-  );
 
   // Peer comments for the current file, grouped by blockIndex
   const peerDotGroups = useMemo(() => {
     if (peerMode) {
       const currentPath = peerActiveFilePath ?? "";
       const forFile = currentPath
-        ? allPeerComments.filter((comment) => comment.path === currentPath)
-        : allPeerComments;
+        ? myPeerComments.filter((comment) => comment.path === currentPath)
+        : myPeerComments;
       const byBlock = new Map<number, PeerComment[]>();
       for (const comment of forFile) {
         const idx = comment.blockRef.blockIndex;
@@ -181,7 +176,7 @@ export function CommentMargin({
     return byBlock;
   }, [
     peerMode,
-    allPeerComments,
+    myPeerComments,
     peerActiveFilePath,
     pendingComments,
     activeDocId,
