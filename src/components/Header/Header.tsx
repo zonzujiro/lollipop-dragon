@@ -196,7 +196,7 @@ export function Header({
     : 0;
   const allPeerCommentsForFile = peerMode
     ? [...myPeerComments, ...remotePeerComments].filter(
-        (c) => c.path === peerActiveFilePath,
+        (comment) => comment.path === peerActiveFilePath,
       )
     : [];
   const commentCount = peerMode

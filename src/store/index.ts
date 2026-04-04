@@ -1804,17 +1804,15 @@ export const useAppStore = create<AppState>()(
         const record = tab.shares.find((share) => share.docId === docId);
         let kvDurable = false;
         if (record) {
-          try {
-            // Step 1: Delete comment from KV
-            const storage = getStorage();
-            if (storage) {
+          const storage = getStorage();
+          if (storage) {
+            try {
               await storage.deleteComment(docId, comment.id, record.hostSecret);
+              await updateShareService(docId);
+              kvDurable = true;
+            } catch (durableError) {
+              console.warn("[mergeComment] durable resolve sequence failed:", durableError);
             }
-            // Step 2: Push updated content
-            await updateShareService(docId);
-            kvDurable = true;
-          } catch (durableError) {
-            console.warn("[mergeComment] durable resolve sequence failed:", durableError);
           }
         }
 
@@ -2098,7 +2096,9 @@ export const useAppStore = create<AppState>()(
                   console.warn("[relay] peer content catch-up failed:", error);
                 });
               } else {
-                // Host mode: fetch pending comments for active tab
+                // KNOWN LIMITATION (v1): Only catches up the active tab's shares.
+                // Background tabs recover when the user switches to them.
+                // See spec §5.3 and §9 for details.
                 reconnectedState.fetchAllPendingComments().catch((error) => {
                   console.warn("[relay] host reconnect catch-up failed:", error);
                 });
@@ -2149,15 +2149,9 @@ export const useAppStore = create<AppState>()(
         rtSocket.unsubscribe(docId);
         const next = new Set(rtSubscriptions);
         next.delete(docId);
-        if (next.size === 0) {
-          rtSocket.close();
-          set({
-            rtSocket: null,
-            rtStatus: "disconnected",
-            rtSubscriptions: new Set(),
-          });
-          return;
-        }
+        // Don't auto-close the relay when subscriptions are empty:
+        // the relay service may still have pending (unconfirmed) subscriptions.
+        // The relay stays open until explicitly closed via closeRelay() or beforeunload.
         set({ rtSubscriptions: next });
       },
 

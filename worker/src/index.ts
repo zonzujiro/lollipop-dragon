@@ -52,23 +52,27 @@ async function sha256hex(text: string): Promise<string> {
     .join("");
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 function isShareMeta(value: unknown): value is ShareMeta {
-  if (typeof value !== "object" || value === null) {
+  if (!isRecord(value)) {
     return false;
   }
-  if (!("hostSecretHash" in value) || typeof value.hostSecretHash !== "string") {
+  if (typeof value["hostSecretHash"] !== "string") {
     return false;
   }
-  if (!("createdAt" in value) || typeof value.createdAt !== "string") {
+  if (typeof value["createdAt"] !== "string") {
     return false;
   }
-  if (!("ttl" in value) || typeof value.ttl !== "number") {
+  if (typeof value["ttl"] !== "number") {
     return false;
   }
-  if (!("label" in value) || typeof value.label !== "string") {
+  if (typeof value["label"] !== "string") {
     return false;
   }
-  if ("updatedAt" in value && value.updatedAt !== undefined && typeof value.updatedAt !== "string") {
+  if ("updatedAt" in value && value["updatedAt"] !== undefined && typeof value["updatedAt"] !== "string") {
     return false;
   }
   return true;

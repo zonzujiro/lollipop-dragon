@@ -77,7 +77,7 @@ export function CommentPanel({ peerMode = false }: Props) {
 
   // Set of own peer comment IDs for edit/delete ownership checks
   const myPeerCommentIds = useMemo(
-    () => new Set(myPeerComments.map((c) => c.id)),
+    () => new Set(myPeerComments.map((comment) => comment.id)),
     [myPeerComments],
   );
 
@@ -95,12 +95,12 @@ export function CommentPanel({ peerMode = false }: Props) {
     // In multi-file mode show all; in single-file mode filter to active file
     const filtered = isPeerMultiFile
       ? allPeerComments
-      : allPeerComments.filter((c) => c.path === activeFilePath);
-    return filtered.map((c) => ({
-      id: c.id,
-      type: c.commentType,
-      text: c.text,
-      blockIndex: c.blockRef.blockIndex,
+      : allPeerComments.filter((comment) => comment.path === activeFilePath);
+    return filtered.map((comment) => ({
+      id: comment.id,
+      type: comment.commentType,
+      text: comment.text,
+      blockIndex: comment.blockRef.blockIndex,
     }));
   }, [peerMode, isPeerMultiFile, allPeerComments, activeFilePath]);
 
@@ -112,15 +112,15 @@ export function CommentPanel({ peerMode = false }: Props) {
       return [];
     }
     const byPath: Record<string, DisplayComment[]> = {};
-    for (const c of allPeerComments) {
-      if (!byPath[c.path]) {
-        byPath[c.path] = [];
+    for (const comment of allPeerComments) {
+      if (!byPath[comment.path]) {
+        byPath[comment.path] = [];
       }
-      byPath[c.path].push({
-        id: c.id,
-        type: c.commentType,
-        text: c.text,
-        blockIndex: c.blockRef.blockIndex,
+      byPath[comment.path].push({
+        id: comment.id,
+        type: comment.commentType,
+        text: comment.text,
+        blockIndex: comment.blockRef.blockIndex,
       });
     }
     return Object.entries(byPath)
@@ -190,7 +190,7 @@ export function CommentPanel({ peerMode = false }: Props) {
     ? resolvedComments
     : commentFilter === "all" || commentFilter === "pending"
       ? sourceComments
-      : sourceComments.filter((c) => c.type === commentFilter);
+      : sourceComments.filter((comment) => comment.type === commentFilter);
 
   // For folder mode: filter cross-file entries
   const filteredCrossFile = useMemo(() => {
@@ -202,7 +202,7 @@ export function CommentPanel({ peerMode = false }: Props) {
     return crossFileComments
       .map((entry) => ({
         ...entry,
-        comments: entry.comments.filter((c) => c.type === commentFilter),
+        comments: entry.comments.filter((comment) => comment.type === commentFilter),
       }))
       .filter((entry) => entry.comments.length > 0);
   }, [isFolderMode, isResolved, crossFileComments, commentFilter]);
@@ -217,7 +217,7 @@ export function CommentPanel({ peerMode = false }: Props) {
     return peerCrossFileEntries
       .map((entry) => ({
         ...entry,
-        comments: entry.comments.filter((c) => c.type === commentFilter),
+        comments: entry.comments.filter((comment) => comment.type === commentFilter),
       }))
       .filter((entry) => entry.comments.length > 0);
   }, [isPeerMultiFile, peerCrossFileEntries, commentFilter]);
@@ -661,19 +661,19 @@ function CrossFileList({
                 {entry.comments.length}
               </span>
             </div>
-            {entry.comments.map((c) => {
-              const rawStart = "rawStart" in c ? c.rawStart : 0;
-              const canEdit = ownIds === undefined || ownIds.has(c.id);
+            {entry.comments.map((comment) => {
+              const rawStart = "rawStart" in comment ? comment.rawStart : 0;
+              const canEdit = ownIds === undefined || ownIds.has(comment.id);
               return (
                 <CommentEntry
-                  key={`${entry.filePath}:${c.id}`}
-                  comment={c}
-                  isActive={isActiveFile && activeCommentId === c.id}
+                  key={`${entry.filePath}:${comment.id}`}
+                  comment={comment}
+                  isActive={isActiveFile && activeCommentId === comment.id}
                   isOtherFile={!isActiveFile}
                   canEdit={canEdit}
                   onClick={() => {
                     if (isActiveFile) {
-                      onEntryClick(c.id, c.blockIndex);
+                      onEntryClick(comment.id, comment.blockIndex);
                     } else {
                       onCrossFileClick(entry.filePath, rawStart);
                     }
@@ -733,41 +733,41 @@ function SingleFileList({
 
   return (
     <>
-      {visible.map((c) =>
+      {visible.map((comment) =>
         isResolved ? (
           <div
-            key={c.id}
+            key={comment.id}
             className="comment-panel__entry comment-panel__entry--resolved"
           >
             <span
               className="comment-panel__badge"
               style={{
-                backgroundColor: COMMENT_TYPE_COLOR[c.type],
+                backgroundColor: COMMENT_TYPE_COLOR[comment.type],
                 color: "#fff",
                 opacity: 0.6,
               }}
             >
-              {c.type}
+              {comment.type}
             </span>
-            {c.blockIndex !== undefined && (
-              <span className="comment-panel__ref">¶{c.blockIndex + 1}</span>
+            {comment.blockIndex !== undefined && (
+              <span className="comment-panel__ref">¶{comment.blockIndex + 1}</span>
             )}
             <span className="comment-panel__text comment-panel__text--resolved">
               {peerMode
-                ? entryLabel(c)
-                : "criticType" in c
-                  ? hostEntryLabel(c)
-                  : entryLabel(c)}
+                ? entryLabel(comment)
+                : "criticType" in comment
+                  ? hostEntryLabel(comment)
+                  : entryLabel(comment)}
             </span>
           </div>
         ) : (
           <CommentEntry
-            key={c.id}
-            comment={c}
-            isActive={activeCommentId === c.id}
+            key={comment.id}
+            comment={comment}
+            isActive={activeCommentId === comment.id}
             isOtherFile={false}
-            canEdit={ownIds === undefined || ownIds.has(c.id)}
-            onClick={() => onEntryClick(c.id, c.blockIndex)}
+            canEdit={ownIds === undefined || ownIds.has(comment.id)}
+            onClick={() => onEntryClick(comment.id, comment.blockIndex)}
             onEdit={onEdit}
             onDelete={onDelete}
           />

@@ -156,8 +156,11 @@ export function connectRelay(
     socket = new WebSocket(wsUrl);
 
     socket.addEventListener("open", () => {
+      if (closedIntentionally) {
+        socket?.close();
+        return;
+      }
       backoff = 1000;
-      closedIntentionally = false;
       onStatusChange("connected");
       startPingInterval();
       // Re-subscribe to all active docIds
