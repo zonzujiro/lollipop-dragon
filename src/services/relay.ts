@@ -78,6 +78,23 @@ interface RelayContext {
   socket: WebSocket | null;
 }
 
+function scheduleSubscriptionRetry(context: RelayContext, docId: string): void {
+  if (!context.activeSubscriptions.has(docId)) {
+    return;
+  }
+  const retryDocId = docId;
+  setTimeout(() => {
+    if (
+      context.socket?.readyState === WebSocket.OPEN &&
+      context.activeSubscriptions.has(retryDocId)
+    ) {
+      context.socket.send(
+        JSON.stringify({ type: "subscribe", docId: retryDocId }),
+      );
+    }
+  }, 5000);
+}
+
 function handleControlFrame(
   frame: ParsedFrame,
   context: RelayContext,
@@ -85,7 +102,6 @@ function handleControlFrame(
   if (frame.kind === "pong") {
     return true;
   }
-
   if (frame.kind === "error") {
     console.warn(
       "[relay] server error for docId",
@@ -93,26 +109,12 @@ function handleControlFrame(
       ":",
       frame.message,
     );
-    if (context.activeSubscriptions.has(frame.docId)) {
-      const retryDocId = frame.docId;
-      setTimeout(() => {
-        if (
-          context.socket?.readyState === WebSocket.OPEN &&
-          context.activeSubscriptions.has(retryDocId)
-        ) {
-          context.socket.send(
-            JSON.stringify({ type: "subscribe", docId: retryDocId }),
-          );
-        }
-      }, 5000);
-    }
+    scheduleSubscriptionRetry(context, frame.docId);
     return true;
   }
-
   if (frame.kind === "subscribeOk") {
     return true;
   }
-
   return false;
 }
 
@@ -170,79 +172,88 @@ function setRelay(relay: RelayConnection | null): void {
   activeRelay = relay;
 }
 
-function connectRelay(
-  onMessage: (docId: string, message: RelayMessage) => void,
-  onStatusChange: (status: "connecting" | "connected" | "disconnected") => void,
-): RelayConnection {
-  if (!WORKER_URL) {
-    throw new Error("Worker URL not configured");
+type OutboundFrame = { version: 1; docId: string; payload: string };
+
+const BATCH_INTERVAL_MS = 500;
+const PING_INTERVAL_MS = 30_000;
+
+class RelayConnectionImpl implements RelayConnection {
+  private socket: WebSocket | null = null;
+  private backoff = 1000;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private pingInterval: ReturnType<typeof setInterval> | null = null;
+  private closedIntentionally = false;
+  private outboundBatch: OutboundFrame[] = [];
+  private batchTimer: ReturnType<typeof setTimeout> | null = null;
+  private wsUrl: string;
+
+  constructor(
+    private onMessage: (docId: string, message: RelayMessage) => void,
+    private onStatusChange: (
+      status: "connecting" | "connected" | "disconnected",
+    ) => void,
+  ) {
+    if (!WORKER_URL) {
+      throw new Error("Worker URL not configured");
+    }
+    this.wsUrl = WORKER_URL.replace(/^http/, "ws") + "/relay";
+    this.openConnection();
   }
 
-  const wsUrl = WORKER_URL.replace(/^http/, "ws") + "/relay";
-  let socket: WebSocket | null = null;
-  let backoff = 1000;
-  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  let pingInterval: ReturnType<typeof setInterval> | null = null;
-  let closedIntentionally = false;
+  // ── Private helpers ──────────────────────────────────────────────────
 
-  // --- Debouncing ---
-  let outboundBatch: Array<{ version: 1; docId: string; payload: string }> = [];
-  let batchTimer: ReturnType<typeof setTimeout> | null = null;
-  const BATCH_INTERVAL_MS = 500;
-  const PING_INTERVAL_MS = 30_000;
-
-  function flushBatch(): void {
-    batchTimer = null; // Always clear the timer reference first
+  private flushBatch(): void {
+    this.batchTimer = null;
     if (
-      outboundBatch.length === 0 ||
-      !socket ||
-      socket.readyState !== WebSocket.OPEN
+      this.outboundBatch.length === 0 ||
+      !this.socket ||
+      this.socket.readyState !== WebSocket.OPEN
     ) {
       return;
     }
-    for (const frame of outboundBatch) {
-      socket.send(JSON.stringify(frame));
+    for (const frame of this.outboundBatch) {
+      this.socket.send(JSON.stringify(frame));
     }
-    outboundBatch = [];
+    this.outboundBatch = [];
   }
 
-  function startPingInterval(): void {
-    stopPingInterval();
-    pingInterval = setInterval(() => {
-      if (socket?.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: "ping" }));
+  private startPingInterval(): void {
+    this.stopPingInterval();
+    this.pingInterval = setInterval(() => {
+      if (this.socket?.readyState === WebSocket.OPEN) {
+        this.socket.send(JSON.stringify({ type: "ping" }));
       }
     }, PING_INTERVAL_MS);
   }
 
-  function stopPingInterval(): void {
-    if (pingInterval) {
-      clearInterval(pingInterval);
-      pingInterval = null;
+  private stopPingInterval(): void {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
     }
   }
 
-  function handleSocketOpen(): void {
-    if (closedIntentionally) {
-      socket?.close();
+  private handleSocketOpen = (): void => {
+    if (this.closedIntentionally) {
+      this.socket?.close();
       return;
     }
-    backoff = 1000;
-    onStatusChange("connected");
-    startPingInterval();
-    resubscribeAll();
-    flushBatch();
-  }
+    this.backoff = 1000;
+    this.onStatusChange("connected");
+    this.startPingInterval();
+    this.resubscribeAll();
+    this.flushBatch();
+  };
 
-  function resubscribeAll(): void {
+  private resubscribeAll(): void {
     for (const docId of activeSubscriptions) {
-      if (socket) {
-        socket.send(JSON.stringify({ type: "subscribe", docId }));
+      if (this.socket) {
+        this.socket.send(JSON.stringify({ type: "subscribe", docId }));
       }
     }
   }
 
-  async function handleSocketMessage(event: MessageEvent): Promise<void> {
+  private handleSocketMessage = async (event: MessageEvent): Promise<void> => {
     try {
       const rawData = JSON.parse(
         typeof event.data === "string" ? event.data : "",
@@ -251,100 +262,105 @@ function connectRelay(
       if (frame.kind === "unknown") {
         return;
       }
-      if (handleControlFrame(frame, { activeSubscriptions, socket })) {
+      const context = { activeSubscriptions, socket: this.socket };
+      if (handleControlFrame(frame, context)) {
         return;
       }
-      await decryptAndDispatch(frame, encryptionKeys, onMessage);
+      await decryptAndDispatch(frame, encryptionKeys, this.onMessage);
     } catch (error) {
       console.warn("[relay] failed to process message:", error);
     }
-  }
+  };
 
-  function handleSocketClose(): void {
-    stopPingInterval();
-    onStatusChange("disconnected");
-    if (!closedIntentionally) {
-      scheduleReconnect();
+  private handleSocketClose = (): void => {
+    this.stopPingInterval();
+    this.onStatusChange("disconnected");
+    if (!this.closedIntentionally) {
+      this.scheduleReconnect();
     }
-  }
+  };
 
-  function openConnection(): void {
-    onStatusChange("connecting");
-    socket = new WebSocket(wsUrl);
-    socket.addEventListener("open", handleSocketOpen);
-    socket.addEventListener("message", handleSocketMessage);
-    socket.addEventListener("close", handleSocketClose);
-    socket.addEventListener("error", () => {
-      socket?.close();
+  private openConnection(): void {
+    this.onStatusChange("connecting");
+    this.socket = new WebSocket(this.wsUrl);
+    this.socket.addEventListener("open", this.handleSocketOpen);
+    this.socket.addEventListener("message", this.handleSocketMessage);
+    this.socket.addEventListener("close", this.handleSocketClose);
+    this.socket.addEventListener("error", () => {
+      this.socket?.close();
     });
   }
 
-  function scheduleReconnect(): void {
-    if (reconnectTimer) {
+  private scheduleReconnect(): void {
+    if (this.reconnectTimer) {
       return;
     }
-    reconnectTimer = setTimeout(() => {
-      reconnectTimer = null;
-      backoff = Math.min(backoff * 2, 30000);
-      openConnection();
-    }, backoff);
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      this.backoff = Math.min(this.backoff * 2, 30000);
+      this.openConnection();
+    }, this.backoff);
   }
 
-  openConnection();
+  // ── Public interface ─────────────────────────────────────────────────
 
-  const relay: RelayConnection = {
-    subscribe(docId: string, key: CryptoKey) {
-      encryptionKeys.set(docId, key);
-      activeSubscriptions.add(docId);
-      if (socket?.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: "subscribe", docId }));
-      }
-    },
+  subscribe(docId: string, key: CryptoKey): void {
+    encryptionKeys.set(docId, key);
+    activeSubscriptions.add(docId);
+    if (this.socket?.readyState === WebSocket.OPEN) {
+      this.socket.send(JSON.stringify({ type: "subscribe", docId }));
+    }
+  }
 
-    unsubscribe(docId: string) {
-      if (socket?.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: "unsubscribe", docId }));
-      }
-      encryptionKeys.delete(docId);
-      activeSubscriptions.delete(docId);
-    },
+  unsubscribe(docId: string): void {
+    if (this.socket?.readyState === WebSocket.OPEN) {
+      this.socket.send(JSON.stringify({ type: "unsubscribe", docId }));
+    }
+    encryptionKeys.delete(docId);
+    activeSubscriptions.delete(docId);
+  }
 
-    async send(docId: string, message: RelayMessage) {
-      const key = encryptionKeys.get(docId);
-      if (!key) {
-        throw new Error(`No encryption key for docId: ${docId}`);
-      }
-      const encoded = new TextEncoder().encode(JSON.stringify(message));
-      const encrypted = await encrypt(encoded, key);
-      const payload = arrayBufferToBase64(encrypted);
-      outboundBatch.push({ version: 1, docId, payload });
-      if (!batchTimer) {
-        batchTimer = setTimeout(flushBatch, BATCH_INTERVAL_MS);
-      }
-    },
+  async send(docId: string, message: RelayMessage): Promise<void> {
+    const key = encryptionKeys.get(docId);
+    if (!key) {
+      throw new Error(`No encryption key for docId: ${docId}`);
+    }
+    const encoded = new TextEncoder().encode(JSON.stringify(message));
+    const encrypted = await encrypt(encoded, key);
+    const payload = arrayBufferToBase64(encrypted);
+    this.outboundBatch.push({ version: 1, docId, payload });
+    if (!this.batchTimer) {
+      this.batchTimer = setTimeout(() => this.flushBatch(), BATCH_INTERVAL_MS);
+    }
+  }
 
-    hasActiveSubscriptions() {
-      return activeSubscriptions.size > 0;
-    },
+  hasActiveSubscriptions(): boolean {
+    return activeSubscriptions.size > 0;
+  }
 
-    close() {
-      closedIntentionally = true;
-      flushBatch();
-      if (reconnectTimer) {
-        clearTimeout(reconnectTimer);
-      }
-      if (batchTimer) {
-        clearTimeout(batchTimer);
-      }
-      stopPingInterval();
-      socket?.close();
-      socket = null;
-      encryptionKeys.clear();
-      activeSubscriptions.clear();
-      setRelay(null);
-    },
-  };
+  close(): void {
+    this.closedIntentionally = true;
+    this.flushBatch();
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+    }
+    if (this.batchTimer) {
+      clearTimeout(this.batchTimer);
+    }
+    this.stopPingInterval();
+    this.socket?.close();
+    this.socket = null;
+    encryptionKeys.clear();
+    activeSubscriptions.clear();
+    setRelay(null);
+  }
+}
 
+function connectRelay(
+  onMessage: (docId: string, message: RelayMessage) => void,
+  onStatusChange: (status: "connecting" | "connected" | "disconnected") => void,
+): RelayConnection {
+  const relay = new RelayConnectionImpl(onMessage, onStatusChange);
   setRelay(relay);
   return relay;
 }
