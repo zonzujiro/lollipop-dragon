@@ -1936,3 +1936,26 @@ Suggested fix:
 ### Residual note
 
 This thirteenth review is docs-only. The substantive design issues from the previous rounds appear resolved; the remaining feedback is wording cleanup rather than architectural correctness.
+
+## Fourteenth Review (Technical Design)
+
+This pass reviews the current dedicated design set again:
+
+- `docs/features/realtime-comments/spec.md`
+- `docs/features/realtime-comments/technical-design.md`
+- `docs/features/realtime-comments/todos.md`
+
+## Findings
+
+No new docs-only findings.
+
+The two latest low-severity wording issues are fixed:
+
+- the technical-design rationale for `closedIntentionally` now refers to deliberate close after all subscriptions are removed, not lazy disconnect
+- the spec's async KV decision row now says the KV layer remains the persistence/offline fallback backend while the endpoints are extended for per-comment resolve handling
+
+At this point, the remaining items in the docs are documented limitations or intentional v1 tradeoffs, not unresolved contradictions.
+
+### Residual note
+
+This fourteenth review is docs-only and found no fresh inconsistencies in the current dedicated design set.

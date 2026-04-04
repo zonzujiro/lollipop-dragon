@@ -144,7 +144,7 @@ Each iteration is a shippable version. Each step within an iteration is a delive
 - **Deliverable:** User sees a comment form when clicking the margin icon
 
 **3.3 — Comment insertion logic**
-- On submit: construct CriticMarkup string ``
+- On submit: construct CriticMarkup string `{>>type: comment text<<}`
 - Find the block's position in the raw markdown (not the clean version)
 - Insert CriticMarkup at the end of the block's last line in raw markdown
 - **Deliverable:** Function that takes raw markdown + block index + comment → returns modified markdown; unit tests for insertion at various positions

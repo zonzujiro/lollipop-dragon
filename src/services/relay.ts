@@ -22,6 +22,71 @@ function isValidRelayMessage(value: unknown): value is RelayMessage {
   return "type" in value && typeof value.type === "string" && VALID_RELAY_TYPES.has(value.type);
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isControlFrame(frame: Record<string, unknown>): boolean {
+  return frame.type === "pong" || frame.type === "error" || frame.type === "subscribe:ok";
+}
+
+function handleControlFrame(
+  frame: Record<string, unknown>,
+  confirmedSubscriptions: Set<string>,
+  onSubscribeResult: (docId: string, ok: boolean) => void,
+  activeSubscriptions: Set<string>,
+  socket: WebSocket | null,
+): boolean {
+  if (frame.type === "pong") {
+    return true;
+  }
+
+  if (frame.type === "error" && typeof frame.docId === "string") {
+    console.warn("[relay] server error for docId", frame.docId, ":", frame.message);
+    onSubscribeResult(frame.docId, false);
+    if (activeSubscriptions.has(frame.docId)) {
+      setTimeout(() => {
+        if (socket && socket.readyState === WebSocket.OPEN && activeSubscriptions.has(frame.docId)) {
+          socket.send(JSON.stringify({ type: "subscribe", docId: frame.docId }));
+        }
+      }, 5000);
+    }
+    return true;
+  }
+
+  if (frame.type === "subscribe:ok" && typeof frame.docId === "string") {
+    confirmedSubscriptions.add(frame.docId);
+    onSubscribeResult(frame.docId, true);
+    return true;
+  }
+
+  return false;
+}
+
+async function decryptAndDispatch(
+  frame: Record<string, unknown>,
+  encryptionKeys: Map<string, CryptoKey>,
+  onMessage: (docId: string, message: RelayMessage) => void,
+): Promise<void> {
+  if (!frame.payload || !frame.docId || typeof frame.payload !== "string" || typeof frame.docId !== "string") {
+    return;
+  }
+
+  const key = encryptionKeys.get(frame.docId);
+  if (!key) {
+    return;
+  }
+
+  const raw = Uint8Array.from(atob(frame.payload), (char) => char.charCodeAt(0));
+  const decrypted = await decrypt(raw.buffer, key);
+  const parsed: unknown = JSON.parse(new TextDecoder().decode(decrypted));
+  if (!isValidRelayMessage(parsed)) {
+    console.warn("[relay] invalid message shape, discarding");
+    return;
+  }
+  onMessage(frame.docId, parsed);
+}
+
 /** Convert an ArrayBuffer to a base64 string without hitting stack size limits. */
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
@@ -60,6 +125,7 @@ export function connectRelay(
   const PING_INTERVAL_MS = 30_000;
 
   function flushBatch(): void {
+    batchTimer = null; // Always clear the timer reference first
     if (outboundBatch.length === 0 || !socket || socket.readyState !== WebSocket.OPEN) {
       return;
     }
@@ -67,7 +133,6 @@ export function connectRelay(
       socket.send(JSON.stringify(frame));
     }
     outboundBatch = [];
-    batchTimer = null;
   }
 
   function startPingInterval(): void {
@@ -92,6 +157,7 @@ export function connectRelay(
 
     socket.addEventListener("open", () => {
       backoff = 1000;
+      closedIntentionally = false;
       onStatusChange("connected");
       startPingInterval();
       // Re-subscribe to all active docIds
@@ -100,58 +166,22 @@ export function connectRelay(
           socket.send(JSON.stringify({ type: "subscribe", docId }));
         }
       }
+      // Flush any messages that were queued while disconnected
+      flushBatch();
     });
 
     socket.addEventListener("message", async (event) => {
       try {
         const frame = JSON.parse(typeof event.data === "string" ? event.data : "");
-
-        // Handle pong (keep-alive response) — nothing to do
-        if (frame.type === "pong") {
+        if (!isRecord(frame)) {
           return;
         }
-
-        // Handle error frames from the DO (including subscribe rejection)
-        if (frame.type === "error" && typeof frame.docId === "string") {
-          console.warn("[relay] server error for docId", frame.docId, ":", frame.message);
-          onSubscribeResult(frame.docId, false);
-          // Schedule retry for failed subscribes (KV eventual consistency)
-          if (activeSubscriptions.has(frame.docId)) {
-            setTimeout(() => {
-              if (socket && socket.readyState === WebSocket.OPEN && activeSubscriptions.has(frame.docId)) {
-                socket.send(JSON.stringify({ type: "subscribe", docId: frame.docId }));
-              }
-            }, 5000);
-          }
+        if (handleControlFrame(frame, confirmedSubscriptions, onSubscribeResult, activeSubscriptions, socket)) {
           return;
         }
-
-        // Handle subscribe acknowledgment — notify the store
-        if (frame.type === "subscribe:ok" && typeof frame.docId === "string") {
-          confirmedSubscriptions.add(frame.docId);
-          onSubscribeResult(frame.docId, true);
-          return;
-        }
-
-        // Only decrypt frames that carry an encrypted payload
-        if (!frame.payload || !frame.docId) {
-          return;
-        }
-
-        const key = encryptionKeys.get(frame.docId);
-        if (!key) {
-          return; // No key for this docId — discard
-        }
-        const raw = Uint8Array.from(atob(frame.payload), (char) => char.charCodeAt(0));
-        const decrypted = await decrypt(raw.buffer, key);
-        const parsed: unknown = JSON.parse(new TextDecoder().decode(decrypted));
-        if (!isValidRelayMessage(parsed)) {
-          console.warn("[relay] invalid message shape, discarding");
-          return;
-        }
-        onMessage(frame.docId, parsed);
+        await decryptAndDispatch(frame, encryptionKeys, onMessage);
       } catch (error) {
-        console.warn("[relay] failed to decrypt/parse message:", error);
+        console.warn("[relay] failed to process message:", error);
       }
     });
 
