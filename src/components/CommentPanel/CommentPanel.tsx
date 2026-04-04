@@ -4,6 +4,7 @@ import { useAppStore } from "../../store";
 import { useActiveTab, getAllVisiblePeerComments } from "../../store/selectors";
 import { COMMENT_TYPE_COLOR } from "../../types/criticmarkup";
 import type { Comment, CommentType } from "../../types/criticmarkup";
+import type { PeerComment } from "../../types/share";
 
 const ALL_TYPES: CommentType[] = [
   "fix",
@@ -39,6 +40,15 @@ interface DisplayComment {
   type: CommentType;
   text: string;
   blockIndex: number | undefined;
+}
+
+function peerCommentToDisplay(comment: PeerComment): DisplayComment {
+  return {
+    id: comment.id,
+    type: comment.commentType,
+    text: comment.text,
+    blockIndex: comment.blockRef.blockIndex,
+  };
 }
 
 interface CrossFileEntry<C extends { type: CommentType }> {
@@ -117,12 +127,7 @@ export function CommentPanel({ peerMode = false }: Props) {
     const filtered = isPeerMultiFile
       ? allPeerComments
       : allPeerComments.filter((comment) => comment.path === activeFilePath);
-    return filtered.map((comment) => ({
-      id: comment.id,
-      type: comment.commentType,
-      text: comment.text,
-      blockIndex: comment.blockRef.blockIndex,
-    }));
+    return filtered.map(peerCommentToDisplay);
   }, [peerMode, isPeerMultiFile, allPeerComments, activeFilePath]);
 
   const sourceComments = peerMode ? peerDisplayComments : comments;
@@ -137,12 +142,7 @@ export function CommentPanel({ peerMode = false }: Props) {
       if (!byPath[comment.path]) {
         byPath[comment.path] = [];
       }
-      byPath[comment.path].push({
-        id: comment.id,
-        type: comment.commentType,
-        text: comment.text,
-        blockIndex: comment.blockRef.blockIndex,
-      });
+      byPath[comment.path].push(peerCommentToDisplay(comment));
     }
     return Object.entries(byPath)
       .sort(([a], [b]) => a.localeCompare(b))

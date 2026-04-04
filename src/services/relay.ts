@@ -129,6 +129,20 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
+// ── Module-level relay singleton ──────────────────────────────────────────────
+// The relay connection is a mutable non-serializable object, so it must NOT
+// live in the Zustand store. It is managed here as a module-level singleton.
+
+let activeRelay: RelayConnection | null = null;
+
+export function getRelay(): RelayConnection | null {
+  return activeRelay;
+}
+
+export function setRelay(relay: RelayConnection | null): void {
+  activeRelay = relay;
+}
+
 export function connectRelay(
   onMessage: (docId: string, message: RelayMessage) => void,
   onStatusChange: (status: "connecting" | "connected" | "disconnected") => void,

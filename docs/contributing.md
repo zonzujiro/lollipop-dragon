@@ -78,6 +78,8 @@ The app has two runtime modes with **completely separate state** — read [CLAUD
 
 When adding new state, decide whether it belongs on `TabState` (host-only) or `AppState` root (peer/global).
 
+**Store holds data only.** Do not put mutable non-serializable objects (WebSocket connections, timers, DOM refs) in the Zustand store. Keep them as module-level singletons in services.
+
 ### Keep it simple
 
 - Only make changes that are directly requested or clearly necessary.

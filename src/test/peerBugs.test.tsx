@@ -52,6 +52,7 @@ import { CommentPanel } from "../components/CommentPanel";
 import { Header } from "../components/Header";
 import { useAppStore } from "../store";
 import { getActiveTab } from "../store/selectors";
+import { setRelay } from "../services/relay";
 import {
   setTestState,
   resetTestStore,
@@ -61,6 +62,7 @@ import {
 
 beforeEach(() => {
   resetTestStore();
+  setRelay(null);
   mockPostComment.mockClear();
   mockDeleteComments.mockClear();
   mockDeleteComment.mockClear();
@@ -494,21 +496,17 @@ describe("store.mergeComment — durable resolve sequence", () => {
       }),
       close: vi.fn(),
     };
+    setRelay(relaySocket);
     const comment = makePeerComment({ id: "cmt-merge-1" });
-    setTestState(
-      {
-        fileHandle: makeFileHandle(),
-        fileName: "readme.md",
-        activeFilePath: "readme.md",
-        rawContent: "# Hello\n",
-        comments: [],
-        pendingComments: { "doc-1": [comment] },
-        shares: [makeShare({ hostSecret: "host-sec" })],
-      },
-      {
-        rtSocket: relaySocket,
-      },
-    );
+    setTestState({
+      fileHandle: makeFileHandle(),
+      fileName: "readme.md",
+      activeFilePath: "readme.md",
+      rawContent: "# Hello\n",
+      comments: [],
+      pendingComments: { "doc-1": [comment] },
+      shares: [makeShare({ hostSecret: "host-sec" })],
+    });
 
     await useAppStore.getState().mergeComment("doc-1", comment);
 

@@ -3,6 +3,7 @@ import { getActiveTab } from "../store/selectors";
 import { toFileTreeNodes } from "../types/fileTree";
 import type { FileTreeNode } from "../types/fileTree";
 import { readFile } from "./fileSystem";
+import { getRelay } from "./relay";
 import { ShareStorage } from "./shareStorage";
 import { WORKER_URL } from "../config";
 
@@ -85,17 +86,25 @@ export async function updateShare(docId: string): Promise<void> {
   await storage.updateContent(docId, record.hostSecret, tree, key);
 
   try {
-    const { rtSocket } = useAppStore.getState();
-    if (rtSocket) {
-      rtSocket.send(docId, {
-        type: "document:updated",
-        updatedAt: new Date().toISOString(),
-      }).catch((relayError) => {
-        console.warn("[relay] document:updated broadcast failed:", relayError);
-      });
+    const relay = getRelay();
+    if (relay) {
+      relay
+        .send(docId, {
+          type: "document:updated",
+          updatedAt: new Date().toISOString(),
+        })
+        .catch((relayError) => {
+          console.warn(
+            "[relay] document:updated broadcast failed:",
+            relayError,
+          );
+        });
     }
   } catch (relayError) {
-    console.warn("[relay] document:updated broadcast setup failed:", relayError);
+    console.warn(
+      "[relay] document:updated broadcast setup failed:",
+      relayError,
+    );
   }
 }
 

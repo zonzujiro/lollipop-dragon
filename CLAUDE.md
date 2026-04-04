@@ -44,6 +44,10 @@ If a component reads tab state while in peer mode (or vice versa), it will get s
 
 - **Every store action must call `set()`.** Functions that only read state and perform side effects (downloads, DOM manipulation, network calls) do not belong in the store. Put them in `src/services/` and read state via `useAppStore.getState()`.
 
+### Store holds data only
+
+- **Do not put mutable non-serializable objects (WebSocket connections, timers, DOM refs) in the Zustand store.** Keep them as module-level singletons in services.
+
 ### When adding new state
 
 - Decide whether it is tab-scoped or global. If it only matters in host mode, put it on `TabState`. If it only matters in peer mode or is truly global, put it on `AppState` root.

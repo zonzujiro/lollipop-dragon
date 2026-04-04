@@ -21,8 +21,7 @@ import {
   docIdFromKey,
 } from "../services/crypto";
 import { buildShareUrlFromOrigin, parseShareHash } from "../utils/shareUrl";
-import { connectRelay } from "../services/relay";
-import type { RelayConnection } from "../services/relay";
+import { connectRelay, getRelay, setRelay } from "../services/relay";
 import type { RelayMessage } from "../types/relay";
 import {
   syncActiveShares as syncActiveSharesService,
@@ -289,7 +288,6 @@ interface AppState {
 
   // Real-time relay
   rtStatus: "disconnected" | "connecting" | "connected";
-  rtSocket: RelayConnection | null;
   rtSubscriptions: Set<string>;
   documentUpdateAvailable: boolean;
   remotePeerComments: PeerComment[];
@@ -790,7 +788,6 @@ export const useAppStore = create<AppState>()(
 
       // Real-time relay
       rtStatus: "disconnected",
-      rtSocket: null,
       rtSubscriptions: new Set(),
       documentUpdateAvailable: false,
       remotePeerComments: [],
@@ -1839,9 +1836,9 @@ export const useAppStore = create<AppState>()(
         // Step 3: Broadcast only if KV is durable
         if (kvDurable) {
           try {
-            const { rtSocket: relaySocket } = get();
-            if (relaySocket) {
-              relaySocket
+            const relay = getRelay();
+            if (relay) {
+              relay
                 .send(docId, {
                   type: "comment:resolved",
                   commentId: comment.id,
@@ -2065,10 +2062,11 @@ export const useAppStore = create<AppState>()(
 
         // Broadcast each comment to connected peers via relay
         try {
-          const { rtSocket, peerActiveDocId } = get();
-          if (rtSocket && peerActiveDocId) {
+          const relay = getRelay();
+          const { peerActiveDocId } = get();
+          if (relay && peerActiveDocId) {
             for (const comment of unsubmitted) {
-              await rtSocket.send(peerActiveDocId, {
+              await relay.send(peerActiveDocId, {
                 type: "comment:added",
                 comment,
               });
@@ -2087,8 +2085,7 @@ export const useAppStore = create<AppState>()(
       setRtStatus: (status) => set({ rtStatus: status }),
 
       openRelay: () => {
-        const currentState = get();
-        if (currentState.rtSocket) {
+        if (getRelay()) {
           return;
         }
 
@@ -2183,12 +2180,12 @@ export const useAppStore = create<AppState>()(
           },
         );
 
-        set({ rtSocket: relay });
+        setRelay(relay);
       },
 
       subscribeDoc: (docId) => {
-        const { rtSocket } = get();
-        if (!rtSocket) {
+        const relay = getRelay();
+        if (!relay) {
           return;
         }
         const state = get();
@@ -2207,15 +2204,16 @@ export const useAppStore = create<AppState>()(
           console.warn("[relay] no key for docId:", docId);
           return;
         }
-        rtSocket.subscribe(docId, key);
+        relay.subscribe(docId, key);
       },
 
       unsubscribeDoc: (docId) => {
-        const { rtSocket, rtSubscriptions } = get();
-        if (!rtSocket) {
+        const relay = getRelay();
+        const { rtSubscriptions } = get();
+        if (!relay) {
           return;
         }
-        rtSocket.unsubscribe(docId);
+        relay.unsubscribe(docId);
         const next = new Set(rtSubscriptions);
         next.delete(docId);
         // Don't auto-close the relay when subscriptions are empty:
@@ -2225,12 +2223,12 @@ export const useAppStore = create<AppState>()(
       },
 
       closeRelay: () => {
-        const { rtSocket } = get();
-        if (rtSocket) {
-          rtSocket.close();
+        const relay = getRelay();
+        if (relay) {
+          relay.close();
         }
+        setRelay(null);
         set({
-          rtSocket: null,
           rtStatus: "disconnected",
           rtSubscriptions: new Set(),
           resolvedCommentIds: new Map(),
@@ -2377,7 +2375,6 @@ export const useAppStore = create<AppState>()(
             : [],
           // Transient relay state must always reset on load
           rtStatus: rtStatusDefault,
-          rtSocket: null,
           rtSubscriptions: new Set<string>(),
           documentUpdateAvailable: false,
           remotePeerComments: [],

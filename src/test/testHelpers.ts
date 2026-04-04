@@ -109,7 +109,6 @@ export function resetTestStore() {
     history: [],
     historyDropdownOpen: false,
     rtStatus: "disconnected",
-    rtSocket: null,
     rtSubscriptions: new Set(),
     documentUpdateAvailable: false,
     remotePeerComments: [],
