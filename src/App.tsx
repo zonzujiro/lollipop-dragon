@@ -19,6 +19,7 @@ import type { FileTreeNode, SidebarTreeNode } from "./types/fileTree";
 import { RestoreError } from "./components/RestoreError";
 import { ContentUpdateBanner } from "./components/ContentUpdateBanner";
 import { WORKER_URL } from "./config";
+import { stopRelay } from "./services/relay";
 import {
   useThemeSync,
   useHashRouter,
@@ -222,7 +223,7 @@ function App() {
 
   useEffect(() => {
     const handleBeforeUnload = () => {
-      useAppStore.getState().closeRelay();
+      stopRelay();
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => {

@@ -1,3 +1,6 @@
+// TODO: Split this file into domain modules (tabs, sharing, peer, history).
+// Pre-existing issue — not addressed in this PR to keep the diff focused.
+
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
@@ -21,7 +24,14 @@ import {
   docIdFromKey,
 } from "../services/crypto";
 import { buildShareUrlFromOrigin, parseShareHash } from "../utils/shareUrl";
-import { connectRelay, getRelay } from "../services/relay";
+import {
+  getRelay,
+  startRelay,
+  subscribeToDoc,
+  unsubscribeFromDoc,
+  stopRelay,
+  registerRelayStoreAccessor,
+} from "../services/relay";
 import type { RelayMessage } from "../types/relay";
 import {
   syncActiveShares as syncActiveSharesService,
@@ -384,12 +394,13 @@ interface AppState {
   editPeerComment: (commentId: string, type: CommentType, text: string) => void;
   syncPeerComments: () => Promise<void>;
 
-  // Relay actions
+  // Relay state actions (data only — orchestration lives in src/services/relay.ts)
   setRtStatus: (status: "disconnected" | "connecting" | "connected") => void;
-  openRelay: () => void;
-  subscribeDoc: (docId: string) => void;
-  unsubscribeDoc: (docId: string) => void;
-  closeRelay: () => void;
+  setRtSubscriptions: (subscriptions: Set<string>) => void;
+  addRtSubscription: (docId: string) => void;
+  addRemotePeerComments: (comments: PeerComment[]) => void;
+  applyPeerMessagePatch: (docId: string, message: RelayMessage) => void;
+  applyHostMessage: (docId: string, message: RelayMessage) => void;
   dismissDocumentUpdate: () => void;
 }
 
@@ -1013,7 +1024,7 @@ export const useAppStore = create<AppState>()(
           set({ tabs: updated, activeTabId: newActiveId });
         }
         for (const docId of docIdsToUnsubscribe) {
-          get().unsubscribeDoc(docId);
+          unsubscribeFromDoc(docId);
         }
       },
 
@@ -1555,9 +1566,9 @@ export const useAppStore = create<AppState>()(
           (share) => new Date(share.expiresAt) > now,
         );
         if (nonExpiredShares.length > 0) {
-          get().openRelay();
+          startRelay();
           for (const share of nonExpiredShares) {
-            get().subscribeDoc(share.docId);
+            subscribeToDoc(share.docId);
           }
         }
       },
@@ -1650,8 +1661,8 @@ export const useAppStore = create<AppState>()(
           activeDocId: docId,
         }));
 
-        get().openRelay();
-        get().subscribeDoc(docId);
+        startRelay();
+        subscribeToDoc(docId);
 
         return buildShareUrlFromOrigin({ keyB64, name: label });
       },
@@ -1692,7 +1703,7 @@ export const useAppStore = create<AppState>()(
             activeDocId: t.activeDocId === docId ? null : t.activeDocId,
           };
         });
-        get().unsubscribeDoc(docId);
+        unsubscribeFromDoc(docId);
         set((state) => {
           const nextResolved = new Map(state.resolvedCommentIds);
           nextResolved.delete(docId);
@@ -1852,25 +1863,28 @@ export const useAppStore = create<AppState>()(
           }
         }
 
-        // Remove from pending state directly — dismissComment would re-delete from KV
-        const latestTab = activeTab(get);
-        if (latestTab) {
-          const nextTabState = removePendingCommentState(
-            latestTab,
-            docId,
-            comment.id,
-          );
-          saveShares(stableShareKey(latestTab), nextTabState.shares);
-          updateTab(get, set, latestTab.id, () => nextTabState);
-        }
+        // Only clear pending state and add tombstone when KV is durable.
+        // If !kvDurable, leave the comment in pending state — user can retry.
+        if (kvDurable) {
+          const latestTab = activeTab(get);
+          if (latestTab) {
+            const nextTabState = removePendingCommentState(
+              latestTab,
+              docId,
+              comment.id,
+            );
+            saveShares(stableShareKey(latestTab), nextTabState.shares);
+            updateTab(get, set, latestTab.id, () => nextTabState);
+          }
 
-        set((state) => {
-          const nextResolved = new Map(state.resolvedCommentIds);
-          const docSet = new Set(nextResolved.get(docId));
-          docSet.add(comment.id);
-          nextResolved.set(docId, docSet);
-          return { resolvedCommentIds: nextResolved };
-        });
+          set((state) => {
+            const nextResolved = new Map(state.resolvedCommentIds);
+            const docSet = new Set(nextResolved.get(docId));
+            docSet.add(comment.id);
+            nextResolved.set(docId, docSet);
+            return { resolvedCommentIds: nextResolved };
+          });
+        }
       },
 
       dismissComment: (docId, cmtId) => {
@@ -1993,8 +2007,8 @@ export const useAppStore = create<AppState>()(
             peerActiveDocId: docId,
           });
 
-          get().openRelay();
-          get().subscribeDoc(docId);
+          startRelay();
+          subscribeToDoc(docId);
         } catch (e) {
           set({ isPeerMode: true, sharedContent: null });
           console.error("[share] Failed to load shared content:", e);
@@ -2080,158 +2094,32 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      // ── Relay actions ──────────────────────────────────────────────────
+      // ── Relay state actions (data only — orchestration lives in src/services/relay.ts) ──
 
       setRtStatus: (status) => set({ rtStatus: status }),
 
-      openRelay: () => {
-        if (getRelay()) {
-          return;
-        }
+      setRtSubscriptions: (subscriptions) =>
+        set({ rtSubscriptions: subscriptions }),
 
-        const relay = connectRelay(
-          (docId, message) => {
-            const state = get();
-            if (state.isPeerMode) {
-              const patch = handlePeerMessage(docId, message, state);
-              set(patch);
-            } else {
-              handleHostMessage(docId, message, set);
-            }
-          },
-          (status) => {
-            set({ rtStatus: status });
-            if (status === "connected") {
-              const reconnectedState = get();
-              if (reconnectedState.isPeerMode) {
-                // Peer mode catch-up: re-fetch comments from KV and reload shared content
-                const peerDocId = reconnectedState.peerActiveDocId;
-                const peerKey = peerDocId
-                  ? reconnectedState.peerShareKeys[peerDocId]
-                  : null;
-                if (peerDocId && peerKey) {
-                  const storage = getStorage();
-                  if (storage) {
-                    storage
-                      .fetchComments(peerDocId, peerKey)
-                      .then((comments) => {
-                        const latestState = get();
-                        const ownIds = new Set(
-                          latestState.myPeerComments.map(
-                            (comment) => comment.id,
-                          ),
-                        );
-                        const submittedIds = new Set(
-                          latestState.submittedPeerCommentIds,
-                        );
-                        const remoteIds = new Set(
-                          latestState.remotePeerComments.map(
-                            (comment) => comment.id,
-                          ),
-                        );
-                        const newComments = comments.filter(
-                          (comment) =>
-                            !ownIds.has(comment.id) &&
-                            !submittedIds.has(comment.id) &&
-                            !remoteIds.has(comment.id) &&
-                            !latestState.resolvedCommentIds
-                              .get(peerDocId)
-                              ?.has(comment.id),
-                        );
-                        if (newComments.length > 0) {
-                          set((state) => ({
-                            remotePeerComments: [
-                              ...state.remotePeerComments,
-                              ...newComments,
-                            ],
-                          }));
-                        }
-                      })
-                      .catch((error) => {
-                        console.warn(
-                          "[relay] peer comment catch-up failed:",
-                          error,
-                        );
-                      });
-                  }
-                }
-                reconnectedState.loadSharedContent().catch((error) => {
-                  console.warn("[relay] peer content catch-up failed:", error);
-                });
-              } else {
-                // KNOWN LIMITATION (v1): Only catches up the active tab's shares.
-                // Background tabs recover when the user switches to them.
-                // See spec §5.3 and §9 for details.
-                reconnectedState.fetchAllPendingComments().catch((error) => {
-                  console.warn(
-                    "[relay] host reconnect catch-up failed:",
-                    error,
-                  );
-                });
-              }
-            }
-          },
-          (docId, ok) => {
-            if (ok) {
-              const next = new Set(get().rtSubscriptions);
-              next.add(docId);
-              set({ rtSubscriptions: next });
-            }
-          },
-        );
-
-        // connectRelay() internally sets the module-level singleton
-      },
-
-      subscribeDoc: (docId) => {
-        const relay = getRelay();
-        if (!relay) {
-          return;
-        }
-        const state = get();
-        let key: CryptoKey | undefined;
-        if (state.isPeerMode) {
-          key = state.peerShareKeys[docId];
-        } else {
-          for (const tab of state.tabs) {
-            if (tab.shareKeys[docId]) {
-              key = tab.shareKeys[docId];
-              break;
-            }
-          }
-        }
-        if (!key) {
-          console.warn("[relay] no key for docId:", docId);
-          return;
-        }
-        relay.subscribe(docId, key);
-      },
-
-      unsubscribeDoc: (docId) => {
-        const relay = getRelay();
-        const { rtSubscriptions } = get();
-        if (!relay) {
-          return;
-        }
-        relay.unsubscribe(docId);
-        const next = new Set(rtSubscriptions);
-        next.delete(docId);
-        // Don't auto-close the relay when subscriptions are empty:
-        // the relay service may still have pending (unconfirmed) subscriptions.
-        // The relay stays open until explicitly closed via closeRelay() or beforeunload.
+      addRtSubscription: (docId) => {
+        const next = new Set(get().rtSubscriptions);
+        next.add(docId);
         set({ rtSubscriptions: next });
       },
 
-      closeRelay: () => {
-        const relay = getRelay();
-        if (relay) {
-          relay.close(); // close() internally clears the module-level singleton
-        }
-        set({
-          rtStatus: "disconnected",
-          rtSubscriptions: new Set(),
-          resolvedCommentIds: new Map(),
-        });
+      addRemotePeerComments: (comments) =>
+        set((state) => ({
+          remotePeerComments: [...state.remotePeerComments, ...comments],
+        })),
+
+      applyPeerMessagePatch: (docId, message) => {
+        const state = get();
+        const patch = handlePeerMessage(docId, message, state);
+        set(patch);
+      },
+
+      applyHostMessage: (docId, message) => {
+        handleHostMessage(docId, message, set);
       },
 
       dismissDocumentUpdate: () => {
@@ -2383,6 +2271,9 @@ export const useAppStore = create<AppState>()(
     },
   ),
 );
+
+// Register store accessor for relay service (avoids circular import)
+registerRelayStoreAccessor(() => useAppStore.getState());
 
 // Keep browser tab title in sync with the active file
 const APP_TITLE = "critiq.ink";

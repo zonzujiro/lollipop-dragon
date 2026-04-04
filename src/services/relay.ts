@@ -1,12 +1,15 @@
 import { encrypt, decrypt } from "./crypto";
 import type { RelayMessage } from "../types/relay";
+import type { PeerComment } from "../types/share";
 import { WORKER_URL } from "../config";
+import { ShareStorage } from "./shareStorage";
 
 export interface RelayConnection {
   subscribe(docId: string, key: CryptoKey): void;
   unsubscribe(docId: string): void;
   send(docId: string, message: RelayMessage): Promise<void>;
   close(): void;
+  hasActiveSubscriptions(): boolean;
 }
 
 const VALID_RELAY_TYPES = new Set([
@@ -345,6 +348,10 @@ export function connectRelay(
       }
     },
 
+    hasActiveSubscriptions() {
+      return activeSubscriptions.size > 0;
+    },
+
     close() {
       // Mark as intentional so the close event handler does not reconnect
       closedIntentionally = true;
@@ -369,4 +376,220 @@ export function connectRelay(
 
   setRelay(relay);
   return relay;
+}
+
+// ── Relay orchestration ───────────────────────────────────────────────
+// Side-effect coordination that reads/writes the Zustand store.
+// The store registers itself via `registerRelayStoreAccessor` at init time
+// to avoid circular imports (store imports connectRelay from this module).
+
+/** Minimal store surface the relay service needs for orchestration. */
+export interface RelayStoreAccessor {
+  isPeerMode: boolean;
+  peerActiveDocId: string | null;
+  peerShareKeys: Record<string, CryptoKey>;
+  myPeerComments: PeerComment[];
+  submittedPeerCommentIds: string[];
+  remotePeerComments: PeerComment[];
+  resolvedCommentIds: Map<string, Set<string>>;
+  rtSubscriptions: Set<string>;
+  tabs: Array<{
+    shares: Array<{ docId: string; keyB64: string; expiresAt: string }>;
+    shareKeys: Record<string, CryptoKey>;
+  }>;
+  setRtStatus: (status: "disconnected" | "connecting" | "connected") => void;
+  setRtSubscriptions: (subs: Set<string>) => void;
+  addRemotePeerComments: (comments: PeerComment[]) => void;
+  applyPeerMessagePatch: (docId: string, message: RelayMessage) => void;
+  applyHostMessage: (docId: string, message: RelayMessage) => void;
+  addRtSubscription: (docId: string) => void;
+  loadSharedContent: () => Promise<void>;
+  fetchAllPendingComments: () => Promise<void>;
+}
+
+let storeAccessor: (() => RelayStoreAccessor) | null = null;
+
+/** Called once by the store module to provide access without circular imports. */
+export function registerRelayStoreAccessor(
+  accessor: () => RelayStoreAccessor,
+): void {
+  storeAccessor = accessor;
+}
+
+function getStoreState(): RelayStoreAccessor {
+  if (!storeAccessor) {
+    throw new Error(
+      "[relay] Store accessor not registered. Call registerRelayStoreAccessor() first.",
+    );
+  }
+  return storeAccessor();
+}
+
+function getStorage(): ShareStorage | null {
+  return WORKER_URL ? new ShareStorage(WORKER_URL) : null;
+}
+
+// ── Message routing ───────────────────────────────────────────────────
+
+function handleIncomingMessage(docId: string, message: RelayMessage): void {
+  const state = getStoreState();
+  if (state.isPeerMode) {
+    state.applyPeerMessagePatch(docId, message);
+  } else {
+    state.applyHostMessage(docId, message);
+  }
+}
+
+// ── Status change + reconnect catch-up ────────────────────────────────
+
+function handleStatusChange(
+  status: "connecting" | "connected" | "disconnected",
+): void {
+  getStoreState().setRtStatus(status);
+  if (status === "connected") {
+    performReconnectCatchUp();
+  }
+}
+
+function performReconnectCatchUp(): void {
+  const state = getStoreState();
+  if (state.isPeerMode) {
+    performPeerCatchUp(state);
+  } else {
+    performHostCatchUp(state);
+  }
+}
+
+function performPeerCatchUp(state: RelayStoreAccessor): void {
+  const peerDocId = state.peerActiveDocId;
+  const peerKey = peerDocId ? state.peerShareKeys[peerDocId] : null;
+  if (peerDocId && peerKey) {
+    fetchMissedPeerComments(peerDocId, peerKey);
+  }
+  state.loadSharedContent().catch((error: unknown) => {
+    console.warn("[relay] peer content catch-up failed:", error);
+  });
+}
+
+function fetchMissedPeerComments(peerDocId: string, peerKey: CryptoKey): void {
+  const storage = getStorage();
+  if (!storage) {
+    return;
+  }
+  storage
+    .fetchComments(peerDocId, peerKey)
+    .then((comments: PeerComment[]) => {
+      const latestState = getStoreState();
+      const ownIds = new Set(
+        latestState.myPeerComments.map((comment) => comment.id),
+      );
+      const submittedIds = new Set(latestState.submittedPeerCommentIds);
+      const remoteIds = new Set(
+        latestState.remotePeerComments.map((comment) => comment.id),
+      );
+      const newComments = comments.filter(
+        (comment) =>
+          !ownIds.has(comment.id) &&
+          !submittedIds.has(comment.id) &&
+          !remoteIds.has(comment.id) &&
+          !latestState.resolvedCommentIds.get(peerDocId)?.has(comment.id),
+      );
+      if (newComments.length > 0) {
+        latestState.addRemotePeerComments(newComments);
+      }
+    })
+    .catch((error: unknown) => {
+      console.warn("[relay] peer comment catch-up failed:", error);
+    });
+}
+
+function performHostCatchUp(state: RelayStoreAccessor): void {
+  // KNOWN LIMITATION (v1): Only catches up the active tab's shares.
+  // Background tabs recover when the user switches to them.
+  // See spec section 5.3 and section 9 for details.
+  state.fetchAllPendingComments().catch((error: unknown) => {
+    console.warn("[relay] host reconnect catch-up failed:", error);
+  });
+}
+
+// ── Subscribe result handler ──────────────────────────────────────────
+
+function handleSubscribeResult(docId: string, ok: boolean): void {
+  if (ok) {
+    getStoreState().addRtSubscription(docId);
+  }
+}
+
+// ── Public orchestration API ──────────────────────────────────────────
+
+/** Start the relay connection. No-op if already connected. */
+export function startRelay(): void {
+  if (getRelay()) {
+    return;
+  }
+  connectRelay(
+    handleIncomingMessage,
+    handleStatusChange,
+    handleSubscribeResult,
+  );
+  // connectRelay() internally sets the module-level singleton via setRelay()
+}
+
+/** Subscribe a document to the relay, finding its encryption key from the store. */
+export function subscribeToDoc(docId: string): void {
+  const relay = getRelay();
+  if (!relay) {
+    return;
+  }
+  const state = getStoreState();
+  const key = findEncryptionKey(state, docId);
+  if (!key) {
+    console.warn("[relay] no key for docId:", docId);
+    return;
+  }
+  relay.subscribe(docId, key);
+}
+
+function findEncryptionKey(
+  state: RelayStoreAccessor,
+  docId: string,
+): CryptoKey | undefined {
+  if (state.isPeerMode) {
+    return state.peerShareKeys[docId];
+  }
+  for (const tab of state.tabs) {
+    if (tab.shareKeys[docId]) {
+      return tab.shareKeys[docId];
+    }
+  }
+  return undefined;
+}
+
+/** Unsubscribe a document. Closes the relay if no subscriptions remain. */
+export function unsubscribeFromDoc(docId: string): void {
+  const relay = getRelay();
+  if (relay) {
+    relay.unsubscribe(docId);
+  }
+  const state = getStoreState();
+  const { rtSubscriptions } = state;
+  const next = new Set(rtSubscriptions);
+  next.delete(docId);
+  state.setRtSubscriptions(next);
+
+  // Close relay if no subscriptions remain
+  if (next.size === 0 && relay && !relay.hasActiveSubscriptions()) {
+    stopRelay();
+  }
+}
+
+/** Close the relay and clear all subscription state. */
+export function stopRelay(): void {
+  const relay = getRelay();
+  if (relay) {
+    relay.close(); // close() internally clears the module-level singleton
+  }
+  const state = getStoreState();
+  state.setRtStatus("disconnected");
+  state.setRtSubscriptions(new Set());
 }
