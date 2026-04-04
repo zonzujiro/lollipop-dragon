@@ -222,59 +222,58 @@ function connectRelay(
     }
   }
 
+  function handleSocketOpen(): void {
+    if (closedIntentionally) {
+      socket?.close();
+      return;
+    }
+    backoff = 1000;
+    onStatusChange("connected");
+    startPingInterval();
+    resubscribeAll();
+    flushBatch();
+  }
+
+  function resubscribeAll(): void {
+    for (const docId of activeSubscriptions) {
+      if (socket) {
+        socket.send(JSON.stringify({ type: "subscribe", docId }));
+      }
+    }
+  }
+
+  async function handleSocketMessage(event: MessageEvent): Promise<void> {
+    try {
+      const rawData = JSON.parse(
+        typeof event.data === "string" ? event.data : "",
+      );
+      const frame = parseInboundFrame(rawData);
+      if (frame.kind === "unknown") {
+        return;
+      }
+      if (handleControlFrame(frame, { activeSubscriptions, socket })) {
+        return;
+      }
+      await decryptAndDispatch(frame, encryptionKeys, onMessage);
+    } catch (error) {
+      console.warn("[relay] failed to process message:", error);
+    }
+  }
+
+  function handleSocketClose(): void {
+    stopPingInterval();
+    onStatusChange("disconnected");
+    if (!closedIntentionally) {
+      scheduleReconnect();
+    }
+  }
+
   function openConnection(): void {
     onStatusChange("connecting");
     socket = new WebSocket(wsUrl);
-
-    socket.addEventListener("open", () => {
-      if (closedIntentionally) {
-        socket?.close();
-        return;
-      }
-      backoff = 1000;
-      onStatusChange("connected");
-      startPingInterval();
-      // Re-subscribe to all active docIds
-      for (const docId of activeSubscriptions) {
-        if (socket) {
-          socket.send(JSON.stringify({ type: "subscribe", docId }));
-        }
-      }
-      // Flush any messages that were queued while disconnected
-      flushBatch();
-    });
-
-    socket.addEventListener("message", async (event) => {
-      try {
-        const rawData = JSON.parse(
-          typeof event.data === "string" ? event.data : "",
-        );
-        const frame = parseInboundFrame(rawData);
-        if (frame.kind === "unknown") {
-          return;
-        }
-        if (
-          handleControlFrame(frame, {
-            activeSubscriptions,
-            socket,
-          })
-        ) {
-          return;
-        }
-        await decryptAndDispatch(frame, encryptionKeys, onMessage);
-      } catch (error) {
-        console.warn("[relay] failed to process message:", error);
-      }
-    });
-
-    socket.addEventListener("close", () => {
-      stopPingInterval();
-      onStatusChange("disconnected");
-      if (!closedIntentionally) {
-        scheduleReconnect();
-      }
-    });
-
+    socket.addEventListener("open", handleSocketOpen);
+    socket.addEventListener("message", handleSocketMessage);
+    socket.addEventListener("close", handleSocketClose);
     socket.addEventListener("error", () => {
       socket?.close();
     });
