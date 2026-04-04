@@ -53,8 +53,16 @@ async function sha256hex(text: string): Promise<string> {
 
 async function getMeta(env: Env, docId: string): Promise<ShareMeta | null> {
   const raw = await env.LOLLIPOP_DRAGON.get(`share:${docId}:meta`);
-  if (!raw) return null;
-  return JSON.parse(raw) as ShareMeta;
+  if (!raw) {
+    return null;
+  }
+  try {
+    const parsed: ShareMeta = JSON.parse(raw);
+    return parsed;
+  } catch (parseError) {
+    console.error("[getMeta] JSON parse failed:", parseError);
+    return null;
+  }
 }
 
 async function verifySecret(
