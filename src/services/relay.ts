@@ -15,6 +15,8 @@ const VALID_RELAY_TYPES = new Set([
   "document:updated",
 ]);
 
+const BASE64_CHUNK_SIZE = 8192;
+
 function isValidRelayMessage(value: unknown): value is RelayMessage {
   if (typeof value !== "object" || value === null) {
     return false;
@@ -30,12 +32,42 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function isControlFrame(frame: Record<string, unknown>): boolean {
-  return (
-    frame.type === "pong" ||
-    frame.type === "error" ||
-    frame.type === "subscribe:ok"
-  );
+// ── Inbound frame parser ──────────────────────────────────────────────
+// Validates raw JSON once at the boundary and returns a typed structure.
+// This avoids scattering `typeof x === "string"` checks through handlers.
+
+type ParsedFrame =
+  | { kind: "pong" }
+  | { kind: "error"; docId: string; message: string }
+  | { kind: "subscribeOk"; docId: string }
+  | { kind: "relay"; docId: string; payload: string }
+  | { kind: "unknown" };
+
+function parseInboundFrame(raw: unknown): ParsedFrame {
+  if (!isRecord(raw)) {
+    return { kind: "unknown" };
+  }
+  if (raw.type === "pong") {
+    return { kind: "pong" };
+  }
+  if (raw.type === "error" && typeof raw.docId === "string") {
+    return {
+      kind: "error",
+      docId: raw.docId,
+      message: String(raw.message ?? ""),
+    };
+  }
+  if (raw.type === "subscribe:ok" && typeof raw.docId === "string") {
+    return { kind: "subscribeOk", docId: raw.docId };
+  }
+  if (
+    raw.version === 1 &&
+    typeof raw.docId === "string" &&
+    typeof raw.payload === "string"
+  ) {
+    return { kind: "relay", docId: raw.docId, payload: raw.payload };
+  }
+  return { kind: "unknown" };
 }
 
 interface RelayContext {
@@ -46,14 +78,14 @@ interface RelayContext {
 }
 
 function handleControlFrame(
-  frame: Record<string, unknown>,
+  frame: ParsedFrame,
   context: RelayContext,
 ): boolean {
-  if (frame.type === "pong") {
+  if (frame.kind === "pong") {
     return true;
   }
 
-  if (frame.type === "error" && typeof frame.docId === "string") {
+  if (frame.kind === "error") {
     console.warn(
       "[relay] server error for docId",
       frame.docId,
@@ -62,14 +94,14 @@ function handleControlFrame(
     );
     context.onSubscribeResult(frame.docId, false);
     if (context.activeSubscriptions.has(frame.docId)) {
+      const retryDocId = frame.docId;
       setTimeout(() => {
         if (
-          context.socket &&
-          context.socket.readyState === WebSocket.OPEN &&
-          context.activeSubscriptions.has(frame.docId)
+          context.socket?.readyState === WebSocket.OPEN &&
+          context.activeSubscriptions.has(retryDocId)
         ) {
           context.socket.send(
-            JSON.stringify({ type: "subscribe", docId: frame.docId }),
+            JSON.stringify({ type: "subscribe", docId: retryDocId }),
           );
         }
       }, 5000);
@@ -77,7 +109,7 @@ function handleControlFrame(
     return true;
   }
 
-  if (frame.type === "subscribe:ok" && typeof frame.docId === "string") {
+  if (frame.kind === "subscribeOk") {
     context.confirmedSubscriptions.add(frame.docId);
     context.onSubscribeResult(frame.docId, true);
     return true;
@@ -87,16 +119,11 @@ function handleControlFrame(
 }
 
 async function decryptAndDispatch(
-  frame: Record<string, unknown>,
+  frame: ParsedFrame,
   encryptionKeys: Map<string, CryptoKey>,
   onMessage: (docId: string, message: RelayMessage) => void,
 ): Promise<void> {
-  if (
-    !frame.payload ||
-    !frame.docId ||
-    typeof frame.payload !== "string" ||
-    typeof frame.docId !== "string"
-  ) {
+  if (frame.kind !== "relay") {
     return;
   }
 
@@ -120,10 +147,9 @@ async function decryptAndDispatch(
 /** Convert an ArrayBuffer to a base64 string without hitting stack size limits. */
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
-  const chunkSize = 8192;
   let binary = "";
-  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
-    const slice = bytes.subarray(offset, offset + chunkSize);
+  for (let offset = 0; offset < bytes.length; offset += BASE64_CHUNK_SIZE) {
+    const slice = bytes.subarray(offset, offset + BASE64_CHUNK_SIZE);
     binary += String.fromCharCode(...slice);
   }
   return btoa(binary);
@@ -132,6 +158,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 // ── Module-level relay singleton ──────────────────────────────────────────────
 // The relay connection is a mutable non-serializable object, so it must NOT
 // live in the Zustand store. It is managed here as a module-level singleton.
+// `connectRelay` sets the active relay; `close()` clears it.
 
 let activeRelay: RelayConnection | null = null;
 
@@ -139,7 +166,12 @@ export function getRelay(): RelayConnection | null {
   return activeRelay;
 }
 
-export function setRelay(relay: RelayConnection | null): void {
+function setRelay(relay: RelayConnection | null): void {
+  activeRelay = relay;
+}
+
+/** Exported only for tests that need to inject a mock relay. */
+export function setRelayForTesting(relay: RelayConnection | null): void {
   activeRelay = relay;
 }
 
@@ -186,7 +218,7 @@ export function connectRelay(
   function startPingInterval(): void {
     stopPingInterval();
     pingInterval = setInterval(() => {
-      if (socket && socket.readyState === WebSocket.OPEN) {
+      if (socket?.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ type: "ping" }));
       }
     }, PING_INTERVAL_MS);
@@ -223,10 +255,11 @@ export function connectRelay(
 
     socket.addEventListener("message", async (event) => {
       try {
-        const frame = JSON.parse(
+        const raw = JSON.parse(
           typeof event.data === "string" ? event.data : "",
         );
-        if (!isRecord(frame)) {
+        const frame = parseInboundFrame(raw);
+        if (frame.kind === "unknown") {
           return;
         }
         if (
@@ -271,7 +304,7 @@ export function connectRelay(
 
   openConnection();
 
-  return {
+  const relay: RelayConnection = {
     subscribe(docId: string, key: CryptoKey) {
       // Always add to activeSubscriptions first — if the socket is closed,
       // the openConnection() handler will send all activeSubscriptions
@@ -280,7 +313,7 @@ export function connectRelay(
       // back a subscribe:ok frame, which adds it to confirmedSubscriptions.
       encryptionKeys.set(docId, key);
       activeSubscriptions.add(docId);
-      if (socket && socket.readyState === WebSocket.OPEN) {
+      if (socket?.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ type: "subscribe", docId }));
       }
     },
@@ -290,7 +323,7 @@ export function connectRelay(
       // This ordering matters: if the socket is closed, the unsubscribe
       // frame is lost — but removing from activeSubscriptions ensures
       // the reconnect loop won't re-subscribe to this docId.
-      if (socket && socket.readyState === WebSocket.OPEN) {
+      if (socket?.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ type: "unsubscribe", docId }));
       }
       encryptionKeys.delete(docId);
@@ -330,6 +363,10 @@ export function connectRelay(
       encryptionKeys.clear();
       activeSubscriptions.clear();
       confirmedSubscriptions.clear();
+      setRelay(null);
     },
   };
+
+  setRelay(relay);
+  return relay;
 }

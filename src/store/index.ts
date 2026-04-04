@@ -21,7 +21,7 @@ import {
   docIdFromKey,
 } from "../services/crypto";
 import { buildShareUrlFromOrigin, parseShareHash } from "../utils/shareUrl";
-import { connectRelay, getRelay, setRelay } from "../services/relay";
+import { connectRelay, getRelay } from "../services/relay";
 import type { RelayMessage } from "../types/relay";
 import {
   syncActiveShares as syncActiveSharesService,
@@ -2180,7 +2180,7 @@ export const useAppStore = create<AppState>()(
           },
         );
 
-        setRelay(relay);
+        // connectRelay() internally sets the module-level singleton
       },
 
       subscribeDoc: (docId) => {
@@ -2225,9 +2225,8 @@ export const useAppStore = create<AppState>()(
       closeRelay: () => {
         const relay = getRelay();
         if (relay) {
-          relay.close();
+          relay.close(); // close() internally clears the module-level singleton
         }
-        setRelay(null);
         set({
           rtStatus: "disconnected",
           rtSubscriptions: new Set(),

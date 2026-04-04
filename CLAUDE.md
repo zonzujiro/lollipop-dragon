@@ -11,6 +11,7 @@ Read the [contribution guide](./docs/contributing.md) and review the docs in [`d
 - **No IIFEs.** Extract async logic into named functions instead of `(async () => { ... })()`.
 - **No `switch`/`case`.** Use object maps (e.g., `Record<Type, Handler>`) for dispatch instead.
 - **No single-letter variable names.** Use descriptive names — `comment` not `c`, `state` not `s`, `error` not `e`.
+- **Avoid runtime type checks to satisfy TypeScript.** Parse and validate external data (JSON, network) once at the boundary into typed structures. Don't scatter `typeof x === "string"` checks through business logic.
 
 ## Architecture Overview
 
