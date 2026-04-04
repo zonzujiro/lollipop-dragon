@@ -170,7 +170,7 @@ export function CommentPanel({ peerMode = false }: Props) {
     return c;
   }, [allCommentsFlat]);
 
-  const activeTypes = ALL_TYPES.filter((t) => (counts[t] ?? 0) > 0);
+  const activeTypes = ALL_TYPES.filter((type) => (counts[type] ?? 0) > 0);
 
   // For single-file mode: visible list
   const visible = isResolved
@@ -415,14 +415,14 @@ function InlineEditForm({
       onClick={(e) => e.stopPropagation()}
     >
       <div className="comment-add-form__types">
-        {COMMENT_TYPES.map((t) => (
+        {COMMENT_TYPES.map((commentType) => (
           <button
-            key={t}
+            key={commentType}
             type="button"
-            className={`comment-add-form__type${editType === t ? " comment-add-form__type--active" : ""}`}
-            onClick={() => setEditType(t)}
+            className={`comment-add-form__type${editType === commentType ? " comment-add-form__type--active" : ""}`}
+            onClick={() => setEditType(commentType)}
           >
-            {t}
+            {commentType}
           </button>
         ))}
       </div>

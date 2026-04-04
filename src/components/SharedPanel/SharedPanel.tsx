@@ -57,9 +57,9 @@ export function SharedPanel() {
     try {
       await fetchPendingComments(docId);
       setExpandedDocId(docId);
-    } catch (e) {
+    } catch (error) {
       setFetchError(
-        e instanceof Error ? e.message : "Failed to fetch comments",
+        error instanceof Error ? error.message : "Failed to fetch comments",
       );
     } finally {
       setLoadingDocId(null);
@@ -71,9 +71,9 @@ export function SharedPanel() {
     setFetchError(null);
     try {
       await fetchAllPendingComments();
-    } catch (e) {
+    } catch (error) {
       setFetchError(
-        e instanceof Error ? e.message : "Failed to fetch comments",
+        error instanceof Error ? error.message : "Failed to fetch comments",
       );
     } finally {
       setLoadingAll(false);

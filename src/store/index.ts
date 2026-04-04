@@ -1773,7 +1773,9 @@ export const useAppStore = create<AppState>()(
       deletePeerComment: (commentId) => {
         const { myPeerComments, submittedPeerCommentIds } = get();
         set({
-          myPeerComments: myPeerComments.filter((c) => c.id !== commentId),
+          myPeerComments: myPeerComments.filter(
+            (comment) => comment.id !== commentId,
+          ),
           submittedPeerCommentIds: submittedPeerCommentIds.filter(
             (id) => id !== commentId,
           ),
@@ -1782,8 +1784,10 @@ export const useAppStore = create<AppState>()(
 
       editPeerComment: (commentId, type, text) => {
         const { myPeerComments } = get();
-        const updated = myPeerComments.map((c) =>
-          c.id === commentId ? { ...c, commentType: type, text } : c,
+        const updated = myPeerComments.map((comment) =>
+          comment.id === commentId
+            ? { ...comment, commentType: type, text }
+            : comment,
         );
         set({ myPeerComments: updated });
       },
@@ -1810,7 +1814,7 @@ export const useAppStore = create<AppState>()(
         set({
           submittedPeerCommentIds: [
             ...get().submittedPeerCommentIds,
-            ...unsubmitted.map((c) => c.id),
+            ...unsubmitted.map((comment) => comment.id),
           ],
         });
       },
