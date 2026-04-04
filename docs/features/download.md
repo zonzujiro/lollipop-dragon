@@ -48,6 +48,6 @@ Peers viewing shared content have no way to save it locally. This feature adds b
 
 ### Constraints
 
-- Downloaded `.md` files include raw CriticMarkup syntax (e.g., ``) — this is the source content, not the rendered view
+- Downloaded `.md` files include raw CriticMarkup syntax (e.g., `{==text==}{>>comment<<}`) — this is the source content, not the rendered view
 - No server involvement — everything happens in the browser
 - File metadata (timestamps, etc.) is not preserved; downloaded files get the current system timestamp
