@@ -10,15 +10,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function isStringArray(value: unknown): value is string[] {
-  return (
-    Array.isArray(value) && value.every((item) => typeof item === "string")
-  );
-}
-
 function getAttachment(ws: WebSocket): SocketAttachment {
   const raw = ws.deserializeAttachment();
-  if (isRecord(raw) && isStringArray(raw.subscriptions)) {
+  if (raw && Array.isArray(raw.subscriptions)) {
     return { subscriptions: raw.subscriptions };
   }
   return { subscriptions: [] };
@@ -66,7 +60,7 @@ export class RelayHub implements DurableObject {
     private env: RelayEnv,
   ) {}
 
-  async fetch(_request: Request): Promise<Response> {
+  async fetch(request: Request): Promise<Response> {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     this.state.acceptWebSocket(server);

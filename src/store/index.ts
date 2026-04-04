@@ -1938,13 +1938,12 @@ export const useAppStore = create<AppState>()(
 
       addPendingComment: (docId, comment) => {
         set((state) => {
-          const tabIndex = state.tabs.findIndex((tab) =>
+          const targetTab = state.tabs.find((tab) =>
             tab.shares.some((share) => share.docId === docId),
           );
-          if (tabIndex === -1) {
+          if (!targetTab) {
             return {};
           }
-          const targetTab = state.tabs[tabIndex];
           const existing = targetTab.pendingComments[docId] ?? [];
           if (existing.some((pending) => pending.id === comment.id)) {
             return {};
@@ -1956,8 +1955,8 @@ export const useAppStore = create<AppState>()(
               : share,
           );
           return {
-            tabs: state.tabs.map((tab, index) =>
-              index === tabIndex
+            tabs: state.tabs.map((tab) =>
+              tab.id === targetTab.id
                 ? {
                     ...tab,
                     pendingComments: {
