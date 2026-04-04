@@ -1808,9 +1808,11 @@ export const useAppStore = create<AppState>()(
         if (unsubmitted.length === 0) {
           return;
         }
-        for (const comment of unsubmitted) {
-          await storage.postComment(docId, comment, key);
-        }
+        await Promise.all(
+          unsubmitted.map((comment) =>
+            storage.postComment(docId, comment, key),
+          ),
+        );
         set({
           submittedPeerCommentIds: [
             ...get().submittedPeerCommentIds,
