@@ -19,6 +19,7 @@ const VALID_RELAY_TYPES = new Set([
   "document:updated",
 ]);
 
+/** Max bytes per String.fromCharCode spread to avoid exceeding the call-stack limit. */
 const BASE64_CHUNK_SIZE = 8192;
 
 function isValidRelayMessage(value: unknown): value is RelayMessage {
@@ -75,19 +76,19 @@ function parseInboundFrame(raw: unknown): ParsedFrame {
 }
 
 interface RelayContext {
-  activeSubscriptions: Set<string>;
+  subscriptions: Set<string>;
   socket: WebSocket | null;
 }
 
 function scheduleSubscriptionRetry(context: RelayContext, docId: string): void {
-  if (!context.activeSubscriptions.has(docId)) {
+  if (!context.subscriptions.has(docId)) {
     return;
   }
   const retryDocId = docId;
   setTimeout(() => {
     if (
       context.socket?.readyState === WebSocket.OPEN &&
-      context.activeSubscriptions.has(retryDocId)
+      context.subscriptions.has(retryDocId)
     ) {
       context.socket.send(
         JSON.stringify({ type: "subscribe", docId: retryDocId }),
@@ -162,8 +163,6 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 // `connectRelay` sets the active relay; `close()` clears it.
 
 let activeRelay: RelayConnection | null = null;
-let activeSubscriptions = new Set<string>();
-let encryptionKeys = new Map<string, CryptoKey>();
 
 export function getRelay(): RelayConnection | null {
   return activeRelay;
@@ -187,6 +186,8 @@ class RelayConnectionImpl implements RelayConnection {
   private outboundBatch: OutboundFrame[] = [];
   private batchTimer: ReturnType<typeof setTimeout> | null = null;
   private wsUrl: string;
+  private subscriptions = new Set<string>();
+  private encryptionKeys = new Map<string, CryptoKey>();
 
   constructor(
     private onMessage: (docId: string, message: RelayMessage) => void,
@@ -247,7 +248,7 @@ class RelayConnectionImpl implements RelayConnection {
   };
 
   private resubscribeAll(): void {
-    for (const docId of activeSubscriptions) {
+    for (const docId of this.subscriptions) {
       if (this.socket) {
         this.socket.send(JSON.stringify({ type: "subscribe", docId }));
       }
@@ -263,11 +264,14 @@ class RelayConnectionImpl implements RelayConnection {
       if (frame.kind === "unknown") {
         return;
       }
-      const context = { activeSubscriptions, socket: this.socket };
+      const context: RelayContext = {
+        subscriptions: this.subscriptions,
+        socket: this.socket,
+      };
       if (handleControlFrame(frame, context)) {
         return;
       }
-      await decryptAndDispatch(frame, encryptionKeys, this.onMessage);
+      await decryptAndDispatch(frame, this.encryptionKeys, this.onMessage);
     } catch (error) {
       console.warn("[relay] failed to process message:", error);
     }
@@ -306,8 +310,8 @@ class RelayConnectionImpl implements RelayConnection {
   // ── Public interface ─────────────────────────────────────────────────
 
   subscribe(docId: string, key: CryptoKey): void {
-    encryptionKeys.set(docId, key);
-    activeSubscriptions.add(docId);
+    this.encryptionKeys.set(docId, key);
+    this.subscriptions.add(docId);
     if (this.socket?.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify({ type: "subscribe", docId }));
     }
@@ -317,8 +321,8 @@ class RelayConnectionImpl implements RelayConnection {
     if (this.socket?.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify({ type: "unsubscribe", docId }));
     }
-    encryptionKeys.delete(docId);
-    activeSubscriptions.delete(docId);
+    this.encryptionKeys.delete(docId);
+    this.subscriptions.delete(docId);
   }
 
   async send(docId: string, message: RelayMessage): Promise<void> {
@@ -336,11 +340,11 @@ class RelayConnectionImpl implements RelayConnection {
   }
 
   hasActiveSubscriptions(): boolean {
-    return activeSubscriptions.size > 0;
+    return this.subscriptions.size > 0;
   }
 
   isSubscribed(docId: string): boolean {
-    return activeSubscriptions.has(docId);
+    return this.subscriptions.has(docId);
   }
 
   close(): void {
@@ -355,8 +359,8 @@ class RelayConnectionImpl implements RelayConnection {
     this.stopPingInterval();
     this.socket?.close();
     this.socket = null;
-    encryptionKeys.clear();
-    activeSubscriptions.clear();
+    this.encryptionKeys.clear();
+    this.subscriptions.clear();
     setRelay(null);
   }
 }

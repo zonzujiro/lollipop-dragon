@@ -59,15 +59,15 @@ Analysis of [claude-duet](https://github.com/EliranG/claude-duet) showed the key
 
 ## 4. Tech Stack Additions
 
-| Layer | Choice | Why |
-|-------|--------|-----|
-| Real-time relay | Cloudflare Durable Object (WebSocket Hibernation API) | Same platform as existing Worker; free tier sufficient; WSS passes through VPN |
-| Wire protocol | JSON frames over WebSocket (plaintext docId + encrypted payload) | Simple, no dependencies; E2E encrypted with existing AES-256-GCM keys |
-| Subscription state | Socket attachments | Survives DO hibernation without in-memory Maps |
-| Keep-alive | Application-level ping/pong (30s) | Prevents VPN proxy idle timeouts |
-| Client state | Zustand (existing store) | New fields on AppState root |
+| Layer              | Choice                                                           | Why                                                                            |
+| ------------------ | ---------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Real-time relay    | Cloudflare Durable Object (WebSocket Hibernation API)            | Same platform as existing Worker; free tier sufficient; WSS passes through VPN |
+| Wire protocol      | JSON frames over WebSocket (plaintext docId + encrypted payload) | Simple, no dependencies; E2E encrypted with existing AES-256-GCM keys          |
+| Subscription state | Socket attachments                                               | Survives DO hibernation without in-memory Maps                                 |
+| Keep-alive         | Application-level ping/pong (30s)                                | Prevents VPN proxy idle timeouts                                               |
+| Client state       | Zustand (existing store)                                         | New fields on AppState root                                                    |
 
-No new npm dependencies. Existing platform choices (Web Crypto, Cloudflare Worker + KV, GitHub Pages) remain unchanged.
+No new npm dependencies are required. The platform stack (Web Crypto, Cloudflare Worker + KV, GitHub Pages) is unchanged.
 
 ---
 
@@ -75,43 +75,43 @@ No new npm dependencies. Existing platform choices (Web Crypto, Cloudflare Worke
 
 ### Outbound (client → DO)
 
-| Frame | Fields | Encrypted |
-|-------|--------|-----------|
-| `SubscribeFrame` | `{ type: "subscribe", docId }` | No |
-| `UnsubscribeFrame` | `{ type: "unsubscribe", docId }` | No |
-| `PingFrame` | `{ type: "ping" }` | No |
-| `RelayFrame` | `{ version: 1, docId, payload }` | `payload` is base64-encoded AES-256-GCM ciphertext |
+| Frame              | Fields                           | Encrypted                                          |
+| ------------------ | -------------------------------- | -------------------------------------------------- |
+| `SubscribeFrame`   | `{ type: "subscribe", docId }`   | No                                                 |
+| `UnsubscribeFrame` | `{ type: "unsubscribe", docId }` | No                                                 |
+| `PingFrame`        | `{ type: "ping" }`               | No                                                 |
+| `RelayFrame`       | `{ version: 1, docId, payload }` | `payload` is base64-encoded AES-256-GCM ciphertext |
 
 ### Inbound (DO → client)
 
-| Frame | Fields | When |
-|-------|--------|------|
-| `SubscribeOkFrame` | `{ type: "subscribe:ok", docId }` | Subscribe confirmed |
-| `ErrorFrame` | `{ type: "error", docId, message }` | Subscribe failed / other errors |
-| `PongFrame` | `{ type: "pong" }` | Keep-alive response |
-| `RelayFrame` | `{ version: 1, docId, payload }` | Message from another client |
+| Frame              | Fields                              | When                            |
+| ------------------ | ----------------------------------- | ------------------------------- |
+| `SubscribeOkFrame` | `{ type: "subscribe:ok", docId }`   | Subscribe confirmed             |
+| `ErrorFrame`       | `{ type: "error", docId, message }` | Subscribe failed / other errors |
+| `PongFrame`        | `{ type: "pong" }`                  | Keep-alive response             |
+| `RelayFrame`       | `{ version: 1, docId, payload }`    | Message from another client     |
 
 ### Relay message types (inside encrypted payload)
 
-| Type | Direction | Purpose |
-|------|-----------|---------|
-| `comment:added` | peer → host | New comment posted |
-| `comment:resolved` | host → peer | Comment merged/resolved |
+| Type               | Direction   | Purpose                           |
+| ------------------ | ----------- | --------------------------------- |
+| `comment:added`    | peer → host | New comment posted                |
+| `comment:resolved` | host → peer | Comment merged/resolved           |
 | `document:updated` | host → peer | Host pushed updated content to KV |
 
 ---
 
 ## 6. Key Design Decisions
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Single hub vs per-doc DO | Single hub | Avoids N WebSocket connections per client; host gets comments from all shares on one socket |
-| Yjs CRDT vs plain events | Plain events | No concurrent editing — each author owns their comments; host resolves unilaterally |
-| Subscribe ACK | `subscribe:ok` / `error` with retry | KV eventual consistency can reject valid subscriptions; client must not show false-connected state |
-| Intentional close flag | `closedIntentionally` boolean | Distinguishes deliberate close (all subscriptions removed) from unexpected failure; prevents reconnect after intentional shutdown |
+| Decision                  | Choice                                    | Rationale                                                                                                                                                                                                                                                                                                                                         |
+| ------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Single hub vs per-doc DO  | Single hub                                | Avoids N WebSocket connections per client; host gets comments from all shares on one socket                                                                                                                                                                                                                                                       |
+| Yjs CRDT vs plain events  | Plain events                              | No concurrent editing — each author owns their comments; host resolves unilaterally                                                                                                                                                                                                                                                               |
+| Subscribe ACK             | `subscribe:ok` / `error` with retry       | KV eventual consistency can reject valid subscriptions; client must not show false-connected state                                                                                                                                                                                                                                                |
+| Intentional close flag    | `closedIntentionally` boolean             | Distinguishes deliberate close (all subscriptions removed) from unexpected failure; prevents reconnect after intentional shutdown                                                                                                                                                                                                                 |
 | Zombie comment prevention | `resolvedCommentIds` set (session-scoped) | Tracks resolved IDs so late-arriving `comment:added` (from KV catch-up) is skipped after a resolve. Session-scoped only — does not survive page reload. The durable protection is the auto-push: `mergeComment` pushes updated content to KV before broadcasting `comment:resolved`, so a reloading peer gets the resolved state from KV. See §8. |
-| Peer reconnect catch-up | Fetch comments from KV + reload content | Two-step: KV catches missed adds, content reload catches missed resolves (requires host auto-push) |
-| Host reconnect catch-up | Active tab only | `fetchAllPendingComments` is tab-scoped; background tabs catch up on switch (documented limitation) |
+| Peer reconnect catch-up   | Fetch comments from KV + reload content   | Two-step: KV catches missed adds, content reload catches missed resolves (requires host auto-push)                                                                                                                                                                                                                                                |
+| Host reconnect catch-up   | Active tab only                           | `fetchAllPendingComments` is tab-scoped; background tabs catch up on switch (documented limitation)                                                                                                                                                                                                                                               |
 
 ---
 
@@ -152,29 +152,29 @@ These must be done before the relay feature can ship safely:
 
 ## 9. New Files
 
-| File | Purpose |
-|------|---------|
-| `src/types/relay.ts` | Wire protocol types and relay message types |
-| `src/services/relay.ts` | `connectRelay()` — WebSocket lifecycle, encryption, batching, ping, reconnect |
-| `worker/src/relay.ts` | `RelayHub` DO class — subscription routing, echo suppression, hibernation |
-| `src/components/ConnectionStatus/` | Status dot indicator (connected/connecting/offline) |
-| `src/components/ContentUpdateBanner/` | Persistent banner for `document:updated` notification |
+| File                                  | Purpose                                                                       |
+| ------------------------------------- | ----------------------------------------------------------------------------- |
+| `src/types/relay.ts`                  | Wire protocol types and relay message types                                   |
+| `src/services/relay.ts`               | `connectRelay()` — WebSocket lifecycle, encryption, batching, ping, reconnect |
+| `worker/src/relay.ts`                 | `RelayHub` DO class — subscription routing, echo suppression, hibernation     |
+| `src/components/ConnectionStatus/`    | Status dot indicator (connected/connecting/offline)                           |
+| `src/components/ContentUpdateBanner/` | Persistent banner for `document:updated` notification                         |
 
 ---
 
 ## 10. Modified Files
 
-| File | Change |
-|------|--------|
-| `worker/src/index.ts` | Add `/relay` WebSocket upgrade route; export `RelayHub`; add `RELAY_HUB` to `Env`; add `DELETE /comments/:docId/:cmtId` per-comment delete route |
-| `worker/wrangler.toml` | Add DO binding and `new_sqlite_classes` migration |
-| `src/store/index.ts` | Add relay state fields, actions (`openRelay`, `subscribeDoc`, `closeRelay`), message handlers |
-| `src/store/selectors.ts` | Add `allVisiblePeerComments` selector combining `myPeerComments` + `remotePeerComments` |
-| `src/services/shareSync.ts` | Broadcast `document:updated` in `updateShare` |
-| `src/store/index.ts` (continued) | Broadcast `comment:added` after KV post in `syncPeerComments`; broadcast `comment:resolved` in `mergeComment` (after auto-push) |
-| `src/components/Header/Header.tsx` | Wire `ConnectionStatus`; hide "Check comments" when connected |
-| `src/components/CommentPanel/CommentPanel.tsx` | Read combined selector in peer mode |
-| `src/components/CommentMargin/CommentMargin.tsx` | Show margin dots for remote peer comments |
+| File                                             | Change                                                                                                                                           |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `worker/src/index.ts`                            | Add `/relay` WebSocket upgrade route; export `RelayHub`; add `RELAY_HUB` to `Env`; add `DELETE /comments/:docId/:cmtId` per-comment delete route |
+| `worker/wrangler.toml`                           | Add DO binding and `new_sqlite_classes` migration                                                                                                |
+| `src/store/index.ts`                             | Add relay state fields, actions (`openRelay`, `subscribeDoc`, `closeRelay`), message handlers                                                    |
+| `src/store/selectors.ts`                         | Add `allVisiblePeerComments` selector combining `myPeerComments` + `remotePeerComments`                                                          |
+| `src/services/shareSync.ts`                      | Broadcast `document:updated` in `updateShare`                                                                                                    |
+| `src/store/index.ts` (continued)                 | Broadcast `comment:added` after KV post in `syncPeerComments`; broadcast `comment:resolved` in `mergeComment` (after auto-push)                  |
+| `src/components/Header/Header.tsx`               | Wire `ConnectionStatus`; hide "Check comments" when connected                                                                                    |
+| `src/components/CommentPanel/CommentPanel.tsx`   | Read combined selector in peer mode                                                                                                              |
+| `src/components/CommentMargin/CommentMargin.tsx` | Show margin dots for remote peer comments                                                                                                        |
 
 ---
 
@@ -190,11 +190,11 @@ These must be done before the relay feature can ship safely:
 
 ## 12. Cost Estimate (Free Tier)
 
-| Resource | Limit | Expected usage |
-|----------|-------|----------------|
-| DO requests/day | 100,000 (20:1 WS ratio = ~2M messages) | ~200–500 messages/hour per active session |
-| DO duration/day | 13,000 GB-s | Low — Hibernation API minimizes wakeups; 30s ping adds ~2 msg/30s idle cost |
-| KV reads/day | 100,000 | v2 baseline + reconnect catch-up reads |
-| KV writes/day | 1,000 | v2 baseline + auto-push content after each resolve + per-comment delete on resolve. Estimate: ~10–50 additional writes/day for a typical review session. |
+| Resource        | Limit                                  | Expected usage                                                                                                                                           |
+| --------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DO requests/day | 100,000 (20:1 WS ratio = ~2M messages) | ~200–500 messages/hour per active session                                                                                                                |
+| DO duration/day | 13,000 GB-s                            | Low — Hibernation API minimizes wakeups; 30s ping adds ~2 msg/30s idle cost                                                                              |
+| KV reads/day    | 100,000                                | v2 baseline + reconnect catch-up reads                                                                                                                   |
+| KV writes/day   | 1,000                                  | v2 baseline + auto-push content after each resolve + per-comment delete on resolve. Estimate: ~10–50 additional writes/day for a typical review session. |
 
 Well within free tier for the 2–5 peer target.
