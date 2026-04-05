@@ -77,6 +77,7 @@ function parseInboundFrame(raw: unknown): ParsedFrame {
 
 interface RelayContext {
   subscriptions: Set<string>;
+  confirmed: Set<string>;
   socket: WebSocket | null;
 }
 
@@ -115,6 +116,7 @@ function handleControlFrame(
     return true;
   }
   if (frame.kind === "subscribeOk") {
+    context.confirmed.add(frame.docId);
     return true;
   }
   return false;
@@ -187,6 +189,7 @@ class RelayConnectionImpl implements RelayConnection {
   private batchTimer: ReturnType<typeof setTimeout> | null = null;
   private wsUrl: string;
   private subscriptions = new Set<string>();
+  private confirmedSubscriptions = new Set<string>();
   private encryptionKeys = new Map<string, CryptoKey>();
 
   constructor(
@@ -241,6 +244,7 @@ class RelayConnectionImpl implements RelayConnection {
       return;
     }
     this.backoff = 1000;
+    this.confirmedSubscriptions.clear();
     this.onStatusChange("connected");
     this.startPingInterval();
     this.resubscribeAll();
@@ -266,6 +270,7 @@ class RelayConnectionImpl implements RelayConnection {
       }
       const context: RelayContext = {
         subscriptions: this.subscriptions,
+        confirmed: this.confirmedSubscriptions,
         socket: this.socket,
       };
       if (handleControlFrame(frame, context)) {
@@ -323,10 +328,11 @@ class RelayConnectionImpl implements RelayConnection {
     }
     this.encryptionKeys.delete(docId);
     this.subscriptions.delete(docId);
+    this.confirmedSubscriptions.delete(docId);
   }
 
   async send(docId: string, message: RelayMessage): Promise<void> {
-    const key = encryptionKeys.get(docId);
+    const key = this.encryptionKeys.get(docId);
     if (!key) {
       throw new Error(`No encryption key for docId: ${docId}`);
     }
@@ -344,7 +350,7 @@ class RelayConnectionImpl implements RelayConnection {
   }
 
   isSubscribed(docId: string): boolean {
-    return this.subscriptions.has(docId);
+    return this.confirmedSubscriptions.has(docId);
   }
 
   close(): void {
@@ -361,6 +367,7 @@ class RelayConnectionImpl implements RelayConnection {
     this.socket = null;
     this.encryptionKeys.clear();
     this.subscriptions.clear();
+    this.confirmedSubscriptions.clear();
     setRelay(null);
   }
 }

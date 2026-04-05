@@ -47,6 +47,8 @@ export interface TabState {
   shares: ShareRecord[];
   sharedPanelOpen: boolean;
   pendingComments: Record<string, PeerComment[]>;
+  /** Comment IDs the host already acted on (merged/dismissed). Filters stale KV reads. */
+  dismissedCommentIds: Record<string, string[]>;
   shareKeys: Record<string, CryptoKey>;
   activeDocId: string | null;
 
@@ -80,6 +82,7 @@ export function createDefaultTab(
     shares: [],
     sharedPanelOpen: false,
     pendingComments: {},
+    dismissedCommentIds: {},
     shareKeys: {},
     activeDocId: null,
     restoreError: null,

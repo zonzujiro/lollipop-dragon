@@ -425,7 +425,7 @@ function removePendingCommentState(
   tab: TabState,
   docId: string,
   cmtId: string,
-): Pick<TabState, "pendingComments" | "shares"> {
+): Pick<TabState, "pendingComments" | "shares" | "dismissedCommentIds"> {
   const nextPendingComments = { ...tab.pendingComments };
   const remainingComments = (nextPendingComments[docId] ?? []).filter(
     (comment) => comment.id !== cmtId,
@@ -440,9 +440,15 @@ function removePendingCommentState(
       ? { ...share, pendingCommentCount: remainingComments.length }
       : share,
   );
+  const existing = tab.dismissedCommentIds[docId] ?? [];
+  const nextDismissed = {
+    ...tab.dismissedCommentIds,
+    [docId]: [...existing, cmtId],
+  };
   return {
     pendingComments: nextPendingComments,
     shares: nextShares,
+    dismissedCommentIds: nextDismissed,
   };
 }
 
@@ -1620,11 +1626,16 @@ export const useAppStore = create<AppState>()(
             shareKeys: { ...t.shareKeys, [docId]: key },
           }));
         }
-        const comments = await storage.fetchComments(docId, key);
+        const allComments = await storage.fetchComments(docId, key);
         const currentTab = get().tabs.find((t) => t.id === tabId);
         if (!currentTab) {
           return;
         }
+        const tombstones = new Set(currentTab.dismissedCommentIds[docId] ?? []);
+        const comments =
+          tombstones.size > 0
+            ? allComments.filter((comment) => !tombstones.has(comment.id))
+            : allComments;
         const pc = { ...currentTab.pendingComments, [docId]: comments };
         const shares = currentTab.shares.map((s) =>
           s.docId === docId
@@ -1789,10 +1800,17 @@ export const useAppStore = create<AppState>()(
         const shares = tab.shares.map((s) =>
           s.docId === docId ? { ...s, pendingCommentCount: 0 } : s,
         );
+        const clearedIds = pendingForDoc.map((comment) => comment.id);
+        const existingDismissed = tab.dismissedCommentIds[docId] ?? [];
+        const nextDismissed = {
+          ...tab.dismissedCommentIds,
+          [docId]: [...existingDismissed, ...clearedIds],
+        };
         saveShares(stableShareKey(tab), shares);
         updateTab(get, set, tabId, () => ({
           pendingComments: pc,
           shares,
+          dismissedCommentIds: nextDismissed,
         }));
       },
 
@@ -1942,6 +1960,10 @@ export const useAppStore = create<AppState>()(
             tab.shares.some((share) => share.docId === docId),
           );
           if (!targetTab) {
+            return {};
+          }
+          const dismissed = targetTab.dismissedCommentIds[docId] ?? [];
+          if (dismissed.includes(comment.id)) {
             return {};
           }
           const existing = targetTab.pendingComments[docId] ?? [];

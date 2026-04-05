@@ -298,6 +298,7 @@ async function postComment(
   env: Env,
   cors: Record<string, string>,
   docId: string,
+  clientCmtId: string | undefined,
 ): Promise<Response> {
   const meta = await getMeta(env, docId);
   if (!meta) {
@@ -307,11 +308,11 @@ async function postComment(
   if (blob.byteLength > 1024 * 1024) {
     return errRes(413, "Comment too large", cors);
   }
-  const newCmtId = crypto.randomUUID();
-  await env.LOLLIPOP_DRAGON.put(`comments:${docId}:${newCmtId}`, blob, {
+  const cmtId = clientCmtId || crypto.randomUUID();
+  await env.LOLLIPOP_DRAGON.put(`comments:${docId}:${cmtId}`, blob, {
     expirationTtl: meta.ttl,
   });
-  return jsonRes({ cmtId: newCmtId }, cors);
+  return jsonRes({ cmtId }, cors);
 }
 
 async function listComments(
@@ -389,7 +390,7 @@ async function handleComments(
     : () => deleteAllComments(req, env, cors, docId);
 
   const handlers: Record<string, () => Promise<Response>> = {
-    POST: () => postComment(req, env, cors, docId),
+    POST: () => postComment(req, env, cors, docId, cmtId),
     GET: () => listComments(env, cors, docId),
     HEAD: () => headComments(env, cors, docId),
     DELETE: deleteHandler,
