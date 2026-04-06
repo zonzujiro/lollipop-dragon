@@ -23,7 +23,7 @@ vi.mock("../config", () => ({
 
 // ── Imports (after mocks) ────────────────────────────────────────────
 
-import { Header } from "../components/Header";
+import { Header } from "../ui/components/Header";
 import { syncActiveShares } from "../modules/sharing";
 import { setTestState, resetTestStore, makeShare } from "./testHelpers";
 
