@@ -20,12 +20,12 @@ function formatExpiry(expiresAt: string): string {
 }
 
 function formatCreatedAt(createdAt: string): string {
-  const d = new Date(createdAt);
-  const month = d.toLocaleString("en-US", { month: "short" });
-  const day = d.getDate();
-  const hours = d.getHours().toString().padStart(2, "0");
-  const mins = d.getMinutes().toString().padStart(2, "0");
-  return `${month} ${day}, ${hours}:${mins}`;
+  const date = new Date(createdAt);
+  const month = date.toLocaleString("en-US", { month: "short" });
+  const day = date.getDate();
+  const hours = date.getHours().toString().padStart(2, "0");
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  return `${month} ${day}, ${hours}:${minutes}`;
 }
 
 function formatFileCount(count: number): string {
@@ -35,79 +35,24 @@ function formatFileCount(count: number): string {
 export function SharedPanel() {
   const tab = useActiveTab();
   const shares = tab?.shares ?? [];
-  const toggleSharedPanel = useAppStore((s) => s.toggleSharedPanel);
-  const revokeShare = useAppStore((s) => s.revokeShare);
-  const fetchPendingComments = useAppStore((s) => s.fetchPendingComments);
-  const fetchAllPendingComments = useAppStore((s) => s.fetchAllPendingComments);
+  const toggleSharedPanel = useAppStore((state) => state.toggleSharedPanel);
+  const revokeShare = useAppStore((state) => state.revokeShare);
   const pendingComments = tab?.pendingComments ?? {};
-  const showToast = useAppStore((s) => s.showToast);
-
+  const showToast = useAppStore((state) => state.showToast);
   const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
-  const [loadingDocId, setLoadingDocId] = useState<string | null>(null);
-  const [loadingAll, setLoadingAll] = useState(false);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-
-  const activeShares = shares.filter(
-    (share) => new Date(share.expiresAt) > new Date(),
-  );
-  const hasActiveShares = activeShares.length > 0;
-  const someSharesUnsubscribed = activeShares.some(
-    (share) => !isDocSubscribed(share.docId),
-  );
-
-  async function handleFetch(docId: string) {
-    setLoadingDocId(docId);
-    setFetchError(null);
-    try {
-      await fetchPendingComments(docId);
-      setExpandedDocId(docId);
-    } catch (e) {
-      setFetchError(
-        e instanceof Error ? e.message : "Failed to fetch comments",
-      );
-    } finally {
-      setLoadingDocId(null);
-    }
-  }
-
-  async function handleFetchAll() {
-    setLoadingAll(true);
-    setFetchError(null);
-    try {
-      await fetchAllPendingComments();
-    } catch (e) {
-      setFetchError(
-        e instanceof Error ? e.message : "Failed to fetch comments",
-      );
-    } finally {
-      setLoadingAll(false);
-    }
-  }
 
   return (
     <aside className="shared-panel" aria-label="Shared documents">
       <div className="shared-panel__header">
         <h2 className="shared-panel__title">Shared</h2>
-        {hasActiveShares && someSharesUnsubscribed && (
-          <button
-            className="shared-panel__btn shared-panel__btn--check-all"
-            onClick={handleFetchAll}
-            disabled={loadingAll}
-            title="Fetch comments for all active shares"
-          >
-            {loadingAll ? "Checking…" : "Check all"}
-          </button>
-        )}
         <button
           className="shared-panel__close"
           onClick={toggleSharedPanel}
           aria-label="Close shared panel"
         >
-          ×
+          ?
         </button>
       </div>
-
-      {fetchError && <p className="shared-panel__error">{fetchError}</p>}
 
       {shares.length === 0 ? (
         <p className="shared-panel__empty">
@@ -119,8 +64,8 @@ export function SharedPanel() {
             const pending = pendingComments[share.docId] ?? [];
             const badge = share.pendingCommentCount;
             const isExpanded = expandedDocId === share.docId;
-            const isLoading = loadingDocId === share.docId;
             const subscribed = isDocSubscribed(share.docId);
+            const canReview = badge > 0 || pending.length > 0;
 
             return (
               <li key={share.docId} className="shared-panel__entry">
@@ -148,6 +93,9 @@ export function SharedPanel() {
                   <span className="shared-panel__expiry">
                     {formatExpiry(share.expiresAt)}
                   </span>
+                  {!subscribed && badge > 0 && (
+                    <span className="shared-panel__expiry">Relay not connected</span>
+                  )}
                 </div>
 
                 <div className="shared-panel__actions">
@@ -158,31 +106,34 @@ export function SharedPanel() {
                         keyB64: share.keyB64,
                         name: share.label,
                       });
-                      navigator.clipboard
-                        .writeText(url)
-                        .then(() => showToast("Link copied"));
+                      navigator.clipboard.writeText(url).then(() => {
+                        showToast("Link copied");
+                      });
                     }}
                     title="Copy share link to clipboard"
                   >
                     Copy link
                   </button>
 
-                  {!subscribed && (
+                  {canReview && (
                     <button
                       className="shared-panel__btn"
-                      onClick={() => handleFetch(share.docId)}
-                      disabled={isLoading}
-                      title="Fetch pending peer comments from the Worker"
+                      onClick={() => {
+                        setExpandedDocId(
+                          isExpanded ? null : share.docId,
+                        );
+                      }}
+                      title="Show pending peer comments for this share"
                     >
-                      {isLoading ? "…" : "Check comments"}
-                      {badge > 0 && !isLoading && ` (${badge})`}
+                      {isExpanded ? "Hide comments" : "Review comments"}
                     </button>
                   )}
 
                   <button
                     className="shared-panel__btn shared-panel__btn--revoke"
-                    onClick={() => revokeShare(share.docId)}
-                    disabled={isLoading}
+                    onClick={() => {
+                      void revokeShare(share.docId);
+                    }}
                     title="Delete this share from the Worker immediately"
                   >
                     Revoke
@@ -191,7 +142,7 @@ export function SharedPanel() {
 
                 {isExpanded && (
                   <div className="shared-panel__comments">
-                    {pending.length === 0 && !isLoading ? (
+                    {pending.length === 0 ? (
                       <p className="shared-panel__no-comments">
                         No pending comments.
                       </p>

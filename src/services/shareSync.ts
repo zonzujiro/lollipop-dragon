@@ -3,7 +3,7 @@ import { getActiveTab } from "../store/selectors";
 import { toFileTreeNodes } from "../types/fileTree";
 import type { FileTreeNode } from "../types/fileTree";
 import { readFile } from "./fileSystem";
-import { broadcastCommentResolved, getRelay } from "./relay";
+import { getRelay } from "./relay";
 import { ShareStorage } from "./shareStorage";
 import { WORKER_URL } from "../config";
 
@@ -30,11 +30,11 @@ async function collectTreeContents(
         } else {
           try {
             tree[path] = await readFile(node.handle);
-          } catch (e) {
+          } catch (error) {
             console.warn(
               "[collectTreeContents] skipping unreadable file:",
               path,
-              e,
+              error,
             );
           }
         }
@@ -56,7 +56,7 @@ export async function updateShare(docId: string): Promise<void> {
   if (!tab) {
     throw new Error("No active tab");
   }
-  const record = tab.shares.find((s) => s.docId === docId);
+  const record = tab.shares.find((share) => share.docId === docId);
   if (!record) {
     throw new Error("Share not found");
   }
@@ -88,154 +88,13 @@ export async function updateShare(docId: string): Promise<void> {
   try {
     const relay = getRelay();
     if (relay) {
-      relay
-        .send(docId, {
-          type: "document:updated",
-          updatedAt: new Date().toISOString(),
-        })
-        .catch((relayError) => {
-          console.warn(
-            "[relay] document:updated broadcast failed:",
-            relayError,
-          );
-        });
+      await relay.send(docId, {
+        type: "document:updated",
+        updatedAt: new Date().toISOString(),
+      });
     }
-  } catch (relayError) {
-    console.warn(
-      "[relay] document:updated broadcast setup failed:",
-      relayError,
-    );
-  }
-}
-
-/**
- * Durable resolve: delete comment from KV, push updated share content.
- * Returns true if both steps succeeded (caller can then broadcast + clear state).
- */
-export async function durableResolveComment(
-  docId: string,
-  commentId: string,
-  hostSecret: string,
-): Promise<boolean> {
-  const storage = getStorage();
-  if (!storage) {
-    return false;
-  }
-  try {
-    await storage.deleteComment(docId, commentId, hostSecret);
-    await updateShare(docId);
-    return true;
   } catch (error) {
-    console.warn("[durableResolve] failed:", error);
-    return false;
-  }
-}
-
-const RETRY_DELAYS = [2000, 5000, 10000];
-
-async function withRetry(
-  operation: () => Promise<boolean>,
-  onExhausted: () => void,
-): Promise<void> {
-  for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
-    if (await operation()) {
-      return;
-    }
-    if (attempt < RETRY_DELAYS.length) {
-      await new Promise((resolve) =>
-        setTimeout(resolve, RETRY_DELAYS[attempt]),
-      );
-    }
-  }
-  onExhausted();
-}
-
-function notifyUser(message: string): void {
-  useAppStore.getState().showToast(message);
-}
-
-/**
- * Attempt durable resolve (KV delete + share update + broadcast) after a local merge.
- * Retries up to 3 times with increasing delays before surfacing failure to the user.
- */
-export async function attemptDurableResolve(
-  docId: string,
-  commentId: string,
-  hostSecret: string,
-): Promise<void> {
-  await withRetry(
-    async () => {
-      const resolved = await durableResolveComment(
-        docId,
-        commentId,
-        hostSecret,
-      );
-      if (resolved) {
-        broadcastCommentResolved(docId, commentId);
-      }
-      return resolved;
-    },
-    () => notifyUser("Sync failed — use Push update to retry"),
-  );
-}
-
-/** Delete a single comment from KV. Retries before notifying user. */
-export async function deleteCommentFromKV(
-  docId: string,
-  commentId: string,
-  hostSecret: string,
-): Promise<void> {
-  const storage = getStorage();
-  if (!storage) {
-    return;
-  }
-  await withRetry(
-    async () => {
-      try {
-        await storage.deleteComment(docId, commentId, hostSecret);
-        return true;
-      } catch (error) {
-        console.warn("[deleteCommentFromKV] attempt failed:", error);
-        return false;
-      }
-    },
-    () => notifyUser("Comment delete failed — may reappear after reload"),
-  );
-}
-
-/** Delete all comments for a docId from KV. Retries each before notifying user. */
-export async function deleteCommentsFromKV(
-  docId: string,
-  commentIds: string[],
-  hostSecret: string,
-): Promise<void> {
-  const storage = getStorage();
-  if (!storage) {
-    return;
-  }
-  let anyFailed = false;
-  for (const commentId of commentIds) {
-    await withRetry(
-      async () => {
-        try {
-          await storage.deleteComment(docId, commentId, hostSecret);
-          return true;
-        } catch (error) {
-          console.warn(
-            "[deleteCommentsFromKV] attempt failed:",
-            commentId,
-            error,
-          );
-          return false;
-        }
-      },
-      () => {
-        anyFailed = true;
-      },
-    );
-  }
-  if (anyFailed) {
-    notifyUser("Some comment deletes failed — may reappear after reload");
+    console.warn("[relay] document:updated broadcast failed:", error);
   }
 }
 
@@ -248,13 +107,14 @@ export async function syncActiveShares(): Promise<void> {
   if (!tab) {
     return;
   }
-  const now = new Date();
-  const active = tab.shares.filter((s) => new Date(s.expiresAt) > now);
-  for (const share of active) {
+  const activeShares = tab.shares.filter(
+    (share) => new Date(share.expiresAt) > new Date(),
+  );
+  for (const share of activeShares) {
     try {
       await updateShare(share.docId);
-    } catch (e) {
-      console.warn("[sync] failed to push update for", share.docId, e);
+    } catch (error) {
+      console.warn("[syncActiveShares] failed:", share.docId, error);
     }
   }
 }

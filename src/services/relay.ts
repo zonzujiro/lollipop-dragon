@@ -1,52 +1,87 @@
 import { encrypt, decrypt } from "./crypto";
-import type { RelayMessage } from "../types/relay";
+import type {
+  CommentsSnapshotEntry,
+  RelayEvent,
+  RelayMessage,
+} from "../types/relay";
 import type { PeerComment } from "../types/share";
 import { useAppStore } from "../store";
 import { WORKER_URL } from "../config";
 
 export interface RelayConnection {
-  subscribe(docId: string, key: CryptoKey): void;
+  subscribe(
+    docId: string,
+    key: CryptoKey,
+    role: "host" | "peer",
+    hostSecret?: string,
+  ): void;
   unsubscribe(docId: string): void;
+  sendCommentAdd(docId: string, cmtId: string, payload: string): void;
+  sendCommentResolve(docId: string, cmtId: string): void;
   send(docId: string, message: RelayMessage): Promise<void>;
   close(): void;
   hasActiveSubscriptions(): boolean;
   isSubscribed(docId: string): boolean;
 }
 
-const VALID_RELAY_TYPES = new Set([
-  "comment:added",
-  "comment:resolved",
-  "document:updated",
-]);
-
-/** Max bytes per String.fromCharCode spread to avoid exceeding the call-stack limit. */
+const VALID_RELAY_TYPES = new Set(["document:updated"]);
+const PING_INTERVAL_MS = 30_000;
+const SUBSCRIPTION_RETRY_DELAY_MS = 5_000;
 const BASE64_CHUNK_SIZE = 8192;
 
-function isValidRelayMessage(value: unknown): value is RelayMessage {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-  return (
-    "type" in value &&
-    typeof value.type === "string" &&
-    VALID_RELAY_TYPES.has(value.type)
-  );
+type ParsedFrame =
+  | { kind: "pong" }
+  | { kind: "error"; docId: string; message: string }
+  | { kind: "subscribeOk"; docId: string }
+  | { kind: "commentAddAck"; docId: string; cmtId: string }
+  | { kind: "commentResolveAck"; docId: string; cmtId: string }
+  | { kind: "commentsSnapshot"; docId: string; comments: CommentsSnapshotEntry[] }
+  | { kind: "commentAdded"; docId: string; cmtId: string; payload: string }
+  | { kind: "commentResolved"; docId: string; cmtId: string }
+  | { kind: "relay"; docId: string; payload: string }
+  | { kind: "unknown" };
+
+interface RelayContext {
+  subscriptions: Set<string>;
+  confirmed: Set<string>;
+  socket: WebSocket | null;
+  retrySubscribe: (docId: string) => void;
+  onSubscribeOk: (docId: string) => void;
+  onCommentAddAck: (docId: string, cmtId: string) => void;
+  onCommentResolveAck: (docId: string, cmtId: string) => void;
+  onSnapshot: (docId: string, comments: CommentsSnapshotEntry[]) => void;
+  onCommentAdded: (docId: string, cmtId: string, payload: string) => void;
+  onCommentResolved: (docId: string, cmtId: string) => void;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-// ── Inbound frame parser ──────────────────────────────────────────────
-// Validates raw JSON once at the boundary and returns a typed structure.
-// This avoids scattering `typeof x === "string"` checks through handlers.
+function isCommentsSnapshotEntries(value: unknown): value is CommentsSnapshotEntry[] {
+  if (!Array.isArray(value)) {
+    return false;
+  }
+  return value.every((entry) => {
+    if (!isRecord(entry)) {
+      return false;
+    }
+    return (
+      typeof entry["cmtId"] === "string" &&
+      typeof entry["payload"] === "string"
+    );
+  });
+}
 
-type ParsedFrame =
-  | { kind: "pong" }
-  | { kind: "error"; docId: string; message: string }
-  | { kind: "subscribeOk"; docId: string }
-  | { kind: "relay"; docId: string; payload: string }
-  | { kind: "unknown" };
+function isValidRelayMessage(value: unknown): value is RelayMessage {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return (
+    typeof value["type"] === "string" &&
+    VALID_RELAY_TYPES.has(value["type"])
+  );
+}
 
 function parseInboundFrame(raw: unknown): ParsedFrame {
   if (!isRecord(raw)) {
@@ -66,6 +101,59 @@ function parseInboundFrame(raw: unknown): ParsedFrame {
     return { kind: "subscribeOk", docId: raw.docId };
   }
   if (
+    raw.type === "comment:add:ack" &&
+    typeof raw.docId === "string" &&
+    typeof raw.cmtId === "string"
+  ) {
+    return { kind: "commentAddAck", docId: raw.docId, cmtId: raw.cmtId };
+  }
+  if (
+    raw.type === "comment:resolve:ack" &&
+    typeof raw.docId === "string" &&
+    typeof raw.cmtId === "string"
+  ) {
+    return {
+      kind: "commentResolveAck",
+      docId: raw.docId,
+      cmtId: raw.cmtId,
+    };
+  }
+  if (
+    raw.type === "comments:snapshot" &&
+    typeof raw.docId === "string" &&
+    isCommentsSnapshotEntries(raw.comments)
+  ) {
+    return {
+      kind: "commentsSnapshot",
+      docId: raw.docId,
+      comments: raw.comments,
+    };
+  }
+  if (
+    raw.type === "comment:added" &&
+    typeof raw.docId === "string" &&
+    typeof raw.cmtId === "string" &&
+    typeof raw.payload === "string"
+  ) {
+    return {
+      kind: "commentAdded",
+      docId: raw.docId,
+      cmtId: raw.cmtId,
+      payload: raw.payload,
+    };
+  }
+  if (
+    raw.type === "comment:resolved" &&
+    typeof raw.docId === "string" &&
+    typeof raw.cmtId === "string"
+  ) {
+    return {
+      kind: "commentResolved",
+      docId: raw.docId,
+      cmtId: raw.cmtId,
+    };
+  }
+  if (
     raw.version === 1 &&
     typeof raw.docId === "string" &&
     typeof raw.payload === "string"
@@ -73,12 +161,6 @@ function parseInboundFrame(raw: unknown): ParsedFrame {
     return { kind: "relay", docId: raw.docId, payload: raw.payload };
   }
   return { kind: "unknown" };
-}
-
-interface RelayContext {
-  subscriptions: Set<string>;
-  confirmed: Set<string>;
-  socket: WebSocket | null;
 }
 
 function scheduleSubscriptionRetry(context: RelayContext, docId: string): void {
@@ -91,17 +173,12 @@ function scheduleSubscriptionRetry(context: RelayContext, docId: string): void {
       context.socket?.readyState === WebSocket.OPEN &&
       context.subscriptions.has(retryDocId)
     ) {
-      context.socket.send(
-        JSON.stringify({ type: "subscribe", docId: retryDocId }),
-      );
+      context.retrySubscribe(retryDocId);
     }
-  }, 5000);
+  }, SUBSCRIPTION_RETRY_DELAY_MS);
 }
 
-function handleControlFrame(
-  frame: ParsedFrame,
-  context: RelayContext,
-): boolean {
+function handleControlFrame(frame: ParsedFrame, context: RelayContext): boolean {
   if (frame.kind === "pong") {
     return true;
   }
@@ -117,6 +194,27 @@ function handleControlFrame(
   }
   if (frame.kind === "subscribeOk") {
     context.confirmed.add(frame.docId);
+    context.onSubscribeOk(frame.docId);
+    return true;
+  }
+  if (frame.kind === "commentAddAck") {
+    context.onCommentAddAck(frame.docId, frame.cmtId);
+    return true;
+  }
+  if (frame.kind === "commentResolveAck") {
+    context.onCommentResolveAck(frame.docId, frame.cmtId);
+    return true;
+  }
+  if (frame.kind === "commentsSnapshot") {
+    context.onSnapshot(frame.docId, frame.comments);
+    return true;
+  }
+  if (frame.kind === "commentAdded") {
+    context.onCommentAdded(frame.docId, frame.cmtId, frame.payload);
+    return true;
+  }
+  if (frame.kind === "commentResolved") {
+    context.onCommentResolved(frame.docId, frame.cmtId);
     return true;
   }
   return false;
@@ -125,17 +223,15 @@ function handleControlFrame(
 async function decryptAndDispatch(
   frame: ParsedFrame,
   encryptionKeys: Map<string, CryptoKey>,
-  onMessage: (docId: string, message: RelayMessage) => void,
+  onMessage: (docId: string, event: RelayEvent) => void,
 ): Promise<void> {
   if (frame.kind !== "relay") {
     return;
   }
-
   const key = encryptionKeys.get(frame.docId);
   if (!key) {
     return;
   }
-
   const raw = Uint8Array.from(atob(frame.payload), (char) =>
     char.charCodeAt(0),
   );
@@ -148,7 +244,6 @@ async function decryptAndDispatch(
   onMessage(frame.docId, parsed);
 }
 
-/** Convert an ArrayBuffer to a base64 string without hitting stack size limits. */
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = "";
@@ -159,10 +254,36 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
-// ── Module-level relay singleton ──────────────────────────────────────────────
-// The relay connection is a mutable non-serializable object, so it must NOT
-// live in the Zustand store. It is managed here as a module-level singleton.
-// `connectRelay` sets the active relay; `close()` clears it.
+function isPeerComment(value: unknown): value is PeerComment {
+  if (!isRecord(value)) {
+    return false;
+  }
+  if (typeof value["id"] !== "string") {
+    return false;
+  }
+  if (typeof value["peerName"] !== "string") {
+    return false;
+  }
+  if (typeof value["path"] !== "string") {
+    return false;
+  }
+  if (typeof value["commentType"] !== "string") {
+    return false;
+  }
+  if (typeof value["text"] !== "string") {
+    return false;
+  }
+  if (typeof value["createdAt"] !== "string") {
+    return false;
+  }
+  if (!isRecord(value["blockRef"])) {
+    return false;
+  }
+  return (
+    typeof value["blockRef"]["blockIndex"] === "number" &&
+    typeof value["blockRef"]["contentPreview"] === "string"
+  );
+}
 
 let activeRelay: RelayConnection | null = null;
 
@@ -174,26 +295,23 @@ function setRelay(relay: RelayConnection | null): void {
   activeRelay = relay;
 }
 
-type OutboundFrame = { version: 1; docId: string; payload: string };
-
-const BATCH_INTERVAL_MS = 500;
-const PING_INTERVAL_MS = 30_000;
-
 class RelayConnectionImpl implements RelayConnection {
   private socket: WebSocket | null = null;
   private backoff = 1000;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private pingInterval: ReturnType<typeof setInterval> | null = null;
   private closedIntentionally = false;
-  private outboundBatch: OutboundFrame[] = [];
-  private batchTimer: ReturnType<typeof setTimeout> | null = null;
-  private wsUrl: string;
   private subscriptions = new Set<string>();
   private confirmedSubscriptions = new Set<string>();
+  private subscriptionMeta = new Map<
+    string,
+    { role: "host" | "peer"; hostSecret?: string }
+  >();
   private encryptionKeys = new Map<string, CryptoKey>();
+  private wsUrl: string;
 
   constructor(
-    private onMessage: (docId: string, message: RelayMessage) => void,
+    private onMessage: (docId: string, event: RelayEvent) => void,
     private onStatusChange: (
       status: "connecting" | "connected" | "disconnected",
     ) => void,
@@ -205,22 +323,28 @@ class RelayConnectionImpl implements RelayConnection {
     this.openConnection();
   }
 
-  // ── Private helpers ──────────────────────────────────────────────────
-
-  private flushBatch(): void {
-    this.batchTimer = null;
-    if (
-      this.outboundBatch.length === 0 ||
-      !this.socket ||
-      this.socket.readyState !== WebSocket.OPEN
-    ) {
+  private sendSubscribeFrame(
+    docId: string,
+    role: "host" | "peer",
+    hostSecret?: string,
+  ): void {
+    if (this.socket?.readyState !== WebSocket.OPEN) {
       return;
     }
-    for (const frame of this.outboundBatch) {
-      this.socket.send(JSON.stringify(frame));
+    const frame: Record<string, string> = { type: "subscribe", docId, role };
+    if (hostSecret) {
+      frame.hostSecret = hostSecret;
     }
-    this.outboundBatch = [];
+    this.socket.send(JSON.stringify(frame));
   }
+
+  private retrySubscribe = (docId: string): void => {
+    const meta = this.subscriptionMeta.get(docId);
+    if (!meta) {
+      return;
+    }
+    this.sendSubscribeFrame(docId, meta.role, meta.hostSecret);
+  };
 
   private startPingInterval(): void {
     this.stopPingInterval();
@@ -248,13 +372,13 @@ class RelayConnectionImpl implements RelayConnection {
     this.onStatusChange("connected");
     this.startPingInterval();
     this.resubscribeAll();
-    this.flushBatch();
   };
 
   private resubscribeAll(): void {
     for (const docId of this.subscriptions) {
-      if (this.socket) {
-        this.socket.send(JSON.stringify({ type: "subscribe", docId }));
+      const meta = this.subscriptionMeta.get(docId);
+      if (meta) {
+        this.sendSubscribeFrame(docId, meta.role, meta.hostSecret);
       }
     }
   }
@@ -272,6 +396,18 @@ class RelayConnectionImpl implements RelayConnection {
         subscriptions: this.subscriptions,
         confirmed: this.confirmedSubscriptions,
         socket: this.socket,
+        retrySubscribe: this.retrySubscribe,
+        onSubscribeOk: (docId) => handleSubscribeConfirmed(docId),
+        onCommentAddAck: (docId, cmtId) =>
+          this.onMessage(docId, { type: "comment:add:ack", cmtId }),
+        onCommentResolveAck: (docId, cmtId) =>
+          this.onMessage(docId, { type: "comment:resolve:ack", cmtId }),
+        onSnapshot: (docId, comments) =>
+          this.onMessage(docId, { type: "comments:snapshot", comments }),
+        onCommentAdded: (docId, cmtId, payload) =>
+          this.onMessage(docId, { type: "comment:added", cmtId, payload }),
+        onCommentResolved: (docId, cmtId) =>
+          this.onMessage(docId, { type: "comment:resolved", cmtId }),
       };
       if (handleControlFrame(frame, context)) {
         return;
@@ -312,14 +448,16 @@ class RelayConnectionImpl implements RelayConnection {
     }, this.backoff);
   }
 
-  // ── Public interface ─────────────────────────────────────────────────
-
-  subscribe(docId: string, key: CryptoKey): void {
+  subscribe(
+    docId: string,
+    key: CryptoKey,
+    role: "host" | "peer",
+    hostSecret?: string,
+  ): void {
     this.encryptionKeys.set(docId, key);
     this.subscriptions.add(docId);
-    if (this.socket?.readyState === WebSocket.OPEN) {
-      this.socket.send(JSON.stringify({ type: "subscribe", docId }));
-    }
+    this.subscriptionMeta.set(docId, { role, hostSecret });
+    this.sendSubscribeFrame(docId, role, hostSecret);
   }
 
   unsubscribe(docId: string): void {
@@ -329,6 +467,27 @@ class RelayConnectionImpl implements RelayConnection {
     this.encryptionKeys.delete(docId);
     this.subscriptions.delete(docId);
     this.confirmedSubscriptions.delete(docId);
+    this.subscriptionMeta.delete(docId);
+  }
+
+  sendCommentAdd(docId: string, cmtId: string, payload: string): void {
+    if (
+      this.socket?.readyState !== WebSocket.OPEN ||
+      !this.confirmedSubscriptions.has(docId)
+    ) {
+      return;
+    }
+    this.socket.send(JSON.stringify({ type: "comment:add", docId, cmtId, payload }));
+  }
+
+  sendCommentResolve(docId: string, cmtId: string): void {
+    if (
+      this.socket?.readyState !== WebSocket.OPEN ||
+      !this.confirmedSubscriptions.has(docId)
+    ) {
+      return;
+    }
+    this.socket.send(JSON.stringify({ type: "comment:resolve", docId, cmtId }));
   }
 
   async send(docId: string, message: RelayMessage): Promise<void> {
@@ -336,13 +495,13 @@ class RelayConnectionImpl implements RelayConnection {
     if (!key) {
       throw new Error(`No encryption key for docId: ${docId}`);
     }
+    if (this.socket?.readyState !== WebSocket.OPEN) {
+      return;
+    }
     const encoded = new TextEncoder().encode(JSON.stringify(message));
     const encrypted = await encrypt(encoded, key);
     const payload = arrayBufferToBase64(encrypted);
-    this.outboundBatch.push({ version: 1, docId, payload });
-    if (!this.batchTimer) {
-      this.batchTimer = setTimeout(() => this.flushBatch(), BATCH_INTERVAL_MS);
-    }
+    this.socket.send(JSON.stringify({ version: 1, docId, payload }));
   }
 
   hasActiveSubscriptions(): boolean {
@@ -355,12 +514,9 @@ class RelayConnectionImpl implements RelayConnection {
 
   close(): void {
     this.closedIntentionally = true;
-    this.flushBatch();
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
-    }
-    if (this.batchTimer) {
-      clearTimeout(this.batchTimer);
+      this.reconnectTimer = null;
     }
     this.stopPingInterval();
     this.socket?.close();
@@ -368,12 +524,13 @@ class RelayConnectionImpl implements RelayConnection {
     this.encryptionKeys.clear();
     this.subscriptions.clear();
     this.confirmedSubscriptions.clear();
+    this.subscriptionMeta.clear();
     setRelay(null);
   }
 }
 
 function connectRelay(
-  onMessage: (docId: string, message: RelayMessage) => void,
+  onMessage: (docId: string, event: RelayEvent) => void,
   onStatusChange: (status: "connecting" | "connected" | "disconnected") => void,
 ): RelayConnection {
   const relay = new RelayConnectionImpl(onMessage, onStatusChange);
@@ -381,83 +538,23 @@ function connectRelay(
   return relay;
 }
 
-// ── Message routing ───────────────────────────────────────────────────
-
-function handleIncomingMessage(docId: string, message: RelayMessage): void {
-  const state = useAppStore.getState();
-
-  if (message.type === "comment:added") {
-    if (state.isPeerMode) {
-      // Peer mode: not applicable — peers see only their own comments
-      return;
-    }
-    // Host mode: add to pending comments on the owning tab
-    state.addPendingComment(docId, message.comment);
-    return;
+async function decryptPeerComment(
+  encryptedPayload: string,
+  key: CryptoKey,
+  expectedCmtId: string,
+): Promise<PeerComment> {
+  const raw = Uint8Array.from(atob(encryptedPayload), (char) =>
+    char.charCodeAt(0),
+  );
+  const decrypted = await decrypt(raw.buffer, key);
+  const parsed: unknown = JSON.parse(new TextDecoder().decode(decrypted));
+  if (!isPeerComment(parsed)) {
+    throw new Error("Invalid peer comment shape");
   }
-
-  if (message.type === "comment:resolved") {
-    if (state.isPeerMode) {
-      // Peer receives host resolve — remove the comment locally
-      state.deletePeerComment(message.commentId);
-    }
-    return;
+  if (parsed.id !== expectedCmtId) {
+    throw new Error("Comment id mismatch between frame and payload");
   }
-
-  if (message.type === "document:updated") {
-    if (state.isPeerMode) {
-      state.setDocumentUpdateAvailable(true);
-    }
-    return;
-  }
-}
-
-// ── Status change + reconnect catch-up ────────────────────────────────
-
-function handleStatusChange(
-  status: "connecting" | "connected" | "disconnected",
-): void {
-  useAppStore.getState().setRelayStatus(status);
-  if (status === "connected") {
-    performReconnectCatchUp();
-  }
-}
-
-function performReconnectCatchUp(): void {
-  const state = useAppStore.getState();
-  if (state.isPeerMode) {
-    state.loadSharedContent().catch((error: unknown) => {
-      console.warn("[relay] peer content catch-up failed:", error);
-    });
-  } else {
-    state.fetchAllPendingComments().catch((error: unknown) => {
-      console.warn("[relay] host reconnect catch-up failed:", error);
-    });
-  }
-}
-
-// ── Public orchestration API ──────────────────────────────────────────
-
-/** Start the relay connection. No-op if already connected. */
-export function startRelay(): void {
-  if (getRelay()) {
-    return;
-  }
-  connectRelay(handleIncomingMessage, handleStatusChange);
-}
-
-/** Subscribe a document to the relay, finding its encryption key from the store. */
-export function subscribeToDoc(docId: string): void {
-  const relay = getRelay();
-  if (!relay) {
-    return;
-  }
-  const key = findEncryptionKey(docId);
-  if (!key) {
-    console.warn("[relay] no key for docId:", docId);
-    return;
-  }
-  relay.subscribe(docId, key);
+  return parsed;
 }
 
 function findEncryptionKey(docId: string): CryptoKey | undefined {
@@ -473,29 +570,172 @@ function findEncryptionKey(docId: string): CryptoKey | undefined {
   return undefined;
 }
 
-/** Unsubscribe a document. Closes the relay if no subscriptions remain. */
+function findHostSecret(docId: string): string | undefined {
+  const state = useAppStore.getState();
+  for (const tab of state.tabs) {
+    const record = tab.shares.find((share) => share.docId === docId);
+    if (record) {
+      return record.hostSecret;
+    }
+  }
+  return undefined;
+}
+
+async function decryptAndAddPendingComment(
+  docId: string,
+  cmtId: string,
+  encryptedPayload: string,
+): Promise<void> {
+  const key = findEncryptionKey(docId);
+  if (!key) {
+    return;
+  }
+  try {
+    const comment = await decryptPeerComment(encryptedPayload, key, cmtId);
+    useAppStore.getState().addPendingComment(docId, comment);
+  } catch (error) {
+    console.warn("[relay] failed to decrypt comment:", error);
+  }
+}
+
+async function decryptAndReplaceSnapshot(
+  docId: string,
+  entries: CommentsSnapshotEntry[],
+): Promise<void> {
+  const key = findEncryptionKey(docId);
+  if (!key) {
+    return;
+  }
+  const comments: PeerComment[] = [];
+  for (const entry of entries) {
+    try {
+      const comment = await decryptPeerComment(entry.payload, key, entry.cmtId);
+      comments.push(comment);
+    } catch (error) {
+      console.warn("[relay] failed to decrypt snapshot comment:", error);
+    }
+  }
+  useAppStore.getState().replaceCommentsSnapshot(docId, comments);
+}
+
+function handleIncomingMessage(docId: string, event: RelayEvent): void {
+  const state = useAppStore.getState();
+
+  if (event.type === "comment:added") {
+    if (!state.isPeerMode) {
+      void decryptAndAddPendingComment(docId, event.cmtId, event.payload);
+    }
+    return;
+  }
+
+  if (event.type === "comments:snapshot") {
+    if (!state.isPeerMode) {
+      void decryptAndReplaceSnapshot(docId, event.comments);
+    }
+    return;
+  }
+
+  if (event.type === "comment:add:ack") {
+    state.confirmPeerCommentSubmitted(event.cmtId);
+    return;
+  }
+
+  if (event.type === "comment:resolve:ack") {
+    state.confirmPendingResolve(docId, event.cmtId);
+    return;
+  }
+
+  if (event.type === "comment:resolved") {
+    if (state.isPeerMode) {
+      state.deletePeerComment(event.cmtId);
+    }
+    return;
+  }
+
+  if (event.type === "document:updated") {
+    if (state.isPeerMode) {
+      state.setDocumentUpdateAvailable(true);
+    }
+  }
+}
+
+function performReconnectCatchUp(): void {
+  const state = useAppStore.getState();
+  if (state.isPeerMode) {
+    state.loadSharedContent().catch((error: unknown) => {
+      console.warn("[relay] peer content catch-up failed:", error);
+    });
+  }
+}
+
+function handleStatusChange(
+  status: "connecting" | "connected" | "disconnected",
+): void {
+  useAppStore.getState().setRelayStatus(status);
+  if (status === "connected") {
+    performReconnectCatchUp();
+  }
+}
+
+function handleSubscribeConfirmed(docId: string): void {
+  const state = useAppStore.getState();
+  if (state.isPeerMode) {
+    state.syncPeerComments().catch((error: unknown) => {
+      console.warn("[relay] peer comment resend failed:", error);
+    });
+    return;
+  }
+  state.flushPendingCommentResolves(docId);
+}
+
+export function startRelay(): void {
+  if (getRelay()) {
+    return;
+  }
+  connectRelay(handleIncomingMessage, handleStatusChange);
+}
+
+export function subscribeToDoc(docId: string): void {
+  const relay = getRelay();
+  if (!relay) {
+    return;
+  }
+  const key = findEncryptionKey(docId);
+  if (!key) {
+    console.warn("[relay] no key for docId:", docId);
+    return;
+  }
+  const state = useAppStore.getState();
+  if (state.isPeerMode) {
+    relay.subscribe(docId, key, "peer");
+    return;
+  }
+  const hostSecret = findHostSecret(docId);
+  if (!hostSecret) {
+    console.warn("[relay] missing hostSecret for docId:", docId);
+    return;
+  }
+  relay.subscribe(docId, key, "host", hostSecret);
+}
+
 export function unsubscribeFromDoc(docId: string): void {
   const relay = getRelay();
   if (relay) {
     relay.unsubscribe(docId);
   }
-
-  // Close relay if no subscriptions remain
   if (relay && !relay.hasActiveSubscriptions()) {
     stopRelay();
   }
 }
 
-/** Close the relay and clear all subscription state. */
 export function stopRelay(): void {
   const relay = getRelay();
   if (relay) {
-    relay.close(); // close() internally clears the module-level singleton
+    relay.close();
   }
   useAppStore.getState().setRelayStatus("disconnected");
 }
 
-/** Check whether a specific docId has an active relay subscription. */
 export function isDocSubscribed(docId: string): boolean {
   const relay = getRelay();
   if (!relay) {
@@ -504,62 +744,46 @@ export function isDocSubscribed(docId: string): boolean {
   return relay.isSubscribed(docId);
 }
 
-// ── High-level orchestration (called by store actions) ───────────────
-
-/** Start relay and subscribe a list of docIds. Filters expired shares. */
 export function ensureRelaySubscriptions(
   shares: ReadonlyArray<{ docId: string; expiresAt: string }>,
 ): void {
   const now = new Date();
-  const active = shares.filter((share) => new Date(share.expiresAt) > now);
-  if (active.length === 0) {
+  const activeShares = shares.filter(
+    (share) => new Date(share.expiresAt) > now,
+  );
+  if (activeShares.length === 0) {
     return;
   }
   startRelay();
-  for (const share of active) {
+  for (const share of activeShares) {
     subscribeToDoc(share.docId);
   }
 }
 
-/** Start relay and subscribe a single docId (peer mode — no expiry check). */
 export function startRelayForDoc(docId: string): void {
   startRelay();
   subscribeToDoc(docId);
 }
 
-/** Broadcast comment:resolved to peers via relay. Swallows errors. */
-export function broadcastCommentResolved(
-  docId: string,
-  commentId: string,
-): void {
-  try {
-    const relay = getRelay();
-    if (relay) {
-      relay
-        .send(docId, { type: "comment:resolved", commentId })
-        .catch((error) => {
-          console.warn("[relay] resolve broadcast failed:", error);
-        });
-    }
-  } catch (error) {
-    console.warn("[relay] resolve broadcast setup failed:", error);
+export function relayCommentResolve(docId: string, cmtId: string): void {
+  const relay = getRelay();
+  if (relay) {
+    relay.sendCommentResolve(docId, cmtId);
   }
 }
 
-/** Broadcast comment:added for each comment to peers. Swallows errors. */
-export async function broadcastCommentsAdded(
+export async function relayCommentAdd(
   docId: string,
-  comments: ReadonlyArray<PeerComment>,
+  cmtId: string,
+  comment: PeerComment,
+  key: CryptoKey,
 ): Promise<void> {
-  try {
-    const relay = getRelay();
-    if (!relay) {
-      return;
-    }
-    for (const comment of comments) {
-      await relay.send(docId, { type: "comment:added", comment });
-    }
-  } catch (error) {
-    console.warn("[relay] broadcast failed during syncPeerComments:", error);
+  const relay = getRelay();
+  if (!relay) {
+    return;
   }
+  const encoded = new TextEncoder().encode(JSON.stringify(comment));
+  const encrypted = await encrypt(encoded, key);
+  const payload = arrayBufferToBase64(encrypted);
+  relay.sendCommentAdd(docId, cmtId, payload);
 }

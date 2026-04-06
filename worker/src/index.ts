@@ -12,8 +12,6 @@ interface ShareMeta {
   label: string;
 }
 
-// --- Helpers ---
-
 function corsHeaders(origin: string) {
   return {
     "Access-Control-Allow-Origin": origin,
@@ -113,17 +111,6 @@ async function verifySecret(
   return hash === meta.hostSecretHash;
 }
 
-function arrayBufferToBase64(buf: ArrayBuffer): string {
-  const bytes = new Uint8Array(buf);
-  let binary = "";
-  for (let index = 0; index < bytes.length; index++) {
-    binary += String.fromCharCode(bytes[index]);
-  }
-  return btoa(binary);
-}
-
-// --- Route handlers ---
-
 async function handleRelay(
   req: Request,
   env: Env,
@@ -133,7 +120,6 @@ async function handleRelay(
   if (req.headers.get("Upgrade") !== "websocket") {
     return errRes(426, "WebSocket upgrade required", cors);
   }
-  // Validate origin for WebSocket upgrades (CORS doesn't protect WebSockets)
   const wsOrigin = req.headers.get("Origin") ?? "";
   if (!allowed.includes(wsOrigin)) {
     return errRes(403, "Origin not allowed", cors);
@@ -141,6 +127,16 @@ async function handleRelay(
   const hubId = env.RELAY_HUB.idFromName("hub");
   const hub = env.RELAY_HUB.get(hubId);
   return hub.fetch(req);
+}
+
+async function clearRelayDoc(env: Env, docId: string): Promise<void> {
+  const hubId = env.RELAY_HUB.idFromName("hub");
+  const hub = env.RELAY_HUB.get(hubId);
+  await hub.fetch("https://internal/internal/clear", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ docId }),
+  });
 }
 
 const MAX_BLOB_SIZE = 25 * 1024 * 1024;
@@ -227,7 +223,7 @@ async function updateShareContent(
     return errRes(404, "Not found", cors);
   }
   const blob = await req.arrayBuffer();
-  if (blob.byteLength > 25 * 1024 * 1024) {
+  if (blob.byteLength > MAX_BLOB_SIZE) {
     return errRes(413, "Blob too large", cors);
   }
   const remainingTtl = computeRemainingTtl(meta);
@@ -272,6 +268,11 @@ async function deleteShare(
   }
   await env.LOLLIPOP_DRAGON.delete(`share:${docId}`);
   await env.LOLLIPOP_DRAGON.delete(`share:${docId}:meta`);
+  try {
+    await clearRelayDoc(env, docId);
+  } catch (error) {
+    console.warn("[share] failed to clear relay doc state:", docId, error);
+  }
   return jsonRes({ ok: true }, cors);
 }
 
@@ -293,115 +294,7 @@ async function handleShare(
   return handler ? handler() : null;
 }
 
-async function postComment(
-  req: Request,
-  env: Env,
-  cors: Record<string, string>,
-  docId: string,
-  clientCmtId: string | undefined,
-): Promise<Response> {
-  const meta = await getMeta(env, docId);
-  if (!meta) {
-    return errRes(404, "Share not found", cors);
-  }
-  const blob = await req.arrayBuffer();
-  if (blob.byteLength > 1024 * 1024) {
-    return errRes(413, "Comment too large", cors);
-  }
-  const cmtId = clientCmtId || crypto.randomUUID();
-  await env.LOLLIPOP_DRAGON.put(`comments:${docId}:${cmtId}`, blob, {
-    expirationTtl: meta.ttl,
-  });
-  return jsonRes({ cmtId }, cors);
-}
-
-async function listComments(
-  env: Env,
-  cors: Record<string, string>,
-  docId: string,
-): Promise<Response> {
-  const list = await env.LOLLIPOP_DRAGON.list({
-    prefix: `comments:${docId}:`,
-  });
-  const blobs = await Promise.all(
-    list.keys.map((key) => env.LOLLIPOP_DRAGON.get(key.name, "arrayBuffer")),
-  );
-  const encoded = blobs
-    .filter((blob): blob is ArrayBuffer => blob !== null)
-    .map((blob) => arrayBufferToBase64(blob));
-  return jsonRes(encoded, cors);
-}
-
-async function headComments(
-  env: Env,
-  cors: Record<string, string>,
-  docId: string,
-): Promise<Response> {
-  const list = await env.LOLLIPOP_DRAGON.list({
-    prefix: `comments:${docId}:`,
-  });
-  return new Response(null, {
-    status: 200,
-    headers: { ...cors, "X-Comment-Count": String(list.keys.length) },
-  });
-}
-
-async function deleteSingleComment(
-  req: Request,
-  env: Env,
-  cors: Record<string, string>,
-  docId: string,
-  cmtId: string,
-): Promise<Response> {
-  if (!(await verifySecret(req, env, docId))) {
-    return errRes(403, "Forbidden", cors);
-  }
-  await env.LOLLIPOP_DRAGON.delete(`comments:${docId}:${cmtId}`);
-  return jsonRes({ ok: true }, cors);
-}
-
-async function deleteAllComments(
-  req: Request,
-  env: Env,
-  cors: Record<string, string>,
-  docId: string,
-): Promise<Response> {
-  if (!(await verifySecret(req, env, docId))) {
-    return errRes(403, "Forbidden", cors);
-  }
-  const list = await env.LOLLIPOP_DRAGON.list({
-    prefix: `comments:${docId}:`,
-  });
-  await Promise.all(
-    list.keys.map((key) => env.LOLLIPOP_DRAGON.delete(key.name)),
-  );
-  return jsonRes({ ok: true }, cors);
-}
-
-async function handleComments(
-  req: Request,
-  env: Env,
-  cors: Record<string, string>,
-  docId: string,
-  cmtId: string | undefined,
-): Promise<Response | null> {
-  const deleteHandler = cmtId
-    ? () => deleteSingleComment(req, env, cors, docId, cmtId)
-    : () => deleteAllComments(req, env, cors, docId);
-
-  const handlers: Record<string, () => Promise<Response>> = {
-    POST: () => postComment(req, env, cors, docId, cmtId),
-    GET: () => listComments(env, cors, docId),
-    HEAD: () => headComments(env, cors, docId),
-    DELETE: deleteHandler,
-  };
-  const handler = handlers[req.method];
-  return handler ? handler() : null;
-}
-
-// --- Main handler ---
-
-export { RelayHub } from "./relay";
+export { RelayHubSqlite } from "./relay";
 
 async function routeRequest(
   req: Request,
@@ -418,12 +311,6 @@ async function routeRequest(
   }
   if (resource === "share") {
     const result = await handleShare(req, env, cors, url, docId);
-    if (result) {
-      return result;
-    }
-  }
-  if (resource === "comments" && docId) {
-    const result = await handleComments(req, env, cors, docId, parts[2]);
     if (result) {
       return result;
     }
@@ -446,8 +333,8 @@ export default {
     try {
       return await routeRequest(req, env, cors, url, allowed);
     } catch (error) {
-      const msg = error instanceof Error ? error.message : "Internal error";
-      return errRes(500, msg, cors);
+      const message = error instanceof Error ? error.message : "Internal error";
+      return errRes(500, message, cors);
     }
   },
 };
