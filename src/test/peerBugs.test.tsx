@@ -119,7 +119,7 @@ describe("store.syncPeerComments", () => {
     window.location.hash = "#s=test-key-b64&n=test";
   });
 
-  it("sends only unsubmitted comments for the current file", async () => {
+  it("sends all unsubmitted comments across shared files", async () => {
     const submittedComment = makePeerComment({
       id: "old-1",
       text: "already sent",
@@ -141,11 +141,17 @@ describe("store.syncPeerComments", () => {
 
     await useAppStore.getState().syncPeerComments();
 
-    expect(mockRelayCommentAdd).toHaveBeenCalledTimes(1);
+    expect(mockRelayCommentAdd).toHaveBeenCalledTimes(2);
     expect(mockRelayCommentAdd).toHaveBeenCalledWith(
       "mock-doc-id",
       "new-1",
       expect.objectContaining({ id: "new-1" }),
+      expect.any(Object),
+    );
+    expect(mockRelayCommentAdd).toHaveBeenCalledWith(
+      "mock-doc-id",
+      "other-1",
+      expect.objectContaining({ id: "other-1" }),
       expect.any(Object),
     );
   });

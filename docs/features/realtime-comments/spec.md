@@ -23,6 +23,7 @@ Host-authored local comments remain local-only. They are merged directly into th
 - As a peer leaving feedback, I want submitted comments to be acknowledged only after the backend stores them durably.
 - As a host reconnecting after a disconnect, I want the current unresolved comment set restored from the backend without merge-by-ID heuristics.
 - As a peer reopening a shared document, I want the document content to reload cleanly and I want previously submitted comments to avoid duplicate submission.
+- As a peer reconnecting with unsent comments on multiple shared files, I want all unsent comments retried instead of only the currently open file.
 - As a peer viewing a shared document, I want to know when the host pushed updated content so I can refresh deliberately.
 - As a host adding my own local comments, I want them to stay private and local because they are already part of my working copy.
 
@@ -181,7 +182,8 @@ Peer comment payloads are encrypted before they are sent in `comment:add`. The D
 4. A peer comment is marked submitted only after `comment:add:ack`.
 5. Peer-side content refresh notification works without changing the encrypted share-content model.
 6. Host-only resolve authority is enforced by `hostSecret` on subscribe.
-7. Host-authored local comments are never inserted into Durable Object comment storage.
+7. Reconnect resend includes unsent peer comments across all shared files, not only the currently open peer file.
+8. Host-authored local comments are never inserted into Durable Object comment storage.
 
 ## 9. Limitations
 

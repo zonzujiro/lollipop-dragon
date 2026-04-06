@@ -140,7 +140,7 @@ The WebSocket instance and timers stay in `src/services/relay.ts`, not in the Zu
 ### 7.1 Peer add
 
 1. Peer creates a local `PeerComment`.
-2. `syncPeerComments()` finds unsent local comments.
+2. `syncPeerComments()` finds unsent local comments across the shared document, not only the currently open peer file.
 3. `relayCommentAdd()` encrypts the comment and sends `comment:add`.
 4. DO persists the row with `INSERT OR IGNORE`.
 5. DO sends `comment:add:ack`.
