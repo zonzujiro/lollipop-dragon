@@ -2,9 +2,9 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import mermaid from 'mermaid'
-import { MermaidBlock } from '../components/MermaidBlock'
-import { MarkdownRenderer } from '../components/MarkdownRenderer'
-import { resetTestStore, setTestState } from './testHelpers'
+import { MermaidBlock } from "./index";
+import { MarkdownRenderer } from "../MarkdownRenderer";
+import { resetTestStore, setTestState } from "../../test/testHelpers";
 
 // Mock mermaid before importing the component
 vi.mock('mermaid', () => ({

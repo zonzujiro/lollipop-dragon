@@ -1,9 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ContentUpdateBanner } from "../components/ContentUpdateBanner";
-import { useAppStore } from "../store";
-import { resetTestStore } from "./testHelpers";
+import { ContentUpdateBanner } from "./index";
+import { useAppStore } from "../../store";
+import { resetTestStore } from "../../test/testHelpers";
 
 beforeEach(() => {
   resetTestStore();

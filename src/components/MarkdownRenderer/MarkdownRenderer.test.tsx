@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { MarkdownRenderer } from '../components/MarkdownRenderer'
-import { setTestState, resetTestStore } from './testHelpers'
+import { MarkdownRenderer } from "./index";
+import { setTestState, resetTestStore } from "../../test/testHelpers";
 
 function setContent(raw: string) {
   setTestState({ rawContent: raw })

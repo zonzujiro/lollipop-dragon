@@ -1,9 +1,9 @@
 import { render, screen, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
-import { UndoToast } from '../components/UndoToast'
-import { useAppStore } from '../store'
-import { setTestState, resetTestStore } from './testHelpers'
+import { UndoToast } from "./index";
+import { useAppStore } from "../../store";
+import { setTestState, resetTestStore } from "../../test/testHelpers";
 
 beforeEach(() => {
   resetTestStore()

@@ -1,12 +1,12 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { SharedPanel } from "../components/SharedPanel";
-import { useAppStore } from "../store";
-import { makeShare, resetTestStore, setTestState } from "./testHelpers";
+import { SharedPanel } from "./index";
+import { useAppStore } from "../../store";
+import { makeShare, resetTestStore, setTestState } from "../../test/testHelpers";
 
-vi.mock("../modules/relay", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../modules/relay")>();
+vi.mock("../../modules/relay", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../modules/relay")>();
   return {
     ...actual,
     isDocSubscribed: vi.fn(() => false),

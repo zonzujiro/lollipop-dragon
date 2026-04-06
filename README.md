@@ -1,20 +1,21 @@
 # [Lollipop Dragon](https://critiq.ink/)
 
-A browser-based platform for reviewing LLM-generated research documents. Open local markdown files, annotate them with [CriticMarkup](https://criticmarkup.com/) comments, share encrypted snapshots with peers, and present content as slideshows — all without leaving the browser.
+A browser-based platform for reviewing markdown documents. Open local files and folders, annotate them with [CriticMarkup](https://criticmarkup.com/) comments, share encrypted snapshots with peers, and present content as slideshows without leaving the browser.
 
 Comments live directly in the markdown using CriticMarkup syntax, so any LLM can read and act on them naturally. No sidecar files, no export steps, no sync issues.
 
 ## Features
 
-- **Rich markdown rendering** — GFM tables, task lists, syntax-highlighted code (Shiki), Mermaid diagrams
-- **CriticMarkup comments** — 7 semantic types (fix, rewrite, expand, clarify, question, remove, note) stored inline in the file
-- **Two collaboration flows** — peer sharing (encrypted, no accounts) and AI collaboration (LLM reads/writes CriticMarkup directly)
-- **Folder browsing** — open entire directories, navigate via file tree sidebar, comment across files
-- **Tabs** — open multiple files/folders in tabs, keyboard shortcuts to switch (Ctrl+Tab) and close (Cmd+W)
-- **Presentation mode** — splits markdown by `# headings` or `---` dividers into a fullscreen slideshow
-- **Focus mode** — hide all chrome, just the rendered document
+- **Rich markdown rendering** - GFM tables, task lists, syntax-highlighted code (Shiki), Mermaid diagrams
+- **CriticMarkup comments** - 7 semantic types (fix, rewrite, expand, clarify, question, remove, note) stored inline in the file
+- **Two collaboration flows** - peer sharing (encrypted, no accounts) and AI collaboration (LLM reads and writes CriticMarkup directly)
+- **Realtime peer review** - peers submit comments through the relay, hosts receive them live, and unresolved comments survive reconnects
+- **Folder browsing** - open entire directories, navigate via file tree sidebar, comment across files
+- **Tabs** - open multiple files and folders in tabs, with keyboard shortcuts to switch and close them
+- **Presentation mode** - splits markdown by `#` headings or `---` dividers into a fullscreen slideshow
+- **Focus mode** - hide the app chrome and keep only the rendered document
 - **Light/dark theme**
-- **File watching** — auto-refresh on external changes (via experimental FileSystemObserver)
+- **File watching** - auto-refresh on external changes when the browser supports the required APIs
 
 ## Requirements
 
@@ -26,48 +27,45 @@ Comments live directly in the markdown using CriticMarkup syntax, so any LLM can
 
 ```bash
 yarn install
-yarn dev          # http://localhost:5173
+yarn dev
 ```
 
-To enable peer sharing, set the Cloudflare Worker URL:
+To enable peer sharing locally:
 
 ```bash
 VITE_WORKER_URL=https://your-worker.dev yarn dev
 ```
 
+`VITE_WORKER_URL` may include a trailing slash. The app normalizes it before building `/share` and `/relay` URLs.
+
 ## Scripts
 
 | Command | Description |
 |---------|-------------|
-| `yarn dev` | Start dev server with HMR |
-| `yarn build` | Type-check + production build |
+| `yarn dev` | Start the Vite dev server |
+| `yarn build` | Type-check and build for production |
 | `yarn preview` | Preview the production build locally |
 | `yarn test` | Run all tests once |
 | `yarn test:watch` | Run tests in watch mode |
-| `yarn test:coverage` | Run tests with coverage report |
+| `yarn test:coverage` | Run tests with coverage |
 | `yarn lint` | Run ESLint |
 | `yarn deploy:worker` | Deploy the Cloudflare Worker |
 
 ## Project structure
 
-```
+```text
 src/
   components/         React components (folder-per-component)
-    ComponentName/
-      ComponentName.tsx
-      ComponentName.css
-      index.ts
-  store/              Zustand store and selectors
-  services/           CriticMarkup parser, file system, sharing, crypto, syntax highlighting
+  modules/            Vertical feature modules
+  store/              Zustand composition root and compatibility selectors
+  services/           Low-level adapters and shared integrations
   types/              TypeScript type definitions
-  utils/              Pure utility functions
+  utils/              Pure utility helpers
   styles/             Global CSS (tokens, reset, layout, landing page)
-  test/               Test files and helpers
+  test/               Component tests and shared test helpers
 
-worker/               Cloudflare Worker for encrypted share storage
-docs/                 Contributing guide, iteration roadmap
-  features/           Feature specs and task lists
-  design/             Technical design documents (v1, v2)
+worker/               Cloudflare Worker for encrypted share storage and relay-backed peer comments
+docs/                 Contributing guide, feature specs, and architecture notes
 ```
 
 ## Tech stack
@@ -76,37 +74,39 @@ docs/                 Contributing guide, iteration roadmap
 |-------|-----------|
 | UI | React 19, TypeScript |
 | Build | Vite 6 |
-| State | Zustand 5 (with persist middleware) |
+| State | Zustand 5 with persist middleware |
 | Markdown | react-markdown, remark-gfm, unified |
 | Syntax highlighting | Shiki 4 |
 | Diagrams | Mermaid 11 |
 | Testing | Vitest, Testing Library |
-| Sharing backend | Cloudflare Worker + KV (AES-256 client-side encryption) |
+| Sharing backend | Cloudflare Worker + KV + SQLite-backed Durable Objects |
 | Deployment | GitHub Pages (static), Cloudflare Worker (API) |
 
 ## Architecture
 
-The app has two runtime modes with completely separate state:
+The app has two runtime modes with separate state:
 
-- **Host mode** — user opens local files/folders. State lives in `TabState` objects inside `tabs[]`. Each tab owns its file data, comments, and UI state.
-- **Peer mode** — user opens a shared link. State lives at the store root as `peer*` fields. No tabs.
+- **Host mode** - the user opens local files and folders. State lives in `TabState` objects inside `tabs[]`. Each tab owns its file data, comments, share state, and host-side UI state.
+- **Peer mode** - the user opens a shared link. State lives at the store root as `peer*` fields. Peer mode does not use tabs.
 
 The `isPeerMode` flag determines which mode is active. Components that work in both modes receive a `peerMode` prop and read from the correct state source.
 
-See [CLAUDE.md](./CLAUDE.md) for detailed development conventions.
+The codebase is being organized into vertical modules under `src/modules/*`, with the root store acting as a composition layer instead of the main home for feature logic.
+
+See [docs/contributing.md](./docs/contributing.md) and [docs/design/module-architecture-refactor.md](./docs/design/module-architecture-refactor.md) for development conventions and module boundaries.
 
 ## Sharing
 
 Peer sharing uses end-to-end encryption:
 
-1. Host generates an AES-256 key (Web Crypto API)
-2. File tree is encrypted client-side and posted to the Cloudflare Worker
-3. Worker stores the opaque blob in KV with a 7-day TTL
-4. Share link includes the decryption key in the URL hash (never sent to the server)
-5. Peer decrypts locally in the browser, can leave comments
-6. Host pulls and merges peer comments back into the file
+1. Host generates an AES-256 key in the browser.
+2. The document tree is encrypted client-side and uploaded to the Cloudflare Worker.
+3. The Worker stores encrypted document content in KV and unresolved peer comments in a SQLite-backed Durable Object relay.
+4. The share link includes the decryption key in the URL hash, so it never reaches the server.
+5. The peer decrypts locally, drafts comments locally, and submits them through the relay.
+6. The host receives submitted peer comments live and can merge or dismiss them locally.
 
-No accounts, no auth. The Worker never sees plaintext.
+No accounts, no plaintext on the server. The Worker sees encrypted payloads and share metadata only.
 
 ## Environment variables
 

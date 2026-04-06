@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { TabBar } from "../components/TabBar";
-import { resetTestStore, setTestState } from "./testHelpers";
+import { TabBar } from "./index";
+import { resetTestStore, setTestState } from "../../test/testHelpers";
 
 beforeEach(() => {
   resetTestStore();

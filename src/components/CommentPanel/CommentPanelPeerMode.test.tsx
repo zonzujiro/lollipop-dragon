@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../modules/sharing", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../modules/sharing")>();
+vi.mock("../../modules/sharing", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../modules/sharing")>();
   return {
     ...actual,
     syncActiveShares: vi.fn(),
@@ -10,12 +10,12 @@ vi.mock("../modules/sharing", async (importOriginal) => {
   };
 });
 
-vi.mock("../config", () => ({
+vi.mock("../../config", () => ({
   WORKER_URL: "https://mock-worker.test",
 }));
 
-vi.mock("../services/crypto", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../services/crypto")>();
+vi.mock("../../services/crypto", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../services/crypto")>();
   return {
     ...actual,
     base64urlToKey: vi.fn().mockImplementation(async () => actual.generateKey()),
@@ -23,8 +23,8 @@ vi.mock("../services/crypto", async (importOriginal) => {
   };
 });
 
-vi.mock("../modules/relay", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../modules/relay")>();
+vi.mock("../../modules/relay", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../modules/relay")>();
   return {
     ...actual,
     getRelay: () => ({
@@ -44,13 +44,13 @@ vi.mock("../modules/relay", async (importOriginal) => {
   };
 });
 
-import { CommentPanel } from "../components/CommentPanel";
-import type { SharePayload } from "../types/share";
+import { CommentPanel } from "./index";
+import type { SharePayload } from "../../types/share";
 import {
   makePeerComment,
   resetTestStore,
   setTestState,
-} from "./testHelpers";
+} from "../../test/testHelpers";
 
 beforeEach(() => {
   resetTestStore();
