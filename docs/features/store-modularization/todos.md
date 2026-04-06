@@ -26,6 +26,7 @@ Steps:
 - [ ] Add `README.md` to each module using the standard template from the design doc
 - [ ] Add empty `index.ts`, `types.ts`, `state.ts`, and `selectors.ts` to each module
 - [ ] Add `controller.ts` only where the module already owns side effects
+- [ ] Add `test/` directories and move clearly module-owned tests out of `src/test`
 
 Verification:
 

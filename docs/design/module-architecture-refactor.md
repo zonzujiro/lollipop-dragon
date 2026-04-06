@@ -62,6 +62,7 @@ src/modules/<module>/
 Notes:
 
 - `storage.ts` exists only when the module talks to network, browser storage, or the local file system.
+- `test/` is the preferred home for module-owned tests.
 - Some modules may need an additional `guards.ts` or `helpers.ts`, but those stay module-local unless deliberately exported from `index.ts`.
 
 ## 5. File Responsibilities

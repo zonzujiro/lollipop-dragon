@@ -1,20 +1,20 @@
 import { waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../config", () => ({
+vi.mock("../../../config", () => ({
   WORKER_URL: "https://mock-worker.test",
 }));
 
-import { encrypt, generateKey } from "../services/crypto";
-import { startRelayForDoc, stopRelay } from "../services/relay";
-import { useAppStore } from "../store";
+import { encrypt, generateKey } from "../../../services/crypto";
+import { startRelayForDoc, stopRelay } from "../../../services/relay";
+import { useAppStore } from "../../../store";
 import {
   makePeerComment,
   makeShare,
   resetTestStore,
   setTestState,
-} from "./testHelpers";
-import { RelayHubSqlite } from "../../worker/src/relay";
+} from "../../../test/testHelpers";
+import { RelayHubSqlite } from "../../../../worker/src/relay";
 
 interface DocMetaRow {
   hostSecretHash: string;
