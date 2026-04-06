@@ -4,7 +4,7 @@ import { beforeEach, describe, it, expect, vi } from "vitest";
 
 const mockDownloadFile = vi.fn();
 
-vi.mock("../services/download", () => ({
+vi.mock("../components/Header/downloadActiveFile", () => ({
   downloadActiveFile: () => mockDownloadFile(),
 }));
 

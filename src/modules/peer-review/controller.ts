@@ -3,8 +3,8 @@ import { base64urlToKey, docIdFromKey } from "../../services/crypto";
 import {
   relayCommentAdd,
   startRelayForDoc,
-} from "../../services/relay";
-import { ShareStorage } from "../../services/shareStorage";
+} from "../relay";
+import { ShareStorage } from "../sharing";
 import { WORKER_URL } from "../../config";
 import { parseShareHash } from "../../utils/shareUrl";
 import { selectUnsubmittedPeerComments } from "./selectors";

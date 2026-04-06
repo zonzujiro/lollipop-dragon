@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { replaceCommentMarkup, applyEdit } from '../services/editComment'
-import { applyDelete } from '../services/deleteComment'
+import { replaceCommentMarkup, applyEdit } from '../markup/editComment'
+import { applyDelete } from '../markup/deleteComment'
 import { makeComment } from './testHelpers'
 
 describe('replaceCommentMarkup', () => {

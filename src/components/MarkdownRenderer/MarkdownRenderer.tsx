@@ -13,9 +13,12 @@ import { MermaidBlock } from "../MermaidBlock";
 import { CommentMargin } from "../CommentMargin";
 import { useAppStore } from "../../store";
 import { useActiveTab } from "../../store/selectors";
-import { parseCriticMarkup, isCommentType } from "../../services/criticmarkup";
-import { assignBlockIndices } from "../../services/blockIndex";
-import { useShikiRehypePlugin } from "../../services/highlighter";
+import {
+  assignBlockIndices,
+  isCommentType,
+  parseCriticMarkup,
+  useShikiRehypePlugin,
+} from "../../markup";
 
 // Rehype plugin: adds data-block-index to each top-level element node.
 // This lets CommentMargin align dots with rendered blocks.

@@ -2,7 +2,7 @@ import { encrypt, decrypt } from "../../services/crypto";
 import {
   serializePayload,
   deserializePayload,
-} from "../../services/sharePayload";
+} from "./sharePayload";
 import type { SharePayload } from "../../types/share";
 import { normalizeWorkerUrl } from "../../utils/workerUrl";
 

@@ -1,6 +1,6 @@
 import type { StoreApi } from "zustand";
-import { parseCriticMarkup } from "../../services/criticmarkup";
-import { insertComment as insertCommentService } from "../../services/insertComment";
+import { parseCriticMarkup } from "../../markup";
+import { insertComment as insertCommentService } from "../../markup";
 import {
   docIdFromKey,
   generateKey,
@@ -10,7 +10,7 @@ import {
   ensureRelaySubscriptions,
   relayCommentResolve,
   unsubscribeFromDoc,
-} from "../../services/relay";
+} from "../relay";
 import { buildShareUrlFromOrigin } from "../../utils/shareUrl";
 import type { FileTreeNode } from "../../types/fileTree";
 import type { CommentType } from "../../types/criticmarkup";

@@ -11,4 +11,4 @@ export {
   removeHandle,
   resetHandleStore,
   saveHandle,
-} from "../../services/handleStore";
+} from "./handleStore";

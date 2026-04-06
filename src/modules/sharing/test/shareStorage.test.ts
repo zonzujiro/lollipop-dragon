@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ShareStorage } from "../storage";
 import { encrypt, generateKey } from "../../../services/crypto";
-import { serializePayload } from "../../../services/sharePayload";
+import { serializePayload } from "../sharePayload";
 import { normalizeWorkerUrl } from "../../../utils/workerUrl";
 
 const WORKER_URL = "https://worker.test";

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractComments, parseCriticMarkup, parseCommentType } from '../services/criticmarkup'
+import { extractComments, parseCriticMarkup, parseCommentType } from '../markup/criticmarkup'
 
 describe('extractComments — no markup', () => {
   it('returns [] for an empty string', () => {
