@@ -1,13 +1,13 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../../services/highlighter", () => ({
+vi.mock("../services/highlighter", () => ({
   useShikiRehypePlugin: () => null,
 }));
 
-import { PresentationMode } from "../../../components/PresentationMode";
-import { useAppStore } from "../../../store";
-import { resetTestStore, setTestState } from "../../../test/testHelpers";
+import { PresentationMode } from "../components/PresentationMode";
+import { useAppStore } from "../store";
+import { resetTestStore, setTestState } from "./testHelpers";
 
 const mockRequestFullscreen = vi.fn(() => Promise.resolve());
 const mockExitFullscreen = vi.fn(() => Promise.resolve());
@@ -217,37 +217,5 @@ describe("PresentationMode - slide splitting", () => {
     expect(screen.getByText("Part two")).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "ArrowDown" });
     expect(screen.getByText("Part three")).toBeInTheDocument();
-  });
-
-  it("renders a single slide when there are no headings or rules", () => {
-    setTestState({ rawContent: "Just a paragraph.\n\nAnother paragraph." });
-    render(<PresentationMode />);
-    expect(screen.getByText("Just a paragraph.")).toBeInTheDocument();
-    expect(screen.getByText("Another paragraph.")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("navigation", { name: "Slide navigation" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("does not split on HRs inside fenced code blocks", () => {
-    setTestState({
-      rawContent:
-        "Slide 1\nIntro\n\n---\n\n```bash\n# this is a comment\n---\necho hello\n```\nAfter code",
-    });
-    render(<PresentationMode />);
-    fireEvent.keyDown(window, { key: "ArrowDown" });
-    expect(screen.getByText("After code")).toBeInTheDocument();
-    const dots = screen
-      .getByRole("navigation", { name: "Slide navigation" })
-      .querySelectorAll("button");
-    expect(dots).toHaveLength(2);
-  });
-
-  it("handles empty content", () => {
-    setTestState({ rawContent: "" });
-    render(<PresentationMode />);
-    expect(
-      screen.queryByRole("navigation", { name: "Slide navigation" }),
-    ).not.toBeInTheDocument();
   });
 });

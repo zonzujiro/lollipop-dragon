@@ -8,6 +8,11 @@ Split the current store/services architecture into vertical modules under `src/m
 
 The first pass is structural. It should reduce coupling and make ownership explicit without changing product behavior.
 
+Test placement rule:
+
+- keep module-owned tests beside the module
+- keep component tests in [src/test](/home/zonzujiro/projects/lollipop-dragon/src/test) while components still live under [src/components](/home/zonzujiro/projects/lollipop-dragon/src/components)
+
 ## Phase 1 - Foundation
 
 ### Task 1: Create module directories and README stubs
