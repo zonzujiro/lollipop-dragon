@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ShareStorage } from "../services/shareStorage";
 import { encrypt, generateKey } from "../services/crypto";
 import { serializePayload } from "../services/sharePayload";
+import { normalizeWorkerUrl } from "../utils/workerUrl";
 
 const WORKER_URL = "https://worker.test";
 
@@ -49,6 +50,33 @@ describe("ShareStorage.uploadContent", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/share/abc123"),
       expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("normalizes a trailing slash in the worker URL", async () => {
+    const key = await generateKey();
+    const fetchMock = makeFetchMock([{ ok: true, json: { ok: true } }]);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const storage = new ShareStorage(`${WORKER_URL}/`);
+    await storage.uploadContent(
+      "abc123",
+      { "a.md": "# A" },
+      key,
+      { ttl: 604800, label: "test" },
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/^https:\/\/worker\.test\/share\/abc123\?/),
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+});
+
+describe("normalizeWorkerUrl", () => {
+  it("removes trailing slashes and surrounding whitespace", () => {
+    expect(normalizeWorkerUrl(" https://worker.test/// ")).toBe(
+      "https://worker.test",
     );
   });
 });

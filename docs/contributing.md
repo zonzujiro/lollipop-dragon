@@ -19,6 +19,8 @@ To enable sharing features locally:
 VITE_WORKER_URL=https://your-worker.dev yarn dev
 ```
 
+`VITE_WORKER_URL` may include a trailing slash. The app normalizes it before building `/share` and `/relay` URLs.
+
 ## Development workflow
 
 1. Create a branch from `main` with a descriptive prefix: `feat/`, `fix/`, `refactor/`, `docs/`
