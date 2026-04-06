@@ -48,6 +48,15 @@ import type { ShareRecord, SharePayload, PeerComment } from "../types/share";
 import type { TabState, FileCommentEntry } from "../types/tab";
 import { createDefaultTab } from "../types/tab";
 import type { HistoryEntry } from "../types/history";
+import {
+  createAppShellActions,
+  createAppShellState,
+} from "../modules/app-shell";
+import type {
+  AppShellActions,
+  AppShellState,
+  AppTheme,
+} from "../modules/app-shell";
 import { getActiveTab, getUnsubmittedPeerComments } from "./selectors";
 import { WORKER_URL } from "../config";
 
@@ -263,16 +272,10 @@ async function restoreShareKeys(
   return keys;
 }
 
-interface AppState {
+interface AppState extends AppShellState, AppShellActions {
   // Tab management
   tabs: TabState[];
   activeTabId: string | null;
-
-  // Global UI
-  theme: "light" | "dark";
-  focusMode: boolean;
-  presentationMode: boolean;
-  toast: string | null;
 
   // Peer mode (full-screen takeover, not in tabs)
   isPeerMode: boolean;
@@ -350,12 +353,6 @@ interface AppState {
   restoreShareSessions: () => Promise<void>;
 
   // Global actions
-  setTheme: (theme: "light" | "dark") => void;
-  toggleFocusMode: () => void;
-  enterPresentationMode: () => void;
-  exitPresentationMode: () => void;
-  showToast: (msg: string) => void;
-  dismissToast: () => void;
   restoreTabs: () => Promise<void>;
 
   // Sharing actions (tab-scoped)
@@ -692,7 +689,7 @@ async function writeAndUpdate(
 interface OldPersistedState {
   fileName?: string | null;
   rawContent?: string;
-  theme?: "light" | "dark";
+  theme?: AppTheme;
   sidebarOpen?: boolean;
   activeFilePath?: string | null;
   directoryName?: string | null;
@@ -714,10 +711,7 @@ export const useAppStore = create<AppState>()(
       tabs: [],
       activeTabId: null,
 
-      theme: "light",
-      focusMode: false,
-      presentationMode: false,
-      toast: null,
+      ...createAppShellState(),
 
       isPeerMode: false,
       peerName: null,
@@ -802,7 +796,9 @@ export const useAppStore = create<AppState>()(
           await saveHandle(`tab:${tab.id}:directory`, dirHandle);
           const tree = await buildFileTree(dirHandle);
           set((state) => ({
-            tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({ fileTree: tree })),
+            tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
+              fileTree: tree,
+            })),
           }));
 
           // Restore previously active file if available
@@ -1035,7 +1031,9 @@ export const useAppStore = create<AppState>()(
         await saveHandle(`tab:${tab.id}:directory`, result.handle);
         const tree = await buildFileTree(result.handle);
         set((state) => ({
-          tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({ fileTree: tree })),
+          tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
+            fileTree: tree,
+          })),
         }));
         // Scan comments after tree is built — need to ensure the tab is active
         const currentActive = get().activeTabId;
@@ -1185,7 +1183,9 @@ export const useAppStore = create<AppState>()(
               state.activeTabId,
               (tab) => ({
                 commentPanelOpen: !tab.commentPanelOpen,
-                sharedPanelOpen: !tab.commentPanelOpen ? false : tab.sharedPanelOpen,
+                sharedPanelOpen: !tab.commentPanelOpen
+                  ? false
+                  : tab.sharedPanelOpen,
               }),
             ),
           }));
@@ -1202,9 +1202,13 @@ export const useAppStore = create<AppState>()(
 
       toggleSidebar: () =>
         set((state) => ({
-          tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, (tab) => ({
-            sidebarOpen: !tab.sidebarOpen,
-          })),
+          tabs: buildUpdatedActiveTabs(
+            state.tabs,
+            state.activeTabId,
+            (tab) => ({
+              sidebarOpen: !tab.sidebarOpen,
+            }),
+          ),
         })),
 
       scanAllFileComments: async () => {
@@ -1256,7 +1260,9 @@ export const useAppStore = create<AppState>()(
           merged[activePath] = currentTab.allFileComments[activePath];
         }
         set((state) => ({
-          tabs: buildUpdatedTabs(state.tabs, tabId, () => ({ allFileComments: merged })),
+          tabs: buildUpdatedTabs(state.tabs, tabId, () => ({
+            allFileComments: merged,
+          })),
         }));
       },
 
@@ -1269,9 +1275,13 @@ export const useAppStore = create<AppState>()(
           const comment = tab.comments.find((c) => c.rawStart === rawStart);
           if (comment) {
             set((state) => ({
-              tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, () => ({
-                activeCommentId: comment.id,
-              })),
+              tabs: buildUpdatedActiveTabs(
+                state.tabs,
+                state.activeTabId,
+                () => ({
+                  activeCommentId: comment.id,
+                }),
+              ),
             }));
             scrollToBlock(comment.blockIndex);
           }
@@ -1390,18 +1400,26 @@ export const useAppStore = create<AppState>()(
         try {
           await writeFile(tab.fileHandle, tab.undoState.rawContent);
           set((state) => ({
-            tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, (tab) => ({
-              rawContent: tab.undoState!.rawContent,
-              undoState: null,
-              writeAllowed: true,
-            })),
+            tabs: buildUpdatedActiveTabs(
+              state.tabs,
+              state.activeTabId,
+              (tab) => ({
+                rawContent: tab.undoState!.rawContent,
+                undoState: null,
+                writeAllowed: true,
+              }),
+            ),
           }));
         } catch (e) {
           if (isPermissionError(e)) {
             set((state) => ({
-              tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, () => ({
-                writeAllowed: false,
-              })),
+              tabs: buildUpdatedActiveTabs(
+                state.tabs,
+                state.activeTabId,
+                () => ({
+                  writeAllowed: false,
+                }),
+              ),
             }));
           } else {
             console.error("[undo] write failed:", e);
@@ -1450,7 +1468,9 @@ export const useAppStore = create<AppState>()(
         try {
           const tree = await buildFileTree(tab.directoryHandle);
           set((state) => ({
-            tabs: buildUpdatedTabs(state.tabs, tabId, () => ({ fileTree: tree })),
+            tabs: buildUpdatedTabs(state.tabs, tabId, () => ({
+              fileTree: tree,
+            })),
           }));
           get().scanAllFileComments();
         } catch (e) {
@@ -1583,24 +1603,20 @@ export const useAppStore = create<AppState>()(
         const restoredKeys = await restoreShareKeys(tab.shares);
         if (Object.keys(restoredKeys).length > 0) {
           set((state) => ({
-            tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, (tabState) => ({
-              shareKeys: { ...tabState.shareKeys, ...restoredKeys },
-            })),
+            tabs: buildUpdatedActiveTabs(
+              state.tabs,
+              state.activeTabId,
+              (tabState) => ({
+                shareKeys: { ...tabState.shareKeys, ...restoredKeys },
+              }),
+            ),
           }));
         }
       },
 
       // ── Global actions ────────────────────────────────────────────────
 
-      setTheme: (theme) => set({ theme }),
-      toggleFocusMode: () => set((s) => ({ focusMode: !s.focusMode })),
-      enterPresentationMode: () => {
-        document.documentElement.requestFullscreen?.().catch(() => {});
-        set({ presentationMode: true });
-      },
-      exitPresentationMode: () => set({ presentationMode: false }),
-      showToast: (msg) => set({ toast: msg }),
-      dismissToast: () => set({ toast: null }),
+      ...createAppShellActions(set),
 
       // ── Sharing actions (tab-scoped) ──────────────────────────────────
 
@@ -1761,7 +1777,7 @@ export const useAppStore = create<AppState>()(
         });
 
         const { cleanMarkdown } = parseCriticMarkup(tab.rawContent);
-        const attribution = ` � ${comment.peerName}`;
+        const attribution = ` — ${comment.peerName}`;
         const newRaw = insertCommentService(
           tab.rawContent,
           tab.comments,
@@ -1777,7 +1793,12 @@ export const useAppStore = create<AppState>()(
             contentLength: tab.rawContent.length,
           });
         }
-        const writeSucceeded = await writeAndUpdate(get, set, tab.fileHandle, newRaw);
+        const writeSucceeded = await writeAndUpdate(
+          get,
+          set,
+          tab.fileHandle,
+          newRaw,
+        );
         if (!writeSucceeded) {
           return;
         }
@@ -1786,7 +1807,11 @@ export const useAppStore = create<AppState>()(
         if (!latestTab) {
           return;
         }
-        const nextTabState = removePendingCommentState(latestTab, docId, comment.id);
+        const nextTabState = removePendingCommentState(
+          latestTab,
+          docId,
+          comment.id,
+        );
         saveShares(stableShareKey(latestTab), nextTabState.shares);
         set((state) => ({
           tabs: buildUpdatedTabs(state.tabs, latestTab.id, () => nextTabState),
@@ -1832,10 +1857,16 @@ export const useAppStore = create<AppState>()(
 
       toggleSharedPanel: () =>
         set((state) => ({
-          tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, (tab) => ({
-            sharedPanelOpen: !tab.sharedPanelOpen,
-            commentPanelOpen: !tab.sharedPanelOpen ? false : tab.commentPanelOpen,
-          })),
+          tabs: buildUpdatedActiveTabs(
+            state.tabs,
+            state.activeTabId,
+            (tab) => ({
+              sharedPanelOpen: !tab.sharedPanelOpen,
+              commentPanelOpen: !tab.sharedPanelOpen
+                ? false
+                : tab.commentPanelOpen,
+            }),
+          ),
         })),
 
       // ── Peer actions ──────────────────────────────────────────────────
@@ -1965,7 +1996,8 @@ export const useAppStore = create<AppState>()(
         if (!targetTab) {
           return;
         }
-        const queuedResolveIds = targetTab.pendingResolveCommentIds[docId] ?? [];
+        const queuedResolveIds =
+          targetTab.pendingResolveCommentIds[docId] ?? [];
         if (queuedResolveIds.includes(comment.id)) {
           return;
         }
@@ -1991,7 +2023,8 @@ export const useAppStore = create<AppState>()(
         if (!targetTab) {
           return;
         }
-        const queuedResolveIds = targetTab.pendingResolveCommentIds[docId] ?? [];
+        const queuedResolveIds =
+          targetTab.pendingResolveCommentIds[docId] ?? [];
         const filteredComments = comments.filter(
           (comment) => !queuedResolveIds.includes(comment.id),
         );
@@ -2088,7 +2121,8 @@ export const useAppStore = create<AppState>()(
 
       dismissDocumentUpdate: () => {
         set({ documentUpdateAvailable: false });
-      },    }),
+      },
+    }),
     {
       name: "markreview-store",
       version: 2,
@@ -2245,6 +2279,3 @@ useAppStore.subscribe((state) => {
     document.title = title;
   }
 });
-
-
-
