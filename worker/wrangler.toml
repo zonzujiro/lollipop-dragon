@@ -1,4 +1,4 @@
-name = "markreview-worker"
+name = "markreview-worker-v2"
 main = "src/index.ts"
 compatibility_date = "2024-09-01"
 
@@ -15,8 +15,4 @@ class_name = "RelayHubSqlite"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["RelayHub"]
-
-[[migrations]]
-tag = "v2"
 new_sqlite_classes = ["RelayHubSqlite"]

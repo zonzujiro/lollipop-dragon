@@ -2,6 +2,18 @@
 
 Cloudflare Worker backend for encrypted share delivery and real-time peer comment sync.
 
+## Free plan deployment note
+
+Cloudflare Workers Free only supports SQLite-backed Durable Objects. This Worker must therefore be deployed as a fresh Worker service with a SQLite-only Durable Object migration history.
+
+The checked-in `wrangler.toml` is configured for that cutover:
+
+- Worker name: `markreview-worker-v2`
+- Durable Object class: `RelayHubSqlite`
+- single migration: `new_sqlite_classes = ["RelayHubSqlite"]`
+
+Do not reintroduce a legacy `new_classes` Durable Object migration on this Worker if you intend to deploy it on the free plan.
+
 ## Responsibilities
 
 - Stores encrypted share content in KV at `share:{docId}`
@@ -46,7 +58,7 @@ wrangler deploy
 6. Set the deployed worker URL as `VITE_WORKER_URL` in the app:
 
 ```bash
-VITE_WORKER_URL=https://markreview-worker.YOUR_ACCOUNT.workers.dev
+VITE_WORKER_URL=https://markreview-worker-v2.YOUR_ACCOUNT.workers.dev
 ```
 
 ## Public API
