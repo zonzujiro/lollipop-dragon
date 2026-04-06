@@ -1,9 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PeerNamePrompt } from "../../../components/PeerNamePrompt";
-import { useAppStore } from "../../../store";
-import { resetTestStore } from "../../../test/testHelpers";
+import { PeerNamePrompt } from "../components/PeerNamePrompt";
+import { useAppStore } from "../store";
+import { resetTestStore } from "./testHelpers";
 
 beforeEach(() => {
   resetTestStore();

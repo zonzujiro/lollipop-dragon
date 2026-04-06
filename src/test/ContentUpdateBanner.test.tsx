@@ -1,16 +1,16 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ContentUpdateBanner } from "../../../components/ContentUpdateBanner";
-import { useAppStore } from "../../../store";
-import { resetTestStore } from "../../../test/testHelpers";
+import { ContentUpdateBanner } from "../components/ContentUpdateBanner";
+import { useAppStore } from "../store";
+import { resetTestStore } from "./testHelpers";
 
 beforeEach(() => {
   resetTestStore();
   vi.restoreAllMocks();
 });
 
-describe("ContentUpdateBanner — visibility", () => {
+describe("ContentUpdateBanner - visibility", () => {
   it("renders the banner when documentUpdateAvailable is true", () => {
     useAppStore.setState({ documentUpdateAvailable: true });
     render(<ContentUpdateBanner />);
@@ -26,7 +26,7 @@ describe("ContentUpdateBanner — visibility", () => {
   });
 });
 
-describe("ContentUpdateBanner — Refresh button", () => {
+describe("ContentUpdateBanner - Refresh button", () => {
   it("calls loadSharedContent when Refresh is clicked", async () => {
     const loadSharedContent = vi.fn().mockResolvedValue(undefined);
     useAppStore.setState({ documentUpdateAvailable: true, loadSharedContent });
@@ -69,7 +69,7 @@ describe("ContentUpdateBanner — Refresh button", () => {
   });
 });
 
-describe("ContentUpdateBanner — Dismiss button", () => {
+describe("ContentUpdateBanner - Dismiss button", () => {
   it("calls dismissDocumentUpdate when Dismiss is clicked", async () => {
     const dismissDocumentUpdate = vi.fn();
     useAppStore.setState({

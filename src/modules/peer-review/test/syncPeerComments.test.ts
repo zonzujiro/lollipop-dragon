@@ -1,7 +1,6 @@
-import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockRelaySend, mockRelayCommentAdd } = vi.hoisted(() => ({
+const { mockRelayCommentAdd, mockRelaySend } = vi.hoisted(() => ({
   mockRelaySend: vi.fn().mockResolvedValue(undefined),
   mockRelayCommentAdd: vi.fn().mockResolvedValue(undefined),
 }));
@@ -43,88 +42,21 @@ vi.mock("../../../services/relay", () => ({
   isDocSubscribed: () => false,
 }));
 
-import { CommentPanel } from "../../../components/CommentPanel";
 import { useAppStore } from "../../../store";
-import type { SharePayload } from "../../../types/share";
-import {
-  makePeerComment,
-  resetTestStore,
-  setTestState,
-} from "../../../test/testHelpers";
+import { makePeerComment, resetTestStore, setTestState } from "../../../test/testHelpers";
 
 beforeEach(() => {
   resetTestStore();
   mockRelaySend.mockClear();
   mockRelayCommentAdd.mockClear();
+  window.location.hash = "#s=test-key-b64&n=test";
 });
 
 afterEach(() => {
   window.location.hash = "";
 });
 
-describe("CommentPanel peer mode", () => {
-  it("filters comments by peerActiveFilePath", () => {
-    const firstComment = makePeerComment({
-      text: "comment on readme",
-      path: "readme.md",
-    });
-    const secondComment = makePeerComment({
-      text: "comment on other",
-      path: "other.md",
-    });
-    setTestState(
-      { commentPanelOpen: true },
-      {
-        isPeerMode: true,
-        peerActiveFilePath: "readme.md",
-        peerCommentPanelOpen: true,
-        myPeerComments: [firstComment, secondComment],
-      },
-    );
-
-    render(<CommentPanel peerMode />);
-
-    expect(screen.getByText("comment on readme")).toBeInTheDocument();
-    expect(screen.queryByText("comment on other")).not.toBeInTheDocument();
-  });
-
-  it("shows all peer comments for multi-file shares", () => {
-    const firstComment = makePeerComment({
-      text: "readme comment",
-      path: "readme.md",
-    });
-    const secondComment = makePeerComment({
-      text: "other comment",
-      path: "other.md",
-    });
-    const sharedContent = {
-      version: "2.0",
-      created_at: new Date().toISOString(),
-      tree: { "readme.md": "# Hello", "other.md": "# Other" },
-    } satisfies SharePayload;
-    setTestState(
-      { commentPanelOpen: true },
-      {
-        isPeerMode: true,
-        peerActiveFilePath: "readme.md",
-        peerCommentPanelOpen: true,
-        myPeerComments: [firstComment, secondComment],
-        sharedContent,
-      },
-    );
-
-    render(<CommentPanel peerMode />);
-
-    expect(screen.getByText("readme comment")).toBeInTheDocument();
-    expect(screen.getByText("other comment")).toBeInTheDocument();
-  });
-});
-
-describe("store.syncPeerComments", () => {
-  beforeEach(() => {
-    window.location.hash = "#s=test-key-b64&n=test";
-  });
-
+describe("peer-review.syncPeerComments", () => {
   it("sends all unsubmitted comments across shared files", async () => {
     const submittedComment = makePeerComment({
       id: "old-1",

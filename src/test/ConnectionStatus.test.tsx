@@ -1,17 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
-import { ConnectionStatus } from "../../../components/ConnectionStatus";
-import {
-  makeShare,
-  resetTestStore,
-  setTestState,
-} from "../../../test/testHelpers";
+import { ConnectionStatus } from "../components/ConnectionStatus";
+import { makeShare, resetTestStore, setTestState } from "./testHelpers";
 
 beforeEach(() => {
   resetTestStore();
 });
 
-describe("ConnectionStatus — peer mode", () => {
+describe("ConnectionStatus - peer mode", () => {
   it('renders "Connected" when relayStatus is connected in peer mode', () => {
     setTestState({}, { isPeerMode: true, relayStatus: "connected" });
     render(<ConnectionStatus />);
@@ -40,7 +36,7 @@ describe("ConnectionStatus — peer mode", () => {
   });
 });
 
-describe("ConnectionStatus — host mode with active shares", () => {
+describe("ConnectionStatus - host mode with active shares", () => {
   it("renders when active tab has a non-expired share", () => {
     const activeShare = makeShare({
       expiresAt: new Date(Date.now() + 86400000).toISOString(),
@@ -66,7 +62,7 @@ describe("ConnectionStatus — host mode with active shares", () => {
   });
 });
 
-describe("ConnectionStatus — hidden when not relevant", () => {
+describe("ConnectionStatus - hidden when not relevant", () => {
   it("returns null when not in peer mode and no active shares", () => {
     setTestState(
       { shares: [] },
