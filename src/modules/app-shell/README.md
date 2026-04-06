@@ -30,14 +30,15 @@ Target state to move here:
 
 ## Public API
 
-Planned public API:
-
-- shell selectors
-- pure shell state transitions
+- `createAppShellState()`
+- `createAppShellActions()`
+- shell selectors from `selectors.ts`
 
 ## Side Effects
 
-This module should stay mostly pure. If fullscreen orchestration remains necessary, keep it behind a thin controller instead of state actions.
+This module is mostly pure. Fullscreen entry is isolated behind
+`controller.ts`, so the root store no longer owns that DOM side effect
+directly.
 
 ## Related Docs
 

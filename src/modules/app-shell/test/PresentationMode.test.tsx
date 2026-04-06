@@ -1,15 +1,14 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../services/highlighter", () => ({
+vi.mock("../../../services/highlighter", () => ({
   useShikiRehypePlugin: () => null,
 }));
 
-import { PresentationMode } from "../components/PresentationMode";
-import { useAppStore } from "../store";
-import { setTestState, resetTestStore } from "./testHelpers";
+import { PresentationMode } from "../../../components/PresentationMode";
+import { useAppStore } from "../../../store";
+import { resetTestStore, setTestState } from "../../../test/testHelpers";
 
-// jsdom doesn't implement fullscreen API
 const mockRequestFullscreen = vi.fn(() => Promise.resolve());
 const mockExitFullscreen = vi.fn(() => Promise.resolve());
 
@@ -17,9 +16,9 @@ beforeEach(() => {
   resetTestStore();
   setTestState(
     {
-      fileHandle: {} as FileSystemFileHandle,
       fileName: "slides.md",
-      rawContent: "# Slide 1\nIntro text\n\n---\n\n# Slide 2\nMore content\n\n---\n\n# Slide 3\nFinal slide",
+      rawContent:
+        "# Slide 1\nIntro text\n\n---\n\n# Slide 2\nMore content\n\n---\n\n# Slide 3\nFinal slide",
     },
     { presentationMode: true },
   );
@@ -33,7 +32,7 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe("PresentationMode — rendering", () => {
+describe("PresentationMode - rendering", () => {
   it("renders the first slide content", () => {
     render(<PresentationMode />);
     expect(screen.getByText("Slide 1")).toBeInTheDocument();
@@ -48,8 +47,10 @@ describe("PresentationMode — rendering", () => {
 
   it("renders dot navigation with correct number of dots", () => {
     render(<PresentationMode />);
-    const nav = screen.getByRole("navigation", { name: "Slide navigation" });
-    const dots = nav.querySelectorAll("button");
+    const navigation = screen.getByRole("navigation", {
+      name: "Slide navigation",
+    });
+    const dots = navigation.querySelectorAll("button");
     expect(dots).toHaveLength(3);
   });
 
@@ -79,7 +80,7 @@ describe("PresentationMode — rendering", () => {
   });
 });
 
-describe("PresentationMode — keyboard navigation", () => {
+describe("PresentationMode - keyboard navigation", () => {
   it("navigates to the next slide on ArrowDown", () => {
     render(<PresentationMode />);
     fireEvent.keyDown(window, { key: "ArrowDown" });
@@ -101,10 +102,8 @@ describe("PresentationMode — keyboard navigation", () => {
 
   it("navigates to previous slide on ArrowUp", () => {
     render(<PresentationMode />);
-    // Go to slide 2 first
     fireEvent.keyDown(window, { key: "ArrowDown" });
     expect(screen.getByText("Slide 2")).toBeInTheDocument();
-    // Go back
     fireEvent.keyDown(window, { key: "ArrowUp" });
     expect(screen.getByText("Slide 1")).toBeInTheDocument();
   });
@@ -120,7 +119,6 @@ describe("PresentationMode — keyboard navigation", () => {
     fireEvent.keyDown(window, { key: "ArrowDown" });
     fireEvent.keyDown(window, { key: "ArrowDown" });
     expect(screen.getByText("Slide 3")).toBeInTheDocument();
-    // Try to go further
     fireEvent.keyDown(window, { key: "ArrowDown" });
     expect(screen.getByText("Slide 3")).toBeInTheDocument();
   });
@@ -157,7 +155,7 @@ describe("PresentationMode — keyboard navigation", () => {
   });
 });
 
-describe("PresentationMode — dot navigation", () => {
+describe("PresentationMode - dot navigation", () => {
   it("navigates to a specific slide when a dot is clicked", () => {
     render(<PresentationMode />);
     const dots = screen
@@ -169,15 +167,17 @@ describe("PresentationMode — dot navigation", () => {
 
   it("updates the active dot after navigation", () => {
     render(<PresentationMode />);
-    const nav = screen.getByRole("navigation", { name: "Slide navigation" });
+    const navigation = screen.getByRole("navigation", {
+      name: "Slide navigation",
+    });
     fireEvent.keyDown(window, { key: "ArrowDown" });
-    const dots = nav.querySelectorAll("button");
+    const dots = navigation.querySelectorAll("button");
     expect(dots[1].className).toContain("presentation__dot--active");
     expect(dots[0].className).not.toContain("presentation__dot--active");
   });
 });
 
-describe("PresentationMode — theme toggle", () => {
+describe("PresentationMode - theme toggle", () => {
   it("toggles theme when the theme button is clicked", () => {
     render(<PresentationMode />);
     expect(useAppStore.getState().theme).toBe("light");
@@ -188,7 +188,7 @@ describe("PresentationMode — theme toggle", () => {
   });
 });
 
-describe("PresentationMode — exit button", () => {
+describe("PresentationMode - exit button", () => {
   it("exits presentation mode when exit button is clicked", () => {
     render(<PresentationMode />);
     fireEvent.click(
@@ -198,7 +198,7 @@ describe("PresentationMode — exit button", () => {
   });
 });
 
-describe("PresentationMode — slide splitting", () => {
+describe("PresentationMode - slide splitting", () => {
   it("keeps heading and surrounding content on the same slide", () => {
     setTestState({ rawContent: "Preamble text\n\n# First heading\nBody" });
     render(<PresentationMode />);
@@ -208,7 +208,9 @@ describe("PresentationMode — slide splitting", () => {
   });
 
   it("splits on horizontal rules", () => {
-    setTestState({ rawContent: "Part one\n\n---\n\nPart two\n\n---\n\nPart three" });
+    setTestState({
+      rawContent: "Part one\n\n---\n\nPart two\n\n---\n\nPart three",
+    });
     render(<PresentationMode />);
     expect(screen.getByText("Part one")).toBeInTheDocument();
     fireEvent.keyDown(window, { key: "ArrowDown" });
@@ -222,7 +224,6 @@ describe("PresentationMode — slide splitting", () => {
     render(<PresentationMode />);
     expect(screen.getByText("Just a paragraph.")).toBeInTheDocument();
     expect(screen.getByText("Another paragraph.")).toBeInTheDocument();
-    // No dot navigation for a single slide
     expect(
       screen.queryByRole("navigation", { name: "Slide navigation" }),
     ).not.toBeInTheDocument();
@@ -230,14 +231,12 @@ describe("PresentationMode — slide splitting", () => {
 
   it("does not split on HRs inside fenced code blocks", () => {
     setTestState({
-      rawContent: "Slide 1\nIntro\n\n---\n\n```bash\n# this is a comment\n---\necho hello\n```\nAfter code",
+      rawContent:
+        "Slide 1\nIntro\n\n---\n\n```bash\n# this is a comment\n---\necho hello\n```\nAfter code",
     });
     render(<PresentationMode />);
-    // Navigate to slide 2
     fireEvent.keyDown(window, { key: "ArrowDown" });
-    // The code block content and "After code" should all be on slide 2
     expect(screen.getByText("After code")).toBeInTheDocument();
-    // Should only have 2 slides (dots)
     const dots = screen
       .getByRole("navigation", { name: "Slide navigation" })
       .querySelectorAll("button");
@@ -247,7 +246,6 @@ describe("PresentationMode — slide splitting", () => {
   it("handles empty content", () => {
     setTestState({ rawContent: "" });
     render(<PresentationMode />);
-    // Should render without crashing, no dot nav
     expect(
       screen.queryByRole("navigation", { name: "Slide navigation" }),
     ).not.toBeInTheDocument();

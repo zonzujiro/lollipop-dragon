@@ -46,10 +46,7 @@ export function CodeBlock({
 // Unwrap <pre> for mermaid blocks to avoid invalid <pre><div> nesting.
 // react-markdown passes a CodeBlock element as the child of pre; we check
 // its className prop to detect mermaid before it renders.
-export function PreBlock({
-  children,
-  ...props
-}: ComponentPropsWithoutRef<"pre">) {
+export function PreBlock({ children }: ComponentPropsWithoutRef<"pre">) {
   const child = Array.isArray(children) ? children[0] : children;
   if (
     child &&
@@ -59,7 +56,7 @@ export function PreBlock({
   ) {
     return <>{children}</>;
   }
-  return <pre {...props}>{children}</pre>;
+  return <pre>{children}</pre>;
 }
 
 const markdownComponents = { code: CodeBlock, pre: PreBlock };
