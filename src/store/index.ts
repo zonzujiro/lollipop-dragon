@@ -1723,24 +1723,37 @@ export const useAppStore = create<AppState>()(
         }
         await writeAndUpdate(get, set, tab.fileHandle, newRaw);
 
-        // Durable resolve: KV delete + share update, then broadcast
-        const record = tab.shares.find((share) => share.docId === docId);
-        const resolved = record
-          ? await durableResolveComment(docId, comment.id, record.hostSecret)
-          : false;
+        // Remove from pending immediately to prevent double-apply.
+        // The local file write is the point of no return.
+        const latestTab = activeTab(get);
+        if (latestTab) {
+          const nextTabState = removePendingCommentState(
+            latestTab,
+            docId,
+            comment.id,
+          );
+          saveShares(stableShareKey(latestTab), nextTabState.shares);
+          updateTab(get, set, latestTab.id, () => nextTabState);
+        }
 
-        if (resolved) {
-          broadcastCommentResolved(docId, comment.id);
-          const latestTab = activeTab(get);
-          if (latestTab) {
-            const nextTabState = removePendingCommentState(
-              latestTab,
-              docId,
-              comment.id,
-            );
-            saveShares(stableShareKey(latestTab), nextTabState.shares);
-            updateTab(get, set, latestTab.id, () => nextTabState);
-          }
+        // Durable resolve (KV delete + share update + broadcast) in background
+        const record = tab.shares.find((share) => share.docId === docId);
+        if (record) {
+          durableResolveComment(docId, comment.id, record.hostSecret)
+            .then((resolved) => {
+              if (resolved) {
+                broadcastCommentResolved(docId, comment.id);
+              } else {
+                get().showToast(
+                  "Comment merged locally but failed to sync — peers may still see it",
+                );
+              }
+            })
+            .catch(() => {
+              get().showToast(
+                "Comment merged locally but failed to sync — peers may still see it",
+              );
+            });
         }
       },
 
@@ -1764,6 +1777,9 @@ export const useAppStore = create<AppState>()(
                 "[dismissComment] per-comment KV delete failed:",
                 error,
               );
+              get().showToast(
+                "Comment dismissed locally but server delete failed — may reappear after reload",
+              );
             });
         }
       },
@@ -1777,6 +1793,7 @@ export const useAppStore = create<AppState>()(
         const tabId = tab.id;
         const record = tab.shares.find((s) => s.docId === docId);
         const pendingForDoc = tab.pendingComments[docId] ?? [];
+        let deleteFailed = false;
         if (record && storage) {
           for (const pendingComment of pendingForDoc) {
             try {
@@ -1786,6 +1803,7 @@ export const useAppStore = create<AppState>()(
                 record.hostSecret,
               );
             } catch (error) {
+              deleteFailed = true;
               console.error(
                 "[clearPendingComments] failed to delete comment:",
                 docId,
@@ -1794,6 +1812,11 @@ export const useAppStore = create<AppState>()(
               );
             }
           }
+        }
+        if (deleteFailed) {
+          get().showToast(
+            "Some comments cleared locally but server delete failed — may reappear after reload",
+          );
         }
         const pc = { ...tab.pendingComments };
         delete pc[docId];
