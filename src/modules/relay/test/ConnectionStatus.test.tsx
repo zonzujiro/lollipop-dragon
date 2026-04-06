@@ -1,7 +1,11 @@
 import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, it, expect } from "vitest";
-import { ConnectionStatus } from "../components/ConnectionStatus";
-import { setTestState, resetTestStore, makeShare } from "./testHelpers";
+import { beforeEach, describe, expect, it } from "vitest";
+import { ConnectionStatus } from "../../../components/ConnectionStatus";
+import {
+  makeShare,
+  resetTestStore,
+  setTestState,
+} from "../../../test/testHelpers";
 
 beforeEach(() => {
   resetTestStore();
@@ -29,10 +33,10 @@ describe("ConnectionStatus — peer mode", () => {
   it("sets data-status attribute from relayStatus", () => {
     setTestState({}, { isPeerMode: true, relayStatus: "connected" });
     render(<ConnectionStatus />);
-    const statusEl = screen
+    const statusElement = screen
       .getByText("Connected")
       .closest(".connection-status");
-    expect(statusEl).toHaveAttribute("data-status", "connected");
+    expect(statusElement).toHaveAttribute("data-status", "connected");
   });
 });
 

@@ -1,20 +1,20 @@
 import { waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../config", () => ({
+vi.mock("../../../config", () => ({
   WORKER_URL: "https://mock-worker.test",
 }));
 
-import { encrypt, generateKey } from "../services/crypto";
-import { startRelayForDoc, stopRelay } from "../services/relay";
-import { useAppStore } from "../store";
+import { encrypt, generateKey } from "../../../services/crypto";
+import { startRelayForDoc, stopRelay } from "../controller";
+import { useAppStore } from "../../../store";
 import {
   makePeerComment,
   makeShare,
   resetTestStore,
   setTestState,
-} from "./testHelpers";
-import { RelayHubSqlite } from "../../worker/src/relay";
+} from "../../../test/testHelpers";
+import { RelayHubSqlite } from "../../../../worker/src/relay";
 
 interface DocMetaRow {
   hostSecretHash: string;
@@ -150,7 +150,9 @@ class FakeSqlStorage implements SqlStorage {
       return new FakeSqlCursor([{ next_expires_at: nextExpiresAt }]);
     }
 
-    if (normalizedQuery.startsWith("DELETE FROM comments WHERE expires_at <= ?")) {
+    if (
+      normalizedQuery.startsWith("DELETE FROM comments WHERE expires_at <= ?")
+    ) {
       const now = this.expectNumber(params[0]);
       this.commentRows = this.commentRows.filter(
         (commentRow) => commentRow.expiresAt > now,
@@ -363,7 +365,10 @@ async function sha256hex(text: string): Promise<string> {
     .join("");
 }
 
-function createShareMetaJson(hostSecretHash: string, ttlSeconds = 3600): string {
+function createShareMetaJson(
+  hostSecretHash: string,
+  ttlSeconds = 3600,
+): string {
   return JSON.stringify({
     hostSecretHash,
     createdAt: new Date().toISOString(),
@@ -453,7 +458,10 @@ describe("RelayHubSqlite", () => {
 
   it("rejects invalid host subscribe secrets", async () => {
     const { relayHub, kv, createSocket } = createRelayHarness();
-    kv.set("share:doc-1:meta", createShareMetaJson(await sha256hex("expected")));
+    kv.set(
+      "share:doc-1:meta",
+      createShareMetaJson(await sha256hex("expected")),
+    );
 
     const hostSocket = createSocket();
 
@@ -475,7 +483,10 @@ describe("RelayHubSqlite", () => {
   it("persists comment:add and forwards it only to host subscribers", async () => {
     const { relayHub, state, kv, createSocket } = createRelayHarness();
     const hostSecret = "host-secret";
-    kv.set("share:doc-1:meta", createShareMetaJson(await sha256hex(hostSecret)));
+    kv.set(
+      "share:doc-1:meta",
+      createShareMetaJson(await sha256hex(hostSecret)),
+    );
 
     const hostSocket = createSocket();
     const peerSocket = createSocket();
@@ -527,7 +538,10 @@ describe("RelayHubSqlite", () => {
 
   it("rejects comment:add from sockets that never subscribed to the doc", async () => {
     const { relayHub, state, kv, createSocket } = createRelayHarness();
-    kv.set("share:doc-1:meta", createShareMetaJson(await sha256hex("host-secret")));
+    kv.set(
+      "share:doc-1:meta",
+      createShareMetaJson(await sha256hex("host-secret")),
+    );
 
     const unsubscribedSocket = createSocket();
 
@@ -550,7 +564,10 @@ describe("RelayHubSqlite", () => {
   it("deletes the row before sending comment:resolve:ack", async () => {
     const { relayHub, state, kv, createSocket } = createRelayHarness();
     const hostSecret = "host-secret";
-    kv.set("share:doc-1:meta", createShareMetaJson(await sha256hex(hostSecret)));
+    kv.set(
+      "share:doc-1:meta",
+      createShareMetaJson(await sha256hex(hostSecret)),
+    );
 
     const hostSocket = createSocket();
     const peerSocket = createSocket();
@@ -627,7 +644,9 @@ describe("relay client snapshot validation", () => {
     const encrypted = await encrypt(encoded, key);
     const payload = arrayBufferToBase64(encrypted);
 
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
 
     startRelayForDoc("doc-1");
     const socket = FakeWebSocket.latest();

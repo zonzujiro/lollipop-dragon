@@ -28,15 +28,14 @@ Target state to move here:
 
 ## Public API
 
-Planned public API:
-
-- relay selectors
-- pure relay state transitions
-- controller commands for connection lifecycle and inbound event dispatch
+- `createRelayState()`
+- `createRelayActions()`
+- relay selectors from `selectors.ts`
+- transport orchestration in `controller.ts`
 
 ## Side Effects
 
-Expected side effects:
+This module owns the relay transport side effects in `controller.ts`:
 
 - WebSocket lifecycle
 - relay subscribe and unsubscribe

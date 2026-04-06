@@ -1,9 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, it, expect, vi } from "vitest";
-import { ContentUpdateBanner } from "../components/ContentUpdateBanner";
-import { useAppStore } from "../store";
-import { resetTestStore } from "./testHelpers";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ContentUpdateBanner } from "../../../components/ContentUpdateBanner";
+import { useAppStore } from "../../../store";
+import { resetTestStore } from "../../../test/testHelpers";
 
 beforeEach(() => {
   resetTestStore();
@@ -45,7 +45,6 @@ describe("ContentUpdateBanner — Refresh button", () => {
     });
     render(<ContentUpdateBanner />);
     await userEvent.click(screen.getByRole("button", { name: "Refresh" }));
-    // dismiss is called in .then() after loadSharedContent resolves
     await vi.waitFor(() => {
       expect(dismissDocumentUpdate).toHaveBeenCalledTimes(1);
     });
@@ -63,7 +62,6 @@ describe("ContentUpdateBanner — Refresh button", () => {
     });
     render(<ContentUpdateBanner />);
     await userEvent.click(screen.getByRole("button", { name: "Refresh" }));
-    // Wait for the promise chain to settle
     await vi.waitFor(() => {
       expect(loadSharedContent).toHaveBeenCalledTimes(1);
     });

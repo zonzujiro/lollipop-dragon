@@ -1,3 +1,4 @@
+import { selectDocumentUpdateAvailable } from "../../modules/relay";
 import { useAppStore } from "../../store";
 import "./ContentUpdateBanner.css";
 
@@ -41,9 +42,7 @@ function BannerActions(props: {
 }
 
 export function ContentUpdateBanner() {
-  const documentUpdateAvailable = useAppStore(
-    (state) => state.documentUpdateAvailable,
-  );
+  const documentUpdateAvailable = useAppStore(selectDocumentUpdateAvailable);
   const loadSharedContent = useAppStore((state) => state.loadSharedContent);
   const dismissDocumentUpdate = useAppStore(
     (state) => state.dismissDocumentUpdate,
