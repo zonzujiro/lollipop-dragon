@@ -131,8 +131,28 @@ export async function durableResolveComment(
   }
 }
 
-const RESOLVE_MAX_RETRIES = 3;
-const RESOLVE_RETRY_DELAYS = [2000, 5000, 10000];
+const RETRY_DELAYS = [2000, 5000, 10000];
+
+async function withRetry(
+  operation: () => Promise<boolean>,
+  onExhausted: () => void,
+): Promise<void> {
+  for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
+    if (await operation()) {
+      return;
+    }
+    if (attempt < RETRY_DELAYS.length) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, RETRY_DELAYS[attempt]),
+      );
+    }
+  }
+  onExhausted();
+}
+
+function notifyUser(message: string): void {
+  useAppStore.getState().showToast(message);
+}
 
 /**
  * Attempt durable resolve (KV delete + share update + broadcast) after a local merge.
@@ -143,19 +163,23 @@ export async function attemptDurableResolve(
   commentId: string,
   hostSecret: string,
 ): Promise<void> {
-  for (let attempt = 0; attempt < RESOLVE_MAX_RETRIES; attempt++) {
-    const resolved = await durableResolveComment(docId, commentId, hostSecret);
-    if (resolved) {
-      broadcastCommentResolved(docId, commentId);
-      return;
-    }
-    const delay = RESOLVE_RETRY_DELAYS[attempt];
-    await new Promise((resolve) => setTimeout(resolve, delay));
-  }
-  useAppStore.getState().showToast("Sync failed — use Push update to retry");
+  await withRetry(
+    async () => {
+      const resolved = await durableResolveComment(
+        docId,
+        commentId,
+        hostSecret,
+      );
+      if (resolved) {
+        broadcastCommentResolved(docId, commentId);
+      }
+      return resolved;
+    },
+    () => notifyUser("Sync failed — use Push update to retry"),
+  );
 }
 
-/** Delete a single comment from KV. Logs on failure; tombstone protects the session. */
+/** Delete a single comment from KV. Retries before notifying user. */
 export async function deleteCommentFromKV(
   docId: string,
   commentId: string,
@@ -165,14 +189,21 @@ export async function deleteCommentFromKV(
   if (!storage) {
     return;
   }
-  try {
-    await storage.deleteComment(docId, commentId, hostSecret);
-  } catch (error) {
-    console.warn("[dismissComment] KV delete failed:", error);
-  }
+  await withRetry(
+    async () => {
+      try {
+        await storage.deleteComment(docId, commentId, hostSecret);
+        return true;
+      } catch (error) {
+        console.warn("[deleteCommentFromKV] attempt failed:", error);
+        return false;
+      }
+    },
+    () => notifyUser("Comment delete failed — may reappear after reload"),
+  );
 }
 
-/** Delete all comments for a docId from KV. Logs on failure; tombstones protect the session. */
+/** Delete all comments for a docId from KV. Retries each before notifying user. */
 export async function deleteCommentsFromKV(
   docId: string,
   commentIds: string[],
@@ -182,17 +213,29 @@ export async function deleteCommentsFromKV(
   if (!storage) {
     return;
   }
+  let anyFailed = false;
   for (const commentId of commentIds) {
-    try {
-      await storage.deleteComment(docId, commentId, hostSecret);
-    } catch (error) {
-      console.warn(
-        "[clearPendingComments] KV delete failed:",
-        docId,
-        commentId,
-        error,
-      );
-    }
+    await withRetry(
+      async () => {
+        try {
+          await storage.deleteComment(docId, commentId, hostSecret);
+          return true;
+        } catch (error) {
+          console.warn(
+            "[deleteCommentsFromKV] attempt failed:",
+            commentId,
+            error,
+          );
+          return false;
+        }
+      },
+      () => {
+        anyFailed = true;
+      },
+    );
+  }
+  if (anyFailed) {
+    notifyUser("Some comment deletes failed — may reappear after reload");
   }
 }
 

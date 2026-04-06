@@ -21,23 +21,7 @@ function isPeerComment(value: unknown): value is PeerComment {
   if (typeof value !== "object" || value === null) {
     return false;
   }
-  return (
-    "id" in value &&
-    typeof value.id === "string" &&
-    "peerName" in value &&
-    typeof value.peerName === "string" &&
-    "path" in value &&
-    typeof value.path === "string" &&
-    "text" in value &&
-    typeof value.text === "string" &&
-    "commentType" in value &&
-    typeof value.commentType === "string" &&
-    "createdAt" in value &&
-    typeof value.createdAt === "string" &&
-    "blockRef" in value &&
-    typeof value.blockRef === "object" &&
-    value.blockRef !== null
-  );
+  return "id" in value && "blockRef" in value;
 }
 
 export interface UploadResult {
