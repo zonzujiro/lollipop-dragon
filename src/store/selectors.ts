@@ -25,15 +25,12 @@ export function useActiveTabField<K extends keyof TabState>(
   });
 }
 
-/** Unsubmitted peer comments for the currently viewed file. */
+/** Unsubmitted peer comments across the shared document. */
 export function getUnsubmittedPeerComments(state: {
   myPeerComments: PeerComment[];
   submittedPeerCommentIds: string[];
-  peerActiveFilePath: string | null;
 }): PeerComment[] {
   return state.myPeerComments.filter(
-    (c) =>
-      c.path === state.peerActiveFilePath &&
-      !state.submittedPeerCommentIds.includes(c.id),
+    (comment) => !state.submittedPeerCommentIds.includes(comment.id),
   );
 }

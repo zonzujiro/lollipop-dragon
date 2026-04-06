@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAppStore } from "./store";
 import { useActiveTab } from "./store/selectors";
 import { FilePicker } from "./components/FilePicker";
@@ -17,7 +17,9 @@ import { buildVirtualTree } from "./services/fileSystem";
 import { findLiveFileInTree, toFileTreeNodes } from "./types/fileTree";
 import type { FileTreeNode, SidebarTreeNode } from "./types/fileTree";
 import { RestoreError } from "./components/RestoreError";
+import { ContentUpdateBanner } from "./components/ContentUpdateBanner";
 import { WORKER_URL } from "./config";
+import { stopRelay } from "./services/relay";
 import {
   useThemeSync,
   useHashRouter,
@@ -219,6 +221,16 @@ function App() {
     relevantTypes: DIR_OBSERVER_TYPES,
   });
 
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      stopRelay();
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
+
   // ── Peer mode (full-screen takeover, no tabs) ──
   if (isPeerMode) {
     if (!peerModeChecked) {
@@ -240,6 +252,7 @@ function App() {
             />
           )}
           <main className="app-main">
+            <ContentUpdateBanner />
             <PeerViewer />
           </main>
           {peerCommentPanelOpen && <CommentPanel peerMode />}

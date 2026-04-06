@@ -7,6 +7,7 @@ import {
 import { SunIcon, MoonIcon } from "../Icons";
 import { HistoryDropdown } from "../HistoryDropdown";
 import { TableOfContents } from "../TableOfContents";
+import { ConnectionStatus } from "../ConnectionStatus";
 import { WORKER_URL } from "../../config";
 import { downloadActiveFile } from "../../services/download";
 import { syncActiveShares } from "../../services/shareSync";
@@ -182,25 +183,31 @@ export function Header({
   const shares = tab?.shares ?? [];
   const sharedPanelOpen = tab?.sharedPanelOpen ?? false;
   const hasActiveShares = shares.some(
-    (s) => new Date(s.expiresAt) > new Date(),
+    (share) => new Date(share.expiresAt) > new Date(),
   );
 
   const hasFolderComments = !peerMode && fileTree.length > 0;
   const crossFileTotal = hasFolderComments
     ? Object.values(allFileComments).reduce(
-        (sum, e) => sum + e.comments.length,
+        (sum, entry) => sum + entry.comments.length,
         0,
       )
     : 0;
+  const peerCommentsForFile = peerMode
+    ? myPeerComments.filter((comment) => comment.path === peerActiveFilePath)
+    : [];
   const commentCount = peerMode
-    ? myPeerComments.filter((c) => c.path === peerActiveFilePath).length
+    ? peerCommentsForFile.length
     : hasFolderComments
       ? crossFileTotal
       : comments.length;
   const isDark = theme === "dark";
   const hasFolderOpen = fileTree.length > 0;
   const hasContent = !!(fileName || directoryName);
-  const totalPending = shares.reduce((n, s) => n + s.pendingCommentCount, 0);
+  const totalPending = shares.reduce(
+    (total, share) => total + share.pendingCommentCount,
+    0,
+  );
 
   const displayName = peerMode
     ? (useAppStore.getState().peerFileName ?? "Shared document")
@@ -294,6 +301,7 @@ export function Header({
               )}
 
               <div className="app-header__divider" aria-hidden="true" />
+              <ConnectionStatus />
             </>
           )}
 
@@ -310,6 +318,7 @@ export function Header({
 
           {peerMode && (
             <>
+              <ConnectionStatus />
               <button
                 onClick={loadSharedContent}
                 aria-label="Get latest content"

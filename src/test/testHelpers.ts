@@ -108,5 +108,7 @@ export function resetTestStore() {
     peerCommentPanelOpen: false,
     history: [],
     historyDropdownOpen: false,
+    relayStatus: "disconnected",
+    documentUpdateAvailable: false,
   });
 }

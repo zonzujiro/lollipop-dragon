@@ -529,7 +529,7 @@ loadSharedContent: () => Promise<void>                       // peer mode init
 
 - "Merge" on a `PeerCommentCard`: find the target file and block in the local folder
 - Insert CriticMarkup at the correct block position using the existing `insertComment` service
-- Append peer attribution: `{>>fix: This claim needs evidence. — Alex<<}`
+- Append peer attribution: ``
 - Write file back to disk, re-parse, update comment panel
 - Remove the merged comment from the pending review list
 - **Deliverable:** Host can merge a peer comment into the local file as CriticMarkup in one click

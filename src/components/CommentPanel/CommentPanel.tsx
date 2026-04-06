@@ -4,6 +4,7 @@ import { useAppStore } from "../../store";
 import { useActiveTab } from "../../store/selectors";
 import { COMMENT_TYPE_COLOR } from "../../types/criticmarkup";
 import type { Comment, CommentType } from "../../types/criticmarkup";
+import type { PeerComment } from "../../types/share";
 
 const ALL_TYPES: CommentType[] = [
   "fix",
@@ -41,6 +42,38 @@ interface DisplayComment {
   blockIndex: number | undefined;
 }
 
+function peerCommentToDisplay(comment: PeerComment): DisplayComment {
+  return {
+    id: comment.id,
+    type: comment.commentType,
+    text: comment.text,
+    blockIndex: comment.blockRef.blockIndex,
+  };
+}
+
+interface CrossFileEntry<C extends { type: CommentType }> {
+  filePath: string;
+  fileName: string;
+  comments: C[];
+}
+
+function filterCrossFileByType<C extends { type: CommentType }>(
+  entries: CrossFileEntry<C>[],
+  commentFilter: string,
+): CrossFileEntry<C>[] {
+  if (commentFilter === "all" || commentFilter === "pending") {
+    return entries;
+  }
+  return entries
+    .map((entry) => ({
+      ...entry,
+      comments: entry.comments.filter(
+        (comment) => comment.type === commentFilter,
+      ),
+    }))
+    .filter((entry) => entry.comments.length > 0);
+}
+
 interface Props {
   peerMode?: boolean;
 }
@@ -51,73 +84,70 @@ export function CommentPanel({ peerMode = false }: Props) {
   const resolvedComments = tab?.resolvedComments ?? [];
   const activeCommentId = tab?.activeCommentId ?? null;
   const commentFilter = tab?.commentFilter ?? "all";
-  const setActiveCommentId = useAppStore((s) => s.setActiveCommentId);
-  const setCommentFilter = useAppStore((s) => s.setCommentFilter);
-  const toggleCommentPanel = useAppStore((s) => s.toggleCommentPanel);
-  const myPeerComments = useAppStore((s) => s.myPeerComments);
-  const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
+  const setActiveCommentId = useAppStore((state) => state.setActiveCommentId);
+  const setCommentFilter = useAppStore((state) => state.setCommentFilter);
+  const toggleCommentPanel = useAppStore((state) => state.toggleCommentPanel);
+  const myPeerComments = useAppStore((state) => state.myPeerComments);
+  const peerActiveFilePath = useAppStore((state) => state.peerActiveFilePath);
   const activeFilePath = peerMode
     ? peerActiveFilePath
     : (tab?.activeFilePath ?? null);
   const fileTree = tab?.fileTree ?? [];
   const allFileComments = tab?.allFileComments ?? {};
-  const navigateToComment = useAppStore((s) => s.navigateToComment);
-  const editComment = useAppStore((s) => s.editComment);
-  const deleteComment = useAppStore((s) => s.deleteComment);
-  const deleteAllComments = useAppStore((s) => s.deleteAllComments);
-  const editPeerComment = useAppStore((s) => s.editPeerComment);
-  const deletePeerComment = useAppStore((s) => s.deletePeerComment);
-  const selectPeerFile = useAppStore((s) => s.selectPeerFile);
-  const sharedContent = useAppStore((s) => s.sharedContent);
+  const navigateToComment = useAppStore((state) => state.navigateToComment);
+  const editComment = useAppStore((state) => state.editComment);
+  const deleteComment = useAppStore((state) => state.deleteComment);
+  const deleteAllComments = useAppStore((state) => state.deleteAllComments);
+  const editPeerComment = useAppStore((state) => state.editPeerComment);
+  const deletePeerComment = useAppStore((state) => state.deletePeerComment);
+  const selectPeerFile = useAppStore((state) => state.selectPeerFile);
+  const sharedContent = useAppStore((state) => state.sharedContent);
 
   const isFolderMode = fileTree.length > 0 && !peerMode;
   const isPeerMultiFile =
     peerMode && !!sharedContent && Object.keys(sharedContent.tree).length > 1;
 
-  // In peer mode, map PeerComment[] to a unified display shape
+  // Shared mapping: group peer comments by path as DisplayComment[], computed once
+  const peerDisplayByPath: Record<string, DisplayComment[]> = useMemo(() => {
+    if (!peerMode) {
+      return {};
+    }
+    const byPath: Record<string, DisplayComment[]> = {};
+    for (const comment of myPeerComments) {
+      if (!byPath[comment.path]) {
+        byPath[comment.path] = [];
+      }
+      byPath[comment.path].push(peerCommentToDisplay(comment));
+    }
+    return byPath;
+  }, [peerMode, myPeerComments]);
+
+  // In peer mode, flat display list filtered to active file (or all)
   const peerDisplayComments: DisplayComment[] = useMemo(() => {
     if (!peerMode) {
       return [];
     }
-    // In multi-file mode show all; in single-file mode filter to active file
-    const filtered = isPeerMultiFile
-      ? myPeerComments
-      : myPeerComments.filter((c) => c.path === activeFilePath);
-    return filtered.map((c) => ({
-      id: c.id,
-      type: c.commentType,
-      text: c.text,
-      blockIndex: c.blockRef.blockIndex,
-    }));
-  }, [peerMode, isPeerMultiFile, myPeerComments, activeFilePath]);
+    if (isPeerMultiFile) {
+      return Object.values(peerDisplayByPath).flat();
+    }
+    return activeFilePath ? (peerDisplayByPath[activeFilePath] ?? []) : [];
+  }, [peerMode, isPeerMultiFile, peerDisplayByPath, activeFilePath]);
 
   const sourceComments = peerMode ? peerDisplayComments : comments;
 
-  // Build peer cross-file entries grouped by path
+  // Build peer cross-file entries from the shared grouped map
   const peerCrossFileEntries = useMemo(() => {
     if (!isPeerMultiFile) {
       return [];
     }
-    const byPath: Record<string, DisplayComment[]> = {};
-    for (const c of myPeerComments) {
-      if (!byPath[c.path]) {
-        byPath[c.path] = [];
-      }
-      byPath[c.path].push({
-        id: c.id,
-        type: c.commentType,
-        text: c.text,
-        blockIndex: c.blockRef.blockIndex,
-      });
-    }
-    return Object.entries(byPath)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([path, cmts]) => ({
+    return Object.entries(peerDisplayByPath)
+      .sort(([pathA], [pathB]) => pathA.localeCompare(pathB))
+      .map(([path, pathComments]) => ({
         filePath: path,
         fileName: path.split("/").pop() ?? path,
-        comments: cmts,
+        comments: pathComments,
       }));
-  }, [isPeerMultiFile, myPeerComments]);
+  }, [isPeerMultiFile, peerDisplayByPath]);
 
   // Build cross-file flat list for folder mode (only files with comments)
   const crossFileComments = useMemo(() => {
@@ -125,9 +155,11 @@ export function CommentPanel({ peerMode = false }: Props) {
       return [];
     }
     const entries = Object.values(allFileComments).filter(
-      (e) => e.comments.length > 0,
+      (entry) => entry.comments.length > 0,
     );
-    entries.sort((a, b) => a.filePath.localeCompare(b.filePath));
+    entries.sort((entryA, entryB) =>
+      entryA.filePath.localeCompare(entryB.filePath),
+    );
     return entries;
   }, [isFolderMode, allFileComments]);
 
@@ -139,7 +171,10 @@ export function CommentPanel({ peerMode = false }: Props) {
     if (!isFolderMode) {
       return 0;
     }
-    return crossFileComments.reduce((sum, e) => sum + e.comments.length, 0);
+    return crossFileComments.reduce(
+      (sum, entry) => sum + entry.comments.length,
+      0,
+    );
   }, [isPeerMultiFile, myPeerComments.length, isFolderMode, crossFileComments]);
 
   const isResolved = !peerMode && commentFilter === "resolved";
@@ -152,7 +187,7 @@ export function CommentPanel({ peerMode = false }: Props) {
     if (!isFolderMode) {
       return sourceComments;
     }
-    return crossFileComments.flatMap((e) => e.comments);
+    return crossFileComments.flatMap((entry) => entry.comments);
   }, [
     isPeerMultiFile,
     peerDisplayComments,
@@ -163,35 +198,28 @@ export function CommentPanel({ peerMode = false }: Props) {
 
   // Count per type
   const counts = useMemo(() => {
-    const c: Partial<Record<CommentType, number>> = {};
+    const typeCounts: Partial<Record<CommentType, number>> = {};
     for (const comment of allCommentsFlat) {
-      c[comment.type] = (c[comment.type] ?? 0) + 1;
+      typeCounts[comment.type] = (typeCounts[comment.type] ?? 0) + 1;
     }
-    return c;
+    return typeCounts;
   }, [allCommentsFlat]);
 
-  const activeTypes = ALL_TYPES.filter((t) => (counts[t] ?? 0) > 0);
+  const activeTypes = ALL_TYPES.filter((type) => (counts[type] ?? 0) > 0);
 
   // For single-file mode: visible list
   const visible = isResolved
     ? resolvedComments
     : commentFilter === "all" || commentFilter === "pending"
       ? sourceComments
-      : sourceComments.filter((c) => c.type === commentFilter);
+      : sourceComments.filter((comment) => comment.type === commentFilter);
 
   // For folder mode: filter cross-file entries
   const filteredCrossFile = useMemo(() => {
     if (!isFolderMode || isResolved) {
       return crossFileComments;
     }
-    if (commentFilter === "all" || commentFilter === "pending")
-      return crossFileComments;
-    return crossFileComments
-      .map((entry) => ({
-        ...entry,
-        comments: entry.comments.filter((c) => c.type === commentFilter),
-      }))
-      .filter((entry) => entry.comments.length > 0);
+    return filterCrossFileByType(crossFileComments, commentFilter);
   }, [isFolderMode, isResolved, crossFileComments, commentFilter]);
 
   // For peer multi-file mode: filter peer cross-file entries
@@ -199,14 +227,7 @@ export function CommentPanel({ peerMode = false }: Props) {
     if (!isPeerMultiFile) {
       return peerCrossFileEntries;
     }
-    if (commentFilter === "all" || commentFilter === "pending")
-      return peerCrossFileEntries;
-    return peerCrossFileEntries
-      .map((entry) => ({
-        ...entry,
-        comments: entry.comments.filter((c) => c.type === commentFilter),
-      }))
-      .filter((entry) => entry.comments.length > 0);
+    return filterCrossFileByType(peerCrossFileEntries, commentFilter);
   }, [isPeerMultiFile, peerCrossFileEntries, commentFilter]);
 
   function handleEntryClick(id: string, blockIndex: number | undefined) {
@@ -218,13 +239,13 @@ export function CommentPanel({ peerMode = false }: Props) {
     navigateToComment(filePath, rawStart);
   }
 
-  function entryLabel(c: DisplayComment): string {
-    const body = c.text || "";
+  function entryLabel(comment: DisplayComment): string {
+    const body = comment.text || "";
     return body.length > 72 ? body.slice(0, 72) + "…" : body;
   }
 
-  function hostEntryLabel(c: (typeof comments)[number]): string {
-    const body = c.text || c.highlightedText || c.from || "";
+  function hostEntryLabel(comment: (typeof comments)[number]): string {
+    const body = comment.text || comment.highlightedText || comment.from || "";
     return body.length > 72 ? body.slice(0, 72) + "…" : body;
   }
 
@@ -397,9 +418,9 @@ function InlineEditForm({
   const [editType, setEditType] = useState<CommentType>(comment.type);
   const [editText, setEditText] = useState(comment.text);
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    e.stopPropagation();
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    event.stopPropagation();
     if (!editText.trim()) {
       return;
     }
@@ -410,24 +431,24 @@ function InlineEditForm({
     <form
       className="comment-panel__inline-edit"
       onSubmit={handleSubmit}
-      onClick={(e) => e.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
     >
       <div className="comment-add-form__types">
-        {COMMENT_TYPES.map((t) => (
+        {COMMENT_TYPES.map((commentType) => (
           <button
-            key={t}
+            key={commentType}
             type="button"
-            className={`comment-add-form__type${editType === t ? " comment-add-form__type--active" : ""}`}
-            onClick={() => setEditType(t)}
+            className={`comment-add-form__type${editType === commentType ? " comment-add-form__type--active" : ""}`}
+            onClick={() => setEditType(commentType)}
           >
-            {t}
+            {commentType}
           </button>
         ))}
       </div>
       <textarea
         className="comment-add-form__input"
         value={editText}
-        onChange={(e) => setEditText(e.target.value)}
+        onChange={(event) => setEditText(event.target.value)}
         rows={2}
         autoFocus
       />
@@ -461,7 +482,7 @@ function InlineDeleteConfirm({
   return (
     <div
       className="comment-panel__inline-confirm"
-      onClick={(e) => e.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
     >
       <span>Delete this comment?</span>
       <div className="comment-add-form__actions">
@@ -497,7 +518,7 @@ function CommentEntry({
 }) {
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const setHighlight = useAppStore((s) => s.setHoveredBlockHighlight);
+  const setHighlight = useAppStore((state) => state.setHoveredBlockHighlight);
 
   const isFullComment = "criticType" in comment;
   const label =
@@ -548,8 +569,8 @@ function CommentEntry({
       tabIndex={0}
       className={`comment-panel__entry${isActive ? " comment-panel__entry--active" : ""}${isOtherFile ? " comment-panel__entry--other-file" : ""}`}
       onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
           onClick();
         }
       }}
@@ -578,7 +599,7 @@ function CommentEntry({
       {canEdit && (
         <span
           className="comment-panel__entry-actions"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
         >
           {isEditable && (
             <button
@@ -626,7 +647,10 @@ function CrossFileList({
   onEdit: (id: string, type: CommentType, text: string) => void;
   onDelete: (id: string) => void;
 }) {
-  const totalCount = entries.reduce((sum, e) => sum + e.comments.length, 0);
+  const totalCount = entries.reduce(
+    (sum, entry) => sum + entry.comments.length,
+    0,
+  );
 
   if (totalCount === 0) {
     return <p className="comment-panel__empty">No comments across files.</p>;
@@ -644,18 +668,19 @@ function CrossFileList({
                 {entry.comments.length}
               </span>
             </div>
-            {entry.comments.map((c) => {
-              const rawStart = "rawStart" in c ? c.rawStart : 0;
+            {entry.comments.map((comment) => {
+              const rawStart = "rawStart" in comment ? comment.rawStart : 0;
+              const canEdit = true;
               return (
                 <CommentEntry
-                  key={`${entry.filePath}:${c.id}`}
-                  comment={c}
-                  isActive={isActiveFile && activeCommentId === c.id}
+                  key={`${entry.filePath}:${comment.id}`}
+                  comment={comment}
+                  isActive={isActiveFile && activeCommentId === comment.id}
                   isOtherFile={!isActiveFile}
-                  canEdit={true}
+                  canEdit={canEdit}
                   onClick={() => {
                     if (isActiveFile) {
-                      onEntryClick(c.id, c.blockIndex);
+                      onEntryClick(comment.id, comment.blockIndex);
                     } else {
                       onCrossFileClick(entry.filePath, rawStart);
                     }
@@ -692,8 +717,8 @@ function SingleFileList({
   activeCommentId: string | null;
   sourceComments: (Comment | DisplayComment)[];
   onEntryClick: (id: string, blockIndex: number | undefined) => void;
-  entryLabel: (c: DisplayComment) => string;
-  hostEntryLabel: (c: Comment) => string;
+  entryLabel: (comment: DisplayComment) => string;
+  hostEntryLabel: (comment: Comment) => string;
   onEdit: (id: string, type: CommentType, text: string) => void;
   onDelete: (id: string) => void;
 }) {
@@ -713,41 +738,43 @@ function SingleFileList({
 
   return (
     <>
-      {visible.map((c) =>
+      {visible.map((comment) =>
         isResolved ? (
           <div
-            key={c.id}
+            key={comment.id}
             className="comment-panel__entry comment-panel__entry--resolved"
           >
             <span
               className="comment-panel__badge"
               style={{
-                backgroundColor: COMMENT_TYPE_COLOR[c.type],
+                backgroundColor: COMMENT_TYPE_COLOR[comment.type],
                 color: "#fff",
                 opacity: 0.6,
               }}
             >
-              {c.type}
+              {comment.type}
             </span>
-            {c.blockIndex !== undefined && (
-              <span className="comment-panel__ref">¶{c.blockIndex + 1}</span>
+            {comment.blockIndex !== undefined && (
+              <span className="comment-panel__ref">
+                ¶{comment.blockIndex + 1}
+              </span>
             )}
             <span className="comment-panel__text comment-panel__text--resolved">
               {peerMode
-                ? entryLabel(c)
-                : "criticType" in c
-                  ? hostEntryLabel(c)
-                  : entryLabel(c)}
+                ? entryLabel(comment)
+                : "criticType" in comment
+                  ? hostEntryLabel(comment)
+                  : entryLabel(comment)}
             </span>
           </div>
         ) : (
           <CommentEntry
-            key={c.id}
-            comment={c}
-            isActive={activeCommentId === c.id}
+            key={comment.id}
+            comment={comment}
+            isActive={activeCommentId === comment.id}
             isOtherFile={false}
             canEdit={true}
-            onClick={() => onEntryClick(c.id, c.blockIndex)}
+            onClick={() => onEntryClick(comment.id, comment.blockIndex)}
             onEdit={onEdit}
             onDelete={onDelete}
           />

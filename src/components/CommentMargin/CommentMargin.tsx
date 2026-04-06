@@ -144,16 +144,15 @@ export function CommentMargin({
   // Peer comments for the current file, grouped by blockIndex
   const peerDotGroups = useMemo(() => {
     if (peerMode) {
-      // Peer sees their own comments
       const currentPath = peerActiveFilePath ?? "";
       const forFile = currentPath
-        ? myPeerComments.filter((c) => c.path === currentPath)
+        ? myPeerComments.filter((comment) => comment.path === currentPath)
         : myPeerComments;
       const byBlock = new Map<number, PeerComment[]>();
-      for (const c of forFile) {
-        const idx = c.blockRef.blockIndex;
+      for (const comment of forFile) {
+        const idx = comment.blockRef.blockIndex;
         const arr = byBlock.get(idx) ?? [];
-        arr.push(c);
+        arr.push(comment);
         byBlock.set(idx, arr);
       }
       return byBlock;
@@ -165,13 +164,13 @@ export function CommentMargin({
     const all = pendingComments[activeDocId] ?? [];
     const currentPath = activeFilePath ?? fileName ?? "";
     const forFile = currentPath
-      ? all.filter((c) => c.path === currentPath)
+      ? all.filter((comment) => comment.path === currentPath)
       : all;
     const byBlock = new Map<number, PeerComment[]>();
-    for (const c of forFile) {
-      const idx = c.blockRef.blockIndex;
+    for (const comment of forFile) {
+      const idx = comment.blockRef.blockIndex;
       const arr = byBlock.get(idx) ?? [];
-      arr.push(c);
+      arr.push(comment);
       byBlock.set(idx, arr);
     }
     return byBlock;

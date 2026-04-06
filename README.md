@@ -65,7 +65,9 @@ src/
   test/               Test files and helpers
 
 worker/               Cloudflare Worker for encrypted share storage
-docs/                 Product requirements, technical designs, roadmap
+docs/                 Contributing guide, iteration roadmap
+  features/           Feature specs and task lists
+  design/             Technical design documents (v1, v2)
 ```
 
 ## Tech stack

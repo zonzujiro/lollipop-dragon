@@ -11,13 +11,13 @@ Create planning documents for a new feature: $ARGUMENTS
 
 ## Instructions
 
-1. **Research first.** Read `docs/contributing.md` and `CLAUDE.md` for project conventions. Read existing feature specs in `docs/` to match style and depth. Understand the current architecture before designing.
+1. **Research first.** Read `docs/contributing.md` and `CLAUDE.md` for project conventions. Read existing feature specs in `docs/features/` to match style and depth. Understand the current architecture before designing. **Track all external links consulted** (docs, repos, articles) — they go into the References section of the spec.
 
 2. **Talk to the user.** Before writing anything, clarify scope — ask what is included and what is explicitly out of scope. Ask about known constraints.
 
-3. **Create two files in `docs/`:**
+3. **Create two files in `docs/features/`:**
 
-### `docs/<feature-name>-spec.md` — Feature Specification
+### `docs/features/<feature-name>-spec.md` — Feature Specification
 
 The source of truth for what is being built. Structure:
 
@@ -65,9 +65,22 @@ Things that could go wrong.
 
 ## 9. Limitations
 Known constraints — technical, browser, API, scope.
+
+## 10. Methodology
+TLDR of how you approached the problem:
+- What was the problem and how you framed it
+- Key research steps (what you investigated, what you compared)
+- Shortcuts taken and why
+- Blockers faced and how they were resolved
+
+## 11. References
+Table of external links and sources used during research:
+| Source | What it provided |
+|--------|-----------------|
+Links to docs, GitHub repos, articles, git commits, and existing project docs consulted.
 ```
 
-### `docs/<feature-name>-todos.md` — Task List
+### `docs/features/<feature-name>-todos.md` — Task List
 
 A categorized, dependency-aware task list linked back to spec.md. Structure:
 
@@ -113,7 +126,7 @@ Rules for todos:
 
 ## Style
 
-- Match the tone and structure of existing docs in `docs/`.
+- Match the tone and structure of existing docs in `docs/features/`.
 - Use numbered sections in specs, checkboxes in todos.
 - Be specific — vague tasks like "implement feature" are not acceptable.
 - Include TypeScript type signatures in the spec, not pseudocode.

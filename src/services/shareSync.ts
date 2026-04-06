@@ -3,6 +3,7 @@ import { getActiveTab } from "../store/selectors";
 import { toFileTreeNodes } from "../types/fileTree";
 import type { FileTreeNode } from "../types/fileTree";
 import { readFile } from "./fileSystem";
+import { getRelay } from "./relay";
 import { ShareStorage } from "./shareStorage";
 import { WORKER_URL } from "../config";
 
@@ -29,11 +30,11 @@ async function collectTreeContents(
         } else {
           try {
             tree[path] = await readFile(node.handle);
-          } catch (e) {
+          } catch (error) {
             console.warn(
               "[collectTreeContents] skipping unreadable file:",
               path,
-              e,
+              error,
             );
           }
         }
@@ -55,7 +56,7 @@ export async function updateShare(docId: string): Promise<void> {
   if (!tab) {
     throw new Error("No active tab");
   }
-  const record = tab.shares.find((s) => s.docId === docId);
+  const record = tab.shares.find((share) => share.docId === docId);
   if (!record) {
     throw new Error("Share not found");
   }
@@ -83,6 +84,18 @@ export async function updateShare(docId: string): Promise<void> {
   }
 
   await storage.updateContent(docId, record.hostSecret, tree, key);
+
+  try {
+    const relay = getRelay();
+    if (relay) {
+      await relay.send(docId, {
+        type: "document:updated",
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  } catch (error) {
+    console.warn("[relay] document:updated broadcast failed:", error);
+  }
 }
 
 export async function syncActiveShares(): Promise<void> {
@@ -94,13 +107,14 @@ export async function syncActiveShares(): Promise<void> {
   if (!tab) {
     return;
   }
-  const now = new Date();
-  const active = tab.shares.filter((s) => new Date(s.expiresAt) > now);
-  for (const share of active) {
+  const activeShares = tab.shares.filter(
+    (share) => new Date(share.expiresAt) > new Date(),
+  );
+  for (const share of activeShares) {
     try {
       await updateShare(share.docId);
-    } catch (e) {
-      console.warn("[sync] failed to push update for", share.docId, e);
+    } catch (error) {
+      console.warn("[syncActiveShares] failed:", share.docId, error);
     }
   }
 }

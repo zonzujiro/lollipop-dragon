@@ -15,7 +15,7 @@ Follow these phases in order.
 1. Identify the error or unexpected behavior from the user's report.
 2. Search the codebase for the relevant code paths (error messages, function names, log lines).
 3. Read the code to understand the full flow that leads to the bug.
-4. Cross-check with docs in `docs/` to understand the intended behavior and user stories.
+4. Cross-check with docs in `docs/features/` and `docs/design/` to understand the intended behavior and user stories.
 
 Present a root cause analysis to the user before proceeding.
 
@@ -46,7 +46,7 @@ Ask: "Does this approach look right?" Do not implement until the user confirms.
 
 **This step is mandatory.** After every bugfix:
 
-1. Identify which user story or spec doc in `docs/` covers the area that was broken.
+1. Identify which user story or spec doc in `docs/features/` covers the area that was broken.
 2. Update the doc to reflect the fix — add acceptance criteria, verification steps, or edge case documentation that was missing.
 3. If the bug revealed a gap in the spec (e.g., an unhandled error state), document the new behavior so it is covered going forward.
 

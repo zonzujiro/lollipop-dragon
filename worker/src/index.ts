@@ -1,6 +1,7 @@
 interface Env {
   LOLLIPOP_DRAGON: KVNamespace;
   ALLOWED_ORIGINS: string;
+  RELAY_HUB: DurableObjectNamespace;
 }
 
 interface ShareMeta {
@@ -10,8 +11,6 @@ interface ShareMeta {
   ttl: number;
   label: string;
 }
-
-// --- Helpers ---
 
 function corsHeaders(origin: string) {
   return {
@@ -47,14 +46,55 @@ async function sha256hex(text: string): Promise<string> {
     new TextEncoder().encode(text),
   );
   return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, "0"))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isShareMeta(value: unknown): value is ShareMeta {
+  if (!isRecord(value)) {
+    return false;
+  }
+  if (typeof value["hostSecretHash"] !== "string") {
+    return false;
+  }
+  if (typeof value["createdAt"] !== "string") {
+    return false;
+  }
+  if (typeof value["ttl"] !== "number") {
+    return false;
+  }
+  if (typeof value["label"] !== "string") {
+    return false;
+  }
+  if (
+    "updatedAt" in value &&
+    value["updatedAt"] !== undefined &&
+    typeof value["updatedAt"] !== "string"
+  ) {
+    return false;
+  }
+  return true;
 }
 
 async function getMeta(env: Env, docId: string): Promise<ShareMeta | null> {
   const raw = await env.LOLLIPOP_DRAGON.get(`share:${docId}:meta`);
-  if (!raw) return null;
-  return JSON.parse(raw) as ShareMeta;
+  if (!raw) {
+    return null;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!isShareMeta(parsed)) {
+    return null;
+  }
+  return parsed;
 }
 
 async function verifySecret(
@@ -63,21 +103,219 @@ async function verifySecret(
   docId: string,
 ): Promise<boolean> {
   const meta = await getMeta(env, docId);
-  if (!meta) return false;
+  if (!meta) {
+    return false;
+  }
   const secret = req.headers.get("X-Host-Secret") ?? "";
   const hash = await sha256hex(secret);
   return hash === meta.hostSecretHash;
 }
 
-// --- Main handler ---
-
-function arrayBufferToBase64(buf: ArrayBuffer): string {
-  const bytes = new Uint8Array(buf);
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
+async function handleRelay(
+  req: Request,
+  env: Env,
+  cors: Record<string, string>,
+  allowed: string[],
+): Promise<Response> {
+  if (req.headers.get("Upgrade") !== "websocket") {
+    return errRes(426, "WebSocket upgrade required", cors);
   }
-  return btoa(binary);
+  const wsOrigin = req.headers.get("Origin") ?? "";
+  if (!allowed.includes(wsOrigin)) {
+    return errRes(403, "Origin not allowed", cors);
+  }
+  const hubId = env.RELAY_HUB.idFromName("hub");
+  const hub = env.RELAY_HUB.get(hubId);
+  return hub.fetch(req);
+}
+
+async function clearRelayDoc(env: Env, docId: string): Promise<void> {
+  const hubId = env.RELAY_HUB.idFromName("hub");
+  const hub = env.RELAY_HUB.get(hubId);
+  await hub.fetch("https://internal/internal/clear", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ docId }),
+  });
+}
+
+const MAX_BLOB_SIZE = 25 * 1024 * 1024;
+const MAX_TTL_SECONDS = 30 * 86400;
+const DEFAULT_TTL_SECONDS = 604800;
+
+function parseShareParams(url: URL, req: Request) {
+  const ttl = Math.min(
+    Number(url.searchParams.get("ttl") ?? DEFAULT_TTL_SECONDS),
+    MAX_TTL_SECONDS,
+  );
+  const label = url.searchParams.get("label") ?? "";
+  const hostSecret = req.headers.get("X-Host-Secret") ?? "";
+  return { ttl, label, hostSecret };
+}
+
+async function createShare(
+  req: Request,
+  env: Env,
+  cors: Record<string, string>,
+  url: URL,
+  docId: string,
+): Promise<Response> {
+  const existing = await env.LOLLIPOP_DRAGON.get(`share:${docId}:meta`);
+  if (existing) {
+    return errRes(409, "Document already exists", cors);
+  }
+  const blob = await req.arrayBuffer();
+  if (blob.byteLength > MAX_BLOB_SIZE) {
+    return errRes(413, "Blob too large", cors);
+  }
+  const { ttl, label, hostSecret } = parseShareParams(url, req);
+  if (!hostSecret) {
+    return errRes(400, "X-Host-Secret required", cors);
+  }
+  const hostSecretHash = await sha256hex(hostSecret);
+  const now = new Date().toISOString();
+  const meta = {
+    hostSecretHash,
+    createdAt: now,
+    updatedAt: now,
+    ttl,
+    label,
+  } satisfies ShareMeta;
+  await env.LOLLIPOP_DRAGON.put(`share:${docId}`, blob, { expirationTtl: ttl });
+  await env.LOLLIPOP_DRAGON.put(`share:${docId}:meta`, JSON.stringify(meta), {
+    expirationTtl: ttl,
+  });
+  return jsonRes({ ok: true }, cors);
+}
+
+async function getShareContent(
+  env: Env,
+  cors: Record<string, string>,
+  docId: string,
+): Promise<Response> {
+  const blob = await env.LOLLIPOP_DRAGON.get(`share:${docId}`, "arrayBuffer");
+  if (!blob) {
+    return errRes(404, "Not found", cors);
+  }
+  return new Response(blob, {
+    headers: { ...cors, "Content-Type": "application/octet-stream" },
+  });
+}
+
+function computeRemainingTtl(meta: ShareMeta): number {
+  const elapsed = Math.round(
+    (Date.now() - new Date(meta.createdAt).getTime()) / 1000,
+  );
+  return Math.max(meta.ttl - elapsed, 3600);
+}
+
+async function updateShareContent(
+  req: Request,
+  env: Env,
+  cors: Record<string, string>,
+  docId: string,
+): Promise<Response> {
+  if (!(await verifySecret(req, env, docId))) {
+    return errRes(403, "Forbidden", cors);
+  }
+  const meta = await getMeta(env, docId);
+  if (!meta) {
+    return errRes(404, "Not found", cors);
+  }
+  const blob = await req.arrayBuffer();
+  if (blob.byteLength > MAX_BLOB_SIZE) {
+    return errRes(413, "Blob too large", cors);
+  }
+  const remainingTtl = computeRemainingTtl(meta);
+  const updatedMeta: ShareMeta = {
+    ...meta,
+    updatedAt: new Date().toISOString(),
+  };
+  await env.LOLLIPOP_DRAGON.put(`share:${docId}`, blob, {
+    expirationTtl: remainingTtl,
+  });
+  await env.LOLLIPOP_DRAGON.put(
+    `share:${docId}:meta`,
+    JSON.stringify(updatedMeta),
+    { expirationTtl: remainingTtl },
+  );
+  return jsonRes({ ok: true }, cors);
+}
+
+async function headShare(
+  env: Env,
+  cors: Record<string, string>,
+  docId: string,
+): Promise<Response> {
+  const meta = await getMeta(env, docId);
+  if (!meta) {
+    return new Response(null, { status: 404, headers: cors });
+  }
+  return new Response(null, {
+    status: 200,
+    headers: { ...cors, "Last-Modified": meta.updatedAt ?? meta.createdAt },
+  });
+}
+
+async function deleteShare(
+  req: Request,
+  env: Env,
+  cors: Record<string, string>,
+  docId: string,
+): Promise<Response> {
+  if (!(await verifySecret(req, env, docId))) {
+    return errRes(403, "Forbidden", cors);
+  }
+  await env.LOLLIPOP_DRAGON.delete(`share:${docId}`);
+  await env.LOLLIPOP_DRAGON.delete(`share:${docId}:meta`);
+  try {
+    await clearRelayDoc(env, docId);
+  } catch (error) {
+    console.warn("[share] failed to clear relay doc state:", docId, error);
+  }
+  return jsonRes({ ok: true }, cors);
+}
+
+async function handleShare(
+  req: Request,
+  env: Env,
+  cors: Record<string, string>,
+  url: URL,
+  docId: string,
+): Promise<Response | null> {
+  const handlers: Record<string, () => Promise<Response>> = {
+    POST: () => createShare(req, env, cors, url, docId),
+    GET: () => getShareContent(env, cors, docId),
+    PUT: () => updateShareContent(req, env, cors, docId),
+    HEAD: () => headShare(env, cors, docId),
+    DELETE: () => deleteShare(req, env, cors, docId),
+  };
+  const handler = handlers[req.method];
+  return handler ? handler() : null;
+}
+
+export { RelayHubSqlite } from "./relay";
+
+async function routeRequest(
+  req: Request,
+  env: Env,
+  cors: Record<string, string>,
+  url: URL,
+  allowed: string[],
+): Promise<Response> {
+  const parts = url.pathname.replace(/^\//, "").split("/");
+  const [resource, docId] = parts;
+
+  if (resource === "relay") {
+    return handleRelay(req, env, cors, allowed);
+  }
+  if (resource === "share") {
+    const result = await handleShare(req, env, cors, url, docId);
+    if (result) {
+      return result;
+    }
+  }
+  return errRes(404, "Not found", cors);
 }
 
 export default {
@@ -88,174 +326,15 @@ export default {
     const matchedOrigin = allowed.includes(origin) ? origin : allowed[0];
     const cors = corsHeaders(matchedOrigin);
 
-    if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+    if (req.method === "OPTIONS") {
+      return new Response(null, { headers: cors });
+    }
 
     try {
-      const parts = url.pathname.replace(/^\//, "").split("/");
-      const [resource, docId] = parts;
-
-      // ── /share ──────────────────────────────────────────────────────────
-      if (resource === "share") {
-        // POST /share/:docId  — upload content (client provides docId)
-        if (req.method === "POST" && docId) {
-          const existing = await env.LOLLIPOP_DRAGON.get(`share:${docId}:meta`);
-          if (existing) return errRes(409, "Document already exists", cors);
-          const blob = await req.arrayBuffer();
-          if (blob.byteLength > 25 * 1024 * 1024)
-            return errRes(413, "Blob too large", cors);
-          const ttl = Math.min(
-            Number(url.searchParams.get("ttl") ?? 604800),
-            30 * 86400,
-          );
-          const label = url.searchParams.get("label") ?? "";
-          const hostSecret = req.headers.get("X-Host-Secret") ?? "";
-          if (!hostSecret) return errRes(400, "X-Host-Secret required", cors);
-          const hostSecretHash = await sha256hex(hostSecret);
-          await env.LOLLIPOP_DRAGON.put(`share:${docId}`, blob, {
-            expirationTtl: ttl,
-          });
-          const now = new Date().toISOString();
-          await env.LOLLIPOP_DRAGON.put(
-            `share:${docId}:meta`,
-            JSON.stringify({
-              hostSecretHash,
-              createdAt: now,
-              updatedAt: now,
-              ttl,
-              label,
-            } satisfies ShareMeta),
-            { expirationTtl: ttl },
-          );
-          return jsonRes({ ok: true }, cors);
-        }
-
-        // GET /share/:docId  — fetch content
-        if (req.method === "GET" && docId) {
-          const blob = await env.LOLLIPOP_DRAGON.get(
-            `share:${docId}`,
-            "arrayBuffer",
-          );
-          if (!blob) return errRes(404, "Not found", cors);
-          return new Response(blob, {
-            headers: { ...cors, "Content-Type": "application/octet-stream" },
-          });
-        }
-
-        // PUT /share/:docId  — update content in-place
-        if (req.method === "PUT" && docId) {
-          if (!(await verifySecret(req, env, docId)))
-            return errRes(403, "Forbidden", cors);
-          const meta = await getMeta(env, docId);
-          if (!meta) return errRes(404, "Not found", cors);
-          const blob = await req.arrayBuffer();
-          if (blob.byteLength > 25 * 1024 * 1024)
-            return errRes(413, "Blob too large", cors);
-          const remainingTtl = Math.max(
-            meta.ttl -
-              Math.round(
-                (Date.now() - new Date(meta.createdAt).getTime()) / 1000,
-              ),
-            3600,
-          );
-          await env.LOLLIPOP_DRAGON.put(`share:${docId}`, blob, {
-            expirationTtl: remainingTtl,
-          });
-          const updatedMeta: ShareMeta = {
-            ...meta,
-            updatedAt: new Date().toISOString(),
-          };
-          await env.LOLLIPOP_DRAGON.put(
-            `share:${docId}:meta`,
-            JSON.stringify(updatedMeta),
-            { expirationTtl: remainingTtl },
-          );
-          return jsonRes({ ok: true }, cors);
-        }
-
-        // HEAD /share/:docId  — cheap content-updated check
-        if (req.method === "HEAD" && docId) {
-          const meta = await getMeta(env, docId);
-          if (!meta) return new Response(null, { status: 404, headers: cors });
-          return new Response(null, {
-            status: 200,
-            headers: {
-              ...cors,
-              "Last-Modified": meta.updatedAt ?? meta.createdAt,
-            },
-          });
-        }
-
-        // DELETE /share/:docId  — revoke share
-        if (req.method === "DELETE" && docId) {
-          if (!(await verifySecret(req, env, docId)))
-            return errRes(403, "Forbidden", cors);
-          await env.LOLLIPOP_DRAGON.delete(`share:${docId}`);
-          await env.LOLLIPOP_DRAGON.delete(`share:${docId}:meta`);
-          return jsonRes({ ok: true }, cors);
-        }
-      }
-
-      // ── /comments ────────────────────────────────────────────────────────
-      if (resource === "comments" && docId) {
-        // POST /comments/:docId  — post a comment
-        if (req.method === "POST") {
-          const meta = await getMeta(env, docId);
-          if (!meta) return errRes(404, "Share not found", cors);
-          const blob = await req.arrayBuffer();
-          if (blob.byteLength > 1024 * 1024)
-            return errRes(413, "Comment too large", cors);
-          const cmtId = crypto.randomUUID();
-          await env.LOLLIPOP_DRAGON.put(`comments:${docId}:${cmtId}`, blob, {
-            expirationTtl: meta.ttl,
-          });
-          return jsonRes({ cmtId }, cors);
-        }
-
-        // GET /comments/:docId  — list comments
-        if (req.method === "GET") {
-          const list = await env.LOLLIPOP_DRAGON.list({
-            prefix: `comments:${docId}:`,
-          });
-          const blobs = await Promise.all(
-            list.keys.map((k) =>
-              env.LOLLIPOP_DRAGON.get(k.name, "arrayBuffer"),
-            ),
-          );
-          const encoded = blobs
-            .filter((b): b is ArrayBuffer => b !== null)
-            .map((b) => arrayBufferToBase64(b));
-          return jsonRes(encoded, cors);
-        }
-
-        // HEAD /comments/:docId  — cheap comment-count check
-        if (req.method === "HEAD") {
-          const list = await env.LOLLIPOP_DRAGON.list({
-            prefix: `comments:${docId}:`,
-          });
-          return new Response(null, {
-            status: 200,
-            headers: { ...cors, "X-Comment-Count": String(list.keys.length) },
-          });
-        }
-
-        // DELETE /comments/:docId  — clear all comments for a share
-        if (req.method === "DELETE") {
-          if (!(await verifySecret(req, env, docId)))
-            return errRes(403, "Forbidden", cors);
-          const list = await env.LOLLIPOP_DRAGON.list({
-            prefix: `comments:${docId}:`,
-          });
-          await Promise.all(
-            list.keys.map((k) => env.LOLLIPOP_DRAGON.delete(k.name)),
-          );
-          return jsonRes({ ok: true }, cors);
-        }
-      }
-
-      return errRes(404, "Not found", cors);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Internal error";
-      return errRes(500, msg, cors);
+      return await routeRequest(req, env, cors, url, allowed);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Internal error";
+      return errRes(500, message, cors);
     }
   },
 };

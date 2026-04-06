@@ -35,6 +35,9 @@ Pre-commit hooks (Husky + lint-staged) will auto-format staged files with Pretti
 - **Never use `as` for type assertions.** Use type guards, proper narrowing, or helper functions.
 - Prefer `async/await` over `.then()` where possible. Exception: `useEffect` callbacks can't be async, so `.then()` is acceptable there.
 - Prefer named boolean variables or small predicate helpers for non-trivial conditions instead of embedding complex checks inline.
+- **No `switch`/`case`.** Use object maps (e.g., `Record<Type, Handler>`) for dispatch instead.
+- **No single-letter variable names.** Use descriptive names — `comment` not `c`, `state` not `s`, `error` not `e`.
+- **Avoid runtime type checks to satisfy TypeScript.** Parse and validate external data (JSON, network) once at the boundary into typed structures. Don't scatter `typeof x === "string"` checks through business logic.
 
 ### Compatibility
 
@@ -75,6 +78,8 @@ The app has two runtime modes with **completely separate state** — read [CLAUD
 - Components that work in both modes receive a `peerMode` prop. Never mix state sources.
 
 When adding new state, decide whether it belongs on `TabState` (host-only) or `AppState` root (peer/global).
+
+**Store holds data only.** Do not put mutable non-serializable objects (WebSocket connections, timers, DOM refs) in the Zustand store. Keep them as module-level singletons in services.
 
 ### Keep it simple
 
