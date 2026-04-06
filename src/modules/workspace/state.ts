@@ -10,6 +10,7 @@ import {
   restoreShareKeys,
   stableShareKey,
 } from "../sharing";
+import { findResolvedComments } from "../host-review/controller";
 import {
   buildUpdatedActiveTabs,
   buildUpdatedTabs,
@@ -522,8 +523,9 @@ export function createWorkspaceActions<StoreState extends WorkspaceActionStore>(
       try {
         const newRawContent = await readFile(tab.fileHandle);
         const changed = newRawContent !== tab.rawContent;
-        const newlyResolvedComments = tab.comments.filter(
-          (comment) => !newRawContent.includes(comment.raw),
+        const newlyResolvedComments = findResolvedComments(
+          tab.comments,
+          newRawContent,
         );
         set((state) => ({
           tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, () => ({
