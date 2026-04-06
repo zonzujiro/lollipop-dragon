@@ -186,9 +186,9 @@ Owns:
 
 Steps:
 
-- [ ] Move tab lifecycle state and selectors into the module
-- [ ] Move file-session orchestration into the module controller
-- [ ] Keep restore behavior and persisted-state compatibility stable
+- [x] Move tab lifecycle state and selectors into the module
+- [x] Move file-session orchestration into the module controller
+- [x] Keep restore behavior and persisted-state compatibility stable
 
 Verification:
 
