@@ -1,6 +1,9 @@
 import type { HydratedSidebarTreeNode } from "./fileTree";
 import type { Comment, CommentType } from "./criticmarkup";
-import type { ShareRecord, PeerComment } from "./share";
+import {
+  createSharingTabState,
+  type SharingTabState,
+} from "../modules/sharing/types";
 
 export interface FileCommentEntry {
   filePath: string;
@@ -8,7 +11,7 @@ export interface FileCommentEntry {
   comments: Comment[];
 }
 
-export interface TabState {
+export interface TabState extends SharingTabState {
   id: string;
   label: string;
 
@@ -38,13 +41,6 @@ export interface TabState {
   writeAllowed: boolean;
   undoState: { rawContent: string } | null;
 
-  shares: ShareRecord[];
-  sharedPanelOpen: boolean;
-  pendingComments: Record<string, PeerComment[]>;
-  pendingResolveCommentIds: Record<string, string[]>;
-  shareKeys: Record<string, CryptoKey>;
-  activeDocId: string | null;
-
   restoreError: string | null;
 }
 
@@ -71,12 +67,7 @@ export function createDefaultTab(
     pendingScrollTarget: null,
     writeAllowed: true,
     undoState: null,
-    shares: [],
-    sharedPanelOpen: false,
-    pendingComments: {},
-    pendingResolveCommentIds: {},
-    shareKeys: {},
-    activeDocId: null,
+    ...createSharingTabState(),
     restoreError: null,
     ...overrides,
   };

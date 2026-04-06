@@ -151,10 +151,10 @@ Owns:
 
 Steps:
 
-- [ ] Move pure pending-comment transitions into module state
-- [ ] Move share storage calls behind a module controller
-- [ ] Keep durable resolve behavior unchanged
-- [ ] Expose a narrow public API for share lifecycle commands
+- [x] Move pure pending-comment transitions into module state
+- [x] Move share storage calls behind a module controller
+- [x] Keep durable resolve behavior unchanged
+- [x] Expose a narrow public API for share lifecycle commands
 
 Verification:
 

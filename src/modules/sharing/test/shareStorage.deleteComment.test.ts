@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ShareStorage } from "../services/shareStorage";
-import { generateKey } from "../services/crypto";
+import { ShareStorage } from "../storage";
+import { generateKey } from "../../../services/crypto";
 
 describe("ShareStorage.updateContent errors", () => {
   const storage = new ShareStorage("https://test.workers.dev");

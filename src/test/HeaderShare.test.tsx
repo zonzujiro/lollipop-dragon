@@ -1,13 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../config", () => ({
   WORKER_URL: "https://mock-worker.test",
 }));
 
 import { Header } from "../components/Header";
-import { setTestState, resetTestStore } from "./testHelpers";
+import { resetTestStore, setTestState } from "./testHelpers";
 
 beforeEach(() => {
   resetTestStore();

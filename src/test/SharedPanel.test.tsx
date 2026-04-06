@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SharedPanel } from "../components/SharedPanel";
 import { useAppStore } from "../store";
-import { resetTestStore, setTestState, makeShare } from "./testHelpers";
+import { makeShare, resetTestStore, setTestState } from "./testHelpers";
 
 vi.mock("../services/relay", () => ({
   isDocSubscribed: vi.fn(() => false),
