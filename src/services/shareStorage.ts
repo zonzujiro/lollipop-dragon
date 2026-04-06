@@ -1,13 +1,18 @@
 import { encrypt, decrypt } from "./crypto";
 import { serializePayload, deserializePayload } from "./sharePayload";
 import type { SharePayload } from "../types/share";
+import { normalizeWorkerUrl } from "../utils/workerUrl";
 
 export interface UploadResult {
   hostSecret: string;
 }
 
 export class ShareStorage {
-  constructor(private readonly workerUrl: string) {}
+  private readonly workerUrl: string;
+
+  constructor(workerUrl: string) {
+    this.workerUrl = normalizeWorkerUrl(workerUrl);
+  }
 
   async uploadContent(
     docId: string,

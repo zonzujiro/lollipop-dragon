@@ -296,6 +296,10 @@ async function handleShare(
 
 export { RelayHubSqlite } from "./relay";
 
+export function getRouteParts(pathname: string): string[] {
+  return pathname.replace(/^\/+/, "").split("/");
+}
+
 async function routeRequest(
   req: Request,
   env: Env,
@@ -303,7 +307,7 @@ async function routeRequest(
   url: URL,
   allowed: string[],
 ): Promise<Response> {
-  const parts = url.pathname.replace(/^\//, "").split("/");
+  const parts = getRouteParts(url.pathname);
   const [resource, docId] = parts;
 
   if (resource === "relay") {

@@ -61,6 +61,13 @@ wrangler deploy
 VITE_WORKER_URL=https://markreview-worker-v2.YOUR_ACCOUNT.workers.dev
 ```
 
+The app normalizes a trailing slash in `VITE_WORKER_URL`, so both of these work:
+
+```bash
+VITE_WORKER_URL=https://markreview-worker-v2.YOUR_ACCOUNT.workers.dev
+VITE_WORKER_URL=https://markreview-worker-v2.YOUR_ACCOUNT.workers.dev/
+```
+
 ## Public API
 
 ### Share content
