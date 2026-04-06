@@ -1,200 +1,221 @@
 # Real-Time Comment Sync — Technical Design
 
 > Spec: [spec.md](./spec.md)
-> Implementation plan: [todos.md](./todos.md)
-> Review analysis: [review-analysis.md](./review-analysis.md)
-
----
+> Review log: [review-analysis.md](./review-analysis.md)
 
 ## 1. Summary
 
-Real-time comment delivery via a Cloudflare Durable Object WebSocket relay. Replaces the manual "Check comments" KV polling flow with instant comment delivery while keeping KV as the persistence and offline fallback layer.
+The implementation uses a SQLite-backed Durable Object (`RelayHubSqlite`) as the only durable backend for unresolved peer comments.
 
-**Scope (v1):** add + resolve only. Edit/delete deferred until KV supports per-comment mutation.
+- KV still stores encrypted share content and share metadata
+- the Durable Object stores unresolved peer comment payloads
+- host reconnect is restored from `comments:snapshot`
+- host resolves remove rows from SQLite
+- host-authored local comments never enter the relay store
 
----
+This is a deliberate replacement of the old KV comment API, not an addition to it.
 
-## 2. Why Not WebRTC
+## 2. Runtime Topology
 
-A previous attempt used browser-to-browser WebRTC (Trystero + Yjs, commits `061293e`–`ec90b13`). It failed because the product is used inside a corporate VPN that blocks:
+```text
+Host Browser  ─┐
+               ├── WebSocket /relay ── RelayHubSqlite
+Peer Browser  ─┘                         - SQLite comment store
+                                         - subscribe auth
+                                         - add / resolve ACKs
+                                         - comments:snapshot
 
-1. Signaling relays — tried Nostr, BitTorrent, MQTT, back to Nostr over 3 days
-2. Direct peer connections — even with STUN + free TURN servers
-
-Analysis of [claude-duet](https://github.com/EliranG/claude-duet) showed the key insight: when P2P fails, fall back to a WebSocket relay over standard HTTPS. WSS on port 443 is much more likely to pass through VPN than WebRTC since blocking it would break most web applications.
-
----
-
-## 3. Architecture
-
-```
-┌─────────────────────┐                      ┌──────────────────────────────┐
-│    Host Browser      │         WSS          │  Cloudflare Durable Object   │
-│                      │◄───────────────────►│  (single relay hub)          │
-│  - Opens local files │                      │                              │
-│  - Shares content    │                      │  - Single WSS per client     │
-│  - Receives comments │                      │  - Multiplexed by docId      │
-│    in real time      │                      │  - Echo suppression          │
-└─────────────────────┘                      │  - Hibernates when idle      │
-                                              │                              │
-┌─────────────────────┐         WSS          │                              │
-│    Peer Browser      │◄───────────────────►│                              │
-│                      │                      └──────────────────────────────┘
-│  - Opens shared link │
-│  - Posts comments    │         HTTPS/REST
-│  - Gets live updates │◄──────────────────►┌──────────────────────────────┐
-└─────────────────────┘                      │  Cloudflare Worker + KV      │
-                                              │  (async blob store)          │
-                                              │  - Content upload/fetch      │
-                                              │  - Comment persistence       │
-                                              │  - TTL auto-purge            │
-                                              └──────────────────────────────┘
+Host / Peer ───── HTTPS /share/:docId ─ Worker + KV
+                                         - encrypted content blob
+                                         - share metadata
+                                         - revoke / update
 ```
 
-**Topology:** Single relay hub DO, multiplexed by `docId`. Each client opens one WebSocket. The DO routes messages by checking per-socket subscription attachments (`serializeAttachment`/`deserializeAttachment` — survives hibernation).
+## 3. Worker Responsibilities
 
-**Dual-layer:** Comments are posted to KV (persistence) AND broadcast via WebSocket (delivery). KV is the primary durable catch-up layer on reconnect, supplemented by transient `resolvedCommentIds` for relay/KV reorder protection within a session.
+### KV
 
----
+- `share:{docId}` stores encrypted share content
+- `share:{docId}:meta` stores:
+  - `hostSecretHash`
+  - `createdAt`
+  - `updatedAt`
+  - `ttl`
+  - `label`
 
-## 4. Tech Stack Additions
+### Durable Object
 
-| Layer              | Choice                                                           | Why                                                                            |
-| ------------------ | ---------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Real-time relay    | Cloudflare Durable Object (WebSocket Hibernation API)            | Same platform as existing Worker; free tier sufficient; WSS passes through VPN |
-| Wire protocol      | JSON frames over WebSocket (plaintext docId + encrypted payload) | Simple, no dependencies; E2E encrypted with existing AES-256-GCM keys          |
-| Subscription state | Socket attachments                                               | Survives DO hibernation without in-memory Maps                                 |
-| Keep-alive         | Application-level ping/pong (30s)                                | Prevents VPN proxy idle timeouts                                               |
-| Client state       | Zustand (existing store)                                         | New fields on AppState root                                                    |
+`RelayHubSqlite` owns unresolved peer comments and relay routing.
 
-No new npm dependencies are required. The platform stack (Web Crypto, Cloudflare Worker + KV, GitHub Pages) is unchanged.
+SQLite tables:
 
----
+`doc_meta`
+- `doc_id`
+- `host_secret_hash`
+- `expires_at`
 
-## 5. Wire Protocol
+`comments`
+- `doc_id`
+- `cmt_id`
+- `payload`
+- `created_at`
+- `expires_at`
 
-### Outbound (client → DO)
+Important properties:
 
-| Frame              | Fields                           | Encrypted                                          |
-| ------------------ | -------------------------------- | -------------------------------------------------- |
-| `SubscribeFrame`   | `{ type: "subscribe", docId }`   | No                                                 |
-| `UnsubscribeFrame` | `{ type: "unsubscribe", docId }` | No                                                 |
-| `PingFrame`        | `{ type: "ping" }`               | No                                                 |
-| `RelayFrame`       | `{ version: 1, docId, payload }` | `payload` is base64-encoded AES-256-GCM ciphertext |
+- `cmtId` is client-generated and used as the primary durable identifier
+- payload is stored encrypted
+- expiry follows the share TTL
+- DO alarms delete expired comment rows
+- share revoke clears both `comments` and `doc_meta` for the share
 
-### Inbound (DO → client)
+## 4. Auth And Roles
 
-| Frame              | Fields                              | When                            |
-| ------------------ | ----------------------------------- | ------------------------------- |
-| `SubscribeOkFrame` | `{ type: "subscribe:ok", docId }`   | Subscribe confirmed             |
-| `ErrorFrame`       | `{ type: "error", docId, message }` | Subscribe failed / other errors |
-| `PongFrame`        | `{ type: "pong" }`                  | Keep-alive response             |
-| `RelayFrame`       | `{ version: 1, docId, payload }`    | Message from another client     |
+The relay distinguishes host and peer sockets at subscribe time.
 
-### Relay message types (inside encrypted payload)
+### Host subscribe
 
-| Type               | Direction   | Purpose                           |
-| ------------------ | ----------- | --------------------------------- |
-| `comment:added`    | peer → host | New comment posted                |
-| `comment:resolved` | host → peer | Comment merged/resolved           |
-| `document:updated` | host → peer | Host pushed updated content to KV |
+- frame includes `role: "host"` and `hostSecret`
+- DO hashes `hostSecret` and compares it to `share:{docId}:meta.hostSecretHash`
+- only verified host sockets are allowed to send `comment:resolve`
 
----
+### Peer subscribe
 
-## 6. Key Design Decisions
+- frame includes `role: "peer"`
+- no host secret required
+- peer sockets can send `comment:add`
 
-| Decision                  | Choice                                    | Rationale                                                                                                                                                                                                                                                                                                                                         |
-| ------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Single hub vs per-doc DO  | Single hub                                | Avoids N WebSocket connections per client; host gets comments from all shares on one socket                                                                                                                                                                                                                                                       |
-| Yjs CRDT vs plain events  | Plain events                              | No concurrent editing — each author owns their comments; host resolves unilaterally                                                                                                                                                                                                                                                               |
-| Subscribe ACK             | `subscribe:ok` / `error` with retry       | KV eventual consistency can reject valid subscriptions; client must not show false-connected state                                                                                                                                                                                                                                                |
-| Intentional close flag    | `closedIntentionally` boolean             | Distinguishes deliberate close (all subscriptions removed) from unexpected failure; prevents reconnect after intentional shutdown                                                                                                                                                                                                                 |
-| Zombie comment prevention | `resolvedCommentIds` set (session-scoped) | Tracks resolved IDs so late-arriving `comment:added` (from KV catch-up) is skipped after a resolve. Session-scoped only — does not survive page reload. The durable protection is the auto-push: `mergeComment` pushes updated content to KV before broadcasting `comment:resolved`, so a reloading peer gets the resolved state from KV. See §8. |
-| Peer reconnect catch-up   | Fetch comments from KV + reload content   | Two-step: KV catches missed adds, content reload catches missed resolves (requires host auto-push)                                                                                                                                                                                                                                                |
-| Host reconnect catch-up   | Active tab only                           | `fetchAllPendingComments` is tab-scoped; background tabs catch up on switch (documented limitation)                                                                                                                                                                                                                                               |
+This is lightweight role enforcement, not a full identity system.
 
----
+## 5. Wire Contract
 
-## 7. State Changes
+### Plaintext control frames
 
-### New AppState fields (global, not persisted)
+- `subscribe`
+- `unsubscribe`
+- `ping`
+- `comment:add`
+- `comment:resolve`
 
-```typescript
-rtStatus: "disconnected" | "connecting" | "connected";
-rtSocket: RelayConnection | null;
-rtSubscriptions: Set<string>;
-documentUpdateAvailable: boolean;
-remotePeerComments: PeerComment[];
-resolvedCommentIds: Set<string>;
-```
+### Inbound frames from the DO
 
-### Existing fields reused
+- `subscribe:ok`
+- `error`
+- `pong`
+- `comment:add:ack`
+- `comment:resolve:ack`
+- `comments:snapshot`
+- `comment:added`
+- `comment:resolved`
 
-- `TabState.pendingComments: Record<string, PeerComment[]>` — host receives relay comments here
-- `TabState.shares: ShareRecord[]` — `pendingCommentCount` updated on live delivery
-- `myPeerComments` / `submittedPeerCommentIds` — peer's own comments (not touched by relay)
+### Encrypted message payloads
 
----
+- `document:updated`
 
-## 8. Required Pre-Implementation Changes
+The relay also validates that the decrypted peer comment payload `id` matches the frame `cmtId`. That keeps frame identity authoritative and prevents ID drift.
 
-These must be done before the relay feature can ship safely:
+## 6. Client State Shape
 
-1. **Per-comment KV deletion** — Add `DELETE /comments/:docId/:cmtId` to the Worker. Change `mergeComment`/`dismissComment` to delete only the resolved comment, not all comments for the share.
+### Host tab state
 
-2. **Durable resolve sequence** — When the host resolves a comment, three things must happen in this order before broadcasting `comment:resolved`:
-   a. **Delete the comment from KV** (`DELETE /comments/:docId/:cmtId`) — prevents reconnect catch-up from reimporting a resolved comment.
-   b. **Push updated content to KV** (`updateShare(docId)`) — ensures `loadSharedContent()` reflects the resolve.
-   c. **Broadcast `comment:resolved`** — notifies connected peers.
-   This ordering ensures that if a peer reloads at any point during the sequence, the durable KV state (both comment blobs and shared content) already reflects the resolve. The relay broadcast is the notification; KV is the durable record.
+Existing `TabState` fields remain the source of host review state:
 
----
+- `pendingComments`
+- `pendingResolveCommentIds`
+- `shares`
+- `shareKeys`
 
-## 9. New Files
+### Global store state
 
-| File                                  | Purpose                                                                       |
-| ------------------------------------- | ----------------------------------------------------------------------------- |
-| `src/types/relay.ts`                  | Wire protocol types and relay message types                                   |
-| `src/services/relay.ts`               | `connectRelay()` — WebSocket lifecycle, encryption, batching, ping, reconnect |
-| `worker/src/relay.ts`                 | `RelayHub` DO class — subscription routing, echo suppression, hibernation     |
-| `src/components/ConnectionStatus/`    | Status dot indicator (connected/connecting/offline)                           |
-| `src/components/ContentUpdateBanner/` | Persistent banner for `document:updated` notification                         |
+- `relayStatus`
+- `documentUpdateAvailable`
+- peer-mode share content fields
+- `myPeerComments`
+- `submittedPeerCommentIds`
 
----
+The WebSocket instance and timers stay in `src/services/relay.ts`, not in the Zustand store.
 
-## 10. Modified Files
+## 7. Core Interaction Flows
 
-| File                                             | Change                                                                                                                                           |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `worker/src/index.ts`                            | Add `/relay` WebSocket upgrade route; export `RelayHub`; add `RELAY_HUB` to `Env`; add `DELETE /comments/:docId/:cmtId` per-comment delete route |
-| `worker/wrangler.toml`                           | Add DO binding and `new_sqlite_classes` migration                                                                                                |
-| `src/store/index.ts`                             | Add relay state fields, actions (`openRelay`, `subscribeDoc`, `closeRelay`), message handlers                                                    |
-| `src/store/selectors.ts`                         | Add `allVisiblePeerComments` selector combining `myPeerComments` + `remotePeerComments`                                                          |
-| `src/services/shareSync.ts`                      | Broadcast `document:updated` in `updateShare`                                                                                                    |
-| `src/store/index.ts` (continued)                 | Broadcast `comment:added` after KV post in `syncPeerComments`; broadcast `comment:resolved` in `mergeComment` (after auto-push)                  |
-| `src/components/Header/Header.tsx`               | Wire `ConnectionStatus`; hide "Check comments" when connected                                                                                    |
-| `src/components/CommentPanel/CommentPanel.tsx`   | Read combined selector in peer mode                                                                                                              |
-| `src/components/CommentMargin/CommentMargin.tsx` | Show margin dots for remote peer comments                                                                                                        |
+### 7.1 Peer add
 
----
+1. Peer creates a local `PeerComment`.
+2. `syncPeerComments()` finds unsent local comments.
+3. `relayCommentAdd()` encrypts the comment and sends `comment:add`.
+4. DO persists the row with `INSERT OR IGNORE`.
+5. DO sends `comment:add:ack`.
+6. Client marks the comment as submitted.
+7. DO forwards `comment:added` to host sockets for that `docId`.
 
-## 11. Known Limitations
+### 7.2 Host subscribe / reconnect
 
-- **v1 scope: add + resolve only.** Edit/delete deferred until KV supports per-comment mutation.
-- **Host reconnect is active-tab-only.** Background tabs catch up on switch.
-- **Single DO instance.** Fine for 2–5 peers; needs sharding if scaled.
-- **Peer resolve recovery requires auto-push.** If the host hasn't pushed updated content after resolving, `loadSharedContent()` won't reflect the resolve.
-- **VPN compatibility is "much more likely" not "guaranteed."** Some proxies may still interfere with WebSocket upgrades.
+1. Host opens relay and subscribes with `hostSecret`.
+2. DO verifies host role and responds `subscribe:ok`.
+3. DO immediately sends `comments:snapshot`.
+4. Client decrypts each entry and calls `replaceCommentsSnapshot`.
+5. Locally queued resolve IDs are filtered out so reconnect does not resurrect comments already removed in this session.
 
----
+### 7.3 Host merge / dismiss
 
-## 12. Cost Estimate (Free Tier)
+1. Host removes the comment from pending review state.
+2. Host queues the comment ID in `pendingResolveCommentIds`.
+3. `flushPendingCommentResolves()` sends `comment:resolve` for queued IDs once the relay is confirmed.
+4. DO deletes the row from SQLite.
+5. DO replies with `comment:resolve:ack`.
+6. Client removes the queued resolve entry.
+7. DO broadcasts `comment:resolved` to subscribers.
 
-| Resource        | Limit                                  | Expected usage                                                                                                                                           |
-| --------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| DO requests/day | 100,000 (20:1 WS ratio = ~2M messages) | ~200–500 messages/hour per active session                                                                                                                |
-| DO duration/day | 13,000 GB-s                            | Low — Hibernation API minimizes wakeups; 30s ping adds ~2 msg/30s idle cost                                                                              |
-| KV reads/day    | 100,000                                | v2 baseline + reconnect catch-up reads                                                                                                                   |
-| KV writes/day   | 1,000                                  | v2 baseline + auto-push content after each resolve + per-comment delete on resolve. Estimate: ~10–50 additional writes/day for a typical review session. |
+### 7.4 Peer content refresh
 
-Well within free tier for the 2–5 peer target.
+1. Host updates encrypted share content through `updateShare()`.
+2. Host sends encrypted `document:updated`.
+3. Peer receives the message and sets `documentUpdateAvailable`.
+4. `ContentUpdateBanner` triggers `loadSharedContent()` when the user refreshes.
+
+## 8. File Responsibilities
+
+### Worker
+
+- [worker/src/index.ts](/home/zonzujiro/projects/lollipop-dragon/worker/src/index.ts)
+  - share content CRUD
+  - relay route
+  - share revoke clearing relay state
+- [worker/src/relay.ts](/home/zonzujiro/projects/lollipop-dragon/worker/src/relay.ts)
+  - SQLite schema
+  - subscribe auth
+  - ACK / snapshot / forward behavior
+- [worker/wrangler.toml](/home/zonzujiro/projects/lollipop-dragon/worker/wrangler.toml)
+  - `RelayHubSqlite` binding and migration
+
+### Client
+
+- [src/services/relay.ts](/home/zonzujiro/projects/lollipop-dragon/src/services/relay.ts)
+  - WebSocket lifecycle
+  - subscribe resend
+  - ping/pong
+  - ACK handling
+  - snapshot decrypt / dispatch
+- [src/store/index.ts](/home/zonzujiro/projects/lollipop-dragon/src/store/index.ts)
+  - host pending comment state
+  - queued resolve state
+  - peer submission state
+- [src/services/shareStorage.ts](/home/zonzujiro/projects/lollipop-dragon/src/services/shareStorage.ts)
+  - share content CRUD only
+- [src/services/shareSync.ts](/home/zonzujiro/projects/lollipop-dragon/src/services/shareSync.ts)
+  - content push + `document:updated`
+
+## 9. Operational Notes
+
+- one relay hub is acceptable for the current scale
+- unresolved comments are durable in SQLite until resolve, revoke, or expiry
+- peer drafts remain local if relay subscribe is not yet confirmed
+- host-authored local comments stay outside this system entirely
+- WebSocket keep-alive is still application-level ping/pong every 30 seconds
+
+## 10. Non-Goals
+
+- collaborative peer-to-peer comment thread rendering
+- peer self-delete after submit
+- submitted comment edit flow
+- presence and collaboration cursors
+- moving encrypted share content out of KV
