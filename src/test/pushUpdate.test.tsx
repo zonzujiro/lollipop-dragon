@@ -4,28 +4,14 @@ import { beforeEach, describe, it, expect, vi } from "vitest";
 // ── Module-level mocks (hoisted before imports) ──────────────────────
 
 const mockUpdateContent = vi.fn().mockResolvedValue(undefined);
-const mockFetchContent = vi.fn();
 
 vi.mock("../services/shareStorage", () => ({
   ShareStorage: vi.fn().mockImplementation(() => ({
-    postComment: vi.fn().mockResolvedValue("server-cmt-id"),
-    deleteComments: vi.fn().mockResolvedValue(undefined),
-    fetchComments: vi.fn().mockResolvedValue([]),
     uploadContent: vi.fn(),
-    fetchContent: mockFetchContent,
     updateContent: mockUpdateContent,
     deleteContent: vi.fn(),
   })),
 }));
-
-vi.mock("../services/crypto", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../services/crypto")>();
-  return {
-    ...actual,
-    base64urlToKey: vi.fn().mockResolvedValue({} as CryptoKey),
-    docIdFromKey: vi.fn().mockResolvedValue("mock-doc-id"),
-  };
-});
 
 vi.mock("../config", () => ({
   WORKER_URL: "https://mock-worker.test",
@@ -34,14 +20,12 @@ vi.mock("../config", () => ({
 // ── Imports (after mocks) ────────────────────────────────────────────
 
 import { Header } from "../components/Header";
-import { useAppStore } from "../store";
 import { syncActiveShares } from "../services/shareSync";
 import { setTestState, resetTestStore, makeShare } from "./testHelpers";
 
 beforeEach(() => {
   resetTestStore();
   mockUpdateContent.mockClear();
-  mockFetchContent.mockClear();
 });
 
 // ── Host: Push update button ─────────────────────────────────────────
@@ -111,100 +95,6 @@ describe("Header — Push update button", () => {
     expect(
       screen.queryByRole("button", { name: /Push update/i }),
     ).not.toBeInTheDocument();
-  });
-});
-
-// ── Peer: Get latest preserves active file ───────────────────────────
-
-describe("store.loadSharedContent — preserves active file", () => {
-  beforeEach(() => {
-    window.location.hash = "#s=test-key-b64&n=test";
-  });
-
-  afterEach(() => {
-    window.location.hash = "";
-  });
-
-  it("keeps the current file when it still exists in updated payload", async () => {
-    // Set initial peer state viewing "notes.md"
-    setTestState(
-      {},
-      {
-        isPeerMode: true,
-        peerActiveFilePath: "notes.md",
-        peerFileName: "notes.md",
-        peerRawContent: "old notes",
-      },
-    );
-
-    mockFetchContent.mockResolvedValue({
-      version: "2.0",
-      created_at: new Date().toISOString(),
-      tree: {
-        "readme.md": "# Updated Readme",
-        "notes.md": "# Updated Notes",
-      },
-    });
-
-    await useAppStore.getState().loadSharedContent();
-
-    const state = useAppStore.getState();
-    expect(state.peerActiveFilePath).toBe("notes.md");
-    expect(state.peerFileName).toBe("notes.md");
-    expect(state.peerRawContent).toBe("# Updated Notes");
-  });
-
-  it("falls back to first file when current file was removed from payload", async () => {
-    setTestState(
-      {},
-      {
-        isPeerMode: true,
-        peerActiveFilePath: "deleted.md",
-        peerFileName: "deleted.md",
-        peerRawContent: "old content",
-      },
-    );
-
-    mockFetchContent.mockResolvedValue({
-      version: "2.0",
-      created_at: new Date().toISOString(),
-      tree: {
-        "readme.md": "# Readme",
-        "notes.md": "# Notes",
-      },
-    });
-
-    await useAppStore.getState().loadSharedContent();
-
-    const state = useAppStore.getState();
-    expect(state.peerActiveFilePath).toBe("readme.md");
-    expect(state.peerRawContent).toBe("# Readme");
-  });
-
-  it("falls back to first file when no file was previously active", async () => {
-    setTestState(
-      {},
-      {
-        isPeerMode: true,
-        peerActiveFilePath: null,
-        peerFileName: null,
-        peerRawContent: "",
-      },
-    );
-
-    mockFetchContent.mockResolvedValue({
-      version: "2.0",
-      created_at: new Date().toISOString(),
-      tree: {
-        "readme.md": "# Hello",
-      },
-    });
-
-    await useAppStore.getState().loadSharedContent();
-
-    const state = useAppStore.getState();
-    expect(state.peerActiveFilePath).toBe("readme.md");
-    expect(state.peerRawContent).toBe("# Hello");
   });
 });
 

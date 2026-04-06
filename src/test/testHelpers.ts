@@ -1,4 +1,7 @@
 import { useAppStore } from "../store";
+import { createAppShellState } from "../modules/app-shell";
+import { createPeerReviewState } from "../modules/peer-review";
+import { createRelayState } from "../modules/relay";
 import { createDefaultTab } from "../types/tab";
 import type { TabState } from "../types/tab";
 import type { Comment } from "../types/criticmarkup";
@@ -86,29 +89,16 @@ export function makePeerComment(
  * Reset the store to a clean state for tests.
  */
 export function resetTestStore() {
+  const appShellState = createAppShellState();
+  const peerReviewState = createPeerReviewState();
+  const relayState = createRelayState();
   useAppStore.setState({
     tabs: [],
     activeTabId: null,
-    theme: "light",
-    focusMode: false,
-    presentationMode: false,
-    toast: null,
-    isPeerMode: false,
-    peerName: null,
-    sharedContent: null,
-    myPeerComments: [],
-    submittedPeerCommentIds: [],
-    peerShareKeys: {},
-    peerActiveDocId: null,
-    peerRawContent: "",
-    peerFileName: null,
-    peerActiveFilePath: null,
-    peerResolvedComments: [],
-    peerComments: [],
-    peerCommentPanelOpen: false,
+    ...appShellState,
+    ...peerReviewState,
     history: [],
     historyDropdownOpen: false,
-    relayStatus: "disconnected",
-    documentUpdateAvailable: false,
+    ...relayState,
   });
 }
