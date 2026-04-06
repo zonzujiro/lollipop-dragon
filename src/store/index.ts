@@ -23,12 +23,10 @@ import {
   base64urlToKey,
   docIdFromKey,
 } from "../services/crypto";
-import { buildShareUrlFromOrigin, parseShareHash } from "../utils/shareUrl";
+import { buildShareUrlFromOrigin } from "../utils/shareUrl";
 import {
   ensureRelaySubscriptions,
-  startRelayForDoc,
   unsubscribeFromDoc,
-  relayCommentAdd,
   relayCommentResolve,
 } from "../services/relay";
 import { syncActiveShares as syncActiveSharesService } from "../services/shareSync";
@@ -44,7 +42,7 @@ import type {
   SidebarTreeNode,
 } from "../types/fileTree";
 import type { Comment, CommentType } from "../types/criticmarkup";
-import type { ShareRecord, SharePayload, PeerComment } from "../types/share";
+import type { ShareRecord, PeerComment } from "../types/share";
 import type { TabState, FileCommentEntry } from "../types/tab";
 import { createDefaultTab } from "../types/tab";
 import type { HistoryEntry } from "../types/history";
@@ -59,7 +57,15 @@ import type {
   AppShellState,
   AppTheme,
 } from "../modules/app-shell";
-import { getActiveTab, getUnsubmittedPeerComments } from "./selectors";
+import {
+  createPeerReviewActions,
+  createPeerReviewState,
+} from "../modules/peer-review";
+import type {
+  PeerReviewActions,
+  PeerReviewState,
+} from "../modules/peer-review";
+import { getActiveTab } from "./selectors";
 import { WORKER_URL } from "../config";
 
 const SHARES_KEY = "markreview-shares";
@@ -275,27 +281,15 @@ async function restoreShareKeys(
 }
 
 interface AppState
-  extends AppShellState, AppShellActions, RelayState, RelayActions {
+  extends AppShellState,
+    AppShellActions,
+    RelayState,
+    RelayActions,
+    PeerReviewState,
+    PeerReviewActions {
   // Tab management
   tabs: TabState[];
   activeTabId: string | null;
-
-  // Peer mode (full-screen takeover, not in tabs)
-  isPeerMode: boolean;
-  peerName: string | null;
-  sharedContent: SharePayload | null;
-  myPeerComments: PeerComment[];
-  submittedPeerCommentIds: string[];
-  peerShareKeys: Record<string, CryptoKey>;
-  peerActiveDocId: string | null;
-  // Peer uses rawContent/fileName/activeFilePath for display — these are
-  // stored at top level since peer mode is not tab-based
-  peerRawContent: string;
-  peerFileName: string | null;
-  peerActiveFilePath: string | null;
-  peerResolvedComments: Comment[];
-  peerComments: Comment[];
-  peerCommentPanelOpen: boolean;
 
   // Block highlight (transient UI state for comment hover)
   hoveredBlockHighlight: {
@@ -366,24 +360,9 @@ interface AppState
   clearPendingComments: (docId: string) => void;
   toggleSharedPanel: () => void;
 
-  // Peer actions
-  setPeerName: (name: string) => void;
-  loadSharedContent: () => Promise<void>;
-  selectPeerFile: (path: string) => void;
-  postPeerComment: (
-    blockIndex: number,
-    type: CommentType,
-    text: string,
-    path: string,
-  ) => void;
-  deletePeerComment: (commentId: string) => void;
-  editPeerComment: (commentId: string, type: CommentType, text: string) => void;
-  syncPeerComments: () => Promise<void>;
-
   // Realtime comment actions
   addPendingComment: (docId: string, comment: PeerComment) => void;
   replaceCommentsSnapshot: (docId: string, comments: PeerComment[]) => void;
-  confirmPeerCommentSubmitted: (cmtId: string) => void;
   queuePendingResolve: (docId: string, cmtId: string) => void;
   confirmPendingResolve: (docId: string, cmtId: string) => void;
   flushPendingCommentResolves: (docId: string) => void;
@@ -708,22 +687,8 @@ export const useAppStore = create<AppState>()(
       activeTabId: null,
 
       ...createAppShellState(),
-
-      isPeerMode: false,
-      peerName: null,
-      sharedContent: null,
-      myPeerComments: [],
-      submittedPeerCommentIds: [],
-      peerShareKeys: {},
-      peerActiveDocId: null,
-      peerRawContent: "",
-      peerFileName: null,
-      peerActiveFilePath: null,
-      peerResolvedComments: [],
-      peerComments: [],
-      peerCommentPanelOpen: false,
-
       ...createRelayState(),
+      ...createPeerReviewState(),
 
       hoveredBlockHighlight: null,
       setHoveredBlockHighlight: (highlight) =>
@@ -1865,115 +1830,7 @@ export const useAppStore = create<AppState>()(
 
       // ── Peer actions ──────────────────────────────────────────────────
 
-      setPeerName: (name) => set({ peerName: name }),
-
-      selectPeerFile: (path) => {
-        const { sharedContent } = get();
-        if (!sharedContent) {
-          return;
-        }
-        const content = sharedContent.tree[path];
-        if (content === undefined) {
-          return;
-        }
-        set({
-          peerRawContent: content,
-          peerFileName: path,
-          peerActiveFilePath: path,
-          peerResolvedComments: [],
-        });
-      },
-
-      loadSharedContent: async () => {
-        const parsed = parseShareHash();
-        if (!parsed) {
-          return;
-        }
-        const { keyB64 } = parsed;
-        const storage = getStorage();
-        if (!storage) {
-          return;
-        }
-        try {
-          const key = await base64urlToKey(keyB64);
-          const docId = await docIdFromKey(key);
-          const payload = await storage.fetchContent(docId, key);
-          const currentPath = get().peerActiveFilePath;
-          const paths = Object.keys(payload.tree);
-          const activePath =
-            currentPath && currentPath in payload.tree
-              ? currentPath
-              : (paths[0] ?? null);
-          set({
-            isPeerMode: true,
-            sharedContent: payload,
-            peerShareKeys: { ...get().peerShareKeys, [docId]: key },
-            peerRawContent: activePath ? payload.tree[activePath] : "",
-            peerFileName: activePath,
-            peerActiveFilePath: activePath,
-            peerActiveDocId: docId,
-          });
-
-          startRelayForDoc(docId);
-        } catch (error) {
-          set({ isPeerMode: true, sharedContent: null });
-          console.error("[share] Failed to load shared content:", error);
-        }
-      },
-
-      postPeerComment: (blockIndex, type, text, path) => {
-        const { peerName } = get();
-        const comment: PeerComment = {
-          id: `c_${crypto.randomUUID()}`,
-          peerName: peerName ?? "Anonymous",
-          path,
-          blockRef: { blockIndex, contentPreview: "" },
-          commentType: type,
-          text,
-          createdAt: new Date().toISOString(),
-        };
-
-        set({ myPeerComments: [comment, ...get().myPeerComments] });
-      },
-
-      deletePeerComment: (commentId) => {
-        const { myPeerComments, submittedPeerCommentIds } = get();
-        set({
-          myPeerComments: myPeerComments.filter(
-            (comment) => comment.id !== commentId,
-          ),
-          submittedPeerCommentIds: submittedPeerCommentIds.filter(
-            (id) => id !== commentId,
-          ),
-        });
-      },
-
-      editPeerComment: (commentId, type, text) => {
-        const { myPeerComments } = get();
-        const updated = myPeerComments.map((comment) =>
-          comment.id === commentId
-            ? { ...comment, commentType: type, text }
-            : comment,
-        );
-        set({ myPeerComments: updated });
-      },
-
-      syncPeerComments: async () => {
-        const parsed = parseShareHash();
-        if (!parsed) {
-          return;
-        }
-        const { keyB64 } = parsed;
-        const key = await base64urlToKey(keyB64);
-        const docId = await docIdFromKey(key);
-        const unsubmittedComments = getUnsubmittedPeerComments(get());
-        if (unsubmittedComments.length === 0) {
-          return;
-        }
-        for (const comment of unsubmittedComments) {
-          await relayCommentAdd(docId, comment.id, comment, key);
-        }
-      },
+      ...createPeerReviewActions(set, get),
 
       // ── Realtime comment actions ──────────────────────────────────────────
 
@@ -2028,17 +1885,6 @@ export const useAppStore = create<AppState>()(
         set((state) => ({
           tabs: buildUpdatedTabs(state.tabs, targetTab.id, () => nextTabState),
         }));
-      },
-
-      confirmPeerCommentSubmitted: (cmtId) => {
-        set((state) => {
-          if (state.submittedPeerCommentIds.includes(cmtId)) {
-            return {};
-          }
-          return {
-            submittedPeerCommentIds: [...state.submittedPeerCommentIds, cmtId],
-          };
-        });
       },
 
       queuePendingResolve: (docId, cmtId) => {
@@ -2176,28 +2022,18 @@ export const useAppStore = create<AppState>()(
 
             // Migrate old IndexedDB handle key
             // (this is async but we can't await in migrate — restoreTabs will handle it)
+            const peerReviewDefaults = createPeerReviewState();
 
             return {
               tabs,
               activeTabId: tabs[0]?.id ?? null,
               theme: persisted.theme ?? "light",
-              peerName: persisted.peerName ?? null,
               // Defaults for other global fields
               focusMode: false,
               presentationMode: false,
               toast: null,
-              isPeerMode: false,
-              sharedContent: null,
-              myPeerComments: [],
-              submittedPeerCommentIds: [],
-              peerShareKeys: {},
-              peerActiveDocId: null,
-              peerRawContent: "",
-              peerFileName: null,
-              peerActiveFilePath: null,
-              peerResolvedComments: [],
-              peerComments: [],
-              peerCommentPanelOpen: false,
+              ...peerReviewDefaults,
+              peerName: persisted.peerName ?? peerReviewDefaults.peerName,
             };
           }
         }
@@ -2239,13 +2075,19 @@ export const useAppStore = create<AppState>()(
             )
           : current.tabs;
         const relayDefaults = createRelayState();
+        const peerReviewDefaults = createPeerReviewState();
         return {
           ...current,
           ...p,
           tabs,
+          ...peerReviewDefaults,
           submittedPeerCommentIds: Array.isArray(p.submittedPeerCommentIds)
             ? p.submittedPeerCommentIds
-            : [],
+            : peerReviewDefaults.submittedPeerCommentIds,
+          myPeerComments: Array.isArray(p.myPeerComments)
+            ? p.myPeerComments
+            : peerReviewDefaults.myPeerComments,
+          peerName: p.peerName ?? peerReviewDefaults.peerName,
           // Transient relay state must always reset on load
           ...relayDefaults,
         };

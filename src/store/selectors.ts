@@ -1,6 +1,5 @@
 import { useAppStore } from "./index";
 import type { TabState } from "../types/tab";
-import type { PeerComment } from "../types/share";
 
 export function getActiveTab(state: {
   tabs: TabState[];
@@ -23,14 +22,4 @@ export function useActiveTabField<K extends keyof TabState>(
     const tab = getActiveTab(s);
     return tab?.[field];
   });
-}
-
-/** Unsubmitted peer comments across the shared document. */
-export function getUnsubmittedPeerComments(state: {
-  myPeerComments: PeerComment[];
-  submittedPeerCommentIds: string[];
-}): PeerComment[] {
-  return state.myPeerComments.filter(
-    (comment) => !state.submittedPeerCommentIds.includes(comment.id),
-  );
 }

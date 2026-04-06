@@ -69,13 +69,6 @@ describe('store.toggleSharedPanel', () => {
   })
 })
 
-describe('store.setPeerName', () => {
-  it('sets peerName in state', () => {
-    useAppStore.getState().setPeerName('Bob')
-    expect(useAppStore.getState().peerName).toBe('Bob')
-  })
-})
-
 describe('store.mergeComment', () => {
   it('does nothing when no fileHandle', async () => {
     setTestState({

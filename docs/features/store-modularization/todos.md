@@ -23,9 +23,9 @@ Files:
 
 Steps:
 
-- [ ] Add `README.md` to each module using the standard template from the design doc
-- [ ] Add empty `index.ts`, `types.ts`, `state.ts`, and `selectors.ts` to each module
-- [ ] Add `controller.ts` only where the module already owns side effects
+- [x] Add `README.md` to each module using the standard template from the design doc
+- [x] Add empty `index.ts`, `types.ts`, `state.ts`, and `selectors.ts` to each module
+- [x] Add `controller.ts` only where the module already owns side effects
 
 Verification:
 
@@ -67,10 +67,10 @@ Owns:
 
 Steps:
 
-- [ ] Move types and selectors into the module
-- [ ] Move pure actions into `state.ts`
-- [ ] Re-export public API from `index.ts`
-- [ ] Replace direct root-store definitions with module composition
+- [x] Move types and selectors into the module
+- [x] Move pure actions into `state.ts`
+- [x] Re-export public API from `index.ts`
+- [x] Replace direct root-store definitions with module composition
 
 Verification:
 
@@ -93,10 +93,10 @@ Owns:
 
 Steps:
 
-- [ ] Move relay-owned selectors and state transitions into the module
-- [ ] Keep socket runtime in the module controller
-- [ ] Export relay event handlers through the module public API
-- [ ] Stop treating relay orchestration as a generic shared service
+- [x] Move relay-owned selectors and state transitions into the module
+- [x] Keep socket runtime in the module controller
+- [x] Export relay event handlers through the module public API
+- [x] Stop treating relay orchestration as a generic shared service
 
 Verification:
 
@@ -119,10 +119,10 @@ Owns:
 
 Steps:
 
-- [ ] Move peer selectors into module selectors
-- [ ] Move peer draft and submission transitions into module state
-- [ ] Keep share-content loading orchestration behind a module controller
-- [ ] Preserve current peer-mode behavior and persisted shape
+- [x] Move peer selectors into module selectors
+- [x] Move peer draft and submission transitions into module state
+- [x] Keep share-content loading orchestration behind a module controller
+- [x] Preserve current peer-mode behavior and persisted shape
 
 Verification:
 

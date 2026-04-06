@@ -2,12 +2,13 @@
 
 ## Purpose
 
-Owns peer-mode shared content state and peer-authored comment draft/submission state.
+Owns peer-mode shared content state and peer-authored draft/submission logic.
 
 ## Owns
 
-- peer shared content
-- peer active file selection
+- peer-mode entry state (`isPeerMode`)
+- loaded shared content payload
+- active peer file selection
 - peer name
 - peer draft comments
 - submitted peer comment IDs
@@ -15,41 +16,38 @@ Owns peer-mode shared content state and peer-authored comment draft/submission s
 
 ## Does not own
 
-- host tabs
-- share CRUD for host mode
-- relay socket lifecycle
+- host tabs and host review state
+- host share CRUD
+- relay connection lifecycle state
 - host-side pending peer comment state
 
 ## State
 
-Target state to move here:
-
+- `isPeerMode`
+- `peerName`
 - `sharedContent`
+- `myPeerComments`
+- `submittedPeerCommentIds`
 - `peerShareKeys`
 - `peerActiveDocId`
 - `peerRawContent`
 - `peerFileName`
 - `peerActiveFilePath`
-- `peerComments`
 - `peerResolvedComments`
+- `peerComments`
 - `peerCommentPanelOpen`
-- `myPeerComments`
-- `submittedPeerCommentIds`
-- `peerName`
 
 ## Public API
 
-Planned public API:
-
-- peer selectors
-- pure peer draft and selection transitions
-- controller commands for shared-content load and peer comment submission
+- `createPeerReviewState`
+- `createPeerReviewActions`
+- peer selectors such as `selectUnsubmittedPeerComments`
+- controller helpers for shared-content load and peer comment sync
 
 ## Side Effects
 
-Expected side effects:
-
 - loading shared content from the Worker
+- starting relay subscription for the shared doc
 - syncing submitted peer comments through the relay
 
 ## Related Docs
@@ -61,9 +59,9 @@ Expected side effects:
 ## Invariants
 
 - peer mode must not read host tab state as its source of truth
-- peer drafts and submitted IDs must remain consistent across reconnect
+- submitted IDs are ack-driven and must stay separate from local drafts
 
 ## Common Failure Modes
 
-- mixing peer state with host tab state
-- coupling relay resend behavior directly into pure state transitions
+- mixing peer root state with host tab state
+- coupling relay resend behavior into selectors or pure state transitions

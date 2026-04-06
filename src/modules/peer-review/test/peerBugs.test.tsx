@@ -6,17 +6,19 @@ const { mockRelaySend, mockRelayCommentAdd } = vi.hoisted(() => ({
   mockRelayCommentAdd: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("../services/shareSync", () => ({
+vi.mock("../../../services/shareSync", () => ({
   syncActiveShares: vi.fn(),
   updateShare: vi.fn(),
 }));
 
-vi.mock("../config", () => ({
+vi.mock("../../../config", () => ({
   WORKER_URL: "https://mock-worker.test",
 }));
 
-vi.mock("../services/crypto", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../services/crypto")>();
+vi.mock("../../../services/crypto", async (importOriginal) => {
+  const actual = await importOriginal<
+    typeof import("../../../services/crypto")
+  >();
   return {
     ...actual,
     base64urlToKey: vi.fn().mockImplementation(async () => actual.generateKey()),
@@ -24,7 +26,7 @@ vi.mock("../services/crypto", async (importOriginal) => {
   };
 });
 
-vi.mock("../services/relay", () => ({
+vi.mock("../../../services/relay", () => ({
   getRelay: () => ({
     subscribe: vi.fn(),
     unsubscribe: vi.fn(),
@@ -41,10 +43,14 @@ vi.mock("../services/relay", () => ({
   isDocSubscribed: () => false,
 }));
 
-import { CommentPanel } from "../components/CommentPanel";
-import { useAppStore } from "../store";
-import type { SharePayload } from "../types/share";
-import { makePeerComment, resetTestStore, setTestState } from "./testHelpers";
+import { CommentPanel } from "../../../components/CommentPanel";
+import { useAppStore } from "../../../store";
+import type { SharePayload } from "../../../types/share";
+import {
+  makePeerComment,
+  resetTestStore,
+  setTestState,
+} from "../../../test/testHelpers";
 
 beforeEach(() => {
   resetTestStore();

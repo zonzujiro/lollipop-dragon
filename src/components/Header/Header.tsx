@@ -1,9 +1,7 @@
 import "./Header.css";
 import { useAppStore } from "../../store";
-import {
-  useActiveTab,
-  getUnsubmittedPeerComments,
-} from "../../store/selectors";
+import { useActiveTab } from "../../store/selectors";
+import { selectUnsubmittedPeerComments } from "../../modules/peer-review";
 import { SunIcon, MoonIcon } from "../Icons";
 import { HistoryDropdown } from "../HistoryDropdown";
 import { TableOfContents } from "../TableOfContents";
@@ -166,7 +164,7 @@ export function Header({
   const myPeerComments = useAppStore((s) => s.myPeerComments);
   const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
   const unsubmittedPeerCount = useAppStore(
-    (s) => getUnsubmittedPeerComments(s).length,
+    (s) => selectUnsubmittedPeerComments(s).length,
   );
 
   const fileName = tab?.fileName ?? null;
