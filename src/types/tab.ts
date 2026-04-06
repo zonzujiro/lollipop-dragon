@@ -1,17 +1,16 @@
 import type { HydratedSidebarTreeNode } from "./fileTree";
-import type { Comment, CommentType } from "./criticmarkup";
 import {
   createSharingTabState,
   type SharingTabState,
 } from "../modules/sharing/types";
+import {
+  createHostReviewTabState,
+  type HostReviewTabState,
+} from "../modules/host-review/types";
 
-export interface FileCommentEntry {
-  filePath: string;
-  fileName: string;
-  comments: Comment[];
-}
+export type { FileCommentEntry } from "../modules/host-review/types";
 
-export interface TabState extends SharingTabState {
+export interface TabState extends SharingTabState, HostReviewTabState {
   id: string;
   label: string;
 
@@ -24,22 +23,6 @@ export interface TabState extends SharingTabState {
   fileTree: HydratedSidebarTreeNode[];
   activeFilePath: string | null;
   sidebarOpen: boolean;
-
-  comments: Comment[];
-  resolvedComments: Comment[];
-  activeCommentId: string | null;
-  commentPanelOpen: boolean;
-  commentFilter: CommentType | "all" | "pending" | "resolved";
-
-  allFileComments: Record<string, FileCommentEntry>;
-  pendingScrollTarget: {
-    filePath: string;
-    rawStart?: number;
-    blockIndex?: number;
-  } | null;
-
-  writeAllowed: boolean;
-  undoState: { rawContent: string } | null;
 
   restoreError: string | null;
 }
@@ -58,15 +41,7 @@ export function createDefaultTab(
     fileTree: [],
     activeFilePath: null,
     sidebarOpen: true,
-    comments: [],
-    resolvedComments: [],
-    activeCommentId: null,
-    commentPanelOpen: false,
-    commentFilter: "all",
-    allFileComments: {},
-    pendingScrollTarget: null,
-    writeAllowed: true,
-    undoState: null,
+    ...createHostReviewTabState(),
     ...createSharingTabState(),
     restoreError: null,
     ...overrides,

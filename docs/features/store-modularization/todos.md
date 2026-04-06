@@ -215,9 +215,9 @@ Owns:
 
 Steps:
 
-- [ ] Move pure review-state transitions into the module
-- [ ] Split merge orchestration from state mutation
-- [ ] Preserve current write/update behavior
+- [x] Move pure review-state transitions into the module
+- [x] Split merge orchestration from state mutation
+- [x] Preserve current write/update behavior
 
 Verification:
 

@@ -28,6 +28,8 @@ Target state to move here:
 - `activeCommentId`
 - `commentPanelOpen`
 - `commentFilter`
+- `allFileComments`
+- `pendingScrollTarget`
 - undo and write-related host review fields
 
 ## Public API
@@ -37,6 +39,7 @@ Planned public API:
 - host review selectors
 - pure host review transitions
 - controller commands for merge/write orchestration
+- controller helpers for comment scan and resolved-comment refresh
 
 ## Side Effects
 
