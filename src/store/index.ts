@@ -481,35 +481,25 @@ function mergeQueuedCommentIds(
   return mergedIds;
 }
 
-// Helper: update the active tab within the tabs array
-function updateActiveTab(
-  get: () => AppState,
-  set: (
-    partial: Partial<AppState> | ((s: AppState) => Partial<AppState>),
-  ) => void,
-  updater: (tab: TabState) => Partial<TabState>,
-) {
-  const { activeTabId, tabs } = get();
-  if (!activeTabId) {
-    return;
-  }
-  set({
-    tabs: tabs.map((t) => (t.id === activeTabId ? { ...t, ...updater(t) } : t)),
-  });
-}
-
-// Helper: update a specific tab by id
-function updateTab(
-  get: () => AppState,
-  set: (
-    partial: Partial<AppState> | ((s: AppState) => Partial<AppState>),
-  ) => void,
+function buildUpdatedTabs(
+  tabs: TabState[],
   tabId: string,
   updater: (tab: TabState) => Partial<TabState>,
-) {
-  set({
-    tabs: get().tabs.map((t) => (t.id === tabId ? { ...t, ...updater(t) } : t)),
-  });
+): TabState[] {
+  return tabs.map((tab) =>
+    tab.id === tabId ? { ...tab, ...updater(tab) } : tab,
+  );
+}
+
+function buildUpdatedActiveTabs(
+  tabs: TabState[],
+  activeTabId: string | null,
+  updater: (tab: TabState) => Partial<TabState>,
+): TabState[] {
+  if (!activeTabId) {
+    return tabs;
+  }
+  return buildUpdatedTabs(tabs, activeTabId, updater);
 }
 
 // Helper: get the active tab state
@@ -568,8 +558,10 @@ async function restoreDirectoryTabState(
         tab.id,
         tab.directoryName,
       );
-      updateTab(get, set, tab.id, () => ({
-        restoreError: `The folder "${tab.directoryName}" could not be accessed. It may have been moved, renamed, or deleted.`,
+      set((state) => ({
+        tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
+          restoreError: `The folder "${tab.directoryName}" could not be accessed. It may have been moved, renamed, or deleted.`,
+        })),
       }));
       return;
     }
@@ -587,8 +579,10 @@ async function restoreDirectoryTabState(
           readPermission,
         },
       );
-      updateTab(get, set, tab.id, () => ({
-        restoreError: `The folder "${tab.directoryName}" requires permission to access. Please reopen it.`,
+      set((state) => ({
+        tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
+          restoreError: `The folder "${tab.directoryName}" requires permission to access. Please reopen it.`,
+        })),
       }));
       return;
     }
@@ -614,14 +608,16 @@ async function restoreDirectoryTabState(
       }
     }
 
-    updateTab(get, set, tab.id, () => ({
-      directoryHandle: handle,
-      directoryName: handle.name,
-      fileTree: tree,
-      restoreError: null,
-      ...(restoredFileHandle ? { fileHandle: restoredFileHandle } : {}),
-      ...(restoredFileName ? { fileName: restoredFileName } : {}),
-      ...(restoredRaw !== null ? { rawContent: restoredRaw } : {}),
+    set((state) => ({
+      tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
+        directoryHandle: handle,
+        directoryName: handle.name,
+        fileTree: tree,
+        restoreError: null,
+        ...(restoredFileHandle ? { fileHandle: restoredFileHandle } : {}),
+        ...(restoredFileName ? { fileName: restoredFileName } : {}),
+        ...(restoredRaw !== null ? { rawContent: restoredRaw } : {}),
+      })),
     }));
 
     if (get().activeTabId === tab.id && tree.length > 0) {
@@ -634,10 +630,12 @@ async function restoreDirectoryTabState(
       tabId,
       e,
     );
-    updateTab(get, set, tabId, () => ({
-      directoryHandle: null,
-      fileHandle: null,
-      restoreError: `The folder "${name}" could not be accessed. It may have been moved, renamed, or deleted.`,
+    set((state) => ({
+      tabs: buildUpdatedTabs(state.tabs, tabId, () => ({
+        directoryHandle: null,
+        fileHandle: null,
+        restoreError: `The folder "${name}" could not be accessed. It may have been moved, renamed, or deleted.`,
+      })),
     }));
   }
 }
@@ -668,15 +666,21 @@ async function writeAndUpdate(
 ): Promise<boolean> {
   try {
     await writeFile(fileHandle, newRaw);
-    updateActiveTab(get, set, (t) => ({
-      rawContent: newRaw,
-      writeAllowed: true,
-      undoState: { rawContent: t.rawContent },
+    set((state) => ({
+      tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, (tab) => ({
+        rawContent: newRaw,
+        writeAllowed: true,
+        undoState: { rawContent: tab.rawContent },
+      })),
     }));
     return true;
   } catch (error) {
     if (isPermissionError(error)) {
-      updateActiveTab(get, set, () => ({ writeAllowed: false }));
+      set((state) => ({
+        tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, () => ({
+          writeAllowed: false,
+        })),
+      }));
     } else {
       console.error("[writeAndUpdate] write failed:", error);
     }
@@ -797,18 +801,22 @@ export const useAppStore = create<AppState>()(
           get().addTab(tab);
           await saveHandle(`tab:${tab.id}:directory`, dirHandle);
           const tree = await buildFileTree(dirHandle);
-          updateTab(get, set, tab.id, () => ({ fileTree: tree }));
+          set((state) => ({
+            tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({ fileTree: tree })),
+          }));
 
           // Restore previously active file if available
           if (entry.activeFilePath) {
             const fileNode = findLiveFileInTree(tree, entry.activeFilePath);
             if (fileNode) {
               const raw = await readFile(fileNode.handle);
-              updateTab(get, set, tab.id, () => ({
-                fileHandle: fileNode.handle,
-                fileName: fileNode.name,
-                rawContent: raw,
-                activeFilePath: fileNode.path,
+              set((state) => ({
+                tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
+                  fileHandle: fileNode.handle,
+                  fileName: fileNode.name,
+                  rawContent: raw,
+                  activeFilePath: fileNode.path,
+                })),
               }));
             }
           }
@@ -846,9 +854,15 @@ export const useAppStore = create<AppState>()(
           const tabShares = allShares[stableShareKey(currentTab)] ?? [];
           if (tabShares.length > 0) {
             const restoredKeys = await restoreShareKeys(tabShares);
-            updateActiveTab(get, set, (t) => ({
-              shares: tabShares,
-              shareKeys: { ...t.shareKeys, ...restoredKeys },
+            set((state) => ({
+              tabs: buildUpdatedActiveTabs(
+                state.tabs,
+                state.activeTabId,
+                (tabState) => ({
+                  shares: tabShares,
+                  shareKeys: { ...tabState.shareKeys, ...restoredKeys },
+                }),
+              ),
             }));
           }
         }
@@ -1020,7 +1034,9 @@ export const useAppStore = create<AppState>()(
         get().addTab(tab);
         await saveHandle(`tab:${tab.id}:directory`, result.handle);
         const tree = await buildFileTree(result.handle);
-        updateTab(get, set, tab.id, () => ({ fileTree: tree }));
+        set((state) => ({
+          tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({ fileTree: tree })),
+        }));
         // Scan comments after tree is built — need to ensure the tab is active
         const currentActive = get().activeTabId;
         if (currentActive === tab.id) {
@@ -1042,16 +1058,18 @@ export const useAppStore = create<AppState>()(
             }
             await saveHandle(`tab:${tabId}:directory`, result.handle);
             const tree = await buildFileTree(result.handle);
-            updateTab(get, set, tabId, () => ({
-              directoryHandle: result.handle,
-              directoryName: result.name,
-              label: result.name,
-              fileTree: tree,
-              fileHandle: null,
-              fileName: null,
-              rawContent: "",
-              activeFilePath: null,
-              restoreError: null,
+            set((state) => ({
+              tabs: buildUpdatedTabs(state.tabs, tabId, () => ({
+                directoryHandle: result.handle,
+                directoryName: result.name,
+                label: result.name,
+                fileTree: tree,
+                fileHandle: null,
+                fileName: null,
+                rawContent: "",
+                activeFilePath: null,
+                restoreError: null,
+              })),
             }));
             if (get().activeTabId === tabId && tree.length > 0) {
               await get().scanAllFileComments();
@@ -1062,8 +1080,10 @@ export const useAppStore = create<AppState>()(
               tabId,
               e,
             );
-            updateTab(get, set, tabId, () => ({
-              restoreError: `The folder "${tab.directoryName}" could not be opened. Please try again.`,
+            set((state) => ({
+              tabs: buildUpdatedTabs(state.tabs, tabId, () => ({
+                restoreError: `The folder "${tab.directoryName}" could not be opened. Please try again.`,
+              })),
             }));
           }
         } else {
@@ -1074,17 +1094,21 @@ export const useAppStore = create<AppState>()(
             }
             await saveHandle(`tab:${tabId}:file`, result.handle);
             const raw = await readFile(result.handle);
-            updateTab(get, set, tabId, () => ({
-              fileHandle: result.handle,
-              fileName: result.name,
-              label: result.name,
-              rawContent: raw,
-              restoreError: null,
+            set((state) => ({
+              tabs: buildUpdatedTabs(state.tabs, tabId, () => ({
+                fileHandle: result.handle,
+                fileName: result.name,
+                label: result.name,
+                rawContent: raw,
+                restoreError: null,
+              })),
             }));
           } catch (e) {
             console.error("[reopenTab] failed to reopen file tab:", tabId, e);
-            updateTab(get, set, tabId, () => ({
-              restoreError: `The file "${tab.fileName}" could not be opened. Please try again.`,
+            set((state) => ({
+              tabs: buildUpdatedTabs(state.tabs, tabId, () => ({
+                restoreError: `The file "${tab.fileName}" could not be opened. Please try again.`,
+              })),
             }));
           }
         }
@@ -1094,24 +1118,28 @@ export const useAppStore = create<AppState>()(
 
       selectFile: async (node: FileNode) => {
         const raw = await readFile(node.handle);
-        updateActiveTab(get, set, () => ({
-          fileHandle: node.handle,
-          fileName: node.name,
-          rawContent: raw,
-          activeFilePath: node.path,
-          resolvedComments: [],
+        set((state) => ({
+          tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, () => ({
+            fileHandle: node.handle,
+            fileName: node.name,
+            rawContent: raw,
+            activeFilePath: node.path,
+            resolvedComments: [],
+          })),
         }));
       },
 
       clearFile: () =>
-        updateActiveTab(get, set, () => ({
-          fileHandle: null,
-          fileName: null,
-          rawContent: "",
-          directoryHandle: null,
-          directoryName: null,
-          fileTree: [],
-          activeFilePath: null,
+        set((state) => ({
+          tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, () => ({
+            fileHandle: null,
+            fileName: null,
+            rawContent: "",
+            directoryHandle: null,
+            directoryName: null,
+            fileTree: [],
+            activeFilePath: null,
+          })),
         })),
 
       setComments: (comments) => {
@@ -1130,36 +1158,54 @@ export const useAppStore = create<AppState>()(
               },
             }
           : tab.allFileComments;
-        updateActiveTab(get, set, () => ({
-          comments,
-          activeCommentId: null,
-          commentFilter: "all" as const,
-          allFileComments: updated,
+        set((state) => ({
+          tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, () => ({
+            comments,
+            activeCommentId: null,
+            commentFilter: "all" as const,
+            allFileComments: updated,
+          })),
         }));
       },
 
       setActiveCommentId: (id) =>
-        updateActiveTab(get, set, () => ({ activeCommentId: id })),
+        set((state) => ({
+          tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, () => ({
+            activeCommentId: id,
+          })),
+        })),
 
       toggleCommentPanel: () => {
         if (get().isPeerMode) {
           set((s) => ({ peerCommentPanelOpen: !s.peerCommentPanelOpen }));
         } else {
-          updateActiveTab(get, set, (t) => ({
-            commentPanelOpen: !t.commentPanelOpen,
-            sharedPanelOpen: !t.commentPanelOpen ? false : t.sharedPanelOpen,
+          set((state) => ({
+            tabs: buildUpdatedActiveTabs(
+              state.tabs,
+              state.activeTabId,
+              (tab) => ({
+                commentPanelOpen: !tab.commentPanelOpen,
+                sharedPanelOpen: !tab.commentPanelOpen ? false : tab.sharedPanelOpen,
+              }),
+            ),
           }));
         }
       },
 
       setCommentFilter: (f) =>
-        updateActiveTab(get, set, () => ({
-          commentFilter: f,
-          activeCommentId: null,
+        set((state) => ({
+          tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, () => ({
+            commentFilter: f,
+            activeCommentId: null,
+          })),
         })),
 
       toggleSidebar: () =>
-        updateActiveTab(get, set, (t) => ({ sidebarOpen: !t.sidebarOpen })),
+        set((state) => ({
+          tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, (tab) => ({
+            sidebarOpen: !tab.sidebarOpen,
+          })),
+        })),
 
       scanAllFileComments: async () => {
         const tab = activeTab(get);
@@ -1209,7 +1255,9 @@ export const useAppStore = create<AppState>()(
         if (activePath && currentTab.allFileComments[activePath]) {
           merged[activePath] = currentTab.allFileComments[activePath];
         }
-        updateTab(get, set, tabId, () => ({ allFileComments: merged }));
+        set((state) => ({
+          tabs: buildUpdatedTabs(state.tabs, tabId, () => ({ allFileComments: merged })),
+        }));
       },
 
       navigateToComment: (filePath, rawStart) => {
@@ -1220,8 +1268,10 @@ export const useAppStore = create<AppState>()(
         if (filePath === tab.activeFilePath) {
           const comment = tab.comments.find((c) => c.rawStart === rawStart);
           if (comment) {
-            updateActiveTab(get, set, () => ({
-              activeCommentId: comment.id,
+            set((state) => ({
+              tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, () => ({
+                activeCommentId: comment.id,
+              })),
             }));
             scrollToBlock(comment.blockIndex);
           }
@@ -1229,8 +1279,10 @@ export const useAppStore = create<AppState>()(
         }
         const fileNode = findLiveFileInTree(tab.fileTree, filePath);
         if (fileNode) {
-          updateActiveTab(get, set, () => ({
-            pendingScrollTarget: { filePath, rawStart },
+          set((state) => ({
+            tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, () => ({
+              pendingScrollTarget: { filePath, rawStart },
+            })),
           }));
           get().selectFile(fileNode);
         }
@@ -1247,15 +1299,21 @@ export const useAppStore = create<AppState>()(
         }
         const fileNode = findLiveFileInTree(tab.fileTree, filePath);
         if (fileNode) {
-          updateActiveTab(get, set, () => ({
-            pendingScrollTarget: { filePath, blockIndex },
+          set((state) => ({
+            tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, () => ({
+              pendingScrollTarget: { filePath, blockIndex },
+            })),
           }));
           get().selectFile(fileNode);
         }
       },
 
       clearPendingScrollTarget: () =>
-        updateActiveTab(get, set, () => ({ pendingScrollTarget: null })),
+        set((state) => ({
+          tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, () => ({
+            pendingScrollTarget: null,
+          })),
+        })),
 
       deleteComment: async (id) => {
         const tab = activeTab(get);
@@ -1331,21 +1389,32 @@ export const useAppStore = create<AppState>()(
         }
         try {
           await writeFile(tab.fileHandle, tab.undoState.rawContent);
-          updateActiveTab(get, set, (t) => ({
-            rawContent: t.undoState!.rawContent,
-            undoState: null,
-            writeAllowed: true,
+          set((state) => ({
+            tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, (tab) => ({
+              rawContent: tab.undoState!.rawContent,
+              undoState: null,
+              writeAllowed: true,
+            })),
           }));
         } catch (e) {
           if (isPermissionError(e)) {
-            updateActiveTab(get, set, () => ({ writeAllowed: false }));
+            set((state) => ({
+              tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, () => ({
+                writeAllowed: false,
+              })),
+            }));
           } else {
             console.error("[undo] write failed:", e);
           }
         }
       },
 
-      clearUndo: () => updateActiveTab(get, set, () => ({ undoState: null })),
+      clearUndo: () =>
+        set((state) => ({
+          tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, () => ({
+            undoState: null,
+          })),
+        })),
 
       refreshFile: async () => {
         const tab = activeTab(get);
@@ -1358,9 +1427,11 @@ export const useAppStore = create<AppState>()(
           const newlyResolved = tab.comments.filter(
             (c) => !newRaw.includes(c.raw),
           );
-          updateActiveTab(get, set, () => ({
-            rawContent: newRaw,
-            resolvedComments: newlyResolved,
+          set((state) => ({
+            tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, () => ({
+              rawContent: newRaw,
+              resolvedComments: newlyResolved,
+            })),
           }));
           if (changed) {
             syncActiveSharesService();
@@ -1378,7 +1449,9 @@ export const useAppStore = create<AppState>()(
         const tabId = tab.id;
         try {
           const tree = await buildFileTree(tab.directoryHandle);
-          updateTab(get, set, tabId, () => ({ fileTree: tree }));
+          set((state) => ({
+            tabs: buildUpdatedTabs(state.tabs, tabId, () => ({ fileTree: tree })),
+          }));
           get().scanAllFileComments();
         } catch (e) {
           console.error("[refreshFileTree] directory read failed:", e);
@@ -1413,8 +1486,10 @@ export const useAppStore = create<AppState>()(
                   tab.id,
                   tab.fileName,
                 );
-                updateTab(get, set, tab.id, () => ({
-                  restoreError: `The file "${tab.fileName}" could not be accessed. It may have been moved, renamed, or deleted.`,
+                set((state) => ({
+                  tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
+                    restoreError: `The file "${tab.fileName}" could not be accessed. It may have been moved, renamed, or deleted.`,
+                  })),
                 }));
                 continue;
               }
@@ -1437,8 +1512,10 @@ export const useAppStore = create<AppState>()(
                   tab.id,
                   tab.fileName,
                 );
-                updateTab(get, set, tab.id, () => ({
-                  restoreError: `The file "${tab.fileName}" requires permission to access. Please reopen it.`,
+                set((state) => ({
+                  tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
+                    restoreError: `The file "${tab.fileName}" requires permission to access. Please reopen it.`,
+                  })),
                 }));
                 continue;
               }
@@ -1451,10 +1528,12 @@ export const useAppStore = create<AppState>()(
                   e,
                 );
               }
-              updateTab(get, set, tab.id, () => ({
-                fileHandle: handle,
-                restoreError: null,
-                ...(restoredRaw !== null ? { rawContent: restoredRaw } : {}),
+              set((state) => ({
+                tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
+                  fileHandle: handle,
+                  restoreError: null,
+                  ...(restoredRaw !== null ? { rawContent: restoredRaw } : {}),
+                })),
               }));
               console.log(
                 "[restoreTabs] file tab restored successfully:",
@@ -1467,8 +1546,10 @@ export const useAppStore = create<AppState>()(
                 tab.id,
                 e,
               );
-              updateTab(get, set, tab.id, () => ({
-                restoreError: `The file "${tab.fileName}" could not be accessed. It may have been moved, renamed, or deleted.`,
+              set((state) => ({
+                tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
+                  restoreError: `The file "${tab.fileName}" could not be accessed. It may have been moved, renamed, or deleted.`,
+                })),
               }));
             }
           }
@@ -1481,9 +1562,11 @@ export const useAppStore = create<AppState>()(
             continue;
           }
           const restoredKeys = await restoreShareKeys(tabShares);
-          updateTab(get, set, tab.id, (t) => ({
-            shares: tabShares,
-            shareKeys: { ...t.shareKeys, ...restoredKeys },
+          set((state) => ({
+            tabs: buildUpdatedTabs(state.tabs, tab.id, (tabState) => ({
+              shares: tabShares,
+              shareKeys: { ...tabState.shareKeys, ...restoredKeys },
+            })),
           }));
         }
 
@@ -1499,8 +1582,10 @@ export const useAppStore = create<AppState>()(
         }
         const restoredKeys = await restoreShareKeys(tab.shares);
         if (Object.keys(restoredKeys).length > 0) {
-          updateActiveTab(get, set, (t) => ({
-            shareKeys: { ...t.shareKeys, ...restoredKeys },
+          set((state) => ({
+            tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, (tabState) => ({
+              shareKeys: { ...tabState.shareKeys, ...restoredKeys },
+            })),
           }));
         }
       },
@@ -1574,10 +1659,12 @@ export const useAppStore = create<AppState>()(
         }
         const shares = [...currentTab.shares, record];
         saveShares(stableShareKey(currentTab), shares);
-        updateTab(get, set, tabId, (t) => ({
-          shares,
-          shareKeys: { ...t.shareKeys, [docId]: key },
-          activeDocId: docId,
+        set((state) => ({
+          tabs: buildUpdatedTabs(state.tabs, tabId, (tabState) => ({
+            shares,
+            shareKeys: { ...tabState.shareKeys, [docId]: key },
+            activeDocId: docId,
+          })),
         }));
 
         ensureRelaySubscriptions([record]);
@@ -1608,24 +1695,26 @@ export const useAppStore = create<AppState>()(
         }
         const updated = tab.shares.filter((share) => share.docId !== docId);
         saveShares(stableShareKey(tab), updated);
-        updateTab(get, set, tabId, (tabState) => {
-          const nextPending = { ...tabState.pendingComments };
-          delete nextPending[docId];
-          const nextKeys = { ...tabState.shareKeys };
-          delete nextKeys[docId];
-          const nextPendingResolveIds = {
-            ...tabState.pendingResolveCommentIds,
-          };
-          delete nextPendingResolveIds[docId];
-          return {
-            shares: updated,
-            pendingComments: nextPending,
-            pendingResolveCommentIds: nextPendingResolveIds,
-            shareKeys: nextKeys,
-            activeDocId:
-              tabState.activeDocId === docId ? null : tabState.activeDocId,
-          };
-        });
+        set((state) => ({
+          tabs: buildUpdatedTabs(state.tabs, tabId, (tabState) => {
+            const nextPending = { ...tabState.pendingComments };
+            delete nextPending[docId];
+            const nextKeys = { ...tabState.shareKeys };
+            delete nextKeys[docId];
+            const nextPendingResolveIds = {
+              ...tabState.pendingResolveCommentIds,
+            };
+            delete nextPendingResolveIds[docId];
+            return {
+              shares: updated,
+              pendingComments: nextPending,
+              pendingResolveCommentIds: nextPendingResolveIds,
+              shareKeys: nextKeys,
+              activeDocId:
+                tabState.activeDocId === docId ? null : tabState.activeDocId,
+            };
+          }),
+        }));
         unsubscribeFromDoc(docId);
       },
 
@@ -1699,7 +1788,9 @@ export const useAppStore = create<AppState>()(
         }
         const nextTabState = removePendingCommentState(latestTab, docId, comment.id);
         saveShares(stableShareKey(latestTab), nextTabState.shares);
-        updateTab(get, set, latestTab.id, () => nextTabState);
+        set((state) => ({
+          tabs: buildUpdatedTabs(state.tabs, latestTab.id, () => nextTabState),
+        }));
         get().queuePendingResolve(docId, comment.id);
         get().flushPendingCommentResolves(docId);
       },
@@ -1712,7 +1803,9 @@ export const useAppStore = create<AppState>()(
         const tabId = tab.id;
         const nextTabState = removePendingCommentState(tab, docId, cmtId);
         saveShares(stableShareKey(tab), nextTabState.shares);
-        updateTab(get, set, tabId, () => nextTabState);
+        set((state) => ({
+          tabs: buildUpdatedTabs(state.tabs, tabId, () => nextTabState),
+        }));
         get().queuePendingResolve(docId, cmtId);
         get().flushPendingCommentResolves(docId);
       },
@@ -1727,7 +1820,9 @@ export const useAppStore = create<AppState>()(
         const clearedIds = pendingForDoc.map((comment) => comment.id);
         const nextTabState = replacePendingCommentsState(tab, docId, []);
         saveShares(stableShareKey(tab), nextTabState.shares);
-        updateTab(get, set, tabId, () => nextTabState);
+        set((state) => ({
+          tabs: buildUpdatedTabs(state.tabs, tabId, () => nextTabState),
+        }));
 
         for (const clearedId of clearedIds) {
           get().queuePendingResolve(docId, clearedId);
@@ -1736,9 +1831,11 @@ export const useAppStore = create<AppState>()(
       },
 
       toggleSharedPanel: () =>
-        updateActiveTab(get, set, (t) => ({
-          sharedPanelOpen: !t.sharedPanelOpen,
-          commentPanelOpen: !t.sharedPanelOpen ? false : t.commentPanelOpen,
+        set((state) => ({
+          tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, (tab) => ({
+            sharedPanelOpen: !tab.sharedPanelOpen,
+            commentPanelOpen: !tab.sharedPanelOpen ? false : tab.commentPanelOpen,
+          })),
         })),
 
       // ── Peer actions ──────────────────────────────────────────────────
@@ -1881,7 +1978,9 @@ export const useAppStore = create<AppState>()(
           comment,
         ]);
         saveShares(stableShareKey(targetTab), nextTabState.shares);
-        updateTab(get, set, targetTab.id, () => nextTabState);
+        set((state) => ({
+          tabs: buildUpdatedTabs(state.tabs, targetTab.id, () => nextTabState),
+        }));
       },
 
       replaceCommentsSnapshot: (docId, comments) => {
@@ -1902,7 +2001,9 @@ export const useAppStore = create<AppState>()(
           filteredComments,
         );
         saveShares(stableShareKey(targetTab), nextTabState.shares);
-        updateTab(get, set, targetTab.id, () => nextTabState);
+        set((state) => ({
+          tabs: buildUpdatedTabs(state.tabs, targetTab.id, () => nextTabState),
+        }));
       },
 
       confirmPeerCommentSubmitted: (cmtId) => {
@@ -1929,11 +2030,13 @@ export const useAppStore = create<AppState>()(
         if (nextIds.length === existingIds.length) {
           return;
         }
-        updateTab(get, set, targetTab.id, (tabState) => ({
-          pendingResolveCommentIds: {
-            ...tabState.pendingResolveCommentIds,
-            [docId]: nextIds,
-          },
+        set((state) => ({
+          tabs: buildUpdatedTabs(state.tabs, targetTab.id, (tabState) => ({
+            pendingResolveCommentIds: {
+              ...tabState.pendingResolveCommentIds,
+              [docId]: nextIds,
+            },
+          })),
         }));
       },
 
@@ -1952,19 +2055,21 @@ export const useAppStore = create<AppState>()(
         const remainingIds = existingIds.filter(
           (pendingId) => pendingId !== cmtId,
         );
-        updateTab(get, set, targetTab.id, (tabState) => {
-          const nextPendingResolveIds = {
-            ...tabState.pendingResolveCommentIds,
-          };
-          if (remainingIds.length > 0) {
-            nextPendingResolveIds[docId] = remainingIds;
-          } else {
-            delete nextPendingResolveIds[docId];
-          }
-          return {
-            pendingResolveCommentIds: nextPendingResolveIds,
-          };
-        });
+        set((state) => ({
+          tabs: buildUpdatedTabs(state.tabs, targetTab.id, (tabState) => {
+            const nextPendingResolveIds = {
+              ...tabState.pendingResolveCommentIds,
+            };
+            if (remainingIds.length > 0) {
+              nextPendingResolveIds[docId] = remainingIds;
+            } else {
+              delete nextPendingResolveIds[docId];
+            }
+            return {
+              pendingResolveCommentIds: nextPendingResolveIds,
+            };
+          }),
+        }));
       },
 
       flushPendingCommentResolves: (docId) => {
