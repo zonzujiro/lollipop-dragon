@@ -1,44 +1,29 @@
-// TODO: Split this file into domain modules (tabs, sharing, peer, history).
+// TODO: Split the remaining host-review logic out of this file.
 // Pre-existing issue — not addressed in this PR to keep the diff focused.
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
-  openFile as fsOpenFile,
-  openDirectory as fsOpenDirectory,
   readFile,
   writeFile,
-  buildFileTree,
 } from "../services/fileSystem";
-import { saveHandle, getHandle, removeHandle } from "../services/handleStore";
 import { parseCriticMarkup } from "../services/criticmarkup";
 import { assignBlockIndices } from "../services/blockIndex";
 import { insertComment as insertCommentService } from "../services/insertComment";
 import { applyEdit } from "../services/editComment";
 import { applyDelete } from "../services/deleteComment";
-import {
-} from "../services/crypto";
-import {
-  ensureRelaySubscriptions,
-  unsubscribeFromDoc,
-} from "../services/relay";
 import { syncActiveShares as syncActiveSharesService } from "../services/shareSync";
 import {
   findLiveFileInTree,
-  toFileTreeNodes,
   toPersistedTree,
 } from "../types/fileTree";
 import type {
   FileTreeNode,
-  FileNode,
   HydratedSidebarTreeNode,
   SidebarTreeNode,
 } from "../types/fileTree";
 import type { Comment, CommentType } from "../types/criticmarkup";
-import type { ShareRecord } from "../types/share";
 import type { TabState, FileCommentEntry } from "../types/tab";
-import { createDefaultTab } from "../types/tab";
-import type { HistoryEntry } from "../types/history";
 import { createRelayActions, createRelayState } from "../modules/relay/state";
 import type { RelayActions, RelayState } from "../modules/relay/types";
 import {
@@ -61,91 +46,31 @@ import type {
 import { createSharingActions } from "../modules/sharing/state";
 import type { SharingActions } from "../modules/sharing/types";
 import {
-  loadAndCleanShares,
-  restoreShareKeys,
-  stableShareKey,
-} from "../modules/sharing/controller";
-import { getActiveTab } from "./selectors";
-
-// ── History localStorage helpers ────────────────────────────────────────────
-
-const HISTORY_KEY = "markreview-history";
-const HISTORY_LIMIT = 20;
-const HISTORY_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-
-function loadHistory(): HistoryEntry[] {
-  try {
-    const raw = localStorage.getItem(HISTORY_KEY);
-    if (!raw) {
-      return [];
-    }
-    const parsed: unknown = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      return parsed;
-    }
-    return [];
-  } catch {
-    return [];
-  }
-}
-
-function saveHistory(entries: HistoryEntry[]) {
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(entries));
-}
-
-async function migrateHandleToHistory(
-  handleKey: string,
-  historyEntryId: string,
-  history: HistoryEntry[],
-  get: () => AppState,
-) {
-  const h = await getHandle(handleKey);
-  if (h) {
-    await saveHandle(`history:${historyEntryId}`, h);
-  }
-  await removeHandle(handleKey);
-
-  // Clean up evicted entries' handles
-  const evicted = get().history.filter(
-    (e) => !history.some((h) => h.id === e.id),
-  );
-  for (const ev of evicted) {
-    await removeHandle(`history:${ev.id}`).catch((e) =>
-      console.warn("[history] failed to remove evicted handle:", e),
-    );
-  }
-}
-
-function cleanExpiredHistory(): HistoryEntry[] {
-  const entries = loadHistory();
-  const cutoff = Date.now() - HISTORY_MAX_AGE_MS;
-  const live = entries.filter((e) => new Date(e.closedAt).getTime() > cutoff);
-  // Clean up IndexedDB handles for expired entries
-  for (const e of entries) {
-    if (new Date(e.closedAt).getTime() <= cutoff) {
-      removeHandle(`history:${e.id}`).catch((err) =>
-        console.warn("[history] failed to remove expired handle:", err),
-      );
-    }
-  }
-  if (live.length !== entries.length) {
-    saveHistory(live);
-  }
-  return live;
-}
+  buildUpdatedActiveTabs,
+  buildUpdatedTabs,
+  getActiveTab as getWorkspaceActiveTab,
+  getLiveFileTree,
+} from "../modules/workspace/helpers";
+import { loadWorkspaceHistory } from "../modules/workspace/controller";
+import {
+  createWorkspaceActions,
+  createWorkspaceState,
+} from "../modules/workspace/state";
+import type {
+  WorkspaceActions,
+  WorkspaceState,
+} from "../modules/workspace/types";
 
 interface AppState
   extends AppShellState,
     AppShellActions,
+    WorkspaceState,
+    WorkspaceActions,
     RelayState,
     RelayActions,
     PeerReviewState,
     PeerReviewActions,
     SharingActions {
-  // Tab management
-  tabs: TabState[];
-  activeTabId: string | null;
-
   // Block highlight (transient UI state for comment hover)
   hoveredBlockHighlight: {
     blockIndex: number;
@@ -158,32 +83,11 @@ interface AppState
     } | null,
   ) => void;
 
-  // History
-  history: HistoryEntry[];
-  historyDropdownOpen: boolean;
-  reopenFromHistory: (entryId: string) => Promise<void>;
-  removeHistoryEntry: (entryId: string) => void;
-  clearHistory: () => void;
-  toggleHistoryDropdown: () => void;
-
-  // Tab management actions
-  addTab: (tab: TabState) => void;
-  removeTab: (tabId: string) => void;
-  switchTab: (tabId: string) => Promise<void>;
-  openFileInNewTab: () => Promise<void>;
-  openDirectoryInNewTab: () => Promise<void>;
-  reopenTab: (tabId: string) => Promise<void>;
-
   // Tab-scoped actions (operate on active tab)
-  selectFile: (node: FileNode) => Promise<void>;
-  clearFile: () => void;
   setComments: (comments: Comment[]) => void;
   setActiveCommentId: (id: string | null) => void;
   toggleCommentPanel: () => void;
   setCommentFilter: (f: CommentType | "all" | "pending" | "resolved") => void;
-  toggleSidebar: () => void;
-  refreshFile: () => Promise<void>;
-  refreshFileTree: () => Promise<void>;
   addComment: (
     blockIndex: number,
     type: CommentType,
@@ -198,9 +102,6 @@ interface AppState
   navigateToComment: (filePath: string, rawStart: number) => void;
   navigateToBlock: (filePath: string, blockIndex: number) => void;
   clearPendingScrollTarget: () => void;
-
-  // Global actions
-  restoreTabs: () => Promise<void>;
 }
 
 function scrollToBlock(blockIndex: number | undefined) {
@@ -224,47 +125,8 @@ function isPermissionError(e: unknown): boolean {
   );
 }
 
-function buildUpdatedTabs(
-  tabs: TabState[],
-  tabId: string,
-  updater: (tab: TabState) => Partial<TabState>,
-): TabState[] {
-  return tabs.map((tab) =>
-    tab.id === tabId ? { ...tab, ...updater(tab) } : tab,
-  );
-}
-
-function buildUpdatedActiveTabs(
-  tabs: TabState[],
-  activeTabId: string | null,
-  updater: (tab: TabState) => Partial<TabState>,
-): TabState[] {
-  if (!activeTabId) {
-    return tabs;
-  }
-  return buildUpdatedTabs(tabs, activeTabId, updater);
-}
-
-// Helper: get the active tab state
 function activeTab(get: () => AppState): TabState | null {
-  return getActiveTab(get());
-}
-
-function getLiveFileTree(tab: TabState): FileTreeNode[] {
-  return toFileTreeNodes(tab.fileTree);
-}
-
-function needsDirectoryTabRestore(tab: TabState): boolean {
-  const isMissingDirectoryHandle = tab.directoryHandle === null;
-  const isMissingLiveFileTree = getLiveFileTree(tab).length === 0;
-  const isMissingActiveFileHandle =
-    tab.activeFilePath !== null && tab.fileHandle === null;
-
-  return (
-    isMissingDirectoryHandle ||
-    isMissingLiveFileTree ||
-    isMissingActiveFileHandle
-  );
+  return getWorkspaceActiveTab(get());
 }
 
 function getPersistedTabFileTree(
@@ -277,125 +139,6 @@ function getPersistedTabFileTree(
     return tab.sidebarTree;
   }
   return [];
-}
-
-async function restoreDirectoryTabState(
-  get: () => AppState,
-  set: (
-    partial: Partial<AppState> | ((s: AppState) => Partial<AppState>),
-  ) => void,
-  tabId: string,
-): Promise<void> {
-  const tab = get().tabs.find((currentTab) => currentTab.id === tabId);
-  if (!tab?.directoryName) {
-    return;
-  }
-
-  try {
-    const handle = await getHandle<FileSystemDirectoryHandle>(
-      `tab:${tab.id}:directory`,
-    );
-    if (!handle) {
-      console.debug(
-        "[restoreDirectoryTabState] no saved directory handle:",
-        tab.id,
-        tab.directoryName,
-      );
-      set((state) => ({
-        tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
-          restoreError: `The folder "${tab.directoryName}" could not be accessed. It may have been moved, renamed, or deleted.`,
-        })),
-      }));
-      return;
-    }
-
-    let readPermission = await handle.queryPermission({ mode: "read" });
-    if (readPermission !== "granted") {
-      readPermission = await handle.requestPermission({ mode: "read" });
-    }
-    if (readPermission !== "granted") {
-      console.debug(
-        "[restoreDirectoryTabState] directory permission not granted:",
-        {
-          tabId: tab.id,
-          directoryName: tab.directoryName,
-          readPermission,
-        },
-      );
-      set((state) => ({
-        tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
-          restoreError: `The folder "${tab.directoryName}" requires permission to access. Please reopen it.`,
-        })),
-      }));
-      return;
-    }
-
-    const tree = await buildFileTree(handle);
-    let restoredFileHandle: FileSystemFileHandle | null = null;
-    let restoredFileName: string | null = null;
-    let restoredRaw: string | null = null;
-
-    if (tab.activeFilePath) {
-      const fileNode = findLiveFileInTree(tree, tab.activeFilePath);
-      if (fileNode) {
-        restoredFileHandle = fileNode.handle;
-        restoredFileName = fileNode.name;
-        try {
-          restoredRaw = await readFile(fileNode.handle);
-        } catch (e) {
-          console.warn(
-            "[restoreDirectoryTabState] file read failed, keeping persisted content:",
-            e,
-          );
-        }
-      }
-    }
-
-    set((state) => ({
-      tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
-        directoryHandle: handle,
-        directoryName: handle.name,
-        fileTree: tree,
-        restoreError: null,
-        ...(restoredFileHandle ? { fileHandle: restoredFileHandle } : {}),
-        ...(restoredFileName ? { fileName: restoredFileName } : {}),
-        ...(restoredRaw !== null ? { rawContent: restoredRaw } : {}),
-      })),
-    }));
-
-    if (get().activeTabId === tab.id && tree.length > 0) {
-      await get().scanAllFileComments();
-    }
-  } catch (e) {
-    const name = tab?.directoryName ?? "unknown";
-    console.error(
-      "[restoreDirectoryTabState] failed to restore directory tab:",
-      tabId,
-      e,
-    );
-    set((state) => ({
-      tabs: buildUpdatedTabs(state.tabs, tabId, () => ({
-        directoryHandle: null,
-        fileHandle: null,
-        restoreError: `The folder "${name}" could not be accessed. It may have been moved, renamed, or deleted.`,
-      })),
-    }));
-  }
-}
-
-/** Find an existing tab whose handle matches via isSameEntry. */
-async function findTabByHandle(
-  tabs: TabState[],
-  handle: FileSystemFileHandle | FileSystemDirectoryHandle,
-  kind: "file" | "directory",
-): Promise<TabState | null> {
-  for (const tab of tabs) {
-    const existing = kind === "file" ? tab.fileHandle : tab.directoryHandle;
-    if (existing && (await existing.isSameEntry(handle))) {
-      return tab;
-    }
-  }
-  return null;
 }
 
 // Helper: write file, update tab state with undo, handle permission errors
@@ -454,9 +197,7 @@ function isOldFormat(p: unknown): p is OldPersistedState {
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
-      tabs: [],
-      activeTabId: null,
-
+      ...createWorkspaceState(loadWorkspaceHistory()),
       ...createAppShellState(),
       ...createRelayState(),
       ...createPeerReviewState(),
@@ -465,410 +206,15 @@ export const useAppStore = create<AppState>()(
       setHoveredBlockHighlight: (highlight) =>
         set({ hoveredBlockHighlight: highlight }),
 
-      // ── History ───────────────────────────────────────────────────────────
-
-      history: loadHistory(),
-      historyDropdownOpen: false,
-
-      toggleHistoryDropdown: () =>
-        set((s) => ({ historyDropdownOpen: !s.historyDropdownOpen })),
-
-      reopenFromHistory: async (entryId) => {
-        const entry = get().history.find((e) => e.id === entryId);
-        if (!entry) {
-          return;
-        }
-        const handle = await getHandle(`history:${entryId}`);
-        if (!handle) {
-          // Handle gone — remove entry and notify
-          const updated = get().history.filter((e) => e.id !== entryId);
-          saveHistory(updated);
-          set({ history: updated });
-          get().showToast("File access expired — please reopen manually");
-          return;
-        }
-
-        // Request permission (requires user gesture — this is called from a click)
-        let writeAllowed = false;
-        try {
-          const writePerm = await (
-            handle as FileSystemFileHandle
-          ).requestPermission({ mode: "readwrite" });
-          writeAllowed = writePerm === "granted";
-        } catch {
-          // readwrite not supported or denied
-        }
-        if (!writeAllowed) {
-          try {
-            const readPerm = await (
-              handle as FileSystemFileHandle
-            ).requestPermission({ mode: "read" });
-            if (readPerm !== "granted") {
-              get().showToast("Permission denied");
-              return;
-            }
-          } catch {
-            get().showToast("Permission denied");
-            return;
-          }
-        }
-
-        if (entry.type === "directory") {
-          const dirHandle = handle as FileSystemDirectoryHandle;
-          const tab = createDefaultTab({
-            label: entry.name,
-            directoryHandle: dirHandle,
-            directoryName: entry.name,
-            sidebarOpen: true,
-            writeAllowed,
-          });
-          get().addTab(tab);
-          await saveHandle(`tab:${tab.id}:directory`, dirHandle);
-          const tree = await buildFileTree(dirHandle);
-          set((state) => ({
-            tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
-              fileTree: tree,
-            })),
-          }));
-
-          // Restore previously active file if available
-          if (entry.activeFilePath) {
-            const fileNode = findLiveFileInTree(tree, entry.activeFilePath);
-            if (fileNode) {
-              const raw = await readFile(fileNode.handle);
-              set((state) => ({
-                tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
-                  fileHandle: fileNode.handle,
-                  fileName: fileNode.name,
-                  rawContent: raw,
-                  activeFilePath: fileNode.path,
-                })),
-              }));
-            }
-          }
-
-          // Scan comments
-          if (get().activeTabId === tab.id) {
-            get().scanAllFileComments();
-          }
-        } else {
-          const fileHandle = handle as FileSystemFileHandle;
-          const raw = await readFile(fileHandle);
-          const tab = createDefaultTab({
-            label: entry.name,
-            fileHandle,
-            fileName: entry.name,
-            rawContent: raw,
-            writeAllowed,
-          });
-          get().addTab(tab);
-          await saveHandle(`tab:${tab.id}:file`, fileHandle);
-        }
-
-        // Remove from history and clean up history handle
-        const updated = get().history.filter((e) => e.id !== entryId);
-        saveHistory(updated);
-        set({ history: updated, historyDropdownOpen: false });
-        removeHandle(`history:${entryId}`).catch((e) =>
-          console.warn("[history] failed to remove handle:", e),
-        );
-
-        // Restore shares (they reconnect via stableKey)
-        const allShares = loadAndCleanShares(get().tabs);
-        const currentTab = activeTab(get);
-        if (currentTab) {
-          const tabShares = allShares[stableShareKey(currentTab)] ?? [];
-          if (tabShares.length > 0) {
-            const restoredKeys = await restoreShareKeys(tabShares);
-            set((state) => ({
-              tabs: buildUpdatedActiveTabs(
-                state.tabs,
-                state.activeTabId,
-                (tabState) => ({
-                  shares: tabShares,
-                  shareKeys: { ...tabState.shareKeys, ...restoredKeys },
-                }),
-              ),
-            }));
-          }
-        }
-      },
-
-      removeHistoryEntry: (entryId) => {
-        const updated = get().history.filter((e) => e.id !== entryId);
-        saveHistory(updated);
-        set({ history: updated });
-        removeHandle(`history:${entryId}`).catch((e) =>
-          console.warn("[history] failed to remove handle:", e),
-        );
-      },
-
-      clearHistory: () => {
-        const entries = get().history;
-        for (const e of entries) {
-          removeHandle(`history:${e.id}`).catch((err) =>
-            console.warn("[history] failed to remove handle:", err),
-          );
-        }
-        saveHistory([]);
-        set({ history: [], historyDropdownOpen: false });
-      },
-
-      // ── Tab management ──────────────────────────────────────────────────
-
-      addTab: (tab) => {
-        set({
-          tabs: [...get().tabs, tab],
-          activeTabId: tab.id,
-        });
-      },
-
-      removeTab: (tabId) => {
-        const { tabs, activeTabId } = get();
-        const idx = tabs.findIndex((t) => t.id === tabId);
-        if (idx === -1) {
-          return;
-        }
-        const tab = tabs[idx];
-        const updated = tabs.filter((t) => t.id !== tabId);
-        const docIdsToUnsubscribe = tab.shares
-          .map((share) => share.docId)
-          .filter(
-            (docId) =>
-              !updated.some((currentTab) =>
-                currentTab.shares.some((share) => share.docId === docId),
-              ),
-          );
-        let newActiveId: string | null = null;
-        if (updated.length > 0) {
-          if (activeTabId === tabId) {
-            const newIdx = Math.min(idx, updated.length - 1);
-            newActiveId = updated[newIdx].id;
-          } else {
-            newActiveId = activeTabId;
-          }
-        }
-
-        // Archive to history
-        const isDir = !!tab.directoryName;
-        const name = tab.directoryName ?? tab.fileName;
-        if (name) {
-          const hasActiveShares = tab.shares.some(
-            (s) => new Date(s.expiresAt) > new Date(),
-          );
-          const entry: HistoryEntry = {
-            id: crypto.randomUUID(),
-            type: isDir ? "directory" : "file",
-            name,
-            stableKey: stableShareKey(tab),
-            closedAt: new Date().toISOString(),
-            activeFilePath: tab.activeFilePath,
-            hasActiveShares,
-          };
-
-          // Deduplicate by stableKey, enforce limit
-          let history = get().history.filter(
-            (e) => e.stableKey !== entry.stableKey,
-          );
-          history = [entry, ...history].slice(0, HISTORY_LIMIT);
-
-          // Move handle from tab: key to history: key (fire-and-forget)
-          const handleKey = isDir
-            ? `tab:${tabId}:directory`
-            : `tab:${tabId}:file`;
-          migrateHandleToHistory(handleKey, entry.id, history, get).catch((e) =>
-            console.warn("[history] handle migration failed:", e),
-          );
-
-          saveHistory(history);
-          set({ tabs: updated, activeTabId: newActiveId, history });
-        } else {
-          // No name — nothing to archive, just clean up
-          removeHandle(`tab:${tabId}:directory`).catch((e) =>
-            console.warn("[handleStore] cleanup failed:", e),
-          );
-          removeHandle(`tab:${tabId}:file`).catch((e) =>
-            console.warn("[handleStore] cleanup failed:", e),
-          );
-          set({ tabs: updated, activeTabId: newActiveId });
-        }
-        for (const docId of docIdsToUnsubscribe) {
-          unsubscribeFromDoc(docId);
-        }
-      },
-
-      switchTab: async (tabId) => {
-        set({ activeTabId: tabId });
-        const tab = get().tabs.find((currentTab) => currentTab.id === tabId);
-        if (!tab?.directoryName) {
-          return;
-        }
-
-        const shouldRestoreDirectoryTab = needsDirectoryTabRestore(tab);
-        if (!shouldRestoreDirectoryTab) {
-          return;
-        }
-
-        await restoreDirectoryTabState(get, set, tabId);
-      },
-
-      openFileInNewTab: async () => {
-        const result = await fsOpenFile();
-        if (!result) {
-          return;
-        }
-        const existing = await findTabByHandle(
-          get().tabs,
-          result.handle,
-          "file",
-        );
-        if (existing) {
-          set({ activeTabId: existing.id });
-          return;
-        }
-        const raw = await readFile(result.handle);
-        const tab = createDefaultTab({
-          label: result.name,
-          fileHandle: result.handle,
-          fileName: result.name,
-          rawContent: raw,
-        });
-        get().addTab(tab);
-        await saveHandle(`tab:${tab.id}:file`, result.handle);
-      },
-
-      openDirectoryInNewTab: async () => {
-        const result = await fsOpenDirectory();
-        if (!result) {
-          return;
-        }
-        const existing = await findTabByHandle(
-          get().tabs,
-          result.handle,
-          "directory",
-        );
-        if (existing) {
-          set({ activeTabId: existing.id });
-          return;
-        }
-        const tab = createDefaultTab({
-          label: result.name,
-          directoryHandle: result.handle,
-          directoryName: result.name,
-          sidebarOpen: true,
-        });
-        get().addTab(tab);
-        await saveHandle(`tab:${tab.id}:directory`, result.handle);
-        const tree = await buildFileTree(result.handle);
-        set((state) => ({
-          tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
-            fileTree: tree,
-          })),
-        }));
-        // Scan comments after tree is built — need to ensure the tab is active
-        const currentActive = get().activeTabId;
-        if (currentActive === tab.id) {
-          get().scanAllFileComments();
-        }
-      },
-
-      reopenTab: async (tabId: string) => {
-        const tab = get().tabs.find((t) => t.id === tabId);
-        if (!tab) {
-          return;
-        }
-
-        if (tab.directoryName) {
-          try {
-            const result = await fsOpenDirectory();
-            if (!result) {
-              return;
-            }
-            await saveHandle(`tab:${tabId}:directory`, result.handle);
-            const tree = await buildFileTree(result.handle);
-            set((state) => ({
-              tabs: buildUpdatedTabs(state.tabs, tabId, () => ({
-                directoryHandle: result.handle,
-                directoryName: result.name,
-                label: result.name,
-                fileTree: tree,
-                fileHandle: null,
-                fileName: null,
-                rawContent: "",
-                activeFilePath: null,
-                restoreError: null,
-              })),
-            }));
-            if (get().activeTabId === tabId && tree.length > 0) {
-              await get().scanAllFileComments();
-            }
-          } catch (e) {
-            console.error(
-              "[reopenTab] failed to reopen directory tab:",
-              tabId,
-              e,
-            );
-            set((state) => ({
-              tabs: buildUpdatedTabs(state.tabs, tabId, () => ({
-                restoreError: `The folder "${tab.directoryName}" could not be opened. Please try again.`,
-              })),
-            }));
-          }
-        } else {
-          try {
-            const result = await fsOpenFile();
-            if (!result) {
-              return;
-            }
-            await saveHandle(`tab:${tabId}:file`, result.handle);
-            const raw = await readFile(result.handle);
-            set((state) => ({
-              tabs: buildUpdatedTabs(state.tabs, tabId, () => ({
-                fileHandle: result.handle,
-                fileName: result.name,
-                label: result.name,
-                rawContent: raw,
-                restoreError: null,
-              })),
-            }));
-          } catch (e) {
-            console.error("[reopenTab] failed to reopen file tab:", tabId, e);
-            set((state) => ({
-              tabs: buildUpdatedTabs(state.tabs, tabId, () => ({
-                restoreError: `The file "${tab.fileName}" could not be opened. Please try again.`,
-              })),
-            }));
-          }
-        }
-      },
+      ...createWorkspaceActions({
+        set,
+        get,
+        scanAllFileComments: () => get().scanAllFileComments(),
+        showToast: (message) => get().showToast(message),
+        syncActiveShares: () => syncActiveSharesService(),
+      }),
 
       // ── Tab-scoped actions ──────────────────────────────────────────────
-
-      selectFile: async (node: FileNode) => {
-        const raw = await readFile(node.handle);
-        set((state) => ({
-          tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, () => ({
-            fileHandle: node.handle,
-            fileName: node.name,
-            rawContent: raw,
-            activeFilePath: node.path,
-            resolvedComments: [],
-          })),
-        }));
-      },
-
-      clearFile: () =>
-        set((state) => ({
-          tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, () => ({
-            fileHandle: null,
-            fileName: null,
-            rawContent: "",
-            directoryHandle: null,
-            directoryName: null,
-            fileTree: [],
-            activeFilePath: null,
-          })),
-        })),
 
       setComments: (comments) => {
         const tab = activeTab(get);
@@ -928,17 +274,6 @@ export const useAppStore = create<AppState>()(
             commentFilter: f,
             activeCommentId: null,
           })),
-        })),
-
-      toggleSidebar: () =>
-        set((state) => ({
-          tabs: buildUpdatedActiveTabs(
-            state.tabs,
-            state.activeTabId,
-            (tab) => ({
-              sidebarOpen: !tab.sidebarOpen,
-            }),
-          ),
         })),
 
       scanAllFileComments: async () => {
@@ -1164,167 +499,6 @@ export const useAppStore = create<AppState>()(
           })),
         })),
 
-      refreshFile: async () => {
-        const tab = activeTab(get);
-        if (!tab?.fileHandle) {
-          return;
-        }
-        try {
-          const newRaw = await readFile(tab.fileHandle);
-          const changed = newRaw !== tab.rawContent;
-          const newlyResolved = tab.comments.filter(
-            (c) => !newRaw.includes(c.raw),
-          );
-          set((state) => ({
-            tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, () => ({
-              rawContent: newRaw,
-              resolvedComments: newlyResolved,
-            })),
-          }));
-          if (changed) {
-            syncActiveSharesService();
-          }
-        } catch (e) {
-          console.error("[refreshFile] file read failed:", e);
-        }
-      },
-
-      refreshFileTree: async () => {
-        const tab = activeTab(get);
-        if (!tab?.directoryHandle) {
-          return;
-        }
-        const tabId = tab.id;
-        try {
-          const tree = await buildFileTree(tab.directoryHandle);
-          set((state) => ({
-            tabs: buildUpdatedTabs(state.tabs, tabId, () => ({
-              fileTree: tree,
-            })),
-          }));
-          get().scanAllFileComments();
-        } catch (e) {
-          console.error("[refreshFileTree] directory read failed:", e);
-        }
-      },
-
-      restoreTabs: async () => {
-        // Prune expired history entries
-        const cleanedHistory = cleanExpiredHistory();
-        set({ history: cleanedHistory });
-
-        const { tabs } = get();
-        for (const tab of tabs) {
-          if (tab.directoryName) {
-            try {
-              await restoreDirectoryTabState(get, set, tab.id);
-            } catch (e) {
-              console.error(
-                "[restoreTabs] failed to restore directory tab:",
-                tab.id,
-                e,
-              );
-            }
-          } else if (tab.fileName) {
-            try {
-              const handle = await getHandle<FileSystemFileHandle>(
-                `tab:${tab.id}:file`,
-              );
-              if (!handle) {
-                console.warn(
-                  "[restoreTabs] no handle in IndexedDB for file tab:",
-                  tab.id,
-                  tab.fileName,
-                );
-                set((state) => ({
-                  tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
-                    restoreError: `The file "${tab.fileName}" could not be accessed. It may have been moved, renamed, or deleted.`,
-                  })),
-                }));
-                continue;
-              }
-              let writePerm = await handle.queryPermission({
-                mode: "readwrite",
-              });
-              if (writePerm !== "granted") {
-                writePerm = await handle.requestPermission({
-                  mode: "readwrite",
-                });
-              }
-              console.log("[restoreTabs] file tab permissions", {
-                tabId: tab.id,
-                fileName: tab.fileName,
-                writePerm,
-              });
-              if (writePerm !== "granted") {
-                console.warn(
-                  "[restoreTabs] skipping file tab — readwrite not granted:",
-                  tab.id,
-                  tab.fileName,
-                );
-                set((state) => ({
-                  tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
-                    restoreError: `The file "${tab.fileName}" requires permission to access. Please reopen it.`,
-                  })),
-                }));
-                continue;
-              }
-              let restoredRaw: string | null = null;
-              try {
-                restoredRaw = await readFile(handle);
-              } catch (e) {
-                console.warn(
-                  "[restoreTabs] file read failed, keeping persisted content:",
-                  e,
-                );
-              }
-              set((state) => ({
-                tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
-                  fileHandle: handle,
-                  restoreError: null,
-                  ...(restoredRaw !== null ? { rawContent: restoredRaw } : {}),
-                })),
-              }));
-              console.log(
-                "[restoreTabs] file tab restored successfully:",
-                tab.id,
-                tab.fileName,
-              );
-            } catch (e) {
-              console.error(
-                "[restoreTabs] failed to restore file tab:",
-                tab.id,
-                e,
-              );
-              set((state) => ({
-                tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
-                  restoreError: `The file "${tab.fileName}" could not be accessed. It may have been moved, renamed, or deleted.`,
-                })),
-              }));
-            }
-          }
-        }
-        // Migrate old tabId-keyed shares, prune expired, then restore
-        const allShares = loadAndCleanShares(get().tabs);
-        for (const tab of get().tabs) {
-          const tabShares = allShares[stableShareKey(tab)] ?? [];
-          if (tabShares.length === 0) {
-            continue;
-          }
-          const restoredKeys = await restoreShareKeys(tabShares);
-          set((state) => ({
-            tabs: buildUpdatedTabs(state.tabs, tab.id, (tabState) => ({
-              shares: tabShares,
-              shareKeys: { ...tabState.shareKeys, ...restoredKeys },
-            })),
-          }));
-        }
-
-        // Auto-connect relay for active shares
-        const activeShares = get().tabs.flatMap((tab) => tab.shares);
-        ensureRelaySubscriptions(activeShares);
-      },
-
       // ── Global actions ────────────────────────────────────────────────
 
       ...createAppShellActions(set),
@@ -1494,7 +668,7 @@ const APP_TITLE = "critiq.ink";
 useAppStore.subscribe((state) => {
   const name = state.isPeerMode
     ? state.peerActiveFilePath?.split("/").pop()
-    : getActiveTab(state)?.fileName;
+    : getWorkspaceActiveTab(state)?.fileName;
   const title = name ? `${name} — ${APP_TITLE}` : APP_TITLE;
   if (document.title !== title) {
     document.title = title;

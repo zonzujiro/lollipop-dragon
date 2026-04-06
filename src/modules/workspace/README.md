@@ -8,6 +8,7 @@ Owns host-side tab lifecycle and file-session state.
 
 - tabs
 - active tab
+- recent history and restore affordances
 - file handles
 - directory handles
 - file tree
@@ -27,6 +28,8 @@ Target state to move here:
 
 - `tabs`
 - `activeTabId`
+- `history`
+- `historyDropdownOpen`
 - tab-level file session fields
 
 ## Public API
@@ -36,6 +39,7 @@ Planned public API:
 - workspace selectors
 - tab lifecycle state transitions
 - workspace controller commands for file and directory orchestration
+- history and restore commands
 
 ## Side Effects
 

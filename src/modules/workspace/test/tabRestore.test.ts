@@ -1,29 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../services/handleStore", () => ({
-  saveHandle: vi.fn(),
-  getHandle: vi.fn(),
-  removeHandle: vi.fn(),
-}));
-
-vi.mock("../services/fileSystem", async () => {
-  const actual = await vi.importActual<typeof import("../services/fileSystem")>(
-    "../services/fileSystem",
-  );
+vi.mock("../storage", async (importOriginal) => {
+  const actual = await importOriginal<
+    typeof import("../storage")
+  >();
   return {
     ...actual,
+    saveHandle: vi.fn(),
+    getHandle: vi.fn(),
+    removeHandle: vi.fn(),
     buildFileTree: vi.fn(),
     readFile: vi.fn(),
   };
 });
 
-import { useAppStore } from "../store";
-import { getActiveTab } from "../store/selectors";
-import { getHandle } from "../services/handleStore";
-import { buildFileTree, readFile } from "../services/fileSystem";
-import { createDefaultTab } from "../types/tab";
-import { resetTestStore, setTestState } from "./testHelpers";
-import type { FileTreeNode } from "../types/fileTree";
+import { useAppStore } from "../../../store";
+import { createDefaultTab } from "../../../types/tab";
+import type { FileTreeNode } from "../../../types/fileTree";
+import { resetTestStore, setTestState } from "../../../test/testHelpers";
+import { getActiveTab } from "../selectors";
+import { buildFileTree, getHandle, readFile } from "../storage";
 
 beforeEach(() => {
   resetTestStore();
