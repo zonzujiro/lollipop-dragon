@@ -131,21 +131,28 @@ export async function durableResolveComment(
   }
 }
 
+const RESOLVE_MAX_RETRIES = 3;
+const RESOLVE_RETRY_DELAYS = [2000, 5000, 10000];
+
 /**
  * Attempt durable resolve (KV delete + share update + broadcast) after a local merge.
- * Fire-and-forget — all side effects live here, not in the store.
+ * Retries up to 3 times with increasing delays before surfacing failure to the user.
  */
 export async function attemptDurableResolve(
   docId: string,
   commentId: string,
   hostSecret: string,
 ): Promise<void> {
-  const resolved = await durableResolveComment(docId, commentId, hostSecret);
-  if (resolved) {
-    broadcastCommentResolved(docId, commentId);
-  } else {
-    useAppStore.getState().showToast("Sync failed — use Push update to retry");
+  for (let attempt = 0; attempt < RESOLVE_MAX_RETRIES; attempt++) {
+    const resolved = await durableResolveComment(docId, commentId, hostSecret);
+    if (resolved) {
+      broadcastCommentResolved(docId, commentId);
+      return;
+    }
+    const delay = RESOLVE_RETRY_DELAYS[attempt];
+    await new Promise((resolve) => setTimeout(resolve, delay));
   }
+  useAppStore.getState().showToast("Sync failed — use Push update to retry");
 }
 
 /** Delete a single comment from KV. Logs on failure; tombstone protects the session. */
