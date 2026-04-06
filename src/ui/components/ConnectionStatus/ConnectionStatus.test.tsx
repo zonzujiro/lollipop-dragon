@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { ConnectionStatus } from "./index";
-import { makeShare, resetTestStore, setTestState } from "../../../test/testHelpers";
+import { makeShare, resetTestStore, setTestState } from "../../../testing/testHelpers";
 
 beforeEach(() => {
   resetTestStore();

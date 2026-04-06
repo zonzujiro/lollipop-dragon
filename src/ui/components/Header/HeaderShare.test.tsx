@@ -7,7 +7,7 @@ vi.mock("../../../config", () => ({
 }));
 
 import { Header } from "./index";
-import { resetTestStore, setTestState } from "../../../test/testHelpers";
+import { resetTestStore, setTestState } from "../../../testing/testHelpers";
 
 beforeEach(() => {
   resetTestStore();

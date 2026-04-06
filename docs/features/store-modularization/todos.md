@@ -11,7 +11,8 @@ The first pass is structural. It should reduce coupling and make ownership expli
 Test placement rule:
 
 - keep module-owned tests beside the module
-- keep component tests in [src/test](/home/zonzujiro/projects/lollipop-dragon/src/test) while components still live under [src/components](/home/zonzujiro/projects/lollipop-dragon/src/components)
+- keep component tests beside the owning UI component under [src/ui/components](/home/zonzujiro/projects/lollipop-dragon/src/ui/components)
+- keep shared test setup and factories under [src/testing](/home/zonzujiro/projects/lollipop-dragon/src/testing), with no shared root test folder
 
 ## Phase 1 - Foundation
 

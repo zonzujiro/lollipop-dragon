@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractHeadings } from "../utils/extractHeadings";
+import { extractHeadings } from "./extractHeadings";
 
 describe("extractHeadings", () => {
   it("extracts headings with correct levels and block indices", () => {

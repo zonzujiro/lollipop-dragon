@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { TableOfContents } from "./index";
-import { resetTestStore, setTestState } from "../../../test/testHelpers";
+import { resetTestStore, setTestState } from "../../../testing/testHelpers";
 
 beforeEach(() => {
   resetTestStore();

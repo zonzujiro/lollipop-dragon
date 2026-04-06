@@ -35,7 +35,7 @@ import {
   resetTestStore,
   setTestState,
   makeShare,
-} from "../../../test/testHelpers";
+} from "../../../testing/testHelpers";
 
 beforeEach(() => {
   resetTestStore();

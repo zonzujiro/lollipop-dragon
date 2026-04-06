@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SharedPanel } from "./index";
 import { useAppStore } from "../../../store";
-import { makeShare, resetTestStore, setTestState } from "../../../test/testHelpers";
+import { makeShare, resetTestStore, setTestState } from "../../../testing/testHelpers";
 
 vi.mock("../../../modules/relay", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../../modules/relay")>();

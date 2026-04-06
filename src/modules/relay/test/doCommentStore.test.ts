@@ -13,7 +13,7 @@ import {
   makeShare,
   resetTestStore,
   setTestState,
-} from "../../../test/testHelpers";
+} from "../../../testing/testHelpers";
 import { RelayHubSqlite } from "../../../../worker/src/relay";
 
 interface DocMetaRow {

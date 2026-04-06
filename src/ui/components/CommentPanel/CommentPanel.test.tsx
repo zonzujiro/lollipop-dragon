@@ -8,7 +8,7 @@ import {
   setTestState,
   resetTestStore,
   makeComment as makeCommentBase,
-} from "../../../test/testHelpers";
+} from "../../../testing/testHelpers";
 import type { Comment } from "../../../types/criticmarkup";
 
 function makeResolvedComment(id: string, text: string) {

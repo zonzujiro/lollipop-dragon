@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { compress, decompress } from '../services/compress'
+import { compress, decompress } from './compress'
 
 describe('compress / decompress', () => {
   it('round-trips UTF-8 text', async () => {

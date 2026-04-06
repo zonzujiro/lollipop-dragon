@@ -17,7 +17,7 @@ vi.mock("../storage", async (importOriginal) => {
 import { useAppStore } from "../../../store";
 import { createDefaultTab } from "../../../types/tab";
 import type { FileTreeNode } from "../../../types/fileTree";
-import { resetTestStore, setTestState } from "../../../test/testHelpers";
+import { resetTestStore, setTestState } from "../../../testing/testHelpers";
 import { getActiveTab } from "../selectors";
 import { buildFileTree, getHandle, readFile } from "../storage";
 

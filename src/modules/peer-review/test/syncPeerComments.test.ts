@@ -51,7 +51,7 @@ vi.mock("../../../modules/relay", async (importOriginal) => {
 });
 
 import { useAppStore } from "../../../store";
-import { makePeerComment, resetTestStore, setTestState } from "../../../test/testHelpers";
+import { makePeerComment, resetTestStore, setTestState } from "../../../testing/testHelpers";
 
 beforeEach(() => {
   resetTestStore();

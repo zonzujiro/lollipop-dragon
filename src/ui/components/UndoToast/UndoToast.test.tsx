@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { UndoToast } from "./index";
 import { useAppStore } from "../../../store";
-import { setTestState, resetTestStore } from "../../../test/testHelpers";
+import { setTestState, resetTestStore } from "../../../testing/testHelpers";
 
 beforeEach(() => {
   resetTestStore()

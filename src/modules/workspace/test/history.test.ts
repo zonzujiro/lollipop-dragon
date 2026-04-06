@@ -1,6 +1,6 @@
 import { beforeEach, describe, it, expect, vi } from "vitest";
 import { useAppStore } from "../../../store";
-import { setTestState, resetTestStore, makeShare } from "../../../test/testHelpers";
+import { setTestState, resetTestStore, makeShare } from "../../../testing/testHelpers";
 import type { HistoryEntry } from "../../../types/history";
 import { getActiveTab } from "../selectors";
 import { resetHandleStore } from "../storage";

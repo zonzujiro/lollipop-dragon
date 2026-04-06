@@ -11,7 +11,7 @@ vi.mock("../../../markup", async (importOriginal) => {
 
 import { PresentationMode } from "./index";
 import { useAppStore } from "../../../store";
-import { resetTestStore, setTestState } from "../../../test/testHelpers";
+import { resetTestStore, setTestState } from "../../../testing/testHelpers";
 
 const mockRequestFullscreen = vi.fn(() => Promise.resolve());
 const mockExitFullscreen = vi.fn(() => Promise.resolve());

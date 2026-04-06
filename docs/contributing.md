@@ -105,7 +105,7 @@ yarn test:coverage     # with coverage report
 
 ### Test helpers
 
-Tests use helpers from `src/test/testHelpers.ts`:
+Tests use helpers from `src/testing/testHelpers.ts`:
 
 - `setTestState(tabOverrides, globalOverrides)` — sets up a test tab as active and merges overrides.
 - `resetTestStore()` — resets to a clean state. Call in `beforeEach`.
@@ -113,7 +113,7 @@ Tests use helpers from `src/test/testHelpers.ts`:
 ### Mocking
 
 - Use top-level `vi.mock()` for module mocks — Vitest hoists these before imports, so dynamic `import()` in tests is unnecessary.
-- Shared factories and helpers go in `src/test/testHelpers.ts`.
+- Shared factories and helpers go in `src/testing/testHelpers.ts`.
 
 ## Browser testing
 

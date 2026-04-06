@@ -72,10 +72,10 @@ If a component reads tab state while in peer mode (or vice versa), it will get s
 
 ## Testing Patterns
 
-- **`setTestState(tabOverrides, globalOverrides)`** from `src/test/testHelpers.ts` -- sets up a test tab as active and merges global overrides.
+- **`setTestState(tabOverrides, globalOverrides)`** from `src/testing/testHelpers.ts` -- sets up a test tab as active and merges global overrides.
 - **`resetTestStore()`** -- resets to a clean state.
 - Use top-level `vi.mock()` for module mocks (Vitest hoists these before imports).
-- Shared factories and helpers go in `src/test/testHelpers.ts`.
+- Shared factories and helpers go in `src/testing/testHelpers.ts`.
 
 ## File Organization
 
@@ -84,10 +84,10 @@ docs/            -- Contributing guide, iteration roadmap (read before building)
 docs/features/   -- Feature specs and task lists
 docs/design/     -- Technical design documents (v1, v2)
 src/store/       -- Zustand store (index.ts) and selectors (selectors.ts)
-src/components/  -- React components (folder-per-component: Name/Name.tsx, Name.css, index.ts)
+src/ui/components/ -- React components (folder-per-component: Name/Name.tsx, Name.css, index.ts)
 src/services/    -- API/storage services (shareStorage, crypto, handleStore, fileSystem)
 src/utils/       -- Pure utility functions
 src/types/       -- TypeScript type definitions (tab.ts, share.ts, fileTree.ts, criticmarkup.ts)
-src/styles/      -- Global CSS (tokens, reset, layout, landing page)
-src/test/        -- Test files and helpers
+src/ui/styles/   -- Global CSS (tokens, reset, layout, landing page)
+src/testing/     -- Shared test setup and factories (no test files)
 ```

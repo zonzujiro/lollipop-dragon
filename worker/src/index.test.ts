@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getRouteParts } from "../../worker/src/index";
+import { getRouteParts } from "./index";
 
 describe("getRouteParts", () => {
   it("ignores repeated leading slashes", () => {

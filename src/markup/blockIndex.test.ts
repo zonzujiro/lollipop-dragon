@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { getBlockPositions, assignBlockIndices } from '../markup/blockIndex'
-import { makeComment as makeCommentBase } from './testHelpers'
+import { getBlockPositions, assignBlockIndices } from './blockIndex'
+import { makeComment as makeCommentBase } from '../testing/testHelpers'
 
 function makeComment(cleanStart: number, cleanEnd = cleanStart) {
   return makeCommentBase({ id: String(cleanStart), cleanStart, cleanEnd })

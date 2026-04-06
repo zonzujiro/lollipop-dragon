@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { insertComment } from '../markup/insertComment'
-import { makeComment } from './testHelpers'
+import { insertComment } from './insertComment'
+import { makeComment } from '../testing/testHelpers'
 
 describe('insertComment — plain content (no existing markup)', () => {
   it('appends a note comment (no prefix) after the first paragraph', () => {
