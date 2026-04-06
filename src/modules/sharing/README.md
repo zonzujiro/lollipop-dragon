@@ -22,8 +22,6 @@ Owns host-side share lifecycle and unresolved incoming peer review state.
 
 ## State
 
-Target state to move here:
-
 - `shares`
 - `shareKeys`
 - `activeDocId`
@@ -33,20 +31,19 @@ Target state to move here:
 
 ## Public API
 
-Planned public API:
-
+- `createSharingTabState`
+- `createSharingActions`
 - sharing selectors
-- pure share-state transitions
-- controller commands for share create/revoke/update and pending comment handling
+- share persistence helpers (`saveShares`, `loadAndCleanShares`, `restoreShareKeys`)
+- `ShareStorage` via module-local `storage.ts`
 
 ## Side Effects
 
-Expected side effects:
-
 - share upload
-- share update
 - share revoke
-- restore share sessions
+- share session restore
+- local share-record persistence
+- pending incoming peer-comment reconcile
 
 ## Related Docs
 

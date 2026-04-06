@@ -1,9 +1,9 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
-import { ShareDialog } from '../components/ShareDialog'
-import { useAppStore } from '../store'
-import { setTestState, resetTestStore } from './testHelpers'
+import { ShareDialog } from '../../../components/ShareDialog'
+import { useAppStore } from '../../../store'
+import { setTestState, resetTestStore } from '../../../test/testHelpers'
 
 beforeEach(() => {
   resetTestStore()

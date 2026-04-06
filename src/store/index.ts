@@ -16,18 +16,11 @@ import { assignBlockIndices } from "../services/blockIndex";
 import { insertComment as insertCommentService } from "../services/insertComment";
 import { applyEdit } from "../services/editComment";
 import { applyDelete } from "../services/deleteComment";
-import { ShareStorage } from "../services/shareStorage";
 import {
-  generateKey,
-  keyToBase64url,
-  base64urlToKey,
-  docIdFromKey,
 } from "../services/crypto";
-import { buildShareUrlFromOrigin } from "../utils/shareUrl";
 import {
   ensureRelaySubscriptions,
   unsubscribeFromDoc,
-  relayCommentResolve,
 } from "../services/relay";
 import { syncActiveShares as syncActiveSharesService } from "../services/shareSync";
 import {
@@ -42,7 +35,7 @@ import type {
   SidebarTreeNode,
 } from "../types/fileTree";
 import type { Comment, CommentType } from "../types/criticmarkup";
-import type { ShareRecord, PeerComment } from "../types/share";
+import type { ShareRecord } from "../types/share";
 import type { TabState, FileCommentEntry } from "../types/tab";
 import { createDefaultTab } from "../types/tab";
 import type { HistoryEntry } from "../types/history";
@@ -65,51 +58,14 @@ import type {
   PeerReviewActions,
   PeerReviewState,
 } from "../modules/peer-review";
+import { createSharingActions } from "../modules/sharing/state";
+import type { SharingActions } from "../modules/sharing/types";
+import {
+  loadAndCleanShares,
+  restoreShareKeys,
+  stableShareKey,
+} from "../modules/sharing/controller";
 import { getActiveTab } from "./selectors";
-import { WORKER_URL } from "../config";
-
-const SHARES_KEY = "markreview-shares";
-
-function stableShareKey(tab: {
-  directoryName: string | null;
-  fileName: string | null;
-  id: string;
-}): string {
-  return tab.directoryName ?? tab.fileName ?? tab.id;
-}
-
-function isShareRecordMap(v: unknown): v is Record<string, ShareRecord[]> {
-  if (typeof v !== "object" || v === null || Array.isArray(v)) {
-    return false;
-  }
-  return Object.values(v).every((val) => Array.isArray(val));
-}
-
-function loadAllShares(): Record<string, ShareRecord[]> {
-  try {
-    const raw = localStorage.getItem(SHARES_KEY);
-    if (!raw) {
-      return {};
-    }
-    const parsed: unknown = JSON.parse(raw);
-    if (isShareRecordMap(parsed)) {
-      return parsed;
-    }
-    return {};
-  } catch {
-    return {};
-  }
-}
-
-function saveAllShares(all: Record<string, ShareRecord[]>) {
-  localStorage.setItem(SHARES_KEY, JSON.stringify(all));
-}
-
-function saveShares(key: string, shares: ShareRecord[]) {
-  const all = loadAllShares();
-  all[key] = shares;
-  saveAllShares(all);
-}
 
 // ── History localStorage helpers ────────────────────────────────────────────
 
@@ -178,115 +134,14 @@ function cleanExpiredHistory(): HistoryEntry[] {
   return live;
 }
 
-/** Load shares, migrate old tabId keys to stable keys, prune expired entries. */
-function loadAndCleanShares(tabs: TabState[]): Record<string, ShareRecord[]> {
-  const all = loadAllShares();
-  let changed = false;
-
-  // Migrate old tabId-keyed entries to stable keys
-  for (const tab of tabs) {
-    const stableKey = stableShareKey(tab);
-    if (tab.id === stableKey) {
-      continue;
-    }
-    const oldShares = all[tab.id];
-    if (!oldShares || oldShares.length === 0) {
-      continue;
-    }
-    const existing = all[stableKey] ?? [];
-    const existingDocIds = new Set(existing.map((s) => s.docId));
-    const merged = [
-      ...existing,
-      ...oldShares.filter((s) => !existingDocIds.has(s.docId)),
-    ];
-    all[stableKey] = merged;
-    delete all[tab.id];
-    changed = true;
-  }
-
-  // Prune expired shares
-  const now = new Date();
-  for (const key of Object.keys(all)) {
-    const live = all[key].filter((s) => new Date(s.expiresAt) > now);
-    if (live.length !== all[key].length) {
-      changed = true;
-    }
-    if (live.length === 0) {
-      delete all[key];
-    } else {
-      all[key] = live;
-    }
-  }
-
-  if (changed) {
-    saveAllShares(all);
-  }
-  return all;
-}
-
-/** Collect file contents from a tree into a flat record. */
-async function collectTreeContents(
-  nodes: FileTreeNode[],
-  activeFilePath: string | null,
-  rawContent: string,
-  allowedPaths?: Set<string> | null,
-): Promise<Record<string, string>> {
-  const tree: Record<string, string> = {};
-  const walk = async (items: FileTreeNode[]) => {
-    for (const node of items) {
-      if (node.kind === "file") {
-        const path = node.path;
-        if (allowedPaths && !allowedPaths.has(path)) {
-          continue;
-        }
-        if (path === activeFilePath && rawContent) {
-          tree[path] = rawContent;
-        } else {
-          try {
-            tree[path] = await readFile(node.handle);
-          } catch (e) {
-            console.warn(
-              "[collectTreeContents] skipping unreadable file:",
-              path,
-              e,
-            );
-          }
-        }
-      } else {
-        await walk(node.children);
-      }
-    }
-  };
-  await walk(nodes);
-  return tree;
-}
-
-/** Restore CryptoKeys from share records (skipping expired ones). */
-async function restoreShareKeys(
-  shares: ShareRecord[],
-): Promise<Record<string, CryptoKey>> {
-  const keys: Record<string, CryptoKey> = {};
-  const now = new Date();
-  for (const share of shares) {
-    if (new Date(share.expiresAt) <= now) {
-      continue;
-    }
-    try {
-      keys[share.docId] = await base64urlToKey(share.keyB64);
-    } catch {
-      // skip shares with invalid keys
-    }
-  }
-  return keys;
-}
-
 interface AppState
   extends AppShellState,
     AppShellActions,
     RelayState,
     RelayActions,
     PeerReviewState,
-    PeerReviewActions {
+    PeerReviewActions,
+    SharingActions {
   // Tab management
   tabs: TabState[];
   activeTabId: string | null;
@@ -343,33 +198,9 @@ interface AppState
   navigateToComment: (filePath: string, rawStart: number) => void;
   navigateToBlock: (filePath: string, blockIndex: number) => void;
   clearPendingScrollTarget: () => void;
-  restoreShareSessions: () => Promise<void>;
 
   // Global actions
   restoreTabs: () => Promise<void>;
-
-  // Sharing actions (tab-scoped)
-  shareContent: (opts: {
-    ttl: number;
-    nodes?: FileTreeNode[];
-    label?: string;
-  }) => Promise<string>;
-  revokeShare: (docId: string) => Promise<void>;
-  mergeComment: (docId: string, comment: PeerComment) => Promise<void>;
-  dismissComment: (docId: string, cmtId: string) => void;
-  clearPendingComments: (docId: string) => void;
-  toggleSharedPanel: () => void;
-
-  // Realtime comment actions
-  addPendingComment: (docId: string, comment: PeerComment) => void;
-  replaceCommentsSnapshot: (docId: string, comments: PeerComment[]) => void;
-  queuePendingResolve: (docId: string, cmtId: string) => void;
-  confirmPendingResolve: (docId: string, cmtId: string) => void;
-  flushPendingCommentResolves: (docId: string) => void;
-}
-
-function getStorage(): ShareStorage | null {
-  return WORKER_URL ? new ShareStorage(WORKER_URL) : null;
 }
 
 function scrollToBlock(blockIndex: number | undefined) {
@@ -391,66 +222,6 @@ function isPermissionError(e: unknown): boolean {
     e instanceof Error &&
     (e.name === "NotAllowedError" || e.name === "SecurityError")
   );
-}
-
-function removePendingCommentState(
-  tab: TabState,
-  docId: string,
-  cmtId: string,
-): Pick<TabState, "pendingComments" | "shares"> {
-  const nextPendingComments = { ...tab.pendingComments };
-  const remainingComments = (nextPendingComments[docId] ?? []).filter(
-    (comment) => comment.id !== cmtId,
-  );
-  if (remainingComments.length > 0) {
-    nextPendingComments[docId] = remainingComments;
-  } else {
-    delete nextPendingComments[docId];
-  }
-  const nextShares = tab.shares.map((share) =>
-    share.docId === docId
-      ? { ...share, pendingCommentCount: remainingComments.length }
-      : share,
-  );
-  return {
-    pendingComments: nextPendingComments,
-    shares: nextShares,
-  };
-}
-
-function replacePendingCommentsState(
-  tab: TabState,
-  docId: string,
-  comments: PeerComment[],
-): Pick<TabState, "pendingComments" | "shares"> {
-  const nextPendingComments = { ...tab.pendingComments };
-  if (comments.length > 0) {
-    nextPendingComments[docId] = comments;
-  } else {
-    delete nextPendingComments[docId];
-  }
-  const nextShares = tab.shares.map((share) =>
-    share.docId === docId
-      ? { ...share, pendingCommentCount: comments.length }
-      : share,
-  );
-  return {
-    pendingComments: nextPendingComments,
-    shares: nextShares,
-  };
-}
-
-function mergeQueuedCommentIds(
-  existingIds: string[],
-  incomingIds: string[],
-): string[] {
-  const mergedIds = [...existingIds];
-  for (const incomingId of incomingIds) {
-    if (!mergedIds.includes(incomingId)) {
-      mergedIds.push(incomingId);
-    }
-  }
-  return mergedIds;
 }
 
 function buildUpdatedTabs(
@@ -1554,279 +1325,20 @@ export const useAppStore = create<AppState>()(
         ensureRelaySubscriptions(activeShares);
       },
 
-      restoreShareSessions: async () => {
-        const tab = activeTab(get);
-        if (!tab) {
-          return;
-        }
-        const restoredKeys = await restoreShareKeys(tab.shares);
-        if (Object.keys(restoredKeys).length > 0) {
-          set((state) => ({
-            tabs: buildUpdatedActiveTabs(
-              state.tabs,
-              state.activeTabId,
-              (tabState) => ({
-                shareKeys: { ...tabState.shareKeys, ...restoredKeys },
-              }),
-            ),
-          }));
-        }
-      },
-
       // ── Global actions ────────────────────────────────────────────────
 
       ...createAppShellActions(set),
 
       // ── Sharing actions (tab-scoped) ──────────────────────────────────
-
-      shareContent: async ({ ttl, nodes, label: scopeLabel }) => {
-        const storage = getStorage();
-        if (!storage) {
-          throw new Error("Worker URL not configured");
-        }
-        const tab = activeTab(get);
-        if (!tab) {
-          throw new Error("No active tab");
-        }
-        const tabId = tab.id;
-        const label =
-          scopeLabel ?? tab.directoryName ?? tab.fileName ?? "document";
-        const liveFileTree = getLiveFileTree(tab);
-
-        const sourceNodes =
-          nodes ??
-          (tab.directoryName && liveFileTree.length > 0 ? liveFileTree : null);
-        const tree = sourceNodes
-          ? await collectTreeContents(
-              sourceNodes,
-              tab.activeFilePath,
-              tab.rawContent,
-            )
-          : {};
-        if (Object.keys(tree).length === 0 && tab.rawContent) {
-          const path = tab.activeFilePath ?? tab.fileName ?? "document.md";
-          tree[path] = tab.rawContent;
-        }
-
-        const key = await generateKey();
-        const docId = await docIdFromKey(key);
-        const { hostSecret } = await storage.uploadContent(docId, tree, key, {
-          ttl,
-          label,
-        });
-        const keyB64 = await keyToBase64url(key);
-
-        const now = new Date();
-        const record: ShareRecord = {
-          docId,
-          hostSecret,
-          label,
-          createdAt: now.toISOString(),
-          expiresAt: new Date(now.getTime() + ttl * 1000).toISOString(),
-          pendingCommentCount: 0,
-          keyB64,
-          fileCount: Object.keys(tree).length,
-          sharedPaths: Object.keys(tree),
-        };
-        const currentTab = get().tabs.find((t) => t.id === tabId);
-        if (!currentTab) {
-          throw new Error("Tab disappeared");
-        }
-        const shares = [...currentTab.shares, record];
-        saveShares(stableShareKey(currentTab), shares);
-        set((state) => ({
-          tabs: buildUpdatedTabs(state.tabs, tabId, (tabState) => ({
-            shares,
-            shareKeys: { ...tabState.shareKeys, [docId]: key },
-            activeDocId: docId,
-          })),
-        }));
-
-        ensureRelaySubscriptions([record]);
-
-        return buildShareUrlFromOrigin({ keyB64, name: label });
-      },
-
-      revokeShare: async (docId) => {
-        const storage = getStorage();
-        const tab = activeTab(get);
-        if (!tab) {
-          return;
-        }
-        const tabId = tab.id;
-        const record = tab.shares.find((share) => share.docId === docId);
-        if (!record) {
-          return;
-        }
-
-        try {
-          await storage?.deleteContent(docId, record.hostSecret);
-        } catch (error) {
-          console.error(
-            "[revokeShare] failed to delete content:",
-            docId,
-            error,
-          );
-        }
-        const updated = tab.shares.filter((share) => share.docId !== docId);
-        saveShares(stableShareKey(tab), updated);
-        set((state) => ({
-          tabs: buildUpdatedTabs(state.tabs, tabId, (tabState) => {
-            const nextPending = { ...tabState.pendingComments };
-            delete nextPending[docId];
-            const nextKeys = { ...tabState.shareKeys };
-            delete nextKeys[docId];
-            const nextPendingResolveIds = {
-              ...tabState.pendingResolveCommentIds,
-            };
-            delete nextPendingResolveIds[docId];
-            return {
-              shares: updated,
-              pendingComments: nextPending,
-              pendingResolveCommentIds: nextPendingResolveIds,
-              shareKeys: nextKeys,
-              activeDocId:
-                tabState.activeDocId === docId ? null : tabState.activeDocId,
-            };
-          }),
-        }));
-        unsubscribeFromDoc(docId);
-      },
-
-      mergeComment: async (docId, comment) => {
-        const tab = activeTab(get);
-        if (!tab?.fileHandle) {
-          console.error("[mergeComment] no active tab or fileHandle", {
-            hasTab: !!tab,
-            hasHandle: !!tab?.fileHandle,
-            tabId: tab?.id,
-            activeTabId: get().activeTabId,
-            tabFileName: tab?.fileName,
-            allTabs: get().tabs.map((currentTab) => ({
-              id: currentTab.id,
-              fileName: currentTab.fileName,
-              hasHandle: !!currentTab.fileHandle,
-            })),
-          });
-          return;
-        }
-        const currentPath = tab.activeFilePath ?? tab.fileName ?? "";
-        if (comment.path !== currentPath) {
-          console.error("[mergeComment] path mismatch", {
-            commentPath: comment.path,
-            currentPath,
-          });
-          return;
-        }
-
-        const readPerm = await tab.fileHandle.queryPermission({
-          mode: "read",
-        });
-        const writePerm = await tab.fileHandle.queryPermission({
-          mode: "readwrite",
-        });
-        console.log("[mergeComment] proceeding", {
-          tabId: tab.id,
-          fileName: tab.fileName,
-          activeFilePath: tab.activeFilePath,
-          readPerm,
-          writePerm,
-          commentPath: comment.path,
-          blockIndex: comment.blockRef.blockIndex,
-        });
-
-        const { cleanMarkdown } = parseCriticMarkup(tab.rawContent);
-        const attribution = ` — ${comment.peerName}`;
-        const newRaw = insertCommentService(
-          tab.rawContent,
-          tab.comments,
-          cleanMarkdown,
-          comment.blockRef.blockIndex,
-          comment.commentType,
-          comment.text + attribution,
-        );
-        if (newRaw === tab.rawContent) {
-          console.error("[mergeComment] insert had no effect", {
-            blockIndex: comment.blockRef.blockIndex,
-            commentType: comment.commentType,
-            contentLength: tab.rawContent.length,
-          });
-        }
-        const writeSucceeded = await writeAndUpdate(
-          get,
-          set,
-          tab.fileHandle,
-          newRaw,
-        );
-        if (!writeSucceeded) {
-          return;
-        }
-
-        const latestTab = activeTab(get);
-        if (!latestTab) {
-          return;
-        }
-        const nextTabState = removePendingCommentState(
-          latestTab,
-          docId,
-          comment.id,
-        );
-        saveShares(stableShareKey(latestTab), nextTabState.shares);
-        set((state) => ({
-          tabs: buildUpdatedTabs(state.tabs, latestTab.id, () => nextTabState),
-        }));
-        get().queuePendingResolve(docId, comment.id);
-        get().flushPendingCommentResolves(docId);
-      },
-
-      dismissComment: (docId, cmtId) => {
-        const tab = activeTab(get);
-        if (!tab) {
-          return;
-        }
-        const tabId = tab.id;
-        const nextTabState = removePendingCommentState(tab, docId, cmtId);
-        saveShares(stableShareKey(tab), nextTabState.shares);
-        set((state) => ({
-          tabs: buildUpdatedTabs(state.tabs, tabId, () => nextTabState),
-        }));
-        get().queuePendingResolve(docId, cmtId);
-        get().flushPendingCommentResolves(docId);
-      },
-
-      clearPendingComments: (docId) => {
-        const tab = activeTab(get);
-        if (!tab) {
-          return;
-        }
-        const tabId = tab.id;
-        const pendingForDoc = tab.pendingComments[docId] ?? [];
-        const clearedIds = pendingForDoc.map((comment) => comment.id);
-        const nextTabState = replacePendingCommentsState(tab, docId, []);
-        saveShares(stableShareKey(tab), nextTabState.shares);
-        set((state) => ({
-          tabs: buildUpdatedTabs(state.tabs, tabId, () => nextTabState),
-        }));
-
-        for (const clearedId of clearedIds) {
-          get().queuePendingResolve(docId, clearedId);
-        }
-        get().flushPendingCommentResolves(docId);
-      },
-
-      toggleSharedPanel: () =>
-        set((state) => ({
-          tabs: buildUpdatedActiveTabs(
-            state.tabs,
-            state.activeTabId,
-            (tab) => ({
-              sharedPanelOpen: !tab.sharedPanelOpen,
-              commentPanelOpen: !tab.sharedPanelOpen
-                ? false
-                : tab.commentPanelOpen,
-            }),
-          ),
-        })),
+      ...createSharingActions({
+        set,
+        get,
+        getActiveTab: activeTab,
+        buildUpdatedTabs,
+        buildUpdatedActiveTabs,
+        getLiveFileTree,
+        writeAndUpdate,
+      }),
 
       // ── Peer actions ──────────────────────────────────────────────────
 
@@ -1836,125 +1348,6 @@ export const useAppStore = create<AppState>()(
 
       ...createRelayActions(set),
 
-      addPendingComment: (docId, comment) => {
-        const state = get();
-        const targetTab = state.tabs.find((tab) =>
-          tab.shares.some((share) => share.docId === docId),
-        );
-        if (!targetTab) {
-          return;
-        }
-        const queuedResolveIds =
-          targetTab.pendingResolveCommentIds[docId] ?? [];
-        if (queuedResolveIds.includes(comment.id)) {
-          return;
-        }
-        const existingComments = targetTab.pendingComments[docId] ?? [];
-        if (existingComments.some((pending) => pending.id === comment.id)) {
-          return;
-        }
-        const nextTabState = replacePendingCommentsState(targetTab, docId, [
-          ...existingComments,
-          comment,
-        ]);
-        saveShares(stableShareKey(targetTab), nextTabState.shares);
-        set((state) => ({
-          tabs: buildUpdatedTabs(state.tabs, targetTab.id, () => nextTabState),
-        }));
-      },
-
-      replaceCommentsSnapshot: (docId, comments) => {
-        const state = get();
-        const targetTab = state.tabs.find((tab) =>
-          tab.shares.some((share) => share.docId === docId),
-        );
-        if (!targetTab) {
-          return;
-        }
-        const queuedResolveIds =
-          targetTab.pendingResolveCommentIds[docId] ?? [];
-        const filteredComments = comments.filter(
-          (comment) => !queuedResolveIds.includes(comment.id),
-        );
-        const nextTabState = replacePendingCommentsState(
-          targetTab,
-          docId,
-          filteredComments,
-        );
-        saveShares(stableShareKey(targetTab), nextTabState.shares);
-        set((state) => ({
-          tabs: buildUpdatedTabs(state.tabs, targetTab.id, () => nextTabState),
-        }));
-      },
-
-      queuePendingResolve: (docId, cmtId) => {
-        const state = get();
-        const targetTab = state.tabs.find((tab) =>
-          tab.shares.some((share) => share.docId === docId),
-        );
-        if (!targetTab) {
-          return;
-        }
-        const existingIds = targetTab.pendingResolveCommentIds[docId] ?? [];
-        const nextIds = mergeQueuedCommentIds(existingIds, [cmtId]);
-        if (nextIds.length === existingIds.length) {
-          return;
-        }
-        set((state) => ({
-          tabs: buildUpdatedTabs(state.tabs, targetTab.id, (tabState) => ({
-            pendingResolveCommentIds: {
-              ...tabState.pendingResolveCommentIds,
-              [docId]: nextIds,
-            },
-          })),
-        }));
-      },
-
-      confirmPendingResolve: (docId, cmtId) => {
-        const state = get();
-        const targetTab = state.tabs.find((tab) =>
-          tab.shares.some((share) => share.docId === docId),
-        );
-        if (!targetTab) {
-          return;
-        }
-        const existingIds = targetTab.pendingResolveCommentIds[docId] ?? [];
-        if (!existingIds.includes(cmtId)) {
-          return;
-        }
-        const remainingIds = existingIds.filter(
-          (pendingId) => pendingId !== cmtId,
-        );
-        set((state) => ({
-          tabs: buildUpdatedTabs(state.tabs, targetTab.id, (tabState) => {
-            const nextPendingResolveIds = {
-              ...tabState.pendingResolveCommentIds,
-            };
-            if (remainingIds.length > 0) {
-              nextPendingResolveIds[docId] = remainingIds;
-            } else {
-              delete nextPendingResolveIds[docId];
-            }
-            return {
-              pendingResolveCommentIds: nextPendingResolveIds,
-            };
-          }),
-        }));
-      },
-
-      flushPendingCommentResolves: (docId) => {
-        const state = get();
-        const targetTab = state.tabs.find((tab) =>
-          tab.shares.some((share) => share.docId === docId),
-        );
-        if (!targetTab) {
-          return;
-        }
-        const queuedIds = targetTab.pendingResolveCommentIds[docId] ?? [];
-        for (const queuedId of queuedIds) {
-          relayCommentResolve(docId, queuedId);
-        }
-      },
     }),
     {
       name: "markreview-store",

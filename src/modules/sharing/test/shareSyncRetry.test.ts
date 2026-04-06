@@ -5,25 +5,29 @@ const { mockUpdateContent, mockRelaySend } = vi.hoisted(() => ({
   mockRelaySend: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("../services/shareStorage", () => ({
-  ShareStorage: vi.fn().mockImplementation(() => ({
-    updateContent: mockUpdateContent,
-  })),
-}));
-
-vi.mock("../services/relay", () => ({
+vi.mock("../../../services/relay", () => ({
   getRelay: () => ({
     send: mockRelaySend,
   }),
 }));
 
-vi.mock("../config", () => ({
+vi.mock("../../../config", () => ({
   WORKER_URL: "https://mock-worker.test",
 }));
 
-import { generateKey } from "../services/crypto";
-import { syncActiveShares, updateShare } from "../services/shareSync";
-import { resetTestStore, setTestState, makeShare } from "./testHelpers";
+vi.mock("../../../services/shareStorage", () => ({
+  ShareStorage: vi.fn().mockImplementation(() => ({
+    updateContent: mockUpdateContent,
+  })),
+}));
+
+import { generateKey } from "../../../services/crypto";
+import { syncActiveShares, updateShare } from "../../../services/shareSync";
+import {
+  resetTestStore,
+  setTestState,
+  makeShare,
+} from "../../../test/testHelpers";
 
 beforeEach(() => {
   resetTestStore();
