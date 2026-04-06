@@ -1,9 +1,13 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../services/highlighter", () => ({
+vi.mock("../markup", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../markup")>();
+  return {
+    ...actual,
   useShikiRehypePlugin: () => null,
-}));
+  };
+});
 
 import { PresentationMode } from "../components/PresentationMode";
 import { useAppStore } from "../store";

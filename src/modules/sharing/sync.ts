@@ -1,54 +1,11 @@
-import { useAppStore } from "../store";
-import { getActiveTab } from "../store/selectors";
-import { toFileTreeNodes } from "../types/fileTree";
-import type { FileTreeNode } from "../types/fileTree";
-import { readFile } from "./fileSystem";
-import { getRelay } from "./relay";
-import { ShareStorage } from "./shareStorage";
-import { WORKER_URL } from "../config";
-
-function getStorage(): ShareStorage | null {
-  return WORKER_URL ? new ShareStorage(WORKER_URL) : null;
-}
-
-async function collectTreeContents(
-  nodes: FileTreeNode[],
-  activeFilePath: string | null,
-  rawContent: string,
-  allowedPaths?: Set<string> | null,
-): Promise<Record<string, string>> {
-  const tree: Record<string, string> = {};
-  const walk = async (items: FileTreeNode[]) => {
-    for (const node of items) {
-      if (node.kind === "file") {
-        const path = node.path;
-        if (allowedPaths && !allowedPaths.has(path)) {
-          continue;
-        }
-        if (path === activeFilePath && rawContent) {
-          tree[path] = rawContent;
-        } else {
-          try {
-            tree[path] = await readFile(node.handle);
-          } catch (error) {
-            console.warn(
-              "[collectTreeContents] skipping unreadable file:",
-              path,
-              error,
-            );
-          }
-        }
-      } else {
-        await walk(node.children);
-      }
-    }
-  };
-  await walk(nodes);
-  return tree;
-}
+import { getRelay } from "../relay";
+import { useAppStore } from "../../store";
+import { getActiveTab } from "../../store/selectors";
+import { toFileTreeNodes } from "../../types/fileTree";
+import { collectTreeContents, getSharingStorage } from "./controller";
 
 export async function updateShare(docId: string): Promise<void> {
-  const storage = getStorage();
+  const storage = getSharingStorage();
   if (!storage) {
     throw new Error("Worker URL not configured");
   }

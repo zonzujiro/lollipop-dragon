@@ -4,7 +4,7 @@ import { useAppStore } from "../../store";
 import { useActiveTab } from "../../store/selectors";
 import { PendingCommentReview } from "../PendingCommentReview";
 import { buildShareUrlFromOrigin } from "../../utils/shareUrl";
-import { isDocSubscribed } from "../../services/relay";
+import { isDocSubscribed } from "../../modules/relay";
 
 function formatExpiry(expiresAt: string): string {
   const diff = new Date(expiresAt).getTime() - Date.now();

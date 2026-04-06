@@ -1,5 +1,5 @@
 import type { StoreApi } from "zustand";
-import { ensureRelaySubscriptions, unsubscribeFromDoc } from "../../services/relay";
+import { ensureRelaySubscriptions, unsubscribeFromDoc } from "../relay";
 import { findLiveFileInTree } from "../../types/fileTree";
 import type { FileNode } from "../../types/fileTree";
 import type { HistoryEntry } from "../../types/history";

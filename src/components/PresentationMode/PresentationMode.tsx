@@ -6,8 +6,7 @@ import { CodeBlock, PreBlock } from "../MarkdownRenderer";
 import { SunIcon, MoonIcon } from "../Icons";
 import { useAppStore } from "../../store";
 import { useActiveTab } from "../../store/selectors";
-import { parseCriticMarkup } from "../../services/criticmarkup";
-import { useShikiRehypePlugin } from "../../services/highlighter";
+import { parseCriticMarkup, useShikiRehypePlugin } from "../../markup";
 
 function splitIntoSlides(markdown: string): string[] {
   const lines = markdown.split("\n");

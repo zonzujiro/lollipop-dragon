@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { serializePayload, deserializePayload } from '../services/sharePayload'
+import { serializePayload, deserializePayload } from '../modules/sharing/sharePayload'
 
 describe('serializePayload / deserializePayload', () => {
   it('round-trips a folder tree', async () => {

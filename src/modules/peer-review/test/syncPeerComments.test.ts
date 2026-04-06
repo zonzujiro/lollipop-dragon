@@ -5,10 +5,14 @@ const { mockRelayCommentAdd, mockRelaySend } = vi.hoisted(() => ({
   mockRelayCommentAdd: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("../../../services/shareSync", () => ({
-  syncActiveShares: vi.fn(),
-  updateShare: vi.fn(),
-}));
+vi.mock("../../../modules/sharing", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../modules/sharing")>();
+  return {
+    ...actual,
+    syncActiveShares: vi.fn(),
+    updateShare: vi.fn(),
+  };
+});
 
 vi.mock("../../../config", () => ({
   WORKER_URL: "https://mock-worker.test",
@@ -25,22 +29,26 @@ vi.mock("../../../services/crypto", async (importOriginal) => {
   };
 });
 
-vi.mock("../../../services/relay", () => ({
-  getRelay: () => ({
-    subscribe: vi.fn(),
-    unsubscribe: vi.fn(),
-    send: mockRelaySend,
-    close: vi.fn(),
-    hasActiveSubscriptions: () => false,
-    isSubscribed: () => false,
-  }),
-  ensureRelaySubscriptions: vi.fn(),
-  startRelayForDoc: vi.fn(),
-  unsubscribeFromDoc: vi.fn(),
-  relayCommentAdd: mockRelayCommentAdd,
-  relayCommentResolve: vi.fn(),
-  isDocSubscribed: () => false,
-}));
+vi.mock("../../../modules/relay", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../modules/relay")>();
+  return {
+    ...actual,
+    getRelay: () => ({
+      subscribe: vi.fn(),
+      unsubscribe: vi.fn(),
+      send: mockRelaySend,
+      close: vi.fn(),
+      hasActiveSubscriptions: () => false,
+      isSubscribed: () => false,
+    }),
+    ensureRelaySubscriptions: vi.fn(),
+    startRelayForDoc: vi.fn(),
+    unsubscribeFromDoc: vi.fn(),
+    relayCommentAdd: mockRelayCommentAdd,
+    relayCommentResolve: vi.fn(),
+    isDocSubscribed: () => false,
+  };
+});
 
 import { useAppStore } from "../../../store";
 import { makePeerComment, resetTestStore, setTestState } from "../../../test/testHelpers";

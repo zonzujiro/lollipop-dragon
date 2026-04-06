@@ -5,9 +5,13 @@ import { SharedPanel } from "../components/SharedPanel";
 import { useAppStore } from "../store";
 import { makeShare, resetTestStore, setTestState } from "./testHelpers";
 
-vi.mock("../services/relay", () => ({
-  isDocSubscribed: vi.fn(() => false),
-}));
+vi.mock("../modules/relay", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../modules/relay")>();
+  return {
+    ...actual,
+    isDocSubscribed: vi.fn(() => false),
+  };
+});
 
 beforeEach(() => {
   vi.restoreAllMocks();

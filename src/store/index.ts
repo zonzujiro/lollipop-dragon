@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { syncActiveShares as syncActiveSharesService } from "../services/shareSync";
+import { syncActiveShares as syncActiveSharesService } from "../modules/sharing";
 import { toPersistedTree } from "../types/fileTree";
 import type {
   HydratedSidebarTreeNode,

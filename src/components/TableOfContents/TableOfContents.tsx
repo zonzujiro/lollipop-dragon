@@ -2,7 +2,7 @@ import "./TableOfContents.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "../../store";
 import { useActiveTab } from "../../store/selectors";
-import { parseCriticMarkup } from "../../services/criticmarkup";
+import { parseCriticMarkup } from "../../markup";
 import { extractHeadings } from "../../utils/extractHeadings";
 
 function OutlineIcon() {

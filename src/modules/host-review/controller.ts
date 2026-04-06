@@ -1,6 +1,5 @@
 import type { StoreApi } from "zustand";
-import { assignBlockIndices } from "../../services/blockIndex";
-import { parseCriticMarkup } from "../../services/criticmarkup";
+import { assignBlockIndices, parseCriticMarkup } from "../../markup";
 import { readFile, writeFile } from "../../services/fileSystem";
 import type { Comment } from "../../types/criticmarkup";
 import type { FileTreeNode } from "../../types/fileTree";

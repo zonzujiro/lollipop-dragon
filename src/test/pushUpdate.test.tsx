@@ -5,13 +5,17 @@ import { beforeEach, describe, it, expect, vi } from "vitest";
 
 const mockUpdateContent = vi.fn().mockResolvedValue(undefined);
 
-vi.mock("../services/shareStorage", () => ({
-  ShareStorage: vi.fn().mockImplementation(() => ({
-    uploadContent: vi.fn(),
-    updateContent: mockUpdateContent,
-    deleteContent: vi.fn(),
-  })),
-}));
+vi.mock("../modules/sharing/storage", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../modules/sharing/storage")>();
+  return {
+    ...actual,
+    ShareStorage: vi.fn().mockImplementation(() => ({
+      uploadContent: vi.fn(),
+      updateContent: mockUpdateContent,
+      deleteContent: vi.fn(),
+    })),
+  };
+});
 
 vi.mock("../config", () => ({
   WORKER_URL: "https://mock-worker.test",
@@ -20,7 +24,7 @@ vi.mock("../config", () => ({
 // ── Imports (after mocks) ────────────────────────────────────────────
 
 import { Header } from "../components/Header";
-import { syncActiveShares } from "../services/shareSync";
+import { syncActiveShares } from "../modules/sharing";
 import { setTestState, resetTestStore, makeShare } from "./testHelpers";
 
 beforeEach(() => {

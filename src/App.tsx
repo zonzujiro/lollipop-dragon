@@ -19,7 +19,7 @@ import type { FileTreeNode, SidebarTreeNode } from "./types/fileTree";
 import { RestoreError } from "./components/RestoreError";
 import { ContentUpdateBanner } from "./components/ContentUpdateBanner";
 import { WORKER_URL } from "./config";
-import { stopRelay } from "./services/relay";
+import { stopRelay } from "./modules/relay";
 import {
   useThemeSync,
   useHashRouter,

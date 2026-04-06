@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getBlockPositions, assignBlockIndices } from '../services/blockIndex'
+import { getBlockPositions, assignBlockIndices } from '../markup/blockIndex'
 import { makeComment as makeCommentBase } from './testHelpers'
 
 function makeComment(cleanStart: number, cleanEnd = cleanStart) {

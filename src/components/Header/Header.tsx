@@ -7,8 +7,8 @@ import { HistoryDropdown } from "../HistoryDropdown";
 import { TableOfContents } from "../TableOfContents";
 import { ConnectionStatus } from "../ConnectionStatus";
 import { WORKER_URL } from "../../config";
-import { downloadActiveFile } from "../../services/download";
-import { syncActiveShares } from "../../services/shareSync";
+import { syncActiveShares } from "../../modules/sharing";
+import { downloadActiveFile } from "./downloadActiveFile";
 
 function FocusIcon() {
   return (

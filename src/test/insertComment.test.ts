@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { insertComment } from '../services/insertComment'
+import { insertComment } from '../markup/insertComment'
 import { makeComment } from './testHelpers'
 
 describe('insertComment — plain content (no existing markup)', () => {

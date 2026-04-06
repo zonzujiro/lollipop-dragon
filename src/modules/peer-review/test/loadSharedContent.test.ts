@@ -2,11 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockFetchContent = vi.fn();
 
-vi.mock("../../../services/shareStorage", () => ({
-  ShareStorage: vi.fn().mockImplementation(() => ({
-    fetchContent: mockFetchContent,
-  })),
-}));
+vi.mock("../../../modules/sharing", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../modules/sharing")>();
+  return {
+    ...actual,
+    ShareStorage: vi.fn().mockImplementation(() => ({
+      fetchContent: mockFetchContent,
+    })),
+  };
+});
 
 vi.mock("../../../services/crypto", async (importOriginal) => {
   const actual = await importOriginal<
@@ -25,22 +29,26 @@ vi.mock("../../../config", () => ({
   WORKER_URL: "https://mock-worker.test",
 }));
 
-vi.mock("../../../services/relay", () => ({
-  getRelay: () => ({
-    subscribe: vi.fn(),
-    unsubscribe: vi.fn(),
-    send: vi.fn(),
-    close: vi.fn(),
-    hasActiveSubscriptions: () => false,
-    isSubscribed: () => false,
-  }),
-  ensureRelaySubscriptions: vi.fn(),
-  startRelayForDoc: vi.fn(),
-  unsubscribeFromDoc: vi.fn(),
-  relayCommentAdd: vi.fn(),
-  relayCommentResolve: vi.fn(),
-  isDocSubscribed: () => false,
-}));
+vi.mock("../../../modules/relay", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../modules/relay")>();
+  return {
+    ...actual,
+    getRelay: () => ({
+      subscribe: vi.fn(),
+      unsubscribe: vi.fn(),
+      send: vi.fn(),
+      close: vi.fn(),
+      hasActiveSubscriptions: () => false,
+      isSubscribed: () => false,
+    }),
+    ensureRelaySubscriptions: vi.fn(),
+    startRelayForDoc: vi.fn(),
+    unsubscribeFromDoc: vi.fn(),
+    relayCommentAdd: vi.fn(),
+    relayCommentResolve: vi.fn(),
+    isDocSubscribed: () => false,
+  };
+});
 
 import { useAppStore } from "../../../store";
 import { resetTestStore, setTestState } from "../../../test/testHelpers";

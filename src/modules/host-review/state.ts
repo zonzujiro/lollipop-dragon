@@ -1,9 +1,9 @@
 import type { StoreApi } from "zustand";
-import { parseCriticMarkup } from "../../services/criticmarkup";
-import { applyDelete } from "../../services/deleteComment";
-import { applyEdit } from "../../services/editComment";
+import { parseCriticMarkup } from "../../markup";
+import { applyDelete } from "../../markup";
+import { applyEdit } from "../../markup";
 import { writeFile } from "../../services/fileSystem";
-import { insertComment as insertCommentService } from "../../services/insertComment";
+import { insertComment as insertCommentService } from "../../markup";
 import type { Comment } from "../../types/criticmarkup";
 import type { FileNode, FileTreeNode } from "../../types/fileTree";
 import { findLiveFileInTree } from "../../types/fileTree";
