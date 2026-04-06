@@ -7,11 +7,11 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: './src/test/setup.ts',
+    setupFiles: './src/testing/setup.ts',
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/test/**', 'src/**/*.d.ts'],
+      exclude: ['src/**/test/**', 'src/**/*.test.{ts,tsx}', 'src/testing/**', 'src/**/*.d.ts'],
       thresholds: {
         lines: 60,
         functions: 60,

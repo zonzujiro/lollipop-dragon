@@ -5,16 +5,16 @@ import {
   makeComment,
   resetTestStore,
   setTestState,
-} from "../../../test/testHelpers";
+} from "../../../testing/testHelpers";
 
 function createFileHandleStub(readText: string) {
   return {
     kind: "file",
     name: "test.md",
     createWritable: vi.fn(),
-    getFile: vi
-      .fn()
-      .mockResolvedValue(new File([readText], "test.md", { type: "text/plain" })),
+    getFile: vi.fn().mockResolvedValue({
+      text: vi.fn().mockResolvedValue(readText),
+    }),
     isSameEntry: vi.fn().mockResolvedValue(false),
     queryPermission: vi.fn().mockResolvedValue("granted"),
     requestPermission: vi.fn().mockResolvedValue("granted"),

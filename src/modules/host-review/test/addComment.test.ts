@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAppStore } from "../../../store";
 import { getActiveTab } from "../../../store/selectors";
-import { resetTestStore, setTestState } from "../../../test/testHelpers";
+import { resetTestStore, setTestState } from "../../../testing/testHelpers";
 
 function createWritableStub() {
   const writer = {

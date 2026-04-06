@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildFileTree } from '../services/fileSystem'
+import { buildFileTree } from './fileSystem'
 import type { FileNode, DirectoryNode } from '../types/fileTree'
 
 // ── Helpers ────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { replaceCommentMarkup, applyEdit } from '../markup/editComment'
-import { applyDelete } from '../markup/deleteComment'
-import { makeComment } from './testHelpers'
+import { replaceCommentMarkup, applyEdit } from './editComment'
+import { applyDelete } from './deleteComment'
+import { makeComment } from '../testing/testHelpers'
 
 describe('replaceCommentMarkup', () => {
   it('builds a note comment with no prefix', () => {

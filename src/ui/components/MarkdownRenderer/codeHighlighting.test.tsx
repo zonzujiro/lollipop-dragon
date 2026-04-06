@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { setTestState, resetTestStore } from "../../../test/testHelpers";
+import { setTestState, resetTestStore } from "../../../testing/testHelpers";
 
 // Mock shiki so tests don't load real language grammars
 vi.mock('shiki', () => ({

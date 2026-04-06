@@ -9,7 +9,7 @@ vi.mock("./downloadActiveFile", () => ({
 }));
 
 import { Header } from "./index";
-import { setTestState, resetTestStore } from "../../../test/testHelpers";
+import { setTestState, resetTestStore } from "../../../testing/testHelpers";
 
 beforeEach(() => {
   resetTestStore();

@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import mermaid from 'mermaid'
 import { MermaidBlock } from "./index";
 import { MarkdownRenderer } from "../MarkdownRenderer";
-import { resetTestStore, setTestState } from "../../../test/testHelpers";
+import { resetTestStore, setTestState } from "../../../testing/testHelpers";
 
 // Mock mermaid before importing the component
 vi.mock('mermaid', () => ({

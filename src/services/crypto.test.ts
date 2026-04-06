@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { generateKey, encrypt, decrypt, keyToBase64url, base64urlToKey } from '../services/crypto'
+import { generateKey, encrypt, decrypt, keyToBase64url, base64urlToKey } from './crypto'
 
 describe('generateKey', () => {
   it('produces an AES-GCM CryptoKey', async () => {

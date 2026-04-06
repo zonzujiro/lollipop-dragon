@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { openFile, readFile, writeFile } from '../services/fileSystem'
+import { openFile, readFile, writeFile } from './fileSystem'
 
 function makeMockHandle(name: string, content: string): FileSystemFileHandle {
   return {

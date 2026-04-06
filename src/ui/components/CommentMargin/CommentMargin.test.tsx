@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { CommentMargin } from "./index";
-import { setTestState, resetTestStore } from "../../../test/testHelpers";
+import { setTestState, resetTestStore } from "../../../testing/testHelpers";
 
 beforeEach(() => {
   resetTestStore()

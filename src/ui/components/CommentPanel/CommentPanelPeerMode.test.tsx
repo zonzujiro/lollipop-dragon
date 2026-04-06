@@ -50,7 +50,7 @@ import {
   makePeerComment,
   resetTestStore,
   setTestState,
-} from "../../../test/testHelpers";
+} from "../../../testing/testHelpers";
 
 beforeEach(() => {
   resetTestStore();

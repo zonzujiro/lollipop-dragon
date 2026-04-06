@@ -9,7 +9,7 @@ vi.mock("./components/MarkdownRenderer", () => ({
 
 import App from "./App";
 import { useAppStore } from "../store";
-import { setTestState, resetTestStore } from "../test/testHelpers";
+import { setTestState, resetTestStore } from "../testing/testHelpers";
 import type { FileTreeNode } from "../types/fileTree";
 
 // Mock IntersectionObserver for landing page

@@ -51,7 +51,7 @@ vi.mock("../../../modules/relay", async (importOriginal) => {
 });
 
 import { useAppStore } from "../../../store";
-import { resetTestStore, setTestState } from "../../../test/testHelpers";
+import { resetTestStore, setTestState } from "../../../testing/testHelpers";
 
 describe("peer-review.loadSharedContent", () => {
   beforeEach(() => {

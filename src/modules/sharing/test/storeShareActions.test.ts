@@ -1,7 +1,12 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest'
-import { useAppStore } from '../store'
-import { getActiveTab } from '../store/selectors'
-import { setTestState, resetTestStore, makeShare, makePeerComment } from './testHelpers'
+import { useAppStore } from '../../../store'
+import { getActiveTab } from '../../../store/selectors'
+import {
+  setTestState,
+  resetTestStore,
+  makeShare,
+  makePeerComment,
+} from '../../../testing/testHelpers'
 
 beforeEach(() => {
   resetTestStore()

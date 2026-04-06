@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { useAppStore } from "../../../store";
-import { resetTestStore } from "../../../test/testHelpers";
+import { resetTestStore } from "../../../testing/testHelpers";
 
 describe("peer-review state actions", () => {
   beforeEach(() => {

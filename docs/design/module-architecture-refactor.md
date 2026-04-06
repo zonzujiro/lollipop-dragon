@@ -63,7 +63,9 @@ Notes:
 
 - `storage.ts` exists only when the module talks to network, browser storage, or the local file system.
 - Some modules may need an additional `guards.ts` or `helpers.ts`, but those stay module-local unless deliberately exported from `index.ts`.
-- `test/` is for module-owned tests only: state, selectors, controllers, storage, and module orchestration. Tests whose primary subject is a component under `src/components/*` stay in `src/test/` until UI is modularized too.
+- `test/` is for module-owned tests only: state, selectors, controllers, storage, and module orchestration.
+- Tests whose primary subject is a UI component live next to that component under `src/ui/components/*`.
+- Shared test setup and factories live under `src/testing/*`; there is no shared root test folder.
 
 ## 5. File Responsibilities
 

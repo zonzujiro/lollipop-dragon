@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { CommentCard } from "./index";
-import { makeComment } from "../../../test/testHelpers";
+import { makeComment } from "../../../testing/testHelpers";
 
 describe('CommentCard — type badge', () => {
   it('shows the comment type in the badge', () => {
