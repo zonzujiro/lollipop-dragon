@@ -3,7 +3,7 @@ import { getActiveTab } from "../store/selectors";
 import { toFileTreeNodes } from "../types/fileTree";
 import type { FileTreeNode } from "../types/fileTree";
 import { readFile } from "./fileSystem";
-import { getRelay } from "./relay";
+import { broadcastCommentResolved, getRelay } from "./relay";
 import { ShareStorage } from "./shareStorage";
 import { WORKER_URL } from "../config";
 
@@ -128,6 +128,64 @@ export async function durableResolveComment(
   } catch (error) {
     console.warn("[durableResolve] failed:", error);
     return false;
+  }
+}
+
+/**
+ * Attempt durable resolve (KV delete + share update + broadcast) after a local merge.
+ * Fire-and-forget — all side effects live here, not in the store.
+ */
+export async function attemptDurableResolve(
+  docId: string,
+  commentId: string,
+  hostSecret: string,
+): Promise<void> {
+  const resolved = await durableResolveComment(docId, commentId, hostSecret);
+  if (resolved) {
+    broadcastCommentResolved(docId, commentId);
+  } else {
+    useAppStore.getState().showToast("Sync failed — use Push update to retry");
+  }
+}
+
+/** Delete a single comment from KV. Logs on failure; tombstone protects the session. */
+export async function deleteCommentFromKV(
+  docId: string,
+  commentId: string,
+  hostSecret: string,
+): Promise<void> {
+  const storage = getStorage();
+  if (!storage) {
+    return;
+  }
+  try {
+    await storage.deleteComment(docId, commentId, hostSecret);
+  } catch (error) {
+    console.warn("[dismissComment] KV delete failed:", error);
+  }
+}
+
+/** Delete all comments for a docId from KV. Logs on failure; tombstones protect the session. */
+export async function deleteCommentsFromKV(
+  docId: string,
+  commentIds: string[],
+  hostSecret: string,
+): Promise<void> {
+  const storage = getStorage();
+  if (!storage) {
+    return;
+  }
+  for (const commentId of commentIds) {
+    try {
+      await storage.deleteComment(docId, commentId, hostSecret);
+    } catch (error) {
+      console.warn(
+        "[clearPendingComments] KV delete failed:",
+        docId,
+        commentId,
+        error,
+      );
+    }
   }
 }
 

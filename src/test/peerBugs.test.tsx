@@ -8,16 +8,18 @@ const {
   mockDeleteComments,
   mockDeleteComment,
   mockUpdateShare,
-  mockDurableResolveComment,
-  mockBroadcastCommentResolved,
+  mockAttemptDurableResolve,
+  mockDeleteCommentFromKV,
+  mockDeleteCommentsFromKV,
   mockBroadcastCommentsAdded,
 } = vi.hoisted(() => ({
   mockPostComment: vi.fn().mockResolvedValue("server-cmt-id"),
   mockDeleteComments: vi.fn().mockResolvedValue(undefined),
   mockDeleteComment: vi.fn().mockResolvedValue(undefined),
   mockUpdateShare: vi.fn().mockResolvedValue(undefined),
-  mockDurableResolveComment: vi.fn().mockResolvedValue(true),
-  mockBroadcastCommentResolved: vi.fn(),
+  mockAttemptDurableResolve: vi.fn().mockResolvedValue(undefined),
+  mockDeleteCommentFromKV: vi.fn().mockResolvedValue(undefined),
+  mockDeleteCommentsFromKV: vi.fn().mockResolvedValue(undefined),
   mockBroadcastCommentsAdded: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -37,7 +39,9 @@ vi.mock("../services/shareStorage", () => ({
 vi.mock("../services/shareSync", () => ({
   syncActiveShares: vi.fn(),
   updateShare: mockUpdateShare,
-  durableResolveComment: mockDurableResolveComment,
+  attemptDurableResolve: mockAttemptDurableResolve,
+  deleteCommentFromKV: mockDeleteCommentFromKV,
+  deleteCommentsFromKV: mockDeleteCommentsFromKV,
 }));
 
 vi.mock("../services/crypto", async (importOriginal) => {
@@ -69,7 +73,6 @@ vi.mock("../services/relay", () => ({
   ensureRelaySubscriptions: vi.fn(),
   startRelayForDoc: vi.fn(),
   unsubscribeFromDoc: vi.fn(),
-  broadcastCommentResolved: mockBroadcastCommentResolved,
   broadcastCommentsAdded: mockBroadcastCommentsAdded,
 }));
 
@@ -93,8 +96,9 @@ beforeEach(() => {
   mockDeleteComment.mockClear();
   mockUpdateShare.mockClear();
   mockRelaySend.mockClear();
-  mockDurableResolveComment.mockClear().mockResolvedValue(true);
-  mockBroadcastCommentResolved.mockClear();
+  mockAttemptDurableResolve.mockClear().mockResolvedValue(undefined);
+  mockDeleteCommentFromKV.mockClear().mockResolvedValue(undefined);
+  mockDeleteCommentsFromKV.mockClear().mockResolvedValue(undefined);
   mockBroadcastCommentsAdded.mockClear().mockResolvedValue(undefined);
 });
 
@@ -445,7 +449,7 @@ describe("Header — peer mode submit button", () => {
 // ── Bug 4: dismissComment deletes individual comment from server ──
 
 describe("store.dismissComment — per-comment server delete", () => {
-  it("calls deleteComment on server when a comment is dismissed", () => {
+  it("calls deleteCommentFromKV when a comment is dismissed", () => {
     const comment = makePeerComment({ id: "cmt-1" });
     setTestState({
       pendingComments: { "doc-1": [comment] },
@@ -456,14 +460,14 @@ describe("store.dismissComment — per-comment server delete", () => {
 
     const tab = getActiveTab(useAppStore.getState());
     expect(tab?.pendingComments["doc-1"]).toBeUndefined();
-    expect(mockDeleteComment).toHaveBeenCalledWith(
+    expect(mockDeleteCommentFromKV).toHaveBeenCalledWith(
       "doc-1",
       "cmt-1",
       "host-sec",
     );
   });
 
-  it("calls deleteComment even when other comments remain", () => {
+  it("calls deleteCommentFromKV even when other comments remain", () => {
     const c1 = makePeerComment({ id: "cmt-1" });
     const c2 = makePeerComment({ id: "cmt-2" });
     setTestState({
@@ -475,7 +479,7 @@ describe("store.dismissComment — per-comment server delete", () => {
 
     const tab = getActiveTab(useAppStore.getState());
     expect(tab?.pendingComments["doc-1"]).toHaveLength(1);
-    expect(mockDeleteComment).toHaveBeenCalledWith(
+    expect(mockDeleteCommentFromKV).toHaveBeenCalledWith(
       "doc-1",
       "cmt-1",
       "host-sec",
@@ -509,7 +513,7 @@ function makeFileHandle(name = "readme.md"): FileSystemFileHandle {
 }
 
 describe("store.mergeComment — durable resolve sequence", () => {
-  it("calls durableResolveComment, then broadcasts and clears pending", async () => {
+  it("clears pending immediately and fires attemptDurableResolve", async () => {
     const comment = makePeerComment({ id: "cmt-merge-1" });
     setTestState({
       fileHandle: makeFileHandle(),
@@ -523,22 +527,18 @@ describe("store.mergeComment — durable resolve sequence", () => {
 
     await useAppStore.getState().mergeComment("doc-1", comment);
 
-    expect(mockDurableResolveComment).toHaveBeenCalledWith(
+    const tab = getActiveTab(useAppStore.getState());
+    expect(tab?.pendingComments["doc-1"]).toBeUndefined();
+    expect(mockAttemptDurableResolve).toHaveBeenCalledWith(
       "doc-1",
       "cmt-merge-1",
       "host-sec",
     );
-    expect(mockBroadcastCommentResolved).toHaveBeenCalledWith(
-      "doc-1",
-      "cmt-merge-1",
-    );
-    const tab = getActiveTab(useAppStore.getState());
-    expect(tab?.pendingComments["doc-1"]).toBeUndefined();
   });
 });
 
 describe("store.clearPendingComments — deletes visible comments individually", () => {
-  it("calls deleteComment for each visible pending comment instead of bulk delete", async () => {
+  it("clears pending locally and fires deleteCommentsFromKV", () => {
     const c1 = makePeerComment({ id: "clear-1" });
     const c2 = makePeerComment({ id: "clear-2" });
     setTestState({
@@ -546,22 +546,13 @@ describe("store.clearPendingComments — deletes visible comments individually",
       shares: [makeShare({ hostSecret: "host-sec", pendingCommentCount: 2 })],
     });
 
-    await useAppStore.getState().clearPendingComments("doc-1");
+    useAppStore.getState().clearPendingComments("doc-1");
 
-    expect(mockDeleteComment).toHaveBeenCalledTimes(2);
-    expect(mockDeleteComment).toHaveBeenNthCalledWith(
-      1,
+    expect(mockDeleteCommentsFromKV).toHaveBeenCalledWith(
       "doc-1",
-      "clear-1",
+      ["clear-1", "clear-2"],
       "host-sec",
     );
-    expect(mockDeleteComment).toHaveBeenNthCalledWith(
-      2,
-      "doc-1",
-      "clear-2",
-      "host-sec",
-    );
-    expect(mockDeleteComments).not.toHaveBeenCalled();
     const tab = getActiveTab(useAppStore.getState());
     expect(tab?.pendingComments["doc-1"]).toBeUndefined();
   });

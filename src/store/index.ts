@@ -28,12 +28,13 @@ import {
   ensureRelaySubscriptions,
   startRelayForDoc,
   unsubscribeFromDoc,
-  broadcastCommentResolved,
   broadcastCommentsAdded,
 } from "../services/relay";
 import {
   syncActiveShares as syncActiveSharesService,
-  durableResolveComment,
+  attemptDurableResolve,
+  deleteCommentFromKV,
+  deleteCommentsFromKV,
 } from "../services/shareSync";
 import {
   findLiveFileInTree,
@@ -372,7 +373,7 @@ interface AppState {
   fetchAllPendingComments: () => Promise<void>;
   mergeComment: (docId: string, comment: PeerComment) => Promise<void>;
   dismissComment: (docId: string, cmtId: string) => void;
-  clearPendingComments: (docId: string) => Promise<void>;
+  clearPendingComments: (docId: string) => void;
   toggleSharedPanel: () => void;
 
   // Peer actions
@@ -1736,24 +1737,9 @@ export const useAppStore = create<AppState>()(
           updateTab(get, set, latestTab.id, () => nextTabState);
         }
 
-        // Durable resolve (KV delete + share update + broadcast) in background
         const record = tab.shares.find((share) => share.docId === docId);
         if (record) {
-          durableResolveComment(docId, comment.id, record.hostSecret)
-            .then((resolved) => {
-              if (resolved) {
-                broadcastCommentResolved(docId, comment.id);
-              } else {
-                get().showToast(
-                  "Comment merged locally but failed to sync — peers may still see it",
-                );
-              }
-            })
-            .catch(() => {
-              get().showToast(
-                "Comment merged locally but failed to sync — peers may still see it",
-              );
-            });
+          attemptDurableResolve(docId, comment.id, record.hostSecret);
         }
       },
 
@@ -1768,24 +1754,12 @@ export const useAppStore = create<AppState>()(
         updateTab(get, set, tabId, () => nextTabState);
 
         const record = tab.shares.find((share) => share.docId === docId);
-        const storage = getStorage();
-        if (record && storage) {
-          storage
-            .deleteComment(docId, cmtId, record.hostSecret)
-            .catch((error) => {
-              console.warn(
-                "[dismissComment] per-comment KV delete failed:",
-                error,
-              );
-              get().showToast(
-                "Comment dismissed locally but server delete failed — may reappear after reload",
-              );
-            });
+        if (record) {
+          deleteCommentFromKV(docId, cmtId, record.hostSecret);
         }
       },
 
-      clearPendingComments: async (docId) => {
-        const storage = getStorage();
+      clearPendingComments: (docId) => {
         const tab = activeTab(get);
         if (!tab) {
           return;
@@ -1793,31 +1767,6 @@ export const useAppStore = create<AppState>()(
         const tabId = tab.id;
         const record = tab.shares.find((s) => s.docId === docId);
         const pendingForDoc = tab.pendingComments[docId] ?? [];
-        let deleteFailed = false;
-        if (record && storage) {
-          for (const pendingComment of pendingForDoc) {
-            try {
-              await storage.deleteComment(
-                docId,
-                pendingComment.id,
-                record.hostSecret,
-              );
-            } catch (error) {
-              deleteFailed = true;
-              console.error(
-                "[clearPendingComments] failed to delete comment:",
-                docId,
-                pendingComment.id,
-                error,
-              );
-            }
-          }
-        }
-        if (deleteFailed) {
-          get().showToast(
-            "Some comments cleared locally but server delete failed — may reappear after reload",
-          );
-        }
         const pc = { ...tab.pendingComments };
         delete pc[docId];
         const shares = tab.shares.map((s) =>
@@ -1835,6 +1784,10 @@ export const useAppStore = create<AppState>()(
           shares,
           dismissedCommentIds: nextDismissed,
         }));
+
+        if (record) {
+          deleteCommentsFromKV(docId, clearedIds, record.hostSecret);
+        }
       },
 
       toggleSharedPanel: () =>
