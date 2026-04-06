@@ -1,4 +1,5 @@
 import type { TabState } from "../../types/tab";
+import { selectRelayStatus } from "../../modules/relay";
 import { useAppStore } from "../../store";
 import "./ConnectionStatus.css";
 
@@ -25,7 +26,7 @@ const statusLabels: Record<string, string> = {
 };
 
 export function ConnectionStatus() {
-  const relayStatus = useAppStore((state) => state.relayStatus);
+  const relayStatus = useAppStore(selectRelayStatus);
   const isPeerMode = useAppStore((state) => state.isPeerMode);
   const activeTabHasShares = useAppStore(selectActiveTabHasShares);
 

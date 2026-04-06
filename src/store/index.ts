@@ -48,6 +48,8 @@ import type { ShareRecord, SharePayload, PeerComment } from "../types/share";
 import type { TabState, FileCommentEntry } from "../types/tab";
 import { createDefaultTab } from "../types/tab";
 import type { HistoryEntry } from "../types/history";
+import { createRelayActions, createRelayState } from "../modules/relay/state";
+import type { RelayActions, RelayState } from "../modules/relay/types";
 import {
   createAppShellActions,
   createAppShellState,
@@ -272,7 +274,8 @@ async function restoreShareKeys(
   return keys;
 }
 
-interface AppState extends AppShellState, AppShellActions {
+interface AppState
+  extends AppShellState, AppShellActions, RelayState, RelayActions {
   // Tab management
   tabs: TabState[];
   activeTabId: string | null;
@@ -293,10 +296,6 @@ interface AppState extends AppShellState, AppShellActions {
   peerResolvedComments: Comment[];
   peerComments: Comment[];
   peerCommentPanelOpen: boolean;
-
-  // Real-time relay
-  relayStatus: "disconnected" | "connecting" | "connected";
-  documentUpdateAvailable: boolean;
 
   // Block highlight (transient UI state for comment hover)
   hoveredBlockHighlight: {
@@ -381,16 +380,13 @@ interface AppState extends AppShellState, AppShellActions {
   editPeerComment: (commentId: string, type: CommentType, text: string) => void;
   syncPeerComments: () => Promise<void>;
 
-  // Relay state actions (data only — orchestration lives in src/services/relay.ts)
-  setRelayStatus: (status: "disconnected" | "connecting" | "connected") => void;
-  setDocumentUpdateAvailable: (available: boolean) => void;
+  // Realtime comment actions
   addPendingComment: (docId: string, comment: PeerComment) => void;
   replaceCommentsSnapshot: (docId: string, comments: PeerComment[]) => void;
   confirmPeerCommentSubmitted: (cmtId: string) => void;
   queuePendingResolve: (docId: string, cmtId: string) => void;
   confirmPendingResolve: (docId: string, cmtId: string) => void;
   flushPendingCommentResolves: (docId: string) => void;
-  dismissDocumentUpdate: () => void;
 }
 
 function getStorage(): ShareStorage | null {
@@ -727,9 +723,7 @@ export const useAppStore = create<AppState>()(
       peerComments: [],
       peerCommentPanelOpen: false,
 
-      // Real-time relay
-      relayStatus: "disconnected",
-      documentUpdateAvailable: false,
+      ...createRelayState(),
 
       hoveredBlockHighlight: null,
       setHoveredBlockHighlight: (highlight) =>
@@ -1981,12 +1975,9 @@ export const useAppStore = create<AppState>()(
         }
       },
 
-      // ── Relay state actions (data only — orchestration lives in src/services/relay.ts) ──
+      // ── Realtime comment actions ──────────────────────────────────────────
 
-      setRelayStatus: (status) => set({ relayStatus: status }),
-
-      setDocumentUpdateAvailable: (available) =>
-        set({ documentUpdateAvailable: available }),
+      ...createRelayActions(set),
 
       addPendingComment: (docId, comment) => {
         const state = get();
@@ -2118,10 +2109,6 @@ export const useAppStore = create<AppState>()(
           relayCommentResolve(docId, queuedId);
         }
       },
-
-      dismissDocumentUpdate: () => {
-        set({ documentUpdateAvailable: false });
-      },
     }),
     {
       name: "markreview-store",
@@ -2251,7 +2238,7 @@ export const useAppStore = create<AppState>()(
               }),
             )
           : current.tabs;
-        const relayStatusDefault: "disconnected" = "disconnected";
+        const relayDefaults = createRelayState();
         return {
           ...current,
           ...p,
@@ -2260,8 +2247,7 @@ export const useAppStore = create<AppState>()(
             ? p.submittedPeerCommentIds
             : [],
           // Transient relay state must always reset on load
-          relayStatus: relayStatusDefault,
-          documentUpdateAvailable: false,
+          ...relayDefaults,
         };
       },
     },
