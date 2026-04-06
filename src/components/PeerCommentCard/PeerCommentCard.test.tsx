@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
-import { PeerCommentCard } from '../components/PeerCommentCard'
-import { useAppStore } from '../store'
-import { makePeerComment } from './testHelpers'
+import { PeerCommentCard } from "./index";
+import { useAppStore } from "../../store";
+import { makePeerComment } from "../../test/testHelpers";
 
 beforeEach(() => {
   useAppStore.setState({

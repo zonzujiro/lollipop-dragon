@@ -1,11 +1,15 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
-import { CommentPanel } from '../components/CommentPanel'
-import { useAppStore } from '../store'
-import { getActiveTab } from '../store/selectors'
-import { setTestState, resetTestStore, makeComment as makeCommentBase } from './testHelpers'
-import type { Comment } from '../types/criticmarkup'
+import { CommentPanel } from "./index";
+import { useAppStore } from "../../store";
+import { getActiveTab } from "../../store/selectors";
+import {
+  setTestState,
+  resetTestStore,
+  makeComment as makeCommentBase,
+} from "../../test/testHelpers";
+import type { Comment } from "../../types/criticmarkup";
 
 function makeResolvedComment(id: string, text: string) {
   return makeCommentBase({ id, type: 'fix', text, raw: `{>>fix: ${text}<<}` })

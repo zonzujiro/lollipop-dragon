@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { useAppStore } from "../store";
-import { isShareHash } from "../utils/shareUrl";
-import { WORKER_URL } from "../config";
+import { useAppStore } from "../../store";
+import { isShareHash } from "../../utils/shareUrl";
+import { WORKER_URL } from "../../config";
 
 export function useHashRouter(): boolean {
   const loadSharedContent = useAppStore((s) => s.loadSharedContent);

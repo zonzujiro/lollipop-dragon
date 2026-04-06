@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { setTestState, resetTestStore } from './testHelpers'
+import { setTestState, resetTestStore } from "../../test/testHelpers";
 
 // Mock shiki so tests don't load real language grammars
 vi.mock('shiki', () => ({
@@ -41,7 +41,7 @@ describe('MarkdownRenderer — Shiki integration', () => {
     const { createHighlighter } = await import('shiki')
     setTestState({ rawContent: '```js\nconst x = 1\n```' })
 
-    const { MarkdownRenderer } = await import('../components/MarkdownRenderer')
+    const { MarkdownRenderer } = await import("./index");
     render(<MarkdownRenderer />)
 
     await waitFor(() => {
@@ -58,7 +58,7 @@ describe('MarkdownRenderer — Shiki integration', () => {
     const { default: rehypeShikiFromHighlighter } = await import('@shikijs/rehype/core')
     setTestState({ rawContent: '```ts\nconst y: number = 2\n```' })
 
-    const { MarkdownRenderer } = await import('../components/MarkdownRenderer')
+    const { MarkdownRenderer } = await import("./index");
     render(<MarkdownRenderer />)
 
     await waitFor(() => {
@@ -73,7 +73,7 @@ describe('MarkdownRenderer — Shiki integration', () => {
 
     setTestState({ rawContent: '```js\nconst z = 3\n```' })
 
-    const { MarkdownRenderer } = await import('../components/MarkdownRenderer')
+    const { MarkdownRenderer } = await import("./index");
     render(<MarkdownRenderer />)
 
     // Code block text is present even without highlighting

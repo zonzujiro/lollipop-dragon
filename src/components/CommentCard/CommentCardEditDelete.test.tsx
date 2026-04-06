@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
-import { CommentCard } from '../components/CommentCard'
-import { makeComment } from './testHelpers'
+import { CommentCard } from "./index";
+import { makeComment } from "../../test/testHelpers";
 
 const fixDefaults = { type: 'fix' as const, text: 'fix this', raw: '{>>fix: fix this<<}', rawEnd: 19 }
 

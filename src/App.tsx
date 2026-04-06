@@ -25,7 +25,7 @@ import {
   useHashRouter,
   useKeyboardShortcuts,
   useFileSystemWatcher,
-} from "./hooks";
+} from "./ui/hooks";
 
 const PEER_HEADER = { title: "Shared files" };
 

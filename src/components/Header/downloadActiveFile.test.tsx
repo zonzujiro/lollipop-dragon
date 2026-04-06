@@ -4,12 +4,12 @@ import { beforeEach, describe, it, expect, vi } from "vitest";
 
 const mockDownloadFile = vi.fn();
 
-vi.mock("../components/Header/downloadActiveFile", () => ({
+vi.mock("./downloadActiveFile", () => ({
   downloadActiveFile: () => mockDownloadFile(),
 }));
 
-import { Header } from "../components/Header";
-import { setTestState, resetTestStore } from "./testHelpers";
+import { Header } from "./index";
+import { setTestState, resetTestStore } from "../../test/testHelpers";
 
 beforeEach(() => {
   resetTestStore();

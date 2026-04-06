@@ -1,17 +1,17 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../markup", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../markup")>();
+vi.mock("../../markup", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../markup")>();
   return {
     ...actual,
-  useShikiRehypePlugin: () => null,
+    useShikiRehypePlugin: () => null,
   };
 });
 
-import { PresentationMode } from "../components/PresentationMode";
-import { useAppStore } from "../store";
-import { resetTestStore, setTestState } from "./testHelpers";
+import { PresentationMode } from "./index";
+import { useAppStore } from "../../store";
+import { resetTestStore, setTestState } from "../../test/testHelpers";
 
 const mockRequestFullscreen = vi.fn(() => Promise.resolve());
 const mockExitFullscreen = vi.fn(() => Promise.resolve());
