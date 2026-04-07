@@ -32,6 +32,7 @@ vi.mock("../storage", async (importOriginal) => {
 });
 
 import { syncActiveShares } from "../sync";
+import { useAppStore } from "../../../store";
 import {
   makeShare,
   resetTestStore,
@@ -48,7 +49,7 @@ describe("syncActiveShares", () => {
   it("does nothing in peer mode", async () => {
     setTestState({ shares: [makeShare()] }, { isPeerMode: true });
 
-    await syncActiveShares();
+    await syncActiveShares(useAppStore.getState());
     expect(mockUpdateContent).not.toHaveBeenCalled();
   });
 
@@ -63,7 +64,7 @@ describe("syncActiveShares", () => {
       activeFilePath: "readme.md",
     });
 
-    await syncActiveShares();
+    await syncActiveShares(useAppStore.getState());
     expect(mockUpdateContent).not.toHaveBeenCalled();
   });
 });

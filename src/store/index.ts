@@ -24,14 +24,16 @@ import type {
   PeerReviewActions,
   PeerReviewState,
 } from "../modules/peer-review";
-import { createRelayActions, createRelayState } from "../modules/relay";
-import type { RelayActions, RelayState } from "../modules/relay";
+import { createRelayActions, createRelayState } from "../modules/relay/state";
+import type { RelayActions, RelayState } from "../modules/relay/types";
 import {
   createSharingActions,
   createSharingControllerActions,
-  syncActiveShares as syncActiveSharesService,
 } from "../modules/sharing";
 import type { SharingActions } from "../modules/sharing";
+import {
+  syncActiveShares as syncActiveSharesService,
+} from "../modules/sharing/sync";
 import {
   buildUpdatedActiveTabs,
   buildUpdatedTabs,
@@ -133,7 +135,9 @@ export const useAppStore = create<AppState>()(
         get,
         scanAllFileComments: () => scanAllFileComments(),
         showToast: appShellActions.showToast,
-        syncActiveShares: syncActiveSharesService,
+        syncActiveShares: () => {
+          void syncActiveSharesService(get());
+        },
       });
       const hostReviewActions = createHostReviewActions({
         set,

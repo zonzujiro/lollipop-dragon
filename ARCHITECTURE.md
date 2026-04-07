@@ -49,8 +49,8 @@ Feature logic should not accumulate in the root store.
 
 Feature logic lives under `src/modules/*`.
 
-Each module owns one product concept end-to-end, excluding UI. Modules expose a
-public API through `index.ts`.
+Each module owns one product concept end-to-end, excluding UI. `index.ts` is
+the default module entrypoint.
 
 Shared module shape:
 
@@ -193,7 +193,9 @@ This project now draws a hard line between pure state updates and side effects.
 
 ## Cross-Module Rules
 
-- Cross-module imports must go through `src/modules/<module>/index.ts`.
+- Prefer importing modules through `src/modules/<module>/index.ts`.
+- Narrow leaf imports such as `types.ts` or `selectors.ts` are acceptable when
+  they are intentionally lightweight and help avoid circular dependencies.
 - Modules may call other modules through their public APIs.
 - Modules must not mutate another module's internal store paths directly.
 - UI should prefer module APIs and selectors over reaching into unrelated store

@@ -2,4 +2,4 @@ export {
   getActiveTab,
   useActiveTab,
   useActiveTabField,
-} from "../modules/workspace";
+} from "../modules/workspace/selectors";

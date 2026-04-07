@@ -74,16 +74,23 @@ export function findResolvedComments(
 }
 
 export async function writeAndUpdate<StoreState extends ActiveTabStoreState>(
-  get: () => StoreState,
-  set: SetState<StoreState>,
-  buildUpdatedActiveTabs: (
-    tabs: TabState[],
-    activeTabId: string | null,
-    updater: (tab: TabState) => Partial<TabState>,
-  ) => TabState[],
-  fileHandle: FileSystemFileHandle,
-  newRawContent: string,
+  input: {
+    set: SetState<StoreState>;
+    buildUpdatedActiveTabs: (
+      tabs: TabState[],
+      activeTabId: string | null,
+      updater: (tab: TabState) => Partial<TabState>,
+    ) => TabState[];
+    fileHandle: FileSystemFileHandle;
+    newRawContent: string;
+  },
 ): Promise<boolean> {
+  const {
+    set,
+    buildUpdatedActiveTabs,
+    fileHandle,
+    newRawContent,
+  } = input;
   try {
     await writeFile(fileHandle, newRawContent);
     set((state) => ({
@@ -275,13 +282,12 @@ export function createHostReviewControllerActions<
         return;
       }
 
-      await writeAndUpdate(
-        get,
+      await writeAndUpdate({
         set,
         buildUpdatedActiveTabs,
-        tab.fileHandle,
-        applyDelete(tab.rawContent, comment),
-      );
+        fileHandle: tab.fileHandle,
+        newRawContent: applyDelete(tab.rawContent, comment),
+      });
     },
 
     deleteAllComments: async () => {
@@ -299,13 +305,12 @@ export function createHostReviewControllerActions<
         nextRawContent = applyDelete(nextRawContent, comment);
       }
 
-      await writeAndUpdate(
-        get,
+      await writeAndUpdate({
         set,
         buildUpdatedActiveTabs,
-        tab.fileHandle,
-        nextRawContent,
-      );
+        fileHandle: tab.fileHandle,
+        newRawContent: nextRawContent,
+      });
     },
 
     editComment: async (id, type, text) => {
@@ -321,13 +326,12 @@ export function createHostReviewControllerActions<
         return;
       }
 
-      await writeAndUpdate(
-        get,
+      await writeAndUpdate({
         set,
         buildUpdatedActiveTabs,
-        tab.fileHandle,
-        applyEdit(tab.rawContent, comment, type, text),
-      );
+        fileHandle: tab.fileHandle,
+        newRawContent: applyEdit(tab.rawContent, comment, type, text),
+      });
     },
 
     addComment: async (blockIndex, type, text) => {
@@ -346,13 +350,12 @@ export function createHostReviewControllerActions<
         text,
       );
 
-      await writeAndUpdate(
-        get,
+      await writeAndUpdate({
         set,
         buildUpdatedActiveTabs,
-        tab.fileHandle,
-        nextRawContent,
-      );
+        fileHandle: tab.fileHandle,
+        newRawContent: nextRawContent,
+      });
     },
 
     undo: async () => {

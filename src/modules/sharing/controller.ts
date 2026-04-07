@@ -504,13 +504,12 @@ export function createSharingControllerActions<
         });
       }
 
-      const writeSucceeded = await writeAndUpdate(
-        get,
+      const writeSucceeded = await writeAndUpdate({
         set,
         buildUpdatedActiveTabs,
-        tab.fileHandle,
-        newRaw,
-      );
+        fileHandle: tab.fileHandle,
+        newRawContent: newRaw,
+      });
       if (!writeSucceeded) {
         return;
       }
