@@ -137,6 +137,13 @@ The WebSocket instance and timers stay in `src/services/relay.ts`, not in the Zu
 
 ## 7. Core Interaction Flows
 
+### 7.0 Host share dialog open
+
+1. Host clicks `Share file` or `Share folder`.
+2. The UI opens the dialog from a lightweight scope descriptor.
+3. Top-level folder share does not eagerly rebuild or walk the full folder subtree before the dialog paints.
+4. Live-tree traversal and file reads happen only after the user confirms `Generate link`.
+
 ### 7.1 Peer add
 
 1. Peer creates a local `PeerComment`.

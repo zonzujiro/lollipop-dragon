@@ -2,6 +2,7 @@ import "./ShareDialog.css";
 import { useState } from "react";
 import { useAppStore } from "../../../store";
 import { useActiveTab } from "../../../store/selectors";
+import type { ShareContentOptions } from "../../../modules/sharing/types";
 import { buildShareUrlFromOrigin } from "../../../utils/shareUrl";
 import type { FileTreeNode } from "../../../types/fileTree";
 import type { ShareRecord } from "../../../types/share";
@@ -14,8 +15,42 @@ const TTL_OPTIONS = [
 
 interface Props {
   onClose: () => void;
-  scope?: FileTreeNode[];
-  scopeLabel?: string;
+  scope?: ShareDialogScope;
+}
+
+export type ShareDialogScope =
+  | {
+      kind: "current-file";
+      label?: string;
+    }
+  | {
+      kind: "current-folder";
+      label?: string;
+      entityPath: string;
+    }
+  | {
+      kind: "nodes";
+      label?: string;
+      nodes: FileTreeNode[];
+    };
+
+function buildShareOptions(
+  ttl: number,
+  scope: ShareDialogScope | undefined,
+): ShareContentOptions {
+  const options: ShareContentOptions = { ttl };
+
+  if (scope?.label) {
+    options.label = scope.label;
+  }
+  if (scope?.kind === "nodes") {
+    options.nodes = scope.nodes;
+  }
+  if (scope?.kind === "current-file") {
+    options.nodes = [];
+  }
+
+  return options;
 }
 
 function collectFilePaths(nodes: FileTreeNode[]): string[] {
@@ -44,13 +79,29 @@ function commonPathPrefix(paths: string[]): string {
   return prefix;
 }
 
-function entityPathFromScope(
-  scope: FileTreeNode[],
+function entityPathFromNodes(
+  nodes: FileTreeNode[],
   activeFilePath: string | null,
 ): string {
-  const paths = collectFilePaths(scope);
+  const paths = collectFilePaths(nodes);
   if (paths.length > 0) {
     return commonPathPrefix(paths);
+  }
+  return activeFilePath ?? "";
+}
+
+function entityPathFromScope(
+  scope: ShareDialogScope | undefined,
+  activeFilePath: string | null,
+): string {
+  if (!scope) {
+    return activeFilePath ?? "";
+  }
+  if (scope.kind === "nodes") {
+    return entityPathFromNodes(scope.nodes, activeFilePath);
+  }
+  if (scope.kind === "current-folder") {
+    return scope.entityPath;
   }
   return activeFilePath ?? "";
 }
@@ -62,7 +113,24 @@ function entityPathFromRecord(record: ShareRecord): string | null {
   return commonPathPrefix(record.sharedPaths);
 }
 
-export function ShareDialog({ onClose, scope, scopeLabel }: Props) {
+function isExistingShareMatch(
+  share: ShareRecord,
+  scope: ShareDialogScope | undefined,
+  label: string,
+  currentEntityPath: string,
+): boolean {
+  const recordPath = entityPathFromRecord(share);
+
+  if (scope?.kind === "current-folder") {
+    return share.label === label || recordPath === scope.entityPath;
+  }
+  if (recordPath === null) {
+    return share.label === label;
+  }
+  return recordPath === currentEntityPath;
+}
+
+export function ShareDialog({ onClose, scope }: Props) {
   const tab = useActiveTab();
   const fileName = tab?.fileName ?? null;
   const directoryName = tab?.directoryName ?? null;
@@ -70,20 +138,16 @@ export function ShareDialog({ onClose, scope, scopeLabel }: Props) {
   const showToast = useAppStore((s) => s.showToast);
 
   const shares = tab?.shares ?? [];
-  const label = scopeLabel ?? directoryName ?? fileName ?? "document";
+  const label = scope?.label ?? directoryName ?? fileName ?? "document";
   const currentEntityPath = entityPathFromScope(
-    scope ?? [],
+    scope,
     tab?.activeFilePath ?? null,
   );
   const existingShare = shares.find((s) => {
     if (new Date(s.expiresAt) <= new Date()) {
       return false;
     }
-    const recordPath = entityPathFromRecord(s);
-    if (recordPath === null) {
-      return s.label === label;
-    }
-    return recordPath === currentEntityPath;
+    return isExistingShareMatch(s, scope, label, currentEntityPath);
   });
   const existingLink = existingShare
     ? buildShareUrlFromOrigin({
@@ -101,7 +165,7 @@ export function ShareDialog({ onClose, scope, scopeLabel }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const url = await shareContent({ ttl, nodes: scope, label: scopeLabel });
+      const url = await shareContent(buildShareOptions(ttl, scope));
       setLink(url);
       showToast("Share link created");
     } catch (e) {

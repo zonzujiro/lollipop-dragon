@@ -68,6 +68,41 @@ describe("ShareDialog - initial render", () => {
     await user.click(screen.getByRole("button", { name: "Close" }));
     expect(onClose).toHaveBeenCalledOnce();
   });
+
+  it("reuses an existing root-folder share for current-folder scope", () => {
+    setTestState({
+      directoryName: "my-project",
+      fileName: "readme.md",
+      shares: [
+        {
+          docId: "doc-1",
+          hostSecret: "secret",
+          label: "my-project",
+          createdAt: "2026-04-01T00:00:00.000Z",
+          expiresAt: "2099-04-01T00:00:00.000Z",
+          pendingCommentCount: 0,
+          keyB64: "abc123",
+          fileCount: 1,
+          sharedPaths: ["readme.md"],
+        },
+      ],
+    });
+
+    render(
+      <ShareDialog
+        onClose={vi.fn()}
+        scope={{
+          kind: "current-folder",
+          label: "my-project",
+          entityPath: "",
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText("This file already has an active share link."),
+    ).toBeInTheDocument();
+  });
 });
 
 describe("ShareDialog - share flow", () => {
@@ -85,6 +120,72 @@ describe("ShareDialog - share flow", () => {
       ).toHaveValue("https://example.com/#share=abc&key=xyz");
     });
     expect(shareContent).toHaveBeenCalledWith({ ttl: 604800 });
+  });
+
+  it("shares the current folder without materializing subtree nodes", async () => {
+    const shareContent = vi
+      .fn()
+      .mockResolvedValue("https://example.com/#share=abc&key=xyz");
+    useAppStore.setState({ shareContent });
+    setTestState({
+      directoryName: "my-project",
+      fileName: "readme.md",
+      activeFilePath: "readme.md",
+    });
+    const user = userEvent.setup();
+
+    render(
+      <ShareDialog
+        onClose={vi.fn()}
+        scope={{
+          kind: "current-folder",
+          label: "my-project",
+          entityPath: "",
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Generate link" }));
+
+    await waitFor(() => {
+      expect(shareContent).toHaveBeenCalledWith({
+        ttl: 604800,
+        label: "my-project",
+      });
+    });
+  });
+
+  it("keeps explicit file-share behavior for the header file action", async () => {
+    const shareContent = vi
+      .fn()
+      .mockResolvedValue("https://example.com/#share=abc&key=xyz");
+    useAppStore.setState({ shareContent });
+    setTestState({
+      directoryName: "my-project",
+      fileName: "readme.md",
+      activeFilePath: "readme.md",
+    });
+    const user = userEvent.setup();
+
+    render(
+      <ShareDialog
+        onClose={vi.fn()}
+        scope={{
+          kind: "current-file",
+          label: "readme.md",
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Generate link" }));
+
+    await waitFor(() => {
+      expect(shareContent).toHaveBeenCalledWith({
+        ttl: 604800,
+        label: "readme.md",
+        nodes: [],
+      });
+    });
   });
 
   it("shows error message when shareContent throws", async () => {

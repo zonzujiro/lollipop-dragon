@@ -7,6 +7,10 @@ vi.mock("./components/MarkdownRenderer", () => ({
   MarkdownRenderer: () => <div data-testid="markdown-renderer" />,
 }));
 
+vi.mock("../config", () => ({
+  WORKER_URL: "https://mock-worker.test",
+}));
+
 import App from "./App";
 import { useAppStore } from "../store";
 import { setTestState, resetTestStore } from "../testing/testHelpers";
@@ -264,6 +268,29 @@ describe("App — folder open", () => {
     fireEvent.keyDown(window, { key: "b", metaKey: true });
 
     expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+  });
+
+  it("opens the share dialog from the header folder action and shares the current folder lazily", async () => {
+    const user = userEvent.setup();
+    const shareContent = vi
+      .fn()
+      .mockResolvedValue("https://example.com/#share=abc&key=xyz");
+    useAppStore.setState({ shareContent });
+
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Share folder" }));
+
+    expect(
+      screen.getByRole("heading", { name: 'Share "my-docs"' }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Generate link" }));
+
+    expect(shareContent).toHaveBeenCalledWith({
+      ttl: 604800,
+      label: "my-docs",
+    });
   });
 });
 
