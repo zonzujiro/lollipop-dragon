@@ -8,9 +8,10 @@ import { ShareStorage } from "../sharing";
 import { WORKER_URL } from "../../config";
 import { parseShareHash } from "../../utils/shareUrl";
 import { selectUnsubmittedPeerComments } from "./selectors";
-import type { PeerReviewState } from "./types";
+import type { PeerReviewActions, PeerReviewState } from "./types";
 
 type SetState<StoreState> = StoreApi<StoreState>["setState"];
+type GetState<StoreState> = StoreApi<StoreState>["getState"];
 
 function getPeerReviewStorage(): ShareStorage | null {
   if (!WORKER_URL) {
@@ -82,4 +83,20 @@ export async function syncUnsubmittedPeerComments<
   for (const comment of unsubmittedComments) {
     await relayCommentAdd(docId, comment.id, comment, key);
   }
+}
+
+export function createPeerReviewControllerActions<
+  StoreState extends PeerReviewState,
+>(
+  set: SetState<StoreState>,
+  get: GetState<StoreState>,
+): Pick<PeerReviewActions, "loadSharedContent" | "syncPeerComments"> {
+  return {
+    loadSharedContent: async () => {
+      await loadPeerSharedContent(get, set);
+    },
+    syncPeerComments: async () => {
+      await syncUnsubmittedPeerComments(get);
+    },
+  };
 }

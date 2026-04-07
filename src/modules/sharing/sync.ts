@@ -1,6 +1,6 @@
 import { getRelay } from "../relay";
+import { getActiveTab } from "../workspace";
 import { useAppStore } from "../../store";
-import { getActiveTab } from "../../store/selectors";
 import { toFileTreeNodes } from "../../types/fileTree";
 import { collectTreeContents, getSharingStorage } from "./controller";
 

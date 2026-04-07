@@ -2,13 +2,13 @@ import type { HydratedSidebarTreeNode } from "./fileTree";
 import {
   createSharingTabState,
   type SharingTabState,
-} from "../modules/sharing/types";
+} from "../modules/sharing";
 import {
   createHostReviewTabState,
   type HostReviewTabState,
-} from "../modules/host-review/types";
+} from "../modules/host-review";
 
-export type { FileCommentEntry } from "../modules/host-review/types";
+export type { FileCommentEntry } from "../modules/host-review";
 
 export interface TabState extends SharingTabState, HostReviewTabState {
   id: string;
