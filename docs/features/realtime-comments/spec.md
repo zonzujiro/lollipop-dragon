@@ -140,6 +140,8 @@ Peer comment payloads are encrypted before they are sent in `comment:add`. The D
 3. Worker stores share content + metadata in KV.
 4. Host subscribes to `/relay` as `role: "host"` with `hostSecret`.
 
+Opening the host share dialog is not part of share creation itself. For folder shares, the UI should open from a lightweight "current folder" intent and defer live-tree traversal plus file-content reads until the user confirms `Generate link`.
+
 ### Peer comment submit
 
 1. Peer drafts a local `PeerComment`.

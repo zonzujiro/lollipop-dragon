@@ -7,6 +7,7 @@ import { TabBar } from "./components/TabBar";
 import { MarkdownRenderer } from "./components/MarkdownRenderer";
 import { FileTreeSidebar } from "./components/FileTreeSidebar";
 import { ShareDialog } from "./components/ShareDialog";
+import type { ShareDialogScope } from "./components/ShareDialog";
 import { CommentPanel } from "./components/CommentPanel";
 import { SharedPanel } from "./components/SharedPanel";
 import { PresentationMode } from "./components/PresentationMode";
@@ -15,7 +16,7 @@ import { Toast } from "./components/Toast";
 import { PeerNamePrompt } from "./components/PeerNamePrompt";
 import { buildVirtualTree } from "../services/fileSystem";
 import { findLiveFileInTree, toFileTreeNodes } from "../types/fileTree";
-import type { FileTreeNode, SidebarTreeNode } from "../types/fileTree";
+import type { SidebarTreeNode } from "../types/fileTree";
 import { RestoreError } from "./components/RestoreError";
 import { ContentUpdateBanner } from "./components/ContentUpdateBanner";
 import { WORKER_URL } from "../config";
@@ -127,10 +128,7 @@ function App() {
   useThemeSync();
   const peerModeChecked = useHashRouter();
   useKeyboardShortcuts();
-  const [shareScope, setShareScope] = useState<{
-    nodes: FileTreeNode[];
-    label: string;
-  } | null>(null);
+  const [shareScope, setShareScope] = useState<ShareDialogScope | null>(null);
 
   const handleHostSelect = useCallback(
     async (path: string) => {
@@ -165,7 +163,7 @@ function App() {
 
   const handleHostShare = useCallback(
     (nodes: SidebarTreeNode[], label: string) => {
-      setShareScope({ nodes: toFileTreeNodes(nodes), label });
+      setShareScope({ kind: "nodes", nodes: toFileTreeNodes(nodes), label });
     },
     [],
   );
@@ -316,14 +314,15 @@ function App() {
         <Header
           onShareFile={() =>
             setShareScope({
-              nodes: [],
+              kind: "current-file",
               label: tab?.fileName ?? "document",
             })
           }
           onShareFolder={() =>
             setShareScope({
-              nodes: toFileTreeNodes(hostTree),
+              kind: "current-folder",
               label: tab?.directoryName ?? "folder",
+              entityPath: "",
             })
           }
           onPresent={enterPresentationMode}
@@ -360,8 +359,7 @@ function App() {
       {shareScope && (
         <ShareDialog
           onClose={() => setShareScope(null)}
-          scope={shareScope.nodes}
-          scopeLabel={shareScope.label}
+          scope={shareScope}
         />
       )}
       <UndoToast />

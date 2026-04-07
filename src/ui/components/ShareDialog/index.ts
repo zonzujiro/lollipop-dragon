@@ -1,1 +1,2 @@
-export { ShareDialog } from './ShareDialog';
+export { ShareDialog } from "./ShareDialog";
+export type { ShareDialogScope } from "./ShareDialog";
