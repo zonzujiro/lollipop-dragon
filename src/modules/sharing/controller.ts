@@ -292,16 +292,21 @@ function findSharingTabByDocId(
   );
 }
 
-function updateSharingTabState<StoreState extends { tabs: TabState[] }>(
-  set: SetState<StoreState>,
+type UpdateSharingTabStateOptions<StoreState extends { tabs: TabState[] }> = {
+  set: SetState<StoreState>;
   buildUpdatedTabs: (
     tabs: TabState[],
     tabId: string,
     updater: (tab: TabState) => Partial<TabState>,
-  ) => TabState[],
-  tabId: string,
-  updater: (tab: TabState) => Partial<TabState>,
+  ) => TabState[];
+  tabId: string;
+  updater: (tab: TabState) => Partial<TabState>;
+};
+
+function updateSharingTabState<StoreState extends { tabs: TabState[] }>(
+  options: UpdateSharingTabStateOptions<StoreState>,
 ) {
+  const { set, buildUpdatedTabs, tabId, updater } = options;
   set((state) => ({
     tabs: buildUpdatedTabs(state.tabs, tabId, updater),
   }));
@@ -392,11 +397,16 @@ export function createSharingControllerActions<
 
       const shares = [...currentTab.shares, record];
       saveShares(stableShareKey(currentTab), shares);
-      updateSharingTabState(set, buildUpdatedTabs, tabId, (tabState) => ({
+      updateSharingTabState({
+        set,
+        buildUpdatedTabs,
+        tabId,
+        updater: (tabState) => ({
         shares,
         shareKeys: { ...tabState.shareKeys, [docId]: key },
         activeDocId: docId,
-      }));
+        }),
+      });
 
       ensureRelaySubscriptions([record]);
       return shareUrl;
@@ -421,23 +431,29 @@ export function createSharingControllerActions<
 
       const updatedShares = tab.shares.filter((share) => share.docId !== docId);
       saveShares(stableShareKey(tab), updatedShares);
-      updateSharingTabState(set, buildUpdatedTabs, tab.id, (tabState) => {
-        const nextPendingComments = { ...tabState.pendingComments };
-        delete nextPendingComments[docId];
-        const nextShareKeys = { ...tabState.shareKeys };
-        delete nextShareKeys[docId];
-        const nextPendingResolveIds = {
-          ...tabState.pendingResolveCommentIds,
-        };
-        delete nextPendingResolveIds[docId];
+      updateSharingTabState({
+        set,
+        buildUpdatedTabs,
+        tabId: tab.id,
+        updater: (tabState) => {
+          const nextPendingComments = { ...tabState.pendingComments };
+          delete nextPendingComments[docId];
+          const nextShareKeys = { ...tabState.shareKeys };
+          delete nextShareKeys[docId];
+          const nextPendingResolveIds = {
+            ...tabState.pendingResolveCommentIds,
+          };
+          delete nextPendingResolveIds[docId];
 
-        return {
-          shares: updatedShares,
-          pendingComments: nextPendingComments,
-          pendingResolveCommentIds: nextPendingResolveIds,
-          shareKeys: nextShareKeys,
-          activeDocId: tabState.activeDocId === docId ? null : tabState.activeDocId,
-        };
+          return {
+            shares: updatedShares,
+            pendingComments: nextPendingComments,
+            pendingResolveCommentIds: nextPendingResolveIds,
+            shareKeys: nextShareKeys,
+            activeDocId:
+              tabState.activeDocId === docId ? null : tabState.activeDocId,
+          };
+        },
       });
 
       unsubscribeFromDoc(docId);
@@ -521,7 +537,12 @@ export function createSharingControllerActions<
 
       const nextTabState = removePendingCommentState(latestTab, docId, comment.id);
       saveShares(stableShareKey(latestTab), nextTabState.shares);
-      updateSharingTabState(set, buildUpdatedTabs, latestTab.id, () => nextTabState);
+      updateSharingTabState({
+        set,
+        buildUpdatedTabs,
+        tabId: latestTab.id,
+        updater: () => nextTabState,
+      });
       queuePendingResolve(docId, comment.id);
       flushPendingCommentResolvesForDoc(get().tabs, docId);
     },
@@ -534,7 +555,12 @@ export function createSharingControllerActions<
 
       const nextTabState = removePendingCommentState(tab, docId, cmtId);
       saveShares(stableShareKey(tab), nextTabState.shares);
-      updateSharingTabState(set, buildUpdatedTabs, tab.id, () => nextTabState);
+      updateSharingTabState({
+        set,
+        buildUpdatedTabs,
+        tabId: tab.id,
+        updater: () => nextTabState,
+      });
       queuePendingResolve(docId, cmtId);
       flushPendingCommentResolvesForDoc(get().tabs, docId);
     },
@@ -549,7 +575,12 @@ export function createSharingControllerActions<
       const clearedIds = pendingForDoc.map((comment) => comment.id);
       const nextTabState = replacePendingCommentsState(tab, docId, []);
       saveShares(stableShareKey(tab), nextTabState.shares);
-      updateSharingTabState(set, buildUpdatedTabs, tab.id, () => nextTabState);
+      updateSharingTabState({
+        set,
+        buildUpdatedTabs,
+        tabId: tab.id,
+        updater: () => nextTabState,
+      });
 
       for (const clearedId of clearedIds) {
         queuePendingResolve(docId, clearedId);
@@ -578,7 +609,12 @@ export function createSharingControllerActions<
         comment,
       ]);
       saveShares(stableShareKey(targetTab), nextTabState.shares);
-      updateSharingTabState(set, buildUpdatedTabs, targetTab.id, () => nextTabState);
+      updateSharingTabState({
+        set,
+        buildUpdatedTabs,
+        tabId: targetTab.id,
+        updater: () => nextTabState,
+      });
     },
 
     replaceCommentsSnapshot: (docId, comments) => {
@@ -597,7 +633,12 @@ export function createSharingControllerActions<
         filteredComments,
       );
       saveShares(stableShareKey(targetTab), nextTabState.shares);
-      updateSharingTabState(set, buildUpdatedTabs, targetTab.id, () => nextTabState);
+      updateSharingTabState({
+        set,
+        buildUpdatedTabs,
+        tabId: targetTab.id,
+        updater: () => nextTabState,
+      });
     },
 
     flushPendingCommentResolves: (docId) => {
