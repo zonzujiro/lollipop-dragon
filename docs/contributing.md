@@ -124,6 +124,7 @@ Tests use helpers from `src/testing/testHelpers.ts`:
 
 ## Architecture reference
 
+- [ARCHITECTURE.md](../ARCHITECTURE.md) — current runtime architecture and ownership map
 - [CLAUDE.md](../CLAUDE.md) — state management rules, component conventions, common pitfalls
 - [docs/](../docs/) — feature specs, technical designs, iteration roadmap
 

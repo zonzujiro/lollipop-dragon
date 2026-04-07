@@ -52,9 +52,9 @@ Owns peer-mode shared content state and peer-authored draft/submission logic.
 
 ## Related Docs
 
-- [Realtime Comment Spec](/home/zonzujiro/projects/lollipop-dragon/docs/features/realtime-comments/spec.md)
-- [Realtime Comment Technical Design](/home/zonzujiro/projects/lollipop-dragon/docs/features/realtime-comments/technical-design.md)
-- [Module Architecture Refactor](/home/zonzujiro/projects/lollipop-dragon/docs/design/module-architecture-refactor.md)
+- [Realtime Comment Spec](../../../docs/features/realtime-comments/spec.md)
+- [Realtime Comment Technical Design](../../../docs/features/realtime-comments/technical-design.md)
+- [Architecture](../../../ARCHITECTURE.md)
 
 ## Invariants
 

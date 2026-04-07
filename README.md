@@ -93,7 +93,7 @@ The `isPeerMode` flag determines which mode is active. Components that work in b
 
 The codebase is being organized into vertical modules under `src/modules/*`, with the root store acting as a composition layer instead of the main home for feature logic.
 
-See [docs/contributing.md](./docs/contributing.md) and [docs/design/module-architecture-refactor.md](./docs/design/module-architecture-refactor.md) for development conventions and module boundaries.
+See [ARCHITECTURE.md](./ARCHITECTURE.md) and [docs/contributing.md](./docs/contributing.md) for development conventions and module boundaries.
 
 ## Sharing
 
