@@ -1,18 +1,24 @@
 import { getRelay } from "../relay";
-import { useAppStore } from "../../store";
-import { getActiveTab } from "../../store/selectors";
+import { getActiveTab } from "../workspace/helpers";
 import { toFileTreeNodes } from "../../types/fileTree";
+import type { TabState } from "../../types/tab";
 import { collectTreeContents, getSharingStorage } from "./controller";
 
-export async function updateShare(docId: string): Promise<void> {
+interface SharingSyncState {
+  tabs: TabState[];
+  activeTabId: string | null;
+  isPeerMode: boolean;
+}
+
+export async function updateShare(input: {
+  tab: TabState;
+  docId: string;
+}): Promise<void> {
   const storage = getSharingStorage();
   if (!storage) {
     throw new Error("Worker URL not configured");
   }
-  const tab = getActiveTab(useAppStore.getState());
-  if (!tab) {
-    throw new Error("No active tab");
-  }
+  const { tab, docId } = input;
   const record = tab.shares.find((share) => share.docId === docId);
   if (!record) {
     throw new Error("Share not found");
@@ -55,8 +61,9 @@ export async function updateShare(docId: string): Promise<void> {
   }
 }
 
-export async function syncActiveShares(): Promise<void> {
-  const state = useAppStore.getState();
+export async function syncActiveShares(
+  state: SharingSyncState,
+): Promise<void> {
   if (state.isPeerMode) {
     return;
   }
@@ -69,7 +76,7 @@ export async function syncActiveShares(): Promise<void> {
   );
   for (const share of activeShares) {
     try {
-      await updateShare(share.docId);
+      await updateShare({ tab, docId: share.docId });
     } catch (error) {
       console.warn("[syncActiveShares] failed:", share.docId, error);
     }

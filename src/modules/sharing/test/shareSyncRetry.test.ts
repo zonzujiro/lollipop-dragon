@@ -30,6 +30,8 @@ vi.mock("../storage", async (importOriginal) => {
 });
 
 import { generateKey } from "../../../services/crypto";
+import { useAppStore } from "../../../store";
+import { getActiveTab } from "../../workspace/helpers";
 import { syncActiveShares, updateShare } from "../sync";
 import {
   resetTestStore,
@@ -58,7 +60,12 @@ describe("shareSync", () => {
       rawContent: "# Hello",
     });
 
-    await updateShare("doc-1");
+    const tab = getActiveTab(useAppStore.getState());
+    if (!tab) {
+      throw new Error("Expected active tab");
+    }
+
+    await updateShare({ tab, docId: "doc-1" });
 
     expect(mockUpdateContent).toHaveBeenCalledWith(
       "doc-1",
@@ -95,7 +102,7 @@ describe("shareSync", () => {
       rawContent: "# Hello",
     });
 
-    await syncActiveShares();
+    await syncActiveShares(useAppStore.getState());
 
     expect(mockUpdateContent).toHaveBeenCalledTimes(1);
     expect(mockUpdateContent).toHaveBeenCalledWith(

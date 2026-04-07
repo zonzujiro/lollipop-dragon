@@ -183,32 +183,32 @@ The WebSocket instance and timers stay in `src/services/relay.ts`, not in the Zu
 
 ### Worker
 
-- [worker/src/index.ts](/home/zonzujiro/projects/lollipop-dragon/worker/src/index.ts)
+- [worker/src/index.ts](../../../worker/src/index.ts)
   - share content CRUD
   - relay route
   - share revoke clearing relay state
-- [worker/src/relay.ts](/home/zonzujiro/projects/lollipop-dragon/worker/src/relay.ts)
+- [worker/src/relay.ts](../../../worker/src/relay.ts)
   - SQLite schema
   - subscribe auth
   - ACK / snapshot / forward behavior
-- [worker/wrangler.toml](/home/zonzujiro/projects/lollipop-dragon/worker/wrangler.toml)
+- [worker/wrangler.toml](../../../worker/wrangler.toml)
   - `RelayHubSqlite` binding and migration
 
 ### Client
 
-- [src/services/relay.ts](/home/zonzujiro/projects/lollipop-dragon/src/services/relay.ts)
+- [src/services/relay.ts](../../../src/services/relay.ts)
   - WebSocket lifecycle
   - subscribe resend
   - ping/pong
   - ACK handling
   - snapshot decrypt / dispatch
-- [src/store/index.ts](/home/zonzujiro/projects/lollipop-dragon/src/store/index.ts)
+- [src/store/index.ts](../../../src/store/index.ts)
   - host pending comment state
   - queued resolve state
   - peer submission state
-- [src/services/shareStorage.ts](/home/zonzujiro/projects/lollipop-dragon/src/services/shareStorage.ts)
+- [src/services/shareStorage.ts](../../../src/services/shareStorage.ts)
   - share content CRUD only
-- [src/services/shareSync.ts](/home/zonzujiro/projects/lollipop-dragon/src/services/shareSync.ts)
+- [src/services/shareSync.ts](../../../src/services/shareSync.ts)
   - content push + `document:updated`
 
 ## 9. Operational Notes

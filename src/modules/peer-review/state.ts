@@ -1,10 +1,6 @@
 import type { StoreApi } from "zustand";
 import type { CommentType } from "../../types/criticmarkup";
 import type { PeerComment } from "../../types/share";
-import {
-  loadPeerSharedContent,
-  syncUnsubmittedPeerComments,
-} from "./controller";
 import type { PeerReviewActions, PeerReviewState } from "./types";
 
 type SetState<StoreState> = StoreApi<StoreState>["setState"];
@@ -49,7 +45,15 @@ export function createPeerReviewState(): PeerReviewState {
 export function createPeerReviewActions<StoreState extends PeerReviewState>(
   set: SetState<StoreState>,
   get: GetState<StoreState>,
-): PeerReviewActions {
+): Pick<
+  PeerReviewActions,
+  | "setPeerName"
+  | "selectPeerFile"
+  | "postPeerComment"
+  | "deletePeerComment"
+  | "editPeerComment"
+  | "confirmPeerCommentSubmitted"
+> {
   return {
     setPeerName: (name) => {
       set({ peerName: name });
@@ -72,10 +76,6 @@ export function createPeerReviewActions<StoreState extends PeerReviewState>(
         peerActiveFilePath: path,
         peerResolvedComments: [],
       });
-    },
-
-    loadSharedContent: async () => {
-      await loadPeerSharedContent(get, set);
     },
 
     postPeerComment: (blockIndex, type, text, path) => {
@@ -104,10 +104,6 @@ export function createPeerReviewActions<StoreState extends PeerReviewState>(
             : comment,
         ),
       }));
-    },
-
-    syncPeerComments: async () => {
-      await syncUnsubmittedPeerComments(get);
     },
 
     confirmPeerCommentSubmitted: (cmtId) => {

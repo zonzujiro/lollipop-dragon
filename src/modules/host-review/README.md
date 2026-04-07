@@ -50,7 +50,7 @@ Expected side effects:
 
 ## Related Docs
 
-- [Module Architecture Refactor](/home/zonzujiro/projects/lollipop-dragon/docs/design/module-architecture-refactor.md)
+- [Architecture](../../../ARCHITECTURE.md)
 
 ## Invariants
 

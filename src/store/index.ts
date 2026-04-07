@@ -1,21 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { syncActiveShares as syncActiveSharesService } from "../modules/sharing";
-import { toPersistedTree } from "../types/fileTree";
-import type {
-  HydratedSidebarTreeNode,
-  SidebarTreeNode,
-} from "../types/fileTree";
-import type { CommentType } from "../types/criticmarkup";
-import { writeAndUpdate } from "../modules/host-review/controller";
-import { createHostReviewActions } from "../modules/host-review/state";
-import type { HostReviewActions } from "../modules/host-review/types";
-import type { TabState } from "../types/tab";
-import { createDefaultTab } from "../types/tab";
-import { createRelayActions, createRelayState } from "../modules/relay/state";
-import type { RelayActions, RelayState } from "../modules/relay/types";
 import {
   createAppShellActions,
+  createAppShellControllerActions,
   createAppShellState,
 } from "../modules/app-shell";
 import type {
@@ -24,30 +11,51 @@ import type {
   AppTheme,
 } from "../modules/app-shell";
 import {
+  createHostReviewActions,
+  createHostReviewControllerActions,
+} from "../modules/host-review";
+import type { HostReviewActions } from "../modules/host-review";
+import {
   createPeerReviewActions,
+  createPeerReviewControllerActions,
   createPeerReviewState,
 } from "../modules/peer-review";
 import type {
   PeerReviewActions,
   PeerReviewState,
 } from "../modules/peer-review";
-import { createSharingActions } from "../modules/sharing/state";
-import type { SharingActions } from "../modules/sharing/types";
+import { createRelayActions, createRelayState } from "../modules/relay/state";
+import type { RelayActions, RelayState } from "../modules/relay/types";
+import {
+  createSharingActions,
+  createSharingControllerActions,
+} from "../modules/sharing";
+import type { SharingActions } from "../modules/sharing";
+import {
+  syncActiveShares as syncActiveSharesService,
+} from "../modules/sharing/sync";
 import {
   buildUpdatedActiveTabs,
   buildUpdatedTabs,
+  createWorkspaceActions,
+  createWorkspaceControllerActions,
+  createWorkspaceState,
   getActiveTab as getWorkspaceActiveTab,
   getLiveFileTree,
-} from "../modules/workspace/helpers";
-import { loadWorkspaceHistory } from "../modules/workspace/controller";
-import {
-  createWorkspaceActions,
-  createWorkspaceState,
-} from "../modules/workspace/state";
+  loadWorkspaceHistory,
+} from "../modules/workspace";
 import type {
   WorkspaceActions,
   WorkspaceState,
-} from "../modules/workspace/types";
+} from "../modules/workspace";
+import { toPersistedTree } from "../types/fileTree";
+import type {
+  HydratedSidebarTreeNode,
+  SidebarTreeNode,
+} from "../types/fileTree";
+import type { CommentType } from "../types/criticmarkup";
+import type { TabState } from "../types/tab";
+import { createDefaultTab } from "../types/tab";
 import type { ShareRecord } from "../types/share";
 
 const SHARES_KEY = "markreview-shares";
@@ -114,66 +122,94 @@ function isOldFormat(p: unknown): p is OldPersistedState {
 
 export const useAppStore = create<AppState>()(
   persist(
-    (set, get) => ({
-      ...createWorkspaceState(loadWorkspaceHistory()),
-      ...createAppShellState(),
-      ...createRelayState(),
-      ...createPeerReviewState(),
-
-      hoveredBlockHighlight: null,
-      setHoveredBlockHighlight: (highlight) =>
-        set({ hoveredBlockHighlight: highlight }),
-
-      ...createWorkspaceActions({
+    (set, get) => {
+      const appShellActions = createAppShellActions(set);
+      const appShellControllerActions = createAppShellControllerActions(set);
+      const workspaceActions = createWorkspaceActions({
+        set,
+        buildUpdatedActiveTabs,
+      });
+      let scanAllFileComments: () => Promise<void> = async () => {};
+      const workspaceControllerActions = createWorkspaceControllerActions({
         set,
         get,
-        scanAllFileComments: () => get().scanAllFileComments(),
-        showToast: (message) => get().showToast(message),
-        syncActiveShares: () => syncActiveSharesService(),
-      }),
-
-      // ── Tab-scoped actions ──────────────────────────────────────────────
-
-      ...createHostReviewActions({
+        scanAllFileComments: () => scanAllFileComments(),
+        showToast: appShellActions.showToast,
+        syncActiveShares: () => {
+          void syncActiveSharesService(get());
+        },
+      });
+      const hostReviewActions = createHostReviewActions({
         set,
         get,
+        getActiveTab: activeTab,
+        buildUpdatedActiveTabs,
+      });
+      const hostReviewControllerActions = createHostReviewControllerActions({
+        set,
+        get,
+        selectFile: workspaceControllerActions.selectFile,
         getActiveTab: activeTab,
         buildUpdatedTabs,
         buildUpdatedActiveTabs,
         getLiveFileTree,
-      }),
-
-      // ── Global actions ────────────────────────────────────────────────
-
-      ...createAppShellActions(set),
-
-      // ── Sharing actions (tab-scoped) ──────────────────────────────────
-      ...createSharingActions({
+      });
+      scanAllFileComments = hostReviewControllerActions.scanAllFileComments;
+      const sharingActions = createSharingActions({
         set,
         get,
+        buildUpdatedTabs,
+        buildUpdatedActiveTabs,
+      });
+      const sharingControllerActions = createSharingControllerActions({
+        set,
+        get,
+        queuePendingResolve: sharingActions.queuePendingResolve,
         getActiveTab: activeTab,
         buildUpdatedTabs,
         buildUpdatedActiveTabs,
         getLiveFileTree,
-        writeAndUpdate: (currentGet, currentSet, fileHandle, newRawContent) =>
-          writeAndUpdate(
-            currentGet,
-            currentSet,
-            buildUpdatedActiveTabs,
-            fileHandle,
-            newRawContent,
-          ),
-      }),
+      });
+      const peerReviewActions = createPeerReviewActions(set, get);
+      const peerReviewControllerActions = createPeerReviewControllerActions(
+        set,
+        get,
+      );
+      const relayActions = createRelayActions(set);
 
-      // ── Peer actions ──────────────────────────────────────────────────
+      return {
+        ...createWorkspaceState(loadWorkspaceHistory()),
+        ...createAppShellState(),
+        ...createRelayState(),
+        ...createPeerReviewState(),
 
-      ...createPeerReviewActions(set, get),
+        hoveredBlockHighlight: null,
+        setHoveredBlockHighlight: (highlight) =>
+          set({ hoveredBlockHighlight: highlight }),
 
-      // ── Realtime comment actions ──────────────────────────────────────────
+        ...workspaceActions,
+        ...workspaceControllerActions,
 
-      ...createRelayActions(set),
+        // ── Tab-scoped actions ──────────────────────────────────────────────
+        ...hostReviewActions,
+        ...hostReviewControllerActions,
 
-    }),
+        // ── Global actions ────────────────────────────────────────────────
+        ...appShellActions,
+        ...appShellControllerActions,
+
+        // ── Sharing actions (tab-scoped) ──────────────────────────────────
+        ...sharingActions,
+        ...sharingControllerActions,
+
+        // ── Peer actions ──────────────────────────────────────────────────
+        ...peerReviewActions,
+        ...peerReviewControllerActions,
+
+        // ── Realtime comment actions ──────────────────────────────────────────
+        ...relayActions,
+      };
+    },
     {
       name: "markreview-store",
       version: 2,

@@ -37,6 +37,7 @@ Pre-commit hooks (Husky + lint-staged) will auto-format staged files with Pretti
 - **Never use `as` for type assertions.** Use type guards, proper narrowing, or helper functions.
 - Prefer `async/await` over `.then()` where possible. Exception: `useEffect` callbacks can't be async, so `.then()` is acceptable there.
 - Prefer named boolean variables or small predicate helpers for non-trivial conditions instead of embedding complex checks inline.
+- Prefer no more than 4 parameters in new or refactored functions. If a function needs more context, pass a named object instead.
 - **No `switch`/`case`.** Use object maps (e.g., `Record<Type, Handler>`) for dispatch instead.
 - **No single-letter variable names.** Use descriptive names — `comment` not `c`, `state` not `s`, `error` not `e`.
 - **Avoid runtime type checks to satisfy TypeScript.** Parse and validate external data (JSON, network) once at the boundary into typed structures. Don't scatter `typeof x === "string"` checks through business logic.
@@ -123,6 +124,7 @@ Tests use helpers from `src/testing/testHelpers.ts`:
 
 ## Architecture reference
 
+- [ARCHITECTURE.md](../ARCHITECTURE.md) — current runtime architecture and ownership map
 - [CLAUDE.md](../CLAUDE.md) — state management rules, component conventions, common pitfalls
 - [docs/](../docs/) — feature specs, technical designs, iteration roadmap
 

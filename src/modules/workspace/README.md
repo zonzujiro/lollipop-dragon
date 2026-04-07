@@ -52,8 +52,8 @@ Expected side effects:
 
 ## Related Docs
 
-- [Module Architecture Refactor](/home/zonzujiro/projects/lollipop-dragon/docs/design/module-architecture-refactor.md)
-- [Contributing Guide](/home/zonzujiro/projects/lollipop-dragon/docs/contributing.md)
+- [Architecture](../../../ARCHITECTURE.md)
+- [Contributing Guide](../../../docs/contributing.md)
 
 ## Invariants
 

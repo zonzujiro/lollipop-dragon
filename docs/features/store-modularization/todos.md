@@ -1,6 +1,6 @@
 # Todos - Store Modularization
 
-> Design: [../../design/module-architecture-refactor.md](../../design/module-architecture-refactor.md)
+> Architecture: [../../../ARCHITECTURE.md](../../../ARCHITECTURE.md)
 
 ## Goal
 
@@ -11,8 +11,8 @@ The first pass is structural. It should reduce coupling and make ownership expli
 Test placement rule:
 
 - keep module-owned tests beside the module
-- keep component tests beside the owning UI component under [src/ui/components](/home/zonzujiro/projects/lollipop-dragon/src/ui/components)
-- keep shared test setup and factories under [src/testing](/home/zonzujiro/projects/lollipop-dragon/src/testing), with no shared root test folder
+- keep component tests beside the owning UI component under [src/ui/components](../../../src/ui/components)
+- keep shared test setup and factories under [src/testing](../../../src/testing), with no shared root test folder
 
 ## Phase 1 - Foundation
 
@@ -42,7 +42,7 @@ Verification:
 
 Files:
 
-- modify [src/store/index.ts](/home/zonzujiro/projects/lollipop-dragon/src/store/index.ts)
+- modify [src/store/index.ts](../../../src/store/index.ts)
 
 Steps:
 
@@ -62,7 +62,7 @@ Verification:
 Files:
 
 - create files in `src/modules/app-shell/`
-- modify [src/store/index.ts](/home/zonzujiro/projects/lollipop-dragon/src/store/index.ts)
+- modify [src/store/index.ts](../../../src/store/index.ts)
 
 Owns:
 
@@ -88,8 +88,8 @@ Verification:
 Files:
 
 - create files in `src/modules/relay/`
-- modify [src/services/relay.ts](/home/zonzujiro/projects/lollipop-dragon/src/services/relay.ts)
-- modify [src/store/index.ts](/home/zonzujiro/projects/lollipop-dragon/src/store/index.ts)
+- modify [src/services/relay.ts](../../../src/services/relay.ts)
+- modify [src/store/index.ts](../../../src/store/index.ts)
 
 Owns:
 
@@ -113,8 +113,8 @@ Verification:
 Files:
 
 - create files in `src/modules/peer-review/`
-- modify [src/store/index.ts](/home/zonzujiro/projects/lollipop-dragon/src/store/index.ts)
-- modify [src/store/selectors.ts](/home/zonzujiro/projects/lollipop-dragon/src/store/selectors.ts)
+- modify [src/store/index.ts](../../../src/store/index.ts)
+- modify [src/store/selectors.ts](../../../src/store/selectors.ts)
 
 Owns:
 
@@ -143,9 +143,9 @@ Verification:
 Files:
 
 - create files in `src/modules/sharing/`
-- modify [src/store/index.ts](/home/zonzujiro/projects/lollipop-dragon/src/store/index.ts)
-- modify [src/services/shareSync.ts](/home/zonzujiro/projects/lollipop-dragon/src/services/shareSync.ts)
-- modify [src/services/shareStorage.ts](/home/zonzujiro/projects/lollipop-dragon/src/services/shareStorage.ts)
+- modify [src/store/index.ts](../../../src/store/index.ts)
+- modify [src/services/shareSync.ts](../../../src/services/shareSync.ts)
+- modify [src/services/shareStorage.ts](../../../src/services/shareStorage.ts)
 
 Owns:
 
@@ -173,7 +173,7 @@ Verification:
 Files:
 
 - create files in `src/modules/workspace/`
-- modify [src/store/index.ts](/home/zonzujiro/projects/lollipop-dragon/src/store/index.ts)
+- modify [src/store/index.ts](../../../src/store/index.ts)
 - modify file/session services as needed
 
 Owns:
@@ -204,7 +204,7 @@ Verification:
 Files:
 
 - create files in `src/modules/host-review/`
-- modify [src/store/index.ts](/home/zonzujiro/projects/lollipop-dragon/src/store/index.ts)
+- modify [src/store/index.ts](../../../src/store/index.ts)
 
 Owns:
 
@@ -233,7 +233,7 @@ Verification:
 Files:
 
 - all affected `src/modules/*/controller.ts`
-- [src/store/index.ts](/home/zonzujiro/projects/lollipop-dragon/src/store/index.ts)
+- [src/store/index.ts](../../../src/store/index.ts)
 
 Steps:
 
@@ -251,9 +251,9 @@ Verification:
 
 Files:
 
-- [src/store/selectors.ts](/home/zonzujiro/projects/lollipop-dragon/src/store/selectors.ts)
-- [src/services/*](/home/zonzujiro/projects/lollipop-dragon/src/services/)
-- [src/store/index.ts](/home/zonzujiro/projects/lollipop-dragon/src/store/index.ts)
+- [src/store/selectors.ts](../../../src/store/selectors.ts)
+- [src/services/*](../../../src/services/)
+- [src/store/index.ts](../../../src/store/index.ts)
 
 Steps:
 
@@ -311,7 +311,7 @@ Verification:
 ## Definition Of Done
 
 - [ ] `src/modules/*` owns feature logic
-- [ ] [src/store/index.ts](/home/zonzujiro/projects/lollipop-dragon/src/store/index.ts) is primarily composition and migration code
+- [ ] [src/store/index.ts](../../../src/store/index.ts) is primarily composition and migration code
 - [ ] feature-specific side effects live in module controllers
 - [ ] each module has a README
 - [ ] tests exist at the module boundary, not only at whole-store level
