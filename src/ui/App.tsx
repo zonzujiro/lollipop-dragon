@@ -18,6 +18,12 @@ import { findLiveFileInTree, toFileTreeNodes } from "../types/fileTree";
 import type { FileTreeNode, SidebarTreeNode } from "../types/fileTree";
 import { RestoreError } from "./components/RestoreError";
 import { ContentUpdateBanner } from "./components/ContentUpdateBanner";
+import {
+  getRestoreAccessActionLabel,
+  getRestoreAccessTitle,
+  shouldRenderRestorePlaceholder,
+  tabRequiresRestoreAccess,
+} from "../types/tab";
 import { WORKER_URL } from "../config";
 import { stopRelay } from "../modules/relay";
 import {
@@ -309,6 +315,8 @@ function App() {
 
   // ── Host mode with tabs ──
   const hasFolderOpen = (tab?.fileTree.length ?? 0) > 0;
+  const showRestorePlaceholder = shouldRenderRestorePlaceholder(tab);
+  const disableReviewPanels = tabRequiresRestoreAccess(tab);
 
   return (
     <div className="app-layout">
@@ -342,10 +350,11 @@ function App() {
           />
         )}
         <main className="app-main">
-          {tab?.restoreError ? (
+          {showRestorePlaceholder ? (
             <RestoreError
+              title={getRestoreAccessTitle(tab)}
               message={tab.restoreError}
-              isDirectory={tab.directoryName !== null}
+              actionLabel={getRestoreAccessActionLabel(tab)}
               onReopen={() => reopenTab(tab.id)}
             />
           ) : tab?.fileName ? (
@@ -354,8 +363,12 @@ function App() {
             <NoFileSelected />
           )}
         </main>
-        {tab?.commentPanelOpen && !focusMode && <CommentPanel />}
-        {tab?.sharedPanelOpen && !focusMode && <SharedPanel />}
+        {tab?.commentPanelOpen && !focusMode && !disableReviewPanels && (
+          <CommentPanel />
+        )}
+        {tab?.sharedPanelOpen && !focusMode && !disableReviewPanels && (
+          <SharedPanel />
+        )}
       </div>
       {shareScope && (
         <ShareDialog

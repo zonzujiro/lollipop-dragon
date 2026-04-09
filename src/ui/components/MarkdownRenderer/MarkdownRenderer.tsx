@@ -19,6 +19,10 @@ import {
   parseCriticMarkup,
   useShikiRehypePlugin,
 } from "../../../markup";
+import {
+  getRestoreAccessActionLabel,
+  shouldRenderRestoreBanner,
+} from "../../../types/tab";
 
 // Rehype plugin: adds data-block-index to each top-level element node.
 // This lets CommentMargin align dots with rendered blocks.
@@ -80,10 +84,12 @@ export function MarkdownRenderer() {
     : (tab?.activeFilePath ?? null);
   const pendingScrollTarget = tab?.pendingScrollTarget ?? null;
   const writeAllowed = tab?.writeAllowed ?? false;
+  const restoreError = tab?.restoreError ?? null;
 
   const setComments = useAppStore((s) => s.setComments);
   const addCommentAction = useAppStore((s) => s.addComment);
   const postPeerCommentAction = useAppStore((s) => s.postPeerComment);
+  const reopenTab = useAppStore((s) => s.reopenTab);
   const clearPendingScrollTarget = useAppStore(
     (s) => s.clearPendingScrollTarget,
   );
@@ -94,6 +100,7 @@ export function MarkdownRenderer() {
     index: number;
     top: number;
   } | null>(null);
+  const showRestoreBanner = !isPeerMode && shouldRenderRestoreBanner(tab);
 
   const canComment = writeAllowed || isPeerMode;
   const shouldTrackHover = canComment;
@@ -227,7 +234,18 @@ export function MarkdownRenderer() {
 
   return (
     <div className="markdown-scroll-area">
-      {!writeAllowed && !isPeerMode && (
+      {showRestoreBanner && tab ? (
+        <div className="restore-access-banner" role="status">
+          <span className="restore-access-banner__text">{restoreError}</span>
+          <button
+            className="restore-access-banner__btn"
+            onClick={() => reopenTab(tab.id)}
+          >
+            {getRestoreAccessActionLabel(tab)}
+          </button>
+        </div>
+      ) : null}
+      {!writeAllowed && !isPeerMode && !showRestoreBanner && (
         <div className="readonly-banner" role="status">
           Read-only — write permission was denied or the file is on a read-only
           filesystem. Comments cannot be saved to disk.

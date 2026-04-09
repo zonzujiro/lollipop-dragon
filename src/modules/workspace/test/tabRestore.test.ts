@@ -1,9 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../storage", async (importOriginal) => {
-  const actual = await importOriginal<
-    typeof import("../storage")
-  >();
+  const actual = await importOriginal<typeof import("../storage")>();
   return {
     ...actual,
     saveHandle: vi.fn(),
@@ -133,7 +131,7 @@ describe("store.switchTab", () => {
 
     const tab = useAppStore.getState().tabs.find((t) => t.id === "broken-tab");
     expect(tab?.restoreError).toContain("deleted-project");
-    expect(tab?.restoreError).toContain("could not be accessed");
+    expect(tab?.restoreError).toContain("Open the folder again");
     expect(tab?.directoryHandle).toBeNull();
   });
 });
@@ -158,7 +156,8 @@ describe("store.restoreTabs", () => {
 
     const tab = useAppStore.getState().tabs.find((t) => t.id === "file-tab");
     expect(tab?.restoreError).toContain("notes.md");
-    expect(tab?.restoreError).toContain("could not be accessed");
+    expect(tab?.restoreError).toContain("Open the file again");
+    expect(tab?.writeAllowed).toBe(false);
   });
 
   it("sets restoreError on file tab when handle throws", async () => {
@@ -193,7 +192,7 @@ describe("store.restoreTabs", () => {
     expect(tab?.restoreError).toContain("gone.md");
   });
 
-  it("requests permission and restores file tab when query returns prompt", async () => {
+  it("keeps the file visible without prompting when only read access remains", async () => {
     const fileTab = createDefaultTab({
       id: "file-tab",
       label: "notes.md",
@@ -208,8 +207,12 @@ describe("store.restoreTabs", () => {
     const handle = {
       kind: "file",
       name: "notes.md",
-      queryPermission: vi.fn().mockResolvedValue("prompt"),
-      requestPermission: vi.fn().mockResolvedValue("granted"),
+      queryPermission: vi
+        .fn()
+        .mockImplementation(({ mode }: { mode: string }) =>
+          Promise.resolve(mode === "read" ? "granted" : "prompt"),
+        ),
+      requestPermission: vi.fn(),
     };
     vi.mocked(getHandle).mockResolvedValue(handle);
     vi.mocked(readFile).mockResolvedValue("# Restored content");
@@ -217,11 +220,11 @@ describe("store.restoreTabs", () => {
     await useAppStore.getState().restoreTabs();
 
     const tab = useAppStore.getState().tabs.find((t) => t.id === "file-tab");
-    expect(handle.requestPermission).toHaveBeenCalledWith({
-      mode: "readwrite",
-    });
-    expect(tab?.restoreError).toBeNull();
+    expect(handle.requestPermission).not.toHaveBeenCalled();
+    expect(tab?.restoreError).toContain("notes.md");
     expect(tab?.rawContent).toBe("# Restored content");
+    expect(tab?.writeAllowed).toBe(false);
+    expect(tab?.fileHandle).toBe(handle);
   });
 
   it("sets restoreError on file tab when permission is denied", async () => {
@@ -240,7 +243,7 @@ describe("store.restoreTabs", () => {
       kind: "file",
       name: "notes.md",
       queryPermission: vi.fn().mockResolvedValue("prompt"),
-      requestPermission: vi.fn().mockResolvedValue("denied"),
+      requestPermission: vi.fn(),
     };
     vi.mocked(getHandle).mockResolvedValue(handle);
 
@@ -248,7 +251,9 @@ describe("store.restoreTabs", () => {
 
     const tab = useAppStore.getState().tabs.find((t) => t.id === "file-tab");
     expect(tab?.restoreError).toContain("notes.md");
-    expect(tab?.restoreError).toContain("permission");
+    expect(tab?.restoreError).toContain("Open the file again");
+    expect(handle.requestPermission).not.toHaveBeenCalled();
+    expect(tab?.fileHandle).toBeNull();
   });
 
   it("clears restoreError on successful file tab restore", async () => {
@@ -277,6 +282,7 @@ describe("store.restoreTabs", () => {
     const tab = useAppStore.getState().tabs.find((t) => t.id === "file-tab");
     expect(tab?.restoreError).toBeNull();
     expect(tab?.rawContent).toBe("# Fresh content");
+    expect(tab?.writeAllowed).toBe(true);
   });
 });
 
@@ -318,6 +324,50 @@ describe("store.refreshFileTree", () => {
     const result = getActiveTab(useAppStore.getState());
     expect(result?.fileTree).toEqual(updatedTree);
     expect(buildFileTree).toHaveBeenCalledWith(dirHandle);
+  });
+
+  it("rebinds the active file handle after rebuilding the directory tree", async () => {
+    const dirHandle = {
+      kind: "directory",
+      name: "project",
+    };
+    const recoveredHandle = {
+      kind: "file",
+      name: "readme.md",
+      getFile: vi.fn().mockResolvedValue({
+        text: vi.fn().mockResolvedValue("# Updated"),
+      }),
+    };
+    const updatedTree: FileTreeNode[] = [
+      {
+        kind: "file",
+        name: "readme.md",
+        path: "readme.md",
+        handle: recoveredHandle,
+      },
+    ];
+
+    setTestState({
+      directoryHandle: dirHandle,
+      directoryName: "project",
+      fileHandle: null,
+      fileName: "readme.md",
+      rawContent: "# Persisted",
+      activeFilePath: "readme.md",
+      restoreError: 'Live access to "readme.md" is unavailable.',
+      writeAllowed: false,
+    });
+
+    vi.mocked(buildFileTree).mockResolvedValue(updatedTree);
+    vi.mocked(readFile).mockResolvedValue("# Updated");
+
+    await useAppStore.getState().refreshFileTree();
+
+    const result = getActiveTab(useAppStore.getState());
+    expect(result?.fileHandle).toBe(recoveredHandle);
+    expect(result?.rawContent).toBe("# Updated");
+    expect(result?.restoreError).toBeNull();
+    expect(result?.writeAllowed).toBe(true);
   });
 
   it("does nothing when active tab has no directory handle", async () => {

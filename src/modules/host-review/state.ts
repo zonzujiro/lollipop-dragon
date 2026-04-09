@@ -1,6 +1,7 @@
 import type { StoreApi } from "zustand";
 import type { Comment } from "../../types/criticmarkup";
 import type { TabState } from "../../types/tab";
+import { tabRequiresRestoreAccess } from "../../types/tab";
 import type {
   FileCommentEntry,
   HostCommentFilter,
@@ -50,7 +51,9 @@ function buildFileCommentEntries(
   };
 }
 
-export function createHostReviewActions<StoreState extends HostReviewStoreState>(
+export function createHostReviewActions<
+  StoreState extends HostReviewStoreState,
+>(
   deps: HostReviewActionDeps<StoreState>,
 ): Pick<
   HostReviewActions,
@@ -93,6 +96,11 @@ export function createHostReviewActions<StoreState extends HostReviewStoreState>
         set((state) => ({
           peerCommentPanelOpen: !state.peerCommentPanelOpen,
         }));
+        return;
+      }
+
+      const tab = getActiveTab(get);
+      if (tabRequiresRestoreAccess(tab)) {
         return;
       }
 

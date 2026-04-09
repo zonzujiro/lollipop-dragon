@@ -210,19 +210,19 @@ On page load:
 1. Zustand hydrates `tabs[]` and `activeTabId` from localStorage
 2. Migration runs if old format detected
 3. `restoreAllTabs()` iterates persisted tabs and restores each directory handle from IndexedDB
-4. If a handle can't be restored (permission denied), tab keeps `null` handle — user re-grants when switching to it
-5. If the file or folder no longer exists on disk (`NotFoundError`), or the handle is missing from IndexedDB, the tab's `restoreError` field is set with a user-facing message
+4. Automatic restore checks existing permission state but does not trigger browser permission prompts on page load
+5. If a handle can't be restored, the tab enters a degraded restore state with a user-facing message
 
 ### 10.1 Restore Error UX
 
-When a tab's file or folder cannot be accessed after a browser reopen (moved, renamed, or deleted on disk), the tab shows a **RestoreError placeholder** instead of content:
+When a tab's file or folder cannot be accessed after a browser reopen, the UI keeps as much context visible as it safely can:
 
-- **Icon**: a refresh/retry icon (muted)
-- **Title**: "File not found" or "Folder not found"
-- **Message**: `The file/folder "{name}" could not be accessed. It may have been moved, renamed, or deleted.`
-- **Action**: "Reopen file" / "Reopen folder" button — opens the file/directory picker and restores the broken tab **in-place** (via `reopenTab(tabId)`), preserving the tab's position in the tab bar
+- **File tab, last content available**: keep rendering the persisted markdown content
+- **Banner**: sticky restore-access banner at the top of the document with an "Open file" / "Open folder" action
+- **Disabled actions**: comment creation, comment merge/review panels, and share-management actions stay disabled until access is restored
+- **No renderable file context**: show the full restore placeholder with an "Open file" / "Open folder" button
 
-While `restoreError` is set, all comment operations (add, edit, delete) are effectively disabled because the tab has no live `fileHandle`.
+While `restoreError` is set, host-side review actions are disabled because the tab no longer has confirmed live write access.
 
 The `restoreError` field is runtime-only (not persisted to localStorage). On each app load, restoration is re-attempted from IndexedDB handles.
 

@@ -47,3 +47,46 @@ export function createDefaultTab(
     ...overrides,
   };
 }
+
+type RestoreStateTab = Pick<
+  TabState,
+  "directoryName" | "fileName" | "restoreError"
+>;
+
+export function tabRequiresRestoreAccess(tab: RestoreStateTab | null): boolean {
+  return Boolean(tab?.restoreError);
+}
+
+export function tabHasRenderableContent(tab: RestoreStateTab | null): boolean {
+  return tab?.fileName !== null && tab?.fileName !== undefined;
+}
+
+export function shouldRenderRestoreBanner(
+  tab: RestoreStateTab | null,
+): boolean {
+  return tabRequiresRestoreAccess(tab) && tabHasRenderableContent(tab);
+}
+
+export function shouldRenderRestorePlaceholder(
+  tab: RestoreStateTab | null,
+): boolean {
+  return tabRequiresRestoreAccess(tab) && !tabHasRenderableContent(tab);
+}
+
+export function getRestoreAccessTitle(tab: RestoreStateTab | null): string {
+  if (tab?.directoryName) {
+    return "Folder access needed";
+  }
+
+  return "File access needed";
+}
+
+export function getRestoreAccessActionLabel(
+  tab: RestoreStateTab | null,
+): string {
+  if (tab?.directoryName) {
+    return "Open folder";
+  }
+
+  return "Open file";
+}

@@ -83,6 +83,22 @@ describe("Header share buttons", () => {
         screen.queryByRole("button", { name: "Share folder" }),
       ).not.toBeInTheDocument();
     });
+
+    it("disables review controls while restore access is required", () => {
+      setTestState({
+        fileName: "readme.md",
+        rawContent: "# Persisted",
+        restoreError: 'Live access to "readme.md" is unavailable.',
+      });
+
+      render(<Header onShareFile={vi.fn()} onShareFolder={vi.fn()} />);
+
+      expect(screen.getByRole("button", { name: "Share file" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Shared" })).toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: "Open comments panel" }),
+      ).toBeDisabled();
+    });
   });
 
   describe("click handlers", () => {

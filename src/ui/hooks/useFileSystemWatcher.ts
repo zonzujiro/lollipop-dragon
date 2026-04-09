@@ -116,14 +116,14 @@ export function useFileSystemWatcher({
           "[FileSystemObserver] observe failed, falling back to polling:",
           e,
         );
-        startPolling();
+        schedulePoll();
       });
     } catch (e) {
       console.warn(
         "[FileSystemObserver] setup failed, falling back to polling:",
         e,
       );
-      startPolling();
+      schedulePoll();
     }
 
     return () => {

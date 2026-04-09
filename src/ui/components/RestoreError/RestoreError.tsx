@@ -1,14 +1,16 @@
 import "./RestoreError.css";
 
 interface RestoreErrorProps {
+  title: string;
   message: string;
-  isDirectory: boolean;
+  actionLabel: string;
   onReopen: () => void;
 }
 
 export function RestoreError({
+  title,
   message,
-  isDirectory,
+  actionLabel,
   onReopen,
 }: RestoreErrorProps) {
   return (
@@ -31,12 +33,10 @@ export function RestoreError({
         <line x1="17" y1="7" x2="17" y2="7.01" />
         <circle cx="17" cy="7" r="0.5" fill="currentColor" stroke="none" />
       </svg>
-      <h2 className="restore-error__title">
-        {isDirectory ? "Folder not found" : "File not found"}
-      </h2>
+      <h2 className="restore-error__title">{title}</h2>
       <p className="restore-error__text">{message}</p>
       <button className="restore-error__btn" onClick={onReopen}>
-        {isDirectory ? "Reopen folder" : "Reopen file"}
+        {actionLabel}
       </button>
     </div>
   );
