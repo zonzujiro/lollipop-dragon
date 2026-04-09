@@ -221,6 +221,7 @@ When a tab's file or folder cannot be accessed after a browser reopen, the UI ke
 - **Banner**: sticky restore-access banner at the top of the document with an "Open file" / "Open folder" action
 - **Disabled actions**: comment creation, comment merge/review panels, and share-management actions stay disabled until access is restored
 - **No renderable file context**: show the full restore placeholder with an "Open file" / "Open folder" button
+- **Manual folder reopen**: when the user reopens a degraded folder tab and the last active file path still exists, restore that file immediately instead of dropping back to an empty folder view
 
 While `restoreError` is set, host-side review actions are disabled because the tab no longer has confirmed live write access.
 
