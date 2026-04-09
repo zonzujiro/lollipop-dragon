@@ -6,6 +6,11 @@ Read the [contribution guide](./docs/contributing.md) and review the docs in [`d
 
 If a change may remove backward-compatibility logic, pause and ask for confirmation before deleting it. Do not assume old migrations, persisted-state compatibility, or legacy restore paths can be removed without approval.
 
+## Environment
+
+- Run project commands through WSL, not the Windows shell. Use the repo's Linux toolchain for `node`, `yarn`, `git`, and test commands.
+- Preferred pattern: `wsl zsh -lic 'cd /home/zonzujiro/projects/lollipop-dragon && yarn test'`
+
 ## TypeScript
 
 - **Never use `as` for type assertions.** Use type guards, proper narrowing, or helper functions instead.

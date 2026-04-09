@@ -1,4 +1,59 @@
 /* ── Markdown viewer (flex row: margin column + body) ────────── */
+.markdown-scroll-area {
+  position: relative;
+}
+
+.restore-access-banner,
+.readonly-banner {
+  position: sticky;
+  top: 0.75rem;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: min(90%, 980px);
+  margin: 0 auto 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--surface) 65%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.restore-access-banner {
+  background: color-mix(in srgb, var(--surface) 88%, var(--c-orange) 12%);
+  border-color: color-mix(in srgb, var(--border) 75%, var(--c-orange) 25%);
+}
+
+.restore-access-banner__text {
+  color: var(--text);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.restore-access-banner__btn {
+  flex-shrink: 0;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, var(--accent) 30%);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.restore-access-banner__btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.readonly-banner {
+  background: color-mix(in srgb, var(--surface) 90%, var(--c-red) 10%);
+  color: var(--text);
+}
+
 .markdown-viewer {
   display: flex;
   position: relative;
@@ -299,6 +354,14 @@
 
 /* ── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 768px) {
+  .restore-access-banner,
+  .readonly-banner {
+    width: calc(100% - 2rem);
+    margin-inline: 1rem;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .markdown-body h1 {
     font-size: 1.625rem;
   }

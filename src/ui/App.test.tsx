@@ -159,6 +159,20 @@ describe("App — single file open", () => {
     expect(screen.getByTestId("markdown-renderer")).toBeInTheDocument();
   });
 
+  it("keeps rendering the file when restore access is needed", () => {
+    setTestState({
+      fileHandle: null,
+      fileName: "research.md",
+      rawContent: "# Persisted",
+      restoreError: 'Live access to "research.md" is unavailable.',
+    });
+
+    render(<App />);
+
+    expect(screen.getByTestId("markdown-renderer")).toBeInTheDocument();
+    expect(screen.queryByText(/access needed/i)).not.toBeInTheDocument();
+  });
+
   it('shows "Open file" and "Open folder" buttons in the header', () => {
     render(<App />);
     expect(
@@ -218,6 +232,27 @@ describe("App — folder open", () => {
     expect(
       screen.getByText(/Select a file from the sidebar/),
     ).toBeInTheDocument();
+    expect(screen.queryByTestId("markdown-renderer")).not.toBeInTheDocument();
+  });
+
+  it("shows the restore placeholder when no file content is available", () => {
+    setTestState({
+      directoryHandle: null,
+      directoryName: "my-docs",
+      fileName: null,
+      rawContent: "",
+      activeFilePath: null,
+      restoreError: 'Live access to folder "my-docs" is unavailable.',
+    });
+
+    render(<App />);
+
+    expect(
+      screen.getByRole("heading", { name: "Folder access needed" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Open folder" })).toHaveLength(
+      2,
+    );
     expect(screen.queryByTestId("markdown-renderer")).not.toBeInTheDocument();
   });
 

@@ -9,6 +9,7 @@ import { ConnectionStatus } from "../ConnectionStatus";
 import { WORKER_URL } from "../../../config";
 import { syncActiveShares } from "../../../modules/sharing";
 import { downloadActiveFile } from "./downloadActiveFile";
+import { tabRequiresRestoreAccess } from "../../../types/tab";
 
 function FocusIcon() {
   return (
@@ -174,12 +175,12 @@ export function Header({
   const comments = tab?.comments ?? [];
   const allFileComments = tab?.allFileComments ?? {};
   const peerCommentPanelOpen = useAppStore((s) => s.peerCommentPanelOpen);
-  const commentPanelOpen = peerMode
+  const rawCommentPanelOpen = peerMode
     ? peerCommentPanelOpen
     : (tab?.commentPanelOpen ?? false);
   const fileHandle = tab?.fileHandle ?? null;
   const shares = tab?.shares ?? [];
-  const sharedPanelOpen = tab?.sharedPanelOpen ?? false;
+  const rawSharedPanelOpen = tab?.sharedPanelOpen ?? false;
   const hasActiveShares = shares.some(
     (share) => new Date(share.expiresAt) > new Date(),
   );
@@ -202,6 +203,11 @@ export function Header({
   const isDark = theme === "dark";
   const hasFolderOpen = fileTree.length > 0;
   const hasContent = !!(fileName || directoryName);
+  const disableHostReviewActions = !peerMode && tabRequiresRestoreAccess(tab);
+  const commentPanelOpen = disableHostReviewActions
+    ? false
+    : rawCommentPanelOpen;
+  const sharedPanelOpen = disableHostReviewActions ? false : rawSharedPanelOpen;
   const totalPending = shares.reduce(
     (total, share) => total + share.pendingCommentCount,
     0,
@@ -260,6 +266,7 @@ export function Header({
                       onClick={onShareFile}
                       aria-label="Share file"
                       title="Share file"
+                      disabled={disableHostReviewActions}
                     >
                       <ShareFileIcon />
                     </button>
@@ -270,6 +277,7 @@ export function Header({
                       onClick={onShareFolder}
                       aria-label="Share folder"
                       title="Share folder"
+                      disabled={disableHostReviewActions}
                     >
                       <ShareFolderIcon />
                     </button>
@@ -278,6 +286,7 @@ export function Header({
                     className={`app-header__btn app-header__btn--text${sharedPanelOpen ? " app-header__btn--active" : ""}`}
                     onClick={toggleSharedPanel}
                     title="Manage shared documents"
+                    disabled={disableHostReviewActions}
                   >
                     Shared
                     {totalPending > 0 && (
@@ -291,6 +300,7 @@ export function Header({
                       onClick={syncActiveShares}
                       title="Push latest content to all active shares"
                       className="app-header__btn app-header__btn--text"
+                      disabled={disableHostReviewActions}
                     >
                       Push update
                     </button>
@@ -367,6 +377,7 @@ export function Header({
               commentPanelOpen ? "Close comments panel" : "Open comments panel"
             }
             className={`app-header__btn app-header__btn--text${commentPanelOpen ? " app-header__btn--active" : ""}`}
+            disabled={disableHostReviewActions}
           >
             Comments
             {commentCount > 0 && (

@@ -1,7 +1,11 @@
 import type { StoreApi } from "zustand";
 import { findResolvedComments } from "../host-review";
 import { ensureRelaySubscriptions, unsubscribeFromDoc } from "../relay";
-import { loadAndCleanShares, restoreShareKeys, stableShareKey } from "../sharing";
+import {
+  loadAndCleanShares,
+  restoreShareKeys,
+  stableShareKey,
+} from "../sharing";
 import { findLiveFileInTree } from "../../types/fileTree";
 import type { FileNode } from "../../types/fileTree";
 import type { HistoryEntry } from "../../types/history";
@@ -87,7 +91,8 @@ export async function migrateHandleToHistory<StoreState extends WorkspaceState>(
   await removeHandle(handleKey);
 
   const evictedEntries = get().history.filter(
-    (entry) => !nextHistory.some((historyEntry) => historyEntry.id === entry.id),
+    (entry) =>
+      !nextHistory.some((historyEntry) => historyEntry.id === entry.id),
   );
 
   for (const evictedEntry of evictedEntries) {
@@ -119,12 +124,17 @@ export function cleanExpiredWorkspaceHistory(): HistoryEntry[] {
   return liveEntries;
 }
 
-export async function restoreDirectoryTabState<StoreState extends WorkspaceState>(
-  get: () => StoreState,
-  set: SetState<StoreState>,
-  tabId: string,
-  scanAllFileComments: () => Promise<void>,
-): Promise<void> {
+export async function restoreDirectoryTabState<
+  StoreState extends WorkspaceState,
+>(input: {
+  get: () => StoreState;
+  set: SetState<StoreState>;
+  tabId: string;
+  scanAllFileComments: () => Promise<void>;
+  requestPermissionOnPrompt: boolean;
+}): Promise<void> {
+  const { get, set, tabId, scanAllFileComments, requestPermissionOnPrompt } =
+    input;
   const tab = get().tabs.find((currentTab) => currentTab.id === tabId);
   if (!tab?.directoryName) {
     return;
@@ -140,65 +150,73 @@ export async function restoreDirectoryTabState<StoreState extends WorkspaceState
       );
       set((state) => ({
         tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
-          restoreError: `The folder "${tab.directoryName}" could not be accessed. It may have been moved, renamed, or deleted.`,
+          ...buildRestoreAccessState(
+            buildFolderRestoreMessage({
+              directoryName: tab.directoryName,
+              fileName: tab.fileName,
+            }),
+          ),
         })),
       }));
       return;
     }
 
     let readPermission = await handle.queryPermission({ mode: "read" });
-    if (readPermission !== "granted") {
+    if (readPermission !== "granted" && requestPermissionOnPrompt) {
       readPermission = await handle.requestPermission({ mode: "read" });
     }
-
     if (readPermission !== "granted") {
-      console.debug("[restoreDirectoryTabState] directory permission not granted:", {
-        tabId: tab.id,
-        directoryName: tab.directoryName,
-        readPermission,
-      });
+      console.debug(
+        "[restoreDirectoryTabState] directory permission not granted:",
+        {
+          tabId: tab.id,
+          directoryName: tab.directoryName,
+          readPermission,
+        },
+      );
       set((state) => ({
         tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
-          restoreError: `The folder "${tab.directoryName}" requires permission to access. Please reopen it.`,
+          ...buildRestoreAccessState(
+            buildFolderRestoreMessage({
+              directoryName: tab.directoryName,
+              fileName: tab.fileName,
+            }),
+          ),
         })),
       }));
       return;
     }
 
     const tree = await buildFileTree(handle);
-    let restoredFileHandle: FileSystemFileHandle | null = null;
-    let restoredFileName: string | null = null;
-    let restoredRawContent: string | null = null;
-
-    if (tab.activeFilePath) {
-      const fileNode = findLiveFileInTree(tree, tab.activeFilePath);
-      if (fileNode) {
-        restoredFileHandle = fileNode.handle;
-        restoredFileName = fileNode.name;
-        try {
-          restoredRawContent = await readFile(fileNode.handle);
-        } catch (error) {
-          console.warn(
-            "[restoreDirectoryTabState] file read failed, keeping persisted content:",
-            error,
-          );
-        }
-      }
-    }
+    const restoredFile = await restoreActiveFileFromTree({
+      tree,
+      activeFilePath: tab.activeFilePath,
+      persistedFileName: tab.fileName,
+      persistedRawContent: tab.rawContent,
+    });
 
     set((state) => ({
       tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
         directoryHandle: handle,
         directoryName: handle.name,
         fileTree: tree,
-        restoreError: null,
-        ...(restoredFileHandle ? { fileHandle: restoredFileHandle } : {}),
-        ...(restoredFileName ? { fileName: restoredFileName } : {}),
-        ...(restoredRawContent !== null ? { rawContent: restoredRawContent } : {}),
+        fileHandle: restoredFile.fileHandle,
+        fileName: restoredFile.fileName,
+        rawContent: restoredFile.rawContent,
+        writeAllowed: restoredFile.restoreMessage === null,
+        commentPanelOpen:
+          restoredFile.restoreMessage === null ? tab.commentPanelOpen : false,
+        sharedPanelOpen:
+          restoredFile.restoreMessage === null ? tab.sharedPanelOpen : false,
+        restoreError: restoredFile.restoreMessage,
       })),
     }));
 
-    if (get().activeTabId === tab.id && tree.length > 0) {
+    if (
+      get().activeTabId === tab.id &&
+      tree.length > 0 &&
+      restoredFile.restoreMessage === null
+    ) {
       await scanAllFileComments();
     }
   } catch (error) {
@@ -211,8 +229,12 @@ export async function restoreDirectoryTabState<StoreState extends WorkspaceState
     set((state) => ({
       tabs: buildUpdatedTabs(state.tabs, tabId, () => ({
         directoryHandle: null,
-        fileHandle: null,
-        restoreError: `The folder "${directoryName}" could not be accessed. It may have been moved, renamed, or deleted.`,
+        ...buildRestoreAccessState(
+          buildFolderRestoreMessage({
+            directoryName,
+            fileName: tab.fileName,
+          }),
+        ),
       })),
     }));
   }
@@ -224,7 +246,8 @@ export async function findTabByHandle(
   kind: "file" | "directory",
 ): Promise<TabState | null> {
   for (const tab of tabs) {
-    const existingHandle = kind === "file" ? tab.fileHandle : tab.directoryHandle;
+    const existingHandle =
+      kind === "file" ? tab.fileHandle : tab.directoryHandle;
     if (existingHandle && (await existingHandle.isSameEntry(handle))) {
       return tab;
     }
@@ -295,6 +318,91 @@ function removeTabFromState(
   return { nextActiveTabId, updatedTabs };
 }
 
+function buildRestoreAccessState(message: string): Partial<TabState> {
+  return {
+    fileHandle: null,
+    writeAllowed: false,
+    commentPanelOpen: false,
+    sharedPanelOpen: false,
+    restoreError: message,
+  };
+}
+
+function buildFileRestoreMessage(fileName: string): string {
+  return `Live access to "${fileName}" is unavailable. Open the file again to restore commenting and share review.`;
+}
+
+function buildFolderRestoreMessage(input: {
+  directoryName: string;
+  fileName: string | null;
+}): string {
+  if (input.fileName) {
+    return `Live access to folder "${input.directoryName}" is unavailable. Open the folder again to restore "${input.fileName}" and resume commenting.`;
+  }
+
+  return `Live access to folder "${input.directoryName}" is unavailable. Open the folder again to restore its contents.`;
+}
+
+async function restoreActiveFileFromTree(input: {
+  tree: TabState["fileTree"];
+  activeFilePath: string | null;
+  persistedFileName: string | null;
+  persistedRawContent: string;
+}): Promise<{
+  fileHandle: FileSystemFileHandle | null;
+  fileName: string | null;
+  rawContent: string;
+  restoreMessage: string | null;
+}> {
+  const { tree, activeFilePath, persistedFileName, persistedRawContent } =
+    input;
+
+  if (!activeFilePath) {
+    return {
+      fileHandle: null,
+      fileName: persistedFileName,
+      rawContent: persistedRawContent,
+      restoreMessage: null,
+    };
+  }
+
+  const fileNode = findLiveFileInTree(tree, activeFilePath);
+  if (!fileNode) {
+    const fallbackName =
+      persistedFileName ?? activeFilePath.split("/").pop() ?? null;
+    return {
+      fileHandle: null,
+      fileName: fallbackName,
+      rawContent: persistedRawContent,
+      restoreMessage:
+        fallbackName !== null
+          ? `The last open file "${fallbackName}" is no longer available in this folder. Open the folder again to restore live access.`
+          : `The last open file is no longer available in this folder. Open the folder again to restore live access.`,
+    };
+  }
+
+  try {
+    const rawContent = await readFile(fileNode.handle);
+    return {
+      fileHandle: fileNode.handle,
+      fileName: fileNode.name,
+      rawContent,
+      restoreMessage: null,
+    };
+  } catch (error) {
+    console.warn(
+      "[restoreActiveFileFromTree] file read failed, keeping persisted content:",
+      error,
+    );
+    return {
+      fileHandle: null,
+      fileName: fileNode.name,
+      rawContent: persistedRawContent,
+      restoreMessage: `Live access to "${fileNode.name}" is unavailable. Open the folder again to restore commenting and share review.`,
+    };
+  }
+}
+
 export function createWorkspaceControllerActions<
   StoreState extends WorkspaceControllerStoreState,
 >(
@@ -318,14 +426,19 @@ export function createWorkspaceControllerActions<
 
   return {
     reopenFromHistory: async (entryId) => {
-      const entry = get().history.find((historyEntry) => historyEntry.id === entryId);
+      const entry = get().history.find(
+        (historyEntry) => historyEntry.id === entryId,
+      );
       if (!entry) {
         return;
       }
 
       const handle = await getHandle(`history:${entryId}`);
       if (!handle) {
-        const updatedHistory = removeHistoryEntryFromState(get().history, entryId);
+        const updatedHistory = removeHistoryEntryFromState(
+          get().history,
+          entryId,
+        );
         saveWorkspaceHistory(updatedHistory);
         set({ history: updatedHistory });
         showToast("File access expired — please reopen manually");
@@ -344,7 +457,9 @@ export function createWorkspaceControllerActions<
 
       if (!writeAllowed) {
         try {
-          const readPermission = await handle.requestPermission({ mode: "read" });
+          const readPermission = await handle.requestPermission({
+            mode: "read",
+          });
           if (readPermission !== "granted") {
             showToast("Permission denied");
             return;
@@ -421,7 +536,10 @@ export function createWorkspaceControllerActions<
         await saveHandle(`tab:${tab.id}:file`, handle);
       }
 
-      const updatedHistory = removeHistoryEntryFromState(get().history, entryId);
+      const updatedHistory = removeHistoryEntryFromState(
+        get().history,
+        entryId,
+      );
       saveWorkspaceHistory(updatedHistory);
       set({ history: updatedHistory, historyDropdownOpen: false });
       removeHandle(`history:${entryId}`).catch((error) =>
@@ -441,15 +559,22 @@ export function createWorkspaceControllerActions<
 
       const restoredKeys = await restoreShareKeys(tabShares);
       set((state) => ({
-        tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, (tabState) => ({
-          shares: tabShares,
-          shareKeys: { ...tabState.shareKeys, ...restoredKeys },
-        })),
+        tabs: buildUpdatedActiveTabs(
+          state.tabs,
+          state.activeTabId,
+          (tabState) => ({
+            shares: tabShares,
+            shareKeys: { ...tabState.shareKeys, ...restoredKeys },
+          }),
+        ),
       }));
     },
 
     removeHistoryEntry: (entryId) => {
-      const updatedHistory = removeHistoryEntryFromState(get().history, entryId);
+      const updatedHistory = removeHistoryEntryFromState(
+        get().history,
+        entryId,
+      );
       saveWorkspaceHistory(updatedHistory);
       set({ history: updatedHistory });
       removeHandle(`history:${entryId}`).catch((error) =>
@@ -494,7 +619,9 @@ export function createWorkspaceControllerActions<
       if (historyEntry) {
         const nextHistory = [
           historyEntry,
-          ...get().history.filter((entry) => entry.stableKey !== historyEntry.stableKey),
+          ...get().history.filter(
+            (entry) => entry.stableKey !== historyEntry.stableKey,
+          ),
         ].slice(0, HISTORY_LIMIT);
 
         const handleKey =
@@ -502,8 +629,13 @@ export function createWorkspaceControllerActions<
             ? `tab:${tabId}:directory`
             : `tab:${tabId}:file`;
 
-        void migrateHandleToHistory(handleKey, historyEntry.id, nextHistory, get).catch(
-          (error) => console.warn("[history] handle migration failed:", error),
+        void migrateHandleToHistory(
+          handleKey,
+          historyEntry.id,
+          nextHistory,
+          get,
+        ).catch((error) =>
+          console.warn("[history] handle migration failed:", error),
         );
 
         saveWorkspaceHistory(nextHistory);
@@ -537,7 +669,13 @@ export function createWorkspaceControllerActions<
         return;
       }
 
-      await restoreDirectoryTabState(get, set, tabId, scanAllFileComments);
+      await restoreDirectoryTabState({
+        get,
+        set,
+        tabId,
+        scanAllFileComments,
+        requestPermissionOnPrompt: true,
+      });
     },
 
     openFileInNewTab: async () => {
@@ -546,7 +684,11 @@ export function createWorkspaceControllerActions<
         return;
       }
 
-      const existingTab = await findTabByHandle(get().tabs, result.handle, "file");
+      const existingTab = await findTabByHandle(
+        get().tabs,
+        result.handle,
+        "file",
+      );
       if (existingTab) {
         set({ activeTabId: existingTab.id });
         return;
@@ -633,6 +775,7 @@ export function createWorkspaceControllerActions<
               fileName: null,
               rawContent: "",
               activeFilePath: null,
+              writeAllowed: true,
               restoreError: null,
             })),
           }));
@@ -641,7 +784,11 @@ export function createWorkspaceControllerActions<
             await scanAllFileComments();
           }
         } catch (error) {
-          console.error("[reopenTab] failed to reopen directory tab:", tabId, error);
+          console.error(
+            "[reopenTab] failed to reopen directory tab:",
+            tabId,
+            error,
+          );
           set((state) => ({
             tabs: buildUpdatedTabs(state.tabs, tabId, () => ({
               restoreError: `The folder "${tab.directoryName}" could not be opened. Please try again.`,
@@ -665,6 +812,7 @@ export function createWorkspaceControllerActions<
             fileName: result.name,
             label: result.name,
             rawContent,
+            writeAllowed: true,
             restoreError: null,
           })),
         }));
@@ -715,6 +863,54 @@ export function createWorkspaceControllerActions<
         }
       } catch (error) {
         console.error("[refreshFile] file read failed:", error);
+
+        if (tab.directoryHandle) {
+          try {
+            const tree = await buildFileTree(tab.directoryHandle);
+            const restoredFile = await restoreActiveFileFromTree({
+              tree,
+              activeFilePath: tab.activeFilePath,
+              persistedFileName: tab.fileName,
+              persistedRawContent: tab.rawContent,
+            });
+
+            set((state) => ({
+              tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
+                fileTree: tree,
+                fileHandle: restoredFile.fileHandle,
+                fileName: restoredFile.fileName,
+                rawContent: restoredFile.rawContent,
+                writeAllowed: restoredFile.restoreMessage === null,
+                commentPanelOpen:
+                  restoredFile.restoreMessage === null
+                    ? tab.commentPanelOpen
+                    : false,
+                sharedPanelOpen:
+                  restoredFile.restoreMessage === null
+                    ? tab.sharedPanelOpen
+                    : false,
+                restoreError: restoredFile.restoreMessage,
+              })),
+            }));
+
+            if (restoredFile.restoreMessage === null) {
+              await scanAllFileComments();
+            }
+            return;
+          } catch (recoveryError) {
+            console.error(
+              "[refreshFile] directory recovery after file read failure failed:",
+              recoveryError,
+            );
+          }
+        }
+
+        const fileName = tab.fileName ?? "file";
+        set((state) => ({
+          tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
+            ...buildRestoreAccessState(buildFileRestoreMessage(fileName)),
+          })),
+        }));
       }
     },
 
@@ -727,12 +923,33 @@ export function createWorkspaceControllerActions<
       const tabId = tab.id;
       try {
         const tree = await buildFileTree(tab.directoryHandle);
+        const restoredFile = await restoreActiveFileFromTree({
+          tree,
+          activeFilePath: tab.activeFilePath,
+          persistedFileName: tab.fileName,
+          persistedRawContent: tab.rawContent,
+        });
         set((state) => ({
           tabs: buildUpdatedTabs(state.tabs, tabId, () => ({
             fileTree: tree,
+            fileHandle: restoredFile.fileHandle,
+            fileName: restoredFile.fileName,
+            rawContent: restoredFile.rawContent,
+            writeAllowed: restoredFile.restoreMessage === null,
+            commentPanelOpen:
+              restoredFile.restoreMessage === null
+                ? tab.commentPanelOpen
+                : false,
+            sharedPanelOpen:
+              restoredFile.restoreMessage === null
+                ? tab.sharedPanelOpen
+                : false,
+            restoreError: restoredFile.restoreMessage,
           })),
         }));
-        await scanAllFileComments();
+        if (restoredFile.restoreMessage === null) {
+          await scanAllFileComments();
+        }
       } catch (error) {
         console.error("[refreshFileTree] directory read failed:", error);
       }
@@ -746,7 +963,13 @@ export function createWorkspaceControllerActions<
       for (const tab of tabs) {
         if (tab.directoryName) {
           try {
-            await restoreDirectoryTabState(get, set, tab.id, scanAllFileComments);
+            await restoreDirectoryTabState({
+              get,
+              set,
+              tabId: tab.id,
+              scanAllFileComments,
+              requestPermissionOnPrompt: false,
+            });
           } catch (error) {
             console.error(
               "[restoreTabs] failed to restore directory tab:",
@@ -765,63 +988,75 @@ export function createWorkspaceControllerActions<
               );
               set((state) => ({
                 tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
-                  restoreError: `The file "${tab.fileName}" could not be accessed. It may have been moved, renamed, or deleted.`,
+                  ...buildRestoreAccessState(
+                    buildFileRestoreMessage(tab.fileName),
+                  ),
                 })),
               }));
               continue;
             }
 
-            let writePermission = await handle.queryPermission({
+            const readPermission = await handle.queryPermission({
+              mode: "read",
+            });
+            const writePermission = await handle.queryPermission({
               mode: "readwrite",
             });
-            if (writePermission !== "granted") {
-              writePermission = await handle.requestPermission({
-                mode: "readwrite",
-              });
-            }
             console.log("[restoreTabs] file tab permissions", {
               tabId: tab.id,
               fileName: tab.fileName,
+              readPermission,
               writePermission,
             });
-            if (writePermission !== "granted") {
+            const hasReadAccess =
+              readPermission === "granted" || writePermission === "granted";
+            const hasWriteAccess = writePermission === "granted";
+
+            let restoredRawContent: string | null = null;
+            if (hasReadAccess) {
+              try {
+                restoredRawContent = await readFile(handle);
+              } catch (error) {
+                console.warn(
+                  "[restoreTabs] file read failed, keeping persisted content:",
+                  error,
+                );
+              }
+            } else {
               console.warn(
-                "[restoreTabs] skipping file tab — readwrite not granted:",
+                "[restoreTabs] file tab access is not granted during restore:",
                 tab.id,
                 tab.fileName,
               );
-              set((state) => ({
-                tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
-                  restoreError: `The file "${tab.fileName}" requires permission to access. Please reopen it.`,
-                })),
-              }));
-              continue;
             }
 
-            let restoredRawContent: string | null = null;
-            try {
-              restoredRawContent = await readFile(handle);
-            } catch (error) {
-              console.warn(
-                "[restoreTabs] file read failed, keeping persisted content:",
-                error,
-              );
-            }
+            const restoreMessage = hasWriteAccess
+              ? null
+              : buildFileRestoreMessage(tab.fileName);
 
             set((state) => ({
               tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
-                fileHandle: handle,
-                restoreError: null,
+                fileHandle: hasReadAccess ? handle : null,
+                writeAllowed: hasWriteAccess,
+                commentPanelOpen: hasWriteAccess ? tab.commentPanelOpen : false,
+                sharedPanelOpen: hasWriteAccess ? tab.sharedPanelOpen : false,
+                restoreError: restoreMessage,
                 ...(restoredRawContent !== null
                   ? { rawContent: restoredRawContent }
                   : {}),
               })),
             }));
           } catch (error) {
-            console.error("[restoreTabs] failed to restore file tab:", tab.id, error);
+            console.error(
+              "[restoreTabs] failed to restore file tab:",
+              tab.id,
+              error,
+            );
             set((state) => ({
               tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
-                restoreError: `The file "${tab.fileName}" could not be accessed. It may have been moved, renamed, or deleted.`,
+                ...buildRestoreAccessState(
+                  buildFileRestoreMessage(tab.fileName),
+                ),
               })),
             }));
           }

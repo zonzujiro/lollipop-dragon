@@ -55,6 +55,7 @@ export function createWorkspaceActions<StoreState extends WorkspaceState>(
           directoryName: null,
           fileTree: [],
           activeFilePath: null,
+          restoreError: null,
         })),
       }));
     },

@@ -1,6 +1,7 @@
 import type { StoreApi } from "zustand";
 import type { PeerComment } from "../../types/share";
 import type { TabState } from "../../types/tab";
+import { tabRequiresRestoreAccess } from "../../types/tab";
 import type { SharingActions, SharingTabState } from "./types";
 
 type SetState<StoreState> = StoreApi<StoreState>["setState"];
@@ -96,6 +97,12 @@ export function createSharingActions<StoreState extends SharingStoreState>(
 
   return {
     toggleSharedPanel: () => {
+      const activeTab =
+        get().tabs.find((tab) => tab.id === get().activeTabId) ?? null;
+      if (tabRequiresRestoreAccess(activeTab)) {
+        return;
+      }
+
       set((state) => ({
         tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, (tab) => ({
           sharedPanelOpen: !tab.sharedPanelOpen,
