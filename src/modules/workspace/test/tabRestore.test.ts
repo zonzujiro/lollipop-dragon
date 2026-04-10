@@ -8,6 +8,7 @@ vi.mock("../storage", async (importOriginal) => {
     getHandle: vi.fn(),
     removeHandle: vi.fn(),
     buildFileTree: vi.fn(),
+    openDirectory: vi.fn(),
     readFile: vi.fn(),
   };
 });
@@ -17,7 +18,13 @@ import { createDefaultTab } from "../../../types/tab";
 import type { FileTreeNode } from "../../../types/fileTree";
 import { resetTestStore, setTestState } from "../../../testing/testHelpers";
 import { getActiveTab } from "../selectors";
-import { buildFileTree, getHandle, readFile } from "../storage";
+import {
+  buildFileTree,
+  getHandle,
+  openDirectory,
+  readFile,
+  saveHandle,
+} from "../storage";
 
 beforeEach(() => {
   resetTestStore();
@@ -282,6 +289,80 @@ describe("store.restoreTabs", () => {
     const tab = useAppStore.getState().tabs.find((t) => t.id === "file-tab");
     expect(tab?.restoreError).toBeNull();
     expect(tab?.rawContent).toBe("# Fresh content");
+    expect(tab?.writeAllowed).toBe(true);
+  });
+});
+
+describe("store.reopenTab", () => {
+  it("reopens a folder tab and restores its previous active file", async () => {
+    const directoryHandle = {
+      kind: "directory",
+      name: "project",
+    };
+    const recoveredFileHandle = {
+      kind: "file",
+      name: "readme.md",
+      getFile: vi.fn().mockResolvedValue({
+        text: vi.fn().mockResolvedValue("# Updated"),
+      }),
+    };
+    const tree: FileTreeNode[] = [
+      {
+        kind: "directory",
+        name: "docs",
+        path: "docs",
+        children: [
+          {
+            kind: "file",
+            name: "readme.md",
+            path: "docs/readme.md",
+            handle: recoveredFileHandle,
+          },
+        ],
+      },
+    ];
+    const fileTab = createDefaultTab({
+      id: "folder-tab",
+      label: "project",
+      directoryName: "project",
+      fileName: "readme.md",
+      rawContent: "# Persisted",
+      activeFilePath: "docs/readme.md",
+      commentPanelOpen: true,
+      sharedPanelOpen: true,
+      restoreError:
+        'Live access to folder "project" is unavailable. Open the folder again to restore "readme.md" and resume commenting.',
+      writeAllowed: false,
+    });
+
+    useAppStore.setState({
+      tabs: [fileTab],
+      activeTabId: fileTab.id,
+    });
+
+    vi.mocked(openDirectory).mockResolvedValue({
+      handle: directoryHandle,
+      name: "project",
+    });
+    vi.mocked(buildFileTree).mockResolvedValue(tree);
+    vi.mocked(readFile).mockResolvedValue("# Updated");
+
+    await useAppStore.getState().reopenTab(fileTab.id);
+
+    const tab = getActiveTab(useAppStore.getState());
+    expect(openDirectory).toHaveBeenCalled();
+    expect(saveHandle).toHaveBeenCalledWith(
+      `tab:${fileTab.id}:directory`,
+      directoryHandle,
+    );
+    expect(tab?.directoryHandle).toBe(directoryHandle);
+    expect(tab?.fileHandle).toBe(recoveredFileHandle);
+    expect(tab?.fileName).toBe("readme.md");
+    expect(tab?.rawContent).toBe("# Updated");
+    expect(tab?.activeFilePath).toBe("docs/readme.md");
+    expect(tab?.commentPanelOpen).toBe(true);
+    expect(tab?.sharedPanelOpen).toBe(true);
+    expect(tab?.restoreError).toBeNull();
     expect(tab?.writeAllowed).toBe(true);
   });
 });

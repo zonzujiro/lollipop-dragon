@@ -765,22 +765,39 @@ export function createWorkspaceControllerActions<
 
           await saveHandle(`tab:${tabId}:directory`, result.handle);
           const tree = await buildFileTree(result.handle);
+          const restoredFile = await restoreActiveFileFromTree({
+            tree,
+            activeFilePath: tab.activeFilePath,
+            persistedFileName: tab.fileName,
+            persistedRawContent: tab.rawContent,
+          });
           set((state) => ({
             tabs: buildUpdatedTabs(state.tabs, tabId, () => ({
               directoryHandle: result.handle,
               directoryName: result.name,
               label: result.name,
               fileTree: tree,
-              fileHandle: null,
-              fileName: null,
-              rawContent: "",
-              activeFilePath: null,
-              writeAllowed: true,
-              restoreError: null,
+              fileHandle: restoredFile.fileHandle,
+              fileName: restoredFile.fileName,
+              rawContent: restoredFile.rawContent,
+              writeAllowed: restoredFile.restoreMessage === null,
+              commentPanelOpen:
+                restoredFile.restoreMessage === null
+                  ? tab.commentPanelOpen
+                  : false,
+              sharedPanelOpen:
+                restoredFile.restoreMessage === null
+                  ? tab.sharedPanelOpen
+                  : false,
+              restoreError: restoredFile.restoreMessage,
             })),
           }));
 
-          if (get().activeTabId === tabId && tree.length > 0) {
+          if (
+            get().activeTabId === tabId &&
+            tree.length > 0 &&
+            restoredFile.restoreMessage === null
+          ) {
             await scanAllFileComments();
           }
         } catch (error) {
