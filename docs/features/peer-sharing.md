@@ -184,6 +184,15 @@ When the host edits shared files locally, peers don't see changes automatically.
 - **"Push update" button** — appears in the header toolbar whenever there are active (non-expired) shares. Clicking it re-encrypts the current file/folder content and uploads it to the Worker, replacing the old blob. The same link keeps working; peers click "Get latest" to fetch the updated content.
 - Peers viewing the shared document see a **"Get latest" button** in their header. Clicking it fetches the latest content from the Worker. The peer's currently viewed file is preserved — if the file still exists in the updated payload, the peer stays on it; otherwise, the view falls back to the first file.
 
+Obsolete note:
+
+- The always-visible peer-side **"Get latest" button** described above is the older manual-refresh model and should be treated as obsolete.
+- Canonical behavior now uses **safe auto-update**:
+  - when a peer has no local comment work in progress, a host `document:updated` event reloads the latest shared content automatically
+  - when a peer has local comment work in progress, the app marks the view stale, shows a blocking refresh notice, and does not auto-refresh
+  - refreshing from that stale state discards unsent peer comments tied to the older snapshot before the peer continues reviewing
+- Reconnect uses the same safe auto-update rule. It checks whether the shared content is actually newer before deciding whether to auto-refresh or block on a manual refresh.
+
 ### 7.5 Manage Shared Documents
 
 The host has a "Shared" panel showing all active shares:
@@ -223,7 +232,7 @@ The host has a "Shared" panel showing all active shares:
 4. Host clicks "Merge" — app inserts CriticMarkup into the local files.
 5. Host tells LLM CLI: "Address the comments in this file."
 6. LLM reads CriticMarkup, makes fixes, removes the markup.
-7. Host clicks "Push update" in the header to push revised content to Worker. Peers click "Get latest" to see the updates.
+7. Host clicks "Push update" in the header to push revised content to Worker. Obsolete flow: peers click "Get latest" to see the updates. Canonical flow: peers auto-refresh when it is safe, otherwise the app blocks on a refresh notice until they load the latest snapshot.
 
 ---
 

@@ -7,6 +7,8 @@ import type {
 import type { PeerComment } from "../../types/share";
 import { useAppStore } from "../../store";
 import { WORKER_URL } from "../../config";
+import { ShareStorage } from "../sharing";
+import { selectHasPeerLocalCommentWork } from "../peer-review/selectors";
 
 export interface RelayConnection {
   subscribe(
@@ -590,6 +592,31 @@ function findHostSecret(docId: string): string | undefined {
   return undefined;
 }
 
+function createShareStorage(): ShareStorage | null {
+  if (!WORKER_URL) {
+    return null;
+  }
+  return new ShareStorage(WORKER_URL);
+}
+
+function isRemoteContentNewer(
+  loadedAt: string | null,
+  remoteUpdatedAt: string | null,
+): boolean {
+  if (!remoteUpdatedAt) {
+    return false;
+  }
+  if (!loadedAt) {
+    return true;
+  }
+  const loadedTime = Date.parse(loadedAt);
+  const remoteTime = Date.parse(remoteUpdatedAt);
+  if (Number.isNaN(loadedTime) || Number.isNaN(remoteTime)) {
+    return true;
+  }
+  return remoteTime > loadedTime;
+}
+
 async function decryptAndAddPendingComment(
   docId: string,
   cmtId: string,
@@ -625,6 +652,34 @@ async function decryptAndReplaceSnapshot(
     }
   }
   useAppStore.getState().replaceCommentsSnapshot(docId, comments);
+}
+
+async function refreshPeerContent(input?: { discardUnsubmitted?: boolean }) {
+  const state = useAppStore.getState();
+  try {
+    await state.loadSharedContent(input);
+    useAppStore.getState().dismissDocumentUpdate();
+  } catch (error) {
+    useAppStore.getState().setDocumentUpdateAvailable(true);
+    console.warn("[relay] peer content refresh failed:", error);
+  }
+}
+
+export async function applyPeerDocumentUpdate(
+  updatedAt: string | null,
+): Promise<void> {
+  const state = useAppStore.getState();
+  if (!state.isPeerMode || state.documentUpdateAvailable) {
+    return;
+  }
+  if (!isRemoteContentNewer(state.peerLoadedUpdatedAt, updatedAt)) {
+    return;
+  }
+  if (selectHasPeerLocalCommentWork(state)) {
+    state.setDocumentUpdateAvailable(true);
+    return;
+  }
+  await refreshPeerContent();
 }
 
 function handleIncomingMessage(docId: string, event: RelayEvent): void {
@@ -663,17 +718,29 @@ function handleIncomingMessage(docId: string, event: RelayEvent): void {
 
   if (event.type === "document:updated") {
     if (state.isPeerMode) {
-      state.setDocumentUpdateAvailable(true);
+      void applyPeerDocumentUpdate(event.updatedAt);
     }
   }
 }
 
-function performReconnectCatchUp(): void {
+export async function performReconnectCatchUp(): Promise<void> {
   const state = useAppStore.getState();
-  if (state.isPeerMode) {
-    state.loadSharedContent().catch((error: unknown) => {
-      console.warn("[relay] peer content catch-up failed:", error);
-    });
+  if (!state.isPeerMode || state.documentUpdateAvailable) {
+    return;
+  }
+  const docId = state.peerActiveDocId;
+  if (!docId) {
+    return;
+  }
+  const storage = createShareStorage();
+  if (!storage) {
+    return;
+  }
+  try {
+    const updatedAt = await storage.fetchLastModified(docId);
+    await applyPeerDocumentUpdate(updatedAt);
+  } catch (error) {
+    console.warn("[relay] peer content catch-up failed:", error);
   }
 }
 
@@ -682,7 +749,7 @@ function handleStatusChange(
 ): void {
   useAppStore.getState().setRelayStatus(status);
   if (status === "connected") {
-    performReconnectCatchUp();
+    void performReconnectCatchUp();
   }
 }
 

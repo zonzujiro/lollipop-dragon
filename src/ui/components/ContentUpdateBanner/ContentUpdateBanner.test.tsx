@@ -15,7 +15,22 @@ describe("ContentUpdateBanner - visibility", () => {
     useAppStore.setState({ documentUpdateAvailable: true });
     render(<ContentUpdateBanner />);
     expect(
-      screen.getByText("The shared document has been updated."),
+      screen.getByText(
+        "The shared document has been updated. Refresh to continue reviewing.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("warns about unsent comments when local peer comment work exists", () => {
+    useAppStore.setState({
+      documentUpdateAvailable: true,
+      peerDraftCommentOpen: true,
+    });
+    render(<ContentUpdateBanner />);
+    expect(
+      screen.getByText(
+        "The shared document changed. Refresh to continue reviewing. Unsent comments will be discarded.",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -32,7 +47,9 @@ describe("ContentUpdateBanner - Refresh button", () => {
     useAppStore.setState({ documentUpdateAvailable: true, loadSharedContent });
     render(<ContentUpdateBanner />);
     await userEvent.click(screen.getByRole("button", { name: "Refresh" }));
-    expect(loadSharedContent).toHaveBeenCalledTimes(1);
+    expect(loadSharedContent).toHaveBeenCalledWith({
+      discardUnsubmitted: true,
+    });
   });
 
   it("calls dismissDocumentUpdate after loadSharedContent resolves", async () => {
@@ -67,17 +84,11 @@ describe("ContentUpdateBanner - Refresh button", () => {
     });
     expect(dismissDocumentUpdate).not.toHaveBeenCalled();
   });
-});
-
-describe("ContentUpdateBanner - Dismiss button", () => {
-  it("calls dismissDocumentUpdate when Dismiss is clicked", async () => {
-    const dismissDocumentUpdate = vi.fn();
-    useAppStore.setState({
-      documentUpdateAvailable: true,
-      dismissDocumentUpdate,
-    });
+  it("does not render a dismiss button", () => {
+    useAppStore.setState({ documentUpdateAvailable: true });
     render(<ContentUpdateBanner />);
-    await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
-    expect(dismissDocumentUpdate).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByRole("button", { name: "Dismiss" }),
+    ).not.toBeInTheDocument();
   });
 });

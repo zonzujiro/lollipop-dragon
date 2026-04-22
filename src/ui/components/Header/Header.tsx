@@ -3,6 +3,7 @@ import { buildCommentThreadGroups } from "../../../markup";
 import { useAppStore } from "../../../store";
 import { useActiveTab } from "../../../store/selectors";
 import { selectUnsubmittedPeerComments } from "../../../modules/peer-review";
+import { selectDocumentUpdateAvailable } from "../../../modules/relay";
 import { SunIcon, MoonIcon } from "../Icons";
 import { HistoryDropdown } from "../HistoryDropdown";
 import { TableOfContents } from "../TableOfContents";
@@ -159,8 +160,8 @@ export function Header({
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const toggleCommentPanel = useAppStore((s) => s.toggleCommentPanel);
   const toggleSharedPanel = useAppStore((s) => s.toggleSharedPanel);
-  const loadSharedContent = useAppStore((s) => s.loadSharedContent);
   const syncPeerComments = useAppStore((s) => s.syncPeerComments);
+  const documentUpdateAvailable = useAppStore(selectDocumentUpdateAvailable);
 
   const myPeerComments = useAppStore((s) => s.myPeerComments);
   const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
@@ -325,20 +326,17 @@ export function Header({
 
           {peerMode && (
             <>
-              <button
-                onClick={loadSharedContent}
-                aria-label="Get latest content"
-                title="Fetch latest content from the host"
-                className="app-header__btn app-header__btn--text"
-              >
-                Get latest
-              </button>
               {unsubmittedPeerCount > 0 && (
                 <button
                   onClick={syncPeerComments}
                   aria-label="Submit comments"
-                  title="Send your comments to the host"
+                  title={
+                    documentUpdateAvailable
+                      ? "Refresh to the latest content before submitting comments"
+                      : "Send your comments to the host"
+                  }
                   className="app-header__btn app-header__btn--text"
+                  disabled={documentUpdateAvailable}
                 >
                   Submit comments ({unsubmittedPeerCount})
                 </button>
