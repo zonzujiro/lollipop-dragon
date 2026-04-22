@@ -24,7 +24,8 @@ Host-authored local comments remain local-only. They are merged directly into th
 - As a host reconnecting after a disconnect, I want the current unresolved comment set restored from the backend without merge-by-ID heuristics.
 - As a peer reopening a shared document, I want the document content to reload cleanly and I want previously submitted comments to avoid duplicate submission.
 - As a peer reconnecting with unsent comments on multiple shared files, I want all unsent comments retried instead of only the currently open file.
-- As a peer viewing a shared document, I want to know when the host pushed updated content so I can refresh deliberately.
+- As a peer viewing a shared document with no local comment work in progress, I want newer shared content to load automatically so I stay on the latest version.
+- As a peer with local unsent comment work, I want automatic refresh to stop so I do not keep reviewing against content that just changed.
 - As a host adding my own local comments, I want them to stay private and local because they are already part of my working copy.
 
 ## 3. Scope
@@ -37,7 +38,7 @@ Host-authored local comments remain local-only. They are merged directly into th
 - `comments:snapshot` on host subscribe/reconnect
 - host/peer role distinction on subscribe
 - `ConnectionStatus` UI for relay state
-- `ContentUpdateBanner` for peer-side document refresh notification
+- `ContentUpdateBanner` for peer-side stale-content notification when auto-refresh is blocked
 - encrypted share content in KV
 - encrypted comment payloads over the relay
 
@@ -171,8 +172,16 @@ Peer comment payloads are encrypted before they are sent in `comment:add`. The D
 
 1. Host pushes new encrypted share content to KV.
 2. Host sends encrypted `document:updated`.
-3. Peer shows `ContentUpdateBanner`.
-4. Peer refreshes share content from KV when the user chooses to refresh.
+3. If the peer has no local unsent comment work, the app refreshes shared content automatically.
+4. If the peer has local unsent comment work, the app marks the view stale and shows `ContentUpdateBanner`.
+5. While stale, the peer cannot continue submitting comments against the older snapshot.
+6. Refreshing from the banner reloads share content from KV and discards unsent peer comments that were tied to the older snapshot.
+
+Obsolete note:
+
+- The older banner-only manual-refresh model is obsolete.
+- The older always-visible peer-side `Get latest` button is also obsolete.
+- The canonical behavior is now safe auto-refresh: auto-refresh when there is no local peer comment work, otherwise block on refresh.
 
 ## 8. Acceptance Criteria
 
@@ -180,7 +189,7 @@ Peer comment payloads are encrypted before they are sent in `comment:add`. The D
 2. A reconnecting host receives a full unresolved snapshot from the Durable Object.
 3. A resolved or dismissed peer comment no longer appears in later host snapshots for that share.
 4. A peer comment is marked submitted only after `comment:add:ack`.
-5. Peer-side content refresh notification works without changing the encrypted share-content model.
+5. Peer-side content updates use safe auto-refresh without changing the encrypted share-content model.
 6. Host-only resolve authority is enforced by `hostSecret` on subscribe.
 7. Reconnect resend includes unsent peer comments across all shared files, not only the currently open peer file.
 8. Host-authored local comments are never inserted into Durable Object comment storage.

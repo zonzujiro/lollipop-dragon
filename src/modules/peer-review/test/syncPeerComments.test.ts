@@ -122,4 +122,20 @@ describe("peer-review.syncPeerComments", () => {
 
     expect(useAppStore.getState().submittedPeerCommentIds).toEqual(["c-1"]);
   });
+
+  it("does not submit comments while the peer view is stale", async () => {
+    const firstComment = makePeerComment({ id: "c-1" });
+    setTestState(
+      {},
+      {
+        documentUpdateAvailable: true,
+        myPeerComments: [firstComment],
+        submittedPeerCommentIds: [],
+      },
+    );
+
+    await useAppStore.getState().syncPeerComments();
+
+    expect(mockRelayCommentAdd).not.toHaveBeenCalled();
+  });
 });

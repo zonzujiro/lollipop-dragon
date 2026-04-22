@@ -51,4 +51,41 @@ describe("Header — Save file button", () => {
     await user.click(screen.getByRole("button", { name: /Save file/ }));
     expect(mockDownloadFile).toHaveBeenCalledOnce();
   });
+
+  it("does not render a standalone Get latest button in peer mode", () => {
+    setTestState(
+      {},
+      { isPeerMode: true, peerFileName: "readme.md", peerRawContent: "# Hi" },
+    );
+    render(<Header peerMode />);
+    expect(
+      screen.queryByRole("button", { name: /Get latest/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("disables Submit comments while the peer view is stale", () => {
+    setTestState(
+      {},
+      {
+        isPeerMode: true,
+        peerFileName: "readme.md",
+        peerRawContent: "# Hi",
+        myPeerComments: [
+          {
+            id: "c-1",
+            peerName: "Alice",
+            path: "readme.md",
+            blockRef: { blockIndex: 0, contentPreview: "Hi" },
+            commentType: "note",
+            text: "Comment",
+            createdAt: new Date().toISOString(),
+          },
+        ],
+        submittedPeerCommentIds: [],
+        documentUpdateAvailable: true,
+      },
+    );
+    render(<Header peerMode />);
+    expect(screen.getByRole("button", { name: /Submit comments/i })).toBeDisabled();
+  });
 });

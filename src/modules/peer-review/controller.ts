@@ -4,6 +4,7 @@ import {
   relayCommentAdd,
   startRelayForDoc,
 } from "../relay";
+import type { RelayState } from "../relay";
 import { ShareStorage } from "../sharing";
 import { WORKER_URL } from "../../config";
 import { parseShareHash } from "../../utils/shareUrl";
@@ -22,6 +23,7 @@ function getPeerReviewStorage(): ShareStorage | null {
 export async function loadPeerSharedContent<StoreState extends PeerReviewState>(
   get: () => StoreState,
   set: SetState<StoreState>,
+  options?: { discardUnsubmitted?: boolean },
 ): Promise<void> {
   const parsed = parseShareHash();
   if (!parsed) {
@@ -31,11 +33,15 @@ export async function loadPeerSharedContent<StoreState extends PeerReviewState>(
   if (!storage) {
     return;
   }
+  const hadLoadedContent = get().sharedContent !== null;
   const key = await base64urlToKey(parsed.keyB64);
   const docId = await docIdFromKey(key);
 
   try {
     const payload = await storage.fetchContent(docId, key);
+    const loadedUpdatedAt =
+      (await storage.fetchLastModified(docId).catch(() => null)) ??
+      payload.created_at;
     const currentPath = get().peerActiveFilePath;
     const paths = Object.keys(payload.tree);
     const activePath =
@@ -51,12 +57,28 @@ export async function loadPeerSharedContent<StoreState extends PeerReviewState>(
       peerFileName: activePath,
       peerActiveFilePath: activePath,
       peerActiveDocId: docId,
+      peerLoadedUpdatedAt: loadedUpdatedAt,
+      peerDraftCommentOpen: false,
+      myPeerComments: options?.discardUnsubmitted
+        ? state.myPeerComments.filter((comment) =>
+            state.submittedPeerCommentIds.includes(comment.id),
+          )
+        : state.myPeerComments,
     }));
 
     startRelayForDoc(docId);
   } catch (error) {
-    set({ isPeerMode: true, sharedContent: null });
+    if (!hadLoadedContent) {
+      set({
+        isPeerMode: true,
+        sharedContent: null,
+        peerLoadedUpdatedAt: null,
+      });
+    } else {
+      set({ isPeerMode: true });
+    }
     console.error("[share] Failed to load shared content:", error);
+    throw error;
   }
 }
 
@@ -64,8 +86,14 @@ export async function syncUnsubmittedPeerComments<
   StoreState extends Pick<
     PeerReviewState,
     "myPeerComments" | "submittedPeerCommentIds"
-  >,
->(get: () => StoreState): Promise<void> {
+  > &
+    Pick<RelayState, "documentUpdateAvailable">,
+>(
+  get: () => StoreState,
+): Promise<void> {
+  if (get().documentUpdateAvailable) {
+    return;
+  }
   const parsed = parseShareHash();
   if (!parsed) {
     return;

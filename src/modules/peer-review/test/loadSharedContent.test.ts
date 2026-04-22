@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockFetchContent = vi.fn();
+const mockFetchLastModified = vi.fn();
 
 vi.mock("../../../modules/sharing", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../../modules/sharing")>();
@@ -8,6 +9,7 @@ vi.mock("../../../modules/sharing", async (importOriginal) => {
     ...actual,
     ShareStorage: vi.fn().mockImplementation(() => ({
       fetchContent: mockFetchContent,
+      fetchLastModified: mockFetchLastModified,
     })),
   };
 });
@@ -57,7 +59,9 @@ describe("peer-review.loadSharedContent", () => {
   beforeEach(() => {
     resetTestStore();
     mockFetchContent.mockClear();
+    mockFetchLastModified.mockClear();
     window.location.hash = "#s=test-key-b64&n=test";
+    mockFetchLastModified.mockResolvedValue("2026-04-22T10:00:00.000Z");
   });
 
   afterEach(() => {
@@ -90,6 +94,7 @@ describe("peer-review.loadSharedContent", () => {
     expect(state.peerActiveFilePath).toBe("notes.md");
     expect(state.peerFileName).toBe("notes.md");
     expect(state.peerRawContent).toBe("# Updated Notes");
+    expect(state.peerLoadedUpdatedAt).toBe("2026-04-22T10:00:00.000Z");
   });
 
   it("falls back to first file when current file was removed from payload", async () => {
@@ -143,5 +148,45 @@ describe("peer-review.loadSharedContent", () => {
     const state = useAppStore.getState();
     expect(state.peerActiveFilePath).toBe("readme.md");
     expect(state.peerRawContent).toBe("# Hello");
+  });
+
+  it("discards unsubmitted comments when requested during refresh", async () => {
+    const submittedComment = {
+      id: "submitted-1",
+      peerName: "Alice",
+      path: "notes.md",
+      blockRef: { blockIndex: 0, contentPreview: "" },
+      commentType: "note" as const,
+      text: "submitted",
+      createdAt: new Date().toISOString(),
+    };
+    const localComment = {
+      ...submittedComment,
+      id: "local-1",
+      text: "unsent",
+    };
+    setTestState(
+      {},
+      {
+        isPeerMode: true,
+        peerDraftCommentOpen: true,
+        myPeerComments: [submittedComment, localComment],
+        submittedPeerCommentIds: ["submitted-1"],
+      },
+    );
+
+    mockFetchContent.mockResolvedValue({
+      version: "2.0",
+      created_at: new Date().toISOString(),
+      tree: {
+        "notes.md": "# Updated Notes",
+      },
+    });
+
+    await useAppStore.getState().loadSharedContent({ discardUnsubmitted: true });
+
+    const state = useAppStore.getState();
+    expect(state.myPeerComments).toEqual([submittedComment]);
+    expect(state.peerDraftCommentOpen).toBe(false);
   });
 });

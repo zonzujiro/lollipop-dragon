@@ -58,6 +58,20 @@ export class ShareStorage {
     return deserializePayload(decrypted);
   }
 
+  async fetchLastModified(docId: string): Promise<string | null> {
+    const response = await fetch(`${this.workerUrl}/share/${docId}`, {
+      method: "HEAD",
+    });
+    if (!response.ok) {
+      throw new Error(
+        response.status === 404
+          ? "Share not found or expired"
+          : `Fetch failed: ${response.status}`,
+      );
+    }
+    return response.headers.get("Last-Modified");
+  }
+
   async updateContent(
     docId: string,
     hostSecret: string,

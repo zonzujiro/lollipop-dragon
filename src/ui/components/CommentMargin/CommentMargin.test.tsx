@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { CommentMargin } from "./index";
+import { useAppStore } from "../../../store";
 import { setTestState, resetTestStore } from "../../../testing/testHelpers";
 
 beforeEach(() => {
@@ -64,6 +65,20 @@ describe('CommentMargin — add button', () => {
     await user.click(screen.getByRole('button', { name: 'Add comment' }))
     expect(screen.queryByRole('button', { name: 'Add comment' })).not.toBeInTheDocument()
   })
+
+  it('hides the add button in peer mode when content refresh is required', () => {
+    useAppStore.setState({ documentUpdateAvailable: true })
+    render(
+      <CommentMargin
+        containerRef={fakeContainerRef}
+        hoveredBlock={{ index: 0, top: 0 }}
+        onAddComment={vi.fn()}
+        peerMode
+        onPostPeerComment={vi.fn()}
+      />,
+    )
+    expect(screen.queryByRole('button', { name: 'Add comment' })).not.toBeInTheDocument()
+  })
 })
 
 describe('CommentMargin — AddCommentForm', () => {
@@ -120,5 +135,34 @@ describe('CommentMargin — AddCommentForm', () => {
     await user.type(screen.getByPlaceholderText('Add a comment…'), 'done')
     await user.click(screen.getByRole('button', { name: 'Save' }))
     expect(screen.queryByPlaceholderText('Add a comment…')).not.toBeInTheDocument()
+  })
+
+  it('disables saving a peer draft after the document becomes stale', async () => {
+    const user = userEvent.setup()
+    useAppStore.setState({ isPeerMode: true })
+    const { rerender } = render(
+      <CommentMargin
+        containerRef={fakeContainerRef}
+        hoveredBlock={{ index: 2, top: 0 }}
+        onAddComment={vi.fn()}
+        peerMode
+        onPostPeerComment={vi.fn()}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Add comment' }))
+    await user.type(screen.getByPlaceholderText('Add a comment…'), 'draft')
+
+    useAppStore.setState({ documentUpdateAvailable: true })
+    rerender(
+      <CommentMargin
+        containerRef={fakeContainerRef}
+        hoveredBlock={{ index: 2, top: 0 }}
+        onAddComment={vi.fn()}
+        peerMode
+        onPostPeerComment={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
   })
 })

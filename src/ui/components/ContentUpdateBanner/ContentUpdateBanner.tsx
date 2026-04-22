@@ -1,48 +1,11 @@
 import { selectDocumentUpdateAvailable } from "../../../modules/relay";
+import { selectHasPeerLocalCommentWork } from "../../../modules/peer-review";
 import { useAppStore } from "../../../store";
 import "./ContentUpdateBanner.css";
 
-const closeIcon = (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 14 14"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-  >
-    <path d="M1 1l12 12M13 1L1 13" />
-  </svg>
-);
-
-function BannerActions(props: {
-  onRefresh: () => void;
-  onDismiss: () => void;
-}) {
-  return (
-    <>
-      <button
-        className="content-update-banner__refresh"
-        type="button"
-        onClick={props.onRefresh}
-      >
-        Refresh
-      </button>
-      <button
-        className="content-update-banner__dismiss"
-        type="button"
-        onClick={props.onDismiss}
-        aria-label="Dismiss"
-      >
-        {closeIcon}
-      </button>
-    </>
-  );
-}
-
 export function ContentUpdateBanner() {
   const documentUpdateAvailable = useAppStore(selectDocumentUpdateAvailable);
+  const hasPeerLocalCommentWork = useAppStore(selectHasPeerLocalCommentWork);
   const loadSharedContent = useAppStore((state) => state.loadSharedContent);
   const dismissDocumentUpdate = useAppStore(
     (state) => state.dismissDocumentUpdate,
@@ -53,7 +16,7 @@ export function ContentUpdateBanner() {
   }
 
   function handleRefresh(): void {
-    loadSharedContent()
+    loadSharedContent({ discardUnsubmitted: true })
       .then(() => {
         dismissDocumentUpdate();
       })
@@ -64,11 +27,18 @@ export function ContentUpdateBanner() {
 
   return (
     <div className="content-update-banner">
-      <span>The shared document has been updated.</span>
-      <BannerActions
-        onRefresh={handleRefresh}
-        onDismiss={dismissDocumentUpdate}
-      />
+      <span>
+        {hasPeerLocalCommentWork
+          ? "The shared document changed. Refresh to continue reviewing. Unsent comments will be discarded."
+          : "The shared document has been updated. Refresh to continue reviewing."}
+      </span>
+      <button
+        className="content-update-banner__refresh"
+        type="button"
+        onClick={handleRefresh}
+      >
+        Refresh
+      </button>
     </div>
   );
 }

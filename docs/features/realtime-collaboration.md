@@ -172,6 +172,14 @@ When WebRTC is active, peer comments appear in the host's margin within 1 second
 
 When the host clicks "Update" to push revised content to the Worker, connected peers receive a notification: "Document has been updated. Reload to see changes." Clicking reloads the content from the Worker. Previously resolved comments (removed by the LLM) disappear from the peer's view.
 
+Obsolete note:
+
+- The strictly manual reload-on-notification flow above is obsolete.
+- Canonical behavior now uses safe auto-update:
+  - auto-refresh immediately when the peer has no local comment work in progress
+  - block on refresh when the peer has local unsent comments or an open draft comment form
+  - discard unsent peer comments that belonged to the older snapshot when the peer refreshes from that stale state
+
 ### 6.5 Connection Status Indicator
 
 A small status indicator in the UI shows the current state:

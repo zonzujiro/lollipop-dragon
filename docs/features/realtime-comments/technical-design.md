@@ -130,6 +130,7 @@ Existing `TabState` fields remain the source of host review state:
 - `relayStatus`
 - `documentUpdateAvailable`
 - peer-mode share content fields
+- `peerDraftCommentOpen`
 - `myPeerComments`
 - `submittedPeerCommentIds`
 
@@ -169,8 +170,16 @@ The WebSocket instance and timers stay in `src/services/relay.ts`, not in the Zu
 
 1. Host updates encrypted share content through `updateShare()`.
 2. Host sends encrypted `document:updated`.
-3. Peer receives the message and sets `documentUpdateAvailable`.
-4. `ContentUpdateBanner` triggers `loadSharedContent()` when the user refreshes.
+3. If the peer has no local comment work in progress, the client refreshes shared content automatically.
+4. If the peer has local unsent comments or an open draft comment form, the client sets `documentUpdateAvailable` instead of reloading immediately.
+5. While `documentUpdateAvailable` is true, the peer cannot submit comments against the older snapshot.
+6. `ContentUpdateBanner` is the blocking refresh path for that stale state and calls `loadSharedContent({ discardUnsubmitted: true })`.
+7. On reconnect, the client first checks the share's latest `Last-Modified` value via `HEAD /share/:docId` and then applies the same safe auto-refresh rule instead of unconditionally reloading content.
+
+Obsolete note:
+
+- The older banner-only manual-refresh flow is obsolete.
+- The older always-visible peer-side `Get latest` button is obsolete.
 
 ## 8. File Responsibilities
 
