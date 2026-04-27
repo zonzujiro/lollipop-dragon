@@ -237,6 +237,7 @@ export function Header({
           {peerMode && (
             <span className="app-header__peer-badge">Reviewing</span>
           )}
+          <ConnectionStatus />
         </div>
 
         <div className="app-header__actions">
@@ -309,7 +310,6 @@ export function Header({
               )}
 
               <div className="app-header__divider" aria-hidden="true" />
-              <ConnectionStatus />
             </>
           )}
 
@@ -326,7 +326,6 @@ export function Header({
 
           {peerMode && (
             <>
-              <ConnectionStatus />
               <button
                 onClick={loadSharedContent}
                 aria-label="Get latest content"
