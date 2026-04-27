@@ -20,7 +20,6 @@ function selectActiveTabHasShares(state: {
 }
 
 const statusLabels: Record<string, string> = {
-  connected: "Connected",
   connecting: "Connecting...",
   disconnected: "Offline",
 };
@@ -31,6 +30,10 @@ export function ConnectionStatus() {
   const activeTabHasShares = useAppStore(selectActiveTabHasShares);
 
   if (!isPeerMode && !activeTabHasShares) {
+    return null;
+  }
+
+  if (relayStatus === "connected") {
     return null;
   }
 
