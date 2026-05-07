@@ -158,7 +158,6 @@ export function Header({
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const toggleCommentPanel = useAppStore((s) => s.toggleCommentPanel);
   const toggleSharedPanel = useAppStore((s) => s.toggleSharedPanel);
-  const refreshFile = useAppStore((s) => s.refreshFile);
   const loadSharedContent = useAppStore((s) => s.loadSharedContent);
   const syncPeerComments = useAppStore((s) => s.syncPeerComments);
 
@@ -178,7 +177,6 @@ export function Header({
   const rawCommentPanelOpen = peerMode
     ? peerCommentPanelOpen
     : (tab?.commentPanelOpen ?? false);
-  const fileHandle = tab?.fileHandle ?? null;
   const shares = tab?.shares ?? [];
   const rawSharedPanelOpen = tab?.sharedPanelOpen ?? false;
   const hasActiveShares = shares.some(
@@ -354,17 +352,6 @@ export function Header({
                 Save file
               </button>
             </>
-          )}
-
-          {!peerMode && fileHandle && (
-            <button
-              onClick={refreshFile}
-              aria-label="Refresh file"
-              title="Refresh file from disk"
-              className="app-header__btn app-header__btn--text"
-            >
-              Refresh
-            </button>
           )}
 
           <button
