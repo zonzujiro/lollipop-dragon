@@ -448,6 +448,81 @@ function DemoEditor() {
   );
 }
 
+function ThreadScreenshot() {
+  return (
+    <div
+      className="bh-thread-shot"
+      aria-label="Preview of an inline question thread"
+    >
+      <div className="bh-thread-shot__chrome">
+        <div className="bh-thread-shot__dots">
+          <span className="bh-thread-shot__dot bh-thread-shot__dot--red" />
+          <span className="bh-thread-shot__dot bh-thread-shot__dot--yellow" />
+          <span className="bh-thread-shot__dot bh-thread-shot__dot--blue" />
+        </div>
+        <span className="bh-thread-shot__title">markreview / overview.md</span>
+      </div>
+
+      <div className="bh-thread-shot__workspace">
+        <aside className="bh-thread-shot__side" aria-hidden="true">
+          <span className="bh-thread-shot__side-title">comments</span>
+          <span className="bh-thread-shot__panel-item">fix</span>
+          <span className="bh-thread-shot__panel-item bh-thread-shot__panel-item--active">
+            question
+          </span>
+          <span className="bh-thread-shot__panel-item">clarify</span>
+        </aside>
+
+        <div className="bh-thread-shot__doc">
+          <div className="bh-thread-shot__doc-title">Agent handoff</div>
+          <p>
+            Keep the fallback path documented because peers can miss a relay
+            event while the browser tab is asleep.
+          </p>
+          <p className="bh-thread-shot__highlight">
+            The next load compares the shared version and asks the reviewer to
+            refresh before submitting new comments.
+          </p>
+          <p>
+            This keeps the markdown file as the shared source of truth for the
+            review.
+          </p>
+
+          <span className="bh-thread-shot__pin" aria-hidden="true" />
+
+          <div className="bh-thread-shot__thread">
+            <div className="bh-thread-shot__thread-header">
+              <span>Thread</span>
+              <span aria-hidden="true">x</span>
+            </div>
+            <div className="bh-thread-shot__message">
+              <div className="bh-thread-shot__message-meta">
+                <span className="bh-thread-shot__badge bh-thread-shot__badge--question">
+                  question
+                </span>
+                <span>Reviewer</span>
+              </div>
+              <p>Why do we keep this fallback if live updates exist?</p>
+            </div>
+            <div className="bh-thread-shot__message bh-thread-shot__message--reply">
+              <div className="bh-thread-shot__message-meta">
+                <span className="bh-thread-shot__badge bh-thread-shot__badge--answer">
+                  answer
+                </span>
+                <span>Codex</span>
+              </div>
+              <p>
+                Live updates are best-effort. The fallback protects peers after
+                missed events without creating a sidecar file.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Chef dragon — bauhaus geometric ── */
 function GeoCookingDragon() {
   return (
@@ -767,8 +842,9 @@ export function FilePicker() {
       <section className="bh-section bh-section--blue">
         <div className="bh-section__inner bh-row">
           <div className="bh-row__main">
-            <div className="bh-card">
+            <div className="bh-card bh-card--ai-showcase">
               <GeoAI />
+              <ThreadScreenshot />
             </div>
           </div>
           <ul className="bh-features bh-features--light bh-features--titled">
