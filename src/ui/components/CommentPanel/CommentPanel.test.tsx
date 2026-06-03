@@ -135,6 +135,46 @@ describe('CommentPanel — active entry', () => {
     const tab = getActiveTab(useAppStore.getState())
     expect(tab?.activeCommentId).toBeNull()
   })
+
+  it('keeps threaded replies out of the panel list and highlights the root entry', () => {
+    setTestState({
+      comments: [
+        makeCommentBase({
+          id: 'question-root',
+          type: 'question',
+          text: 'Why is this here?',
+          blockIndex: 0,
+          thread: {
+            commentId: 'mr-question-1',
+            threadId: 'mr-question-1',
+          },
+        }),
+        makeCommentBase({
+          id: 'answer-reply',
+          type: 'answer',
+          text: 'Because it explains reconnect fallback.',
+          blockIndex: 0,
+          thread: {
+            commentId: 'mr-answer-1',
+            threadId: 'mr-question-1',
+            replyTo: 'mr-question-1',
+            authorLabel: 'Codex',
+          },
+        }),
+      ],
+      activeCommentId: 'answer-reply',
+    })
+
+    const { container } = render(<CommentPanel />)
+
+    expect(screen.getByText('Why is this here?')).toBeInTheDocument()
+    expect(
+      screen.queryByText('Because it explains reconnect fallback.'),
+    ).not.toBeInTheDocument()
+
+    const active = container.querySelector('.comment-panel__entry--active')
+    expect(active?.textContent).toContain('Why is this here?')
+  })
 })
 
 describe('CommentPanel — close', () => {
@@ -145,6 +185,56 @@ describe('CommentPanel — close', () => {
     render(<CommentPanel />)
     await user.click(screen.getByRole('button', { name: 'Close comments panel' }))
     expect(mockToggle).toHaveBeenCalledOnce()
+  })
+})
+
+describe('CommentPanel — agent prompt', () => {
+  it('shows a copy prompt button when question threads exist', () => {
+    setTestState({
+      comments: [
+        makeCommentBase({
+          id: 'question-root',
+          type: 'question',
+          text: 'Why is this here?',
+          thread: {
+            commentId: 'mr-question-1',
+            threadId: 'mr-question-1',
+          },
+        }),
+      ],
+    })
+
+    render(<CommentPanel />)
+    expect(
+      screen.getByRole('button', { name: 'Copy agent prompt' }),
+    ).toBeInTheDocument()
+  })
+
+  it('copies the agent prompt to the clipboard', async () => {
+    const user = userEvent.setup()
+    const writeText = vi
+      .spyOn(navigator.clipboard, 'writeText')
+      .mockResolvedValue(undefined)
+
+    setTestState({
+      comments: [
+        makeCommentBase({
+          id: 'question-root',
+          type: 'question',
+          text: 'Why is this here?',
+          thread: {
+            commentId: 'mr-question-1',
+            threadId: 'mr-question-1',
+          },
+        }),
+      ],
+    })
+
+    render(<CommentPanel />)
+    await user.click(screen.getByRole('button', { name: 'Copy agent prompt' }))
+
+    expect(writeText).toHaveBeenCalledOnce()
+    expect(useAppStore.getState().toast).toBe('Agent prompt copied')
   })
 })
 

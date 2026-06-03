@@ -298,7 +298,7 @@ describe('parseCriticMarkup — cleanStart / cleanEnd', () => {
 // ─── Step 2.3 — type prefix parsing ──────────────────────────────────────────
 
 describe('parseCommentType — prefix recognition', () => {
-  it.each(['fix', 'rewrite', 'expand', 'clarify', 'question', 'remove'])(
+  it.each(['fix', 'rewrite', 'expand', 'clarify', 'question', 'answer', 'remove'])(
     'recognizes "%s:" prefix',
     (prefix) => {
       const { type, text } = parseCommentType(`${prefix}: some text`)
@@ -384,5 +384,33 @@ describe('parseCriticMarkup — type field via prefix', () => {
   it('raw field is preserved unchanged (includes the prefix)', () => {
     const [c] = extractComments('{>>fix: something<<}')
     expect(c.raw).toBe('{>>fix: something<<}')
+  })
+
+  it('parses hidden markreview metadata from a question comment', () => {
+    const [comment] = extractComments(
+      '{>>question: Why is this here? [markreview id="mr-question-1" thread="mr-question-1"]<<}',
+    )
+
+    expect(comment.type).toBe('question')
+    expect(comment.text).toBe('Why is this here?')
+    expect(comment.thread).toEqual({
+      commentId: 'mr-question-1',
+      threadId: 'mr-question-1',
+    })
+  })
+
+  it('parses answer metadata and author label', () => {
+    const [comment] = extractComments(
+      '{>>answer: Because it documents reconnect fallback. [markreview id="mr-answer-1" thread="mr-question-1" replyTo="mr-question-1" author="Codex"]<<}',
+    )
+
+    expect(comment.type).toBe('answer')
+    expect(comment.text).toBe('Because it documents reconnect fallback.')
+    expect(comment.thread).toEqual({
+      commentId: 'mr-answer-1',
+      threadId: 'mr-question-1',
+      replyTo: 'mr-question-1',
+      authorLabel: 'Codex',
+    })
   })
 })

@@ -1,4 +1,6 @@
+export * from "./agentPrompt";
 export * from "./blockIndex";
+export * from "./commentProtocol";
 export * from "./criticmarkup";
 export * from "./deleteComment";
 export * from "./editComment";

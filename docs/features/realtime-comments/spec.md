@@ -46,6 +46,7 @@ Host-authored local comments remain local-only. They are merged directly into th
 - `/comments/*` REST API
 - KV-based comment polling or comment catch-up
 - peer-to-peer WebRTC transport
+- syncing host-local `question:` / `answer:` threads through the relay
 - remote rendering of other peers' comments in peer mode
 - real-time edit/delete of already-submitted peer comments
 - presence, cursors, typing indicators

@@ -1,11 +1,15 @@
 import "./CommentMargin.css";
 import { useEffect, useRef, useMemo, useState } from "react";
+import {
+  buildCommentThreadGroups,
+  type CommentThreadGroup,
+} from "../../../markup";
 import { useAppStore } from "../../../store";
 import { useActiveTab } from "../../../store/selectors";
-import { CommentCard } from "../CommentCard";
+import { CommentThreadCard } from "../CommentThreadCard";
 import { peerColor, initials } from "../../../utils/peerDisplay";
 import { COMMENT_TYPE_COLOR } from "../../../types/criticmarkup";
-import type { Comment, CommentType } from "../../../types/criticmarkup";
+import type { CommentType } from "../../../types/criticmarkup";
 import type { PeerComment } from "../../../types/share";
 
 const COMMENT_TYPES: CommentType[] = [
@@ -24,7 +28,11 @@ interface AddCommentFormProps {
   onCancel: () => void;
 }
 
-function AddCommentForm({ top, onSubmit, onCancel }: AddCommentFormProps) {
+function AddCommentForm({
+  top,
+  onSubmit,
+  onCancel,
+}: AddCommentFormProps) {
   const [type, setType] = useState<CommentType>("note");
   const [text, setText] = useState("");
 
@@ -86,7 +94,7 @@ function AddCommentForm({ top, onSubmit, onCancel }: AddCommentFormProps) {
 
 interface DotGroup {
   top: number;
-  comments: Comment[];
+  threads: CommentThreadGroup[];
 }
 
 interface Props {
@@ -126,16 +134,25 @@ export function CommentMargin({
   const [blockTops, setBlockTops] = useState<Map<number, number>>(new Map());
   // 'resolved' means the comments are gone from the file — no dots to show.
   // 'pending' is the same as 'all' for current (still-in-file) comments.
-  const comments =
-    commentFilter === "all" ||
-    commentFilter === "pending" ||
-    commentFilter === "resolved"
-      ? commentFilter === "resolved"
-        ? []
-        : allComments
-      : allComments.filter((c) => c.type === commentFilter);
+  const allThreadGroups = useMemo(
+    () => buildCommentThreadGroups(allComments),
+    [allComments],
+  );
+  const threadGroups = useMemo(
+    () =>
+      commentFilter === "all" ||
+      commentFilter === "pending" ||
+      commentFilter === "resolved"
+        ? commentFilter === "resolved"
+          ? []
+          : allThreadGroups
+        : allThreadGroups.filter((thread) => thread.root.type === commentFilter),
+    [allThreadGroups, commentFilter],
+  );
   const [groups, setGroups] = useState<DotGroup[]>([]);
+  const [floatingTop, setFloatingTop] = useState<number | null>(null);
   const measureRef = useRef<() => void>(() => {});
+  const activeCardRef = useRef<HTMLDivElement | null>(null);
 
   // In peer mode, show the peer's own comments as dots
   const myPeerComments = useAppStore((s) => s.myPeerComments);
@@ -198,14 +215,14 @@ export function CommentMargin({
         return;
       }
 
-      const byBlock = new Map<number, Comment[]>();
-      for (const c of comments) {
-        if (c.blockIndex === undefined) {
+      const byBlock = new Map<number, CommentThreadGroup[]>();
+      for (const thread of threadGroups) {
+        if (thread.root.blockIndex === undefined) {
           continue;
         }
-        const arr = byBlock.get(c.blockIndex) ?? [];
-        arr.push(c);
-        byBlock.set(c.blockIndex, arr);
+        const threadsForBlock = byBlock.get(thread.root.blockIndex) ?? [];
+        threadsForBlock.push(thread);
+        byBlock.set(thread.root.blockIndex, threadsForBlock);
       }
 
       const next: DotGroup[] = [];
@@ -219,7 +236,7 @@ export function CommentMargin({
         if (!group) {
           continue;
         }
-        next.push({ top: el.offsetTop, comments: group });
+        next.push({ top: el.offsetTop, threads: group });
       }
       setGroups(next);
       setBlockTops(tops);
@@ -234,7 +251,75 @@ export function CommentMargin({
     const ro = new ResizeObserver(() => measureRef.current());
     ro.observe(container);
     return () => ro.disconnect();
-  }, [comments, containerRef]);
+  }, [containerRef, threadGroups]);
+
+  const activeThreadData = useMemo(() => {
+    for (const group of groups) {
+      const activeThread =
+        group.threads.find(
+          (thread) =>
+            thread.root.id === activeId ||
+            thread.replies.some((reply) => reply.id === activeId),
+        ) ?? null;
+      if (activeThread) {
+        return { top: group.top, thread: activeThread };
+      }
+    }
+    return null;
+  }, [activeId, groups]);
+
+  useEffect(() => {
+    if (!activeThreadData) {
+      setFloatingTop(null);
+      return;
+    }
+
+    function updateFloatingTop() {
+      const viewer = containerRef.current;
+      const card = activeCardRef.current;
+      const scrollArea = viewer?.parentElement;
+      if (!viewer || !card || !(scrollArea instanceof HTMLElement)) {
+        setFloatingTop(activeThreadData.top);
+        return;
+      }
+
+      const padding = 8;
+      const preferredTop = activeThreadData.top;
+      const visibleTop = scrollArea.scrollTop + padding;
+      const visibleBottom = scrollArea.scrollTop + scrollArea.clientHeight;
+      const maxTop = Math.max(
+        visibleTop,
+        visibleBottom - card.offsetHeight - padding,
+      );
+
+      setFloatingTop(Math.min(Math.max(preferredTop, visibleTop), maxTop));
+    }
+
+    updateFloatingTop();
+
+    const viewer = containerRef.current;
+    const scrollArea = viewer?.parentElement;
+    if (!(scrollArea instanceof HTMLElement)) {
+      return;
+    }
+
+    const resizeObserver = new ResizeObserver(() => updateFloatingTop());
+    resizeObserver.observe(scrollArea);
+    if (activeCardRef.current) {
+      resizeObserver.observe(activeCardRef.current);
+    }
+
+    scrollArea.addEventListener("scroll", updateFloatingTop, {
+      passive: true,
+    });
+    window.addEventListener("resize", updateFloatingTop);
+
+    return () => {
+      resizeObserver.disconnect();
+      scrollArea.removeEventListener("scroll", updateFloatingTop);
+      window.removeEventListener("resize", updateFloatingTop);
+    };
+  }, [activeThreadData, containerRef]);
 
   return (
     <div className="comment-margin">
@@ -268,42 +353,53 @@ export function CommentMargin({
         </div>
       )}
       {addingBlock && (
-        <AddCommentForm
-          top={addingBlock.top}
-          onSubmit={(type, text) => {
-            if (peerMode && onPostPeerComment) {
-              onPostPeerComment(addingBlock.index, type, text);
-            } else {
-              onAddComment(addingBlock.index, type, text);
-            }
-            setAddingBlock(null);
-          }}
-          onCancel={() => setAddingBlock(null)}
-        />
-      )}
-      {groups.map(({ top, comments: groupComments }, i) => {
-        const activeComment =
-          groupComments.find((c) => c.id === activeId) ?? null;
+          <AddCommentForm
+            top={addingBlock.top}
+            onSubmit={(type, text) => {
+              if (peerMode && onPostPeerComment) {
+                onPostPeerComment(addingBlock.index, type, text);
+              } else {
+                onAddComment(addingBlock.index, type, text);
+              }
+              setAddingBlock(null);
+            }}
+            onCancel={() => setAddingBlock(null)}
+          />
+        )}
+      {groups.map(({ top, threads }, i) => {
+        const activeThread =
+          threads.find(
+            (thread) =>
+              thread.root.id === activeId ||
+              thread.replies.some((reply) => reply.id === activeId),
+          ) ?? null;
         // Find peer comments for the same block
-        const blockIdx = groupComments[0]?.blockIndex;
+        const blockIdx = threads[0]?.root.blockIndex;
         const peerForBlock =
           blockIdx !== undefined ? (peerDotGroups.get(blockIdx) ?? []) : [];
         return (
           <div key={i}>
             <div className="comment-margin__dots" style={{ top }}>
-              {groupComments.map((c) => (
-                <button
-                  key={c.id}
-                  className={`comment-margin__dot${activeId === c.id ? " comment-margin__dot--active" : ""}`}
-                  style={{ backgroundColor: COMMENT_TYPE_COLOR[c.type] }}
-                  aria-label={`${c.type}: ${c.text}`}
-                  title={`${c.type}: ${c.text}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveId(activeId === c.id ? null : c.id);
-                  }}
-                />
-              ))}
+              {threads.map((thread) => {
+                const isActive =
+                  thread.root.id === activeId ||
+                  thread.replies.some((reply) => reply.id === activeId);
+                return (
+                  <button
+                    key={thread.root.id}
+                    className={`comment-margin__dot${isActive ? " comment-margin__dot--active" : ""}`}
+                    style={{
+                      backgroundColor: COMMENT_TYPE_COLOR[thread.root.type],
+                    }}
+                    aria-label={`${thread.root.type}: ${thread.root.text}`}
+                    title={`${thread.root.type}: ${thread.root.text}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveId(isActive ? null : thread.root.id);
+                    }}
+                  />
+                );
+              })}
               {peerForBlock.map((pc) => (
                 <button
                   key={pc.id}
@@ -323,16 +419,15 @@ export function CommentMargin({
                 </button>
               ))}
             </div>
-            {activeComment && (
-              <CommentCard
-                comment={activeComment}
-                top={top}
+            {activeThread && (
+              <CommentThreadCard
+                thread={activeThread}
+                top={floatingTop ?? top}
+                cardRef={activeCardRef}
                 onClose={() => setActiveId(null)}
-                onEdit={(type, text) =>
-                  editCommentAction(activeComment.id, type, text)
-                }
-                onDelete={() => {
-                  deleteCommentAction(activeComment.id);
+                onEdit={(id, type, text) => editCommentAction(id, type, text)}
+                onDelete={(id) => {
+                  deleteCommentAction(id);
                   setActiveId(null);
                 }}
               />
@@ -343,7 +438,7 @@ export function CommentMargin({
       {/* Peer-only blocks (no host comments at this block) */}
       {Array.from(peerDotGroups.entries()).map(([blockIdx, peerComments]) => {
         // Skip blocks already rendered with host groups
-        if (groups.some((g) => g.comments[0]?.blockIndex === blockIdx)) {
+        if (groups.some((group) => group.threads[0]?.root.blockIndex === blockIdx)) {
           return null;
         }
         const top = blockTops.get(blockIdx);

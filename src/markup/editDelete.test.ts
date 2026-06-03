@@ -21,6 +21,36 @@ describe('replaceCommentMarkup', () => {
     const c = makeComment({ criticType: 'highlight', highlightedText: 'text' })
     expect(replaceCommentMarkup(c, 'rewrite', 'rewrite it')).toBe('{==text==}{>>rewrite: rewrite it<<}')
   })
+
+  it('preserves hidden thread metadata when editing a threaded question', () => {
+    const c = makeComment({
+      type: 'question',
+      text: 'Why?',
+      thread: {
+        commentId: 'mr-question-1',
+        threadId: 'mr-question-1',
+      },
+    })
+    expect(replaceCommentMarkup(c, 'question', 'Updated why?')).toBe(
+      '{>>question: Updated why? [markreview id="mr-question-1" thread="mr-question-1"]<<}',
+    )
+  })
+
+  it('preserves reply metadata and author label when editing an answer', () => {
+    const c = makeComment({
+      type: 'answer',
+      text: 'Because.',
+      thread: {
+        commentId: 'mr-answer-1',
+        threadId: 'mr-question-1',
+        replyTo: 'mr-question-1',
+        authorLabel: 'Codex',
+      },
+    })
+    expect(replaceCommentMarkup(c, 'answer', 'Updated answer')).toBe(
+      '{>>answer: Updated answer [markreview id="mr-answer-1" thread="mr-question-1" replyTo="mr-question-1" author="Codex"]<<}',
+    )
+  })
 })
 
 describe('applyEdit', () => {

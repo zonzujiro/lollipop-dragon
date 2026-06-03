@@ -1,5 +1,9 @@
 import "./CommentPanel.css";
 import { useEffect, useMemo, useState } from "react";
+import {
+  buildAgentReplyPrompt,
+  buildCommentThreadGroups,
+} from "../../../markup";
 import { useAppStore } from "../../../store";
 import { useActiveTab } from "../../../store/selectors";
 import { COMMENT_TYPE_COLOR } from "../../../types/criticmarkup";
@@ -12,6 +16,7 @@ const ALL_TYPES: CommentType[] = [
   "expand",
   "clarify",
   "question",
+  "answer",
   "remove",
   "note",
 ];
@@ -74,6 +79,30 @@ function filterCrossFileByType<C extends { type: CommentType }>(
     .filter((entry) => entry.comments.length > 0);
 }
 
+function getRootOnlyComments(comments: Comment[]): Comment[] {
+  return buildCommentThreadGroups(comments).map((group) => group.root);
+}
+
+function getActiveRootCommentId(
+  comments: Comment[],
+  activeCommentId: string | null,
+): string | null {
+  if (!activeCommentId) {
+    return null;
+  }
+
+  for (const group of buildCommentThreadGroups(comments)) {
+    if (
+      group.root.id === activeCommentId ||
+      group.replies.some((reply) => reply.id === activeCommentId)
+    ) {
+      return group.root.id;
+    }
+  }
+
+  return activeCommentId;
+}
+
 interface Props {
   peerMode?: boolean;
 }
@@ -81,12 +110,18 @@ interface Props {
 export function CommentPanel({ peerMode = false }: Props) {
   const tab = useActiveTab();
   const comments = tab?.comments ?? [];
+  const hostRootComments = useMemo(() => getRootOnlyComments(comments), [comments]);
   const resolvedComments = tab?.resolvedComments ?? [];
   const activeCommentId = tab?.activeCommentId ?? null;
+  const activeRootCommentId = useMemo(
+    () => getActiveRootCommentId(comments, activeCommentId),
+    [activeCommentId, comments],
+  );
   const commentFilter = tab?.commentFilter ?? "all";
   const setActiveCommentId = useAppStore((state) => state.setActiveCommentId);
   const setCommentFilter = useAppStore((state) => state.setCommentFilter);
   const toggleCommentPanel = useAppStore((state) => state.toggleCommentPanel);
+  const showToast = useAppStore((state) => state.showToast);
   const myPeerComments = useAppStore((state) => state.myPeerComments);
   const peerActiveFilePath = useAppStore((state) => state.peerActiveFilePath);
   const activeFilePath = peerMode
@@ -133,7 +168,7 @@ export function CommentPanel({ peerMode = false }: Props) {
     return activeFilePath ? (peerDisplayByPath[activeFilePath] ?? []) : [];
   }, [peerMode, isPeerMultiFile, peerDisplayByPath, activeFilePath]);
 
-  const sourceComments = peerMode ? peerDisplayComments : comments;
+  const sourceComments = peerMode ? peerDisplayComments : hostRootComments;
 
   // Build peer cross-file entries from the shared grouped map
   const peerCrossFileEntries = useMemo(() => {
@@ -154,9 +189,12 @@ export function CommentPanel({ peerMode = false }: Props) {
     if (!isFolderMode) {
       return [];
     }
-    const entries = Object.values(allFileComments).filter(
-      (entry) => entry.comments.length > 0,
-    );
+    const entries = Object.values(allFileComments)
+      .map((entry) => ({
+        ...entry,
+        comments: getRootOnlyComments(entry.comments),
+      }))
+      .filter((entry) => entry.comments.length > 0);
     entries.sort((entryA, entryB) =>
       entryA.filePath.localeCompare(entryB.filePath),
     );
@@ -176,6 +214,22 @@ export function CommentPanel({ peerMode = false }: Props) {
       0,
     );
   }, [isPeerMultiFile, myPeerComments.length, isFolderMode, crossFileComments]);
+
+  const hasQuestionThreads = useMemo(() => {
+    if (peerMode) {
+      return false;
+    }
+    if (isFolderMode) {
+      return crossFileComments.some((entry) =>
+        entry.comments.some(
+          (comment) => comment.type === "question" && !!comment.thread,
+        ),
+      );
+    }
+    return hostRootComments.some(
+      (comment) => comment.type === "question" && !!comment.thread,
+    );
+  }, [crossFileComments, hostRootComments, isFolderMode, peerMode]);
 
   const isResolved = !peerMode && commentFilter === "resolved";
 
@@ -249,17 +303,28 @@ export function CommentPanel({ peerMode = false }: Props) {
     return body.length > 72 ? body.slice(0, 72) + "…" : body;
   }
 
+  async function handleCopyAgentPrompt() {
+    try {
+      await navigator.clipboard.writeText(buildAgentReplyPrompt());
+      showToast("Agent prompt copied");
+    } catch (error) {
+      console.error("[CommentPanel] failed to copy agent prompt:", error);
+      showToast("Couldn't copy agent prompt");
+    }
+  }
+
   useEffect(() => {
-    if (!activeCommentId) {
+    const activePanelCommentId = peerMode ? activeCommentId : activeRootCommentId;
+    if (!activePanelCommentId) {
       return;
     }
     const el = document.querySelector(
-      `.comment-panel [data-comment-id="${activeCommentId}"]`,
+      `.comment-panel [data-comment-id="${activePanelCommentId}"]`,
     );
     if (el && typeof el.scrollIntoView === "function") {
       el.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
-  }, [activeCommentId]);
+  }, [activeCommentId, activeRootCommentId, peerMode]);
 
   const displayCount =
     isPeerMultiFile || isFolderMode
@@ -278,13 +343,26 @@ export function CommentPanel({ peerMode = false }: Props) {
           )}
         </span>
         {!peerMode && displayCount > 0 && (
-          <button
-            className="comment-panel__delete-all"
-            onClick={deleteAllComments}
-            title="Delete all comments from the file"
-          >
-            Delete all
-          </button>
+          <>
+            {hasQuestionThreads && (
+              <button
+                className="comment-panel__delete-all"
+                onClick={() => {
+                  void handleCopyAgentPrompt();
+                }}
+                title="Copy instructions for answering threaded questions"
+              >
+                Copy agent prompt
+              </button>
+            )}
+            <button
+              className="comment-panel__delete-all"
+              onClick={deleteAllComments}
+              title="Delete all comments from the file"
+            >
+              Delete all
+            </button>
+          </>
         )}
         <button
           className="comment-panel__close"
@@ -379,7 +457,7 @@ export function CommentPanel({ peerMode = false }: Props) {
           <CrossFileList
             entries={filteredCrossFile}
             activeFilePath={activeFilePath}
-            activeCommentId={activeCommentId}
+            activeCommentId={activeRootCommentId}
             onEntryClick={handleEntryClick}
             onCrossFileClick={handleCrossFileClick}
             onEdit={editComment}
@@ -390,7 +468,7 @@ export function CommentPanel({ peerMode = false }: Props) {
             visible={visible}
             isResolved={isResolved}
             peerMode={peerMode}
-            activeCommentId={activeCommentId}
+            activeCommentId={peerMode ? activeCommentId : activeRootCommentId}
             sourceComments={sourceComments}
             onEntryClick={handleEntryClick}
             entryLabel={entryLabel}

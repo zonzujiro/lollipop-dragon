@@ -341,14 +341,14 @@ export function createHostReviewControllerActions<
       }
 
       const { cleanMarkdown } = parseCriticMarkup(tab.rawContent);
-      const nextRawContent = insertCommentService(
-        tab.rawContent,
-        tab.comments,
+      const nextRawContent = insertCommentService({
+        rawContent: tab.rawContent,
+        existingComments: tab.comments,
         cleanMarkdown,
         blockIndex,
         type,
         text,
-      );
+      });
 
       await writeAndUpdate({
         set,

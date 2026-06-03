@@ -1,5 +1,9 @@
 import { getBlockPositions } from "./blockIndex";
 import type { Comment, CommentType } from "../types/criticmarkup";
+import {
+  createQuestionThreadMetadata,
+  serializeCommentBody,
+} from "./commentProtocol";
 
 // A segment maps a range of cleanMarkdown offsets to a range of raw offsets.
 // Plain segments are 1:1; replaced segments (CriticMarkup spans) map any
@@ -75,28 +79,37 @@ function cleanToRaw(cleanOffset: number, segments: Segment[]): number {
 
 // Insert a new CriticMarkup comment after the block at blockIndex.
 // Returns the updated raw content string.
-export function insertComment(
-  rawContent: string,
-  existingComments: Comment[],
-  cleanMarkdown: string,
-  blockIndex: number,
-  type: CommentType,
-  text: string,
-): string {
-  const blocks = getBlockPositions(cleanMarkdown);
-  if (blockIndex < 0 || blockIndex >= blocks.length) {
+export function insertComment(input: {
+  rawContent: string;
+  existingComments: Comment[];
+  cleanMarkdown: string;
+  blockIndex: number;
+  type: CommentType;
+  text: string;
+}): string {
+  const blocks = getBlockPositions(input.cleanMarkdown);
+  if (input.blockIndex < 0 || input.blockIndex >= blocks.length) {
     console.error("[insertComment] blockIndex out of range", {
-      blockIndex,
+      blockIndex: input.blockIndex,
       totalBlocks: blocks.length,
     });
-    return rawContent;
+    return input.rawContent;
   }
 
-  const blockEnd = blocks[blockIndex].end;
-  const segments = buildSegments(rawContent, existingComments);
+  const blockEnd = blocks[input.blockIndex].end;
+  const segments = buildSegments(input.rawContent, input.existingComments);
   const rawPos = cleanToRaw(blockEnd, segments);
 
-  const prefix = type === "note" ? "" : `${type}: `;
-  const markup = `{>>${prefix}${text}<<}`;
-  return rawContent.slice(0, rawPos) + markup + rawContent.slice(rawPos);
+  const thread =
+    input.type === "question" ? createQuestionThreadMetadata() : undefined;
+  const markup = `{>>${serializeCommentBody({
+    type: input.type,
+    text: input.text,
+    thread,
+  })}<<}`;
+  return (
+    input.rawContent.slice(0, rawPos) +
+    markup +
+    input.rawContent.slice(rawPos)
+  );
 }

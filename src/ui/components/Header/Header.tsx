@@ -1,4 +1,5 @@
 import "./Header.css";
+import { buildCommentThreadGroups } from "../../../markup";
 import { useAppStore } from "../../../store";
 import { useActiveTab } from "../../../store/selectors";
 import { selectUnsubmittedPeerComments } from "../../../modules/peer-review";
@@ -186,7 +187,7 @@ export function Header({
   const hasFolderComments = !peerMode && fileTree.length > 0;
   const crossFileTotal = hasFolderComments
     ? Object.values(allFileComments).reduce(
-        (sum, entry) => sum + entry.comments.length,
+        (sum, entry) => sum + buildCommentThreadGroups(entry.comments).length,
         0,
       )
     : 0;
@@ -197,7 +198,7 @@ export function Header({
     ? peerCommentsForFile.length
     : hasFolderComments
       ? crossFileTotal
-      : comments.length;
+      : buildCommentThreadGroups(comments).length;
   const isDark = theme === "dark";
   const hasFolderOpen = fileTree.length > 0;
   const hasContent = !!(fileName || directoryName);
