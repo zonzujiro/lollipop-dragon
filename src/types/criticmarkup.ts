@@ -14,6 +14,7 @@ export type CommentType =
   | "expand"
   | "clarify"
   | "question"
+  | "answer"
   | "remove";
 
 /** CSS color variable for each comment type. */
@@ -23,9 +24,17 @@ export const COMMENT_TYPE_COLOR: Record<CommentType, string> = {
   expand: "var(--accent)",
   clarify: "var(--c-purple)",
   question: "var(--c-cyan)",
+  answer: "var(--accent)",
   remove: "var(--text-muted)",
   note: "var(--c-green)",
 };
+
+export interface CommentThreadMetadata {
+  commentId: string;
+  threadId: string;
+  replyTo?: string;
+  authorLabel?: string;
+}
 
 export interface Comment {
   id: string;
@@ -44,4 +53,5 @@ export interface Comment {
   cleanEnd: number; // char offset (exclusive) in cleanMarkdown
   blockIndex?: number; // nearest top-level block index (step 2.4)
   filePath?: string; // set when aggregating comments across files
+  thread?: CommentThreadMetadata;
 }

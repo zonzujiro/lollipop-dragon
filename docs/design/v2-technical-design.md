@@ -13,7 +13,7 @@ v2 adds encrypted async peer sharing on top of the v1 local editing experience. 
 
 - Real-time sync (planned for v3 via WebRTC + Yjs)
 - Peer identity / authentication (peers self-declare a display name)
-- Comment threads or reactions
+- Peer-shared comment threads or reactions
 - Diff view between share revisions
 
 ---

@@ -46,7 +46,7 @@ Developers and technical professionals who use LLM CLIs to generate structured r
 
 **Step 3:** Developer selects any block and leaves a comment. The editor writes CriticMarkup directly into the markdown file with a Conventional Comments-style type prefix.
 
-**Step 4:** Developer tells the LLM CLI: "Read this file and address all CriticMarkup comments." The LLM sees the comments inline, makes the fixes, and removes the markup.
+**Step 4:** Developer tells the LLM CLI: "Read this file and address all CriticMarkup comments." For standard comments, the LLM sees the comments inline, makes the fixes, and removes the markup. For threaded `question:` comments, the developer can use MarkReview's `Copy agent prompt` helper so the agent answers inline with a linked `answer:` reply instead of rewriting the original question.
 
 **Step 5:** Developer refreshes (Phase 1) or sees live updates (Phase 2) with the LLM's changes applied.
 
@@ -90,15 +90,38 @@ Supported types:
 - **expand** — add more detail or coverage
 - **clarify** — this is confusing, make it clearer
 - **question** — I need to understand this before approving
+- **answer** — a reply linked to an existing `question:` thread root
 - **remove** — this should be deleted
 
-### 6.3 Why This Works
+### 6.3 Threaded Question / Answer Extension
 
-The LLM reads the file and sees comments as part of the content — no separate protocol to learn. CriticMarkup is well-represented in LLM training data, so models already understand it. Comments and content stay in sync because they live in the same file. Any text editor can view and edit the annotations. No sidecar files, no sync issues, no export/import steps.
+MarkReview extends the plain comment protocol for threaded review questions.
 
-### 6.4 Editor Responsibilities
+- A `question:` comment can be a thread root.
+- MarkReview writes hidden `[markreview ...]` metadata into app-created `question:` comments so a raw markdown file still carries stable thread identifiers.
+- Agents reply with a separate inline `answer:` CriticMarkup comment near the same text block.
+- The reply reuses the root `thread` value and sets `replyTo` to the root question `id`.
+- The reply can also include `author` so the UI can show `Codex`, `Cursor`, or a generic `Agent` label.
 
-The editor parses CriticMarkup and hides it from the rendered view. Comments are displayed as UI elements — colored indicators in the margin that expand into comment cards. Highlights are shown as subtle background colors on the referenced text. When the user adds a comment through the UI, the editor inserts CriticMarkup at the correct position in the raw markdown. When the user deletes a comment, the editor removes the CriticMarkup from the file.
+Example root:
+
+```text
+{>>question: Why is this section needed? [markreview id="mr-question-1" thread="mr-question-1"]<<}
+```
+
+Example reply:
+
+```text
+{>>answer: This section explains the reconnect fallback path after a missed live event. [markreview id="mr-answer-1" thread="mr-question-1" replyTo="mr-question-1" author="Codex"]<<}
+```
+
+### 6.4 Why This Works
+
+For standard comments, the LLM reads the file and sees comments as part of the content — no separate protocol to learn. CriticMarkup is well-represented in LLM training data, so models already understand it. For threaded `question:` comments, MarkReview adds a small metadata extension plus a `Copy agent prompt` helper so replies stay linked without introducing sidecar files. Comments and content still stay in sync because everything lives in the same file. Any text editor can view and edit the annotations. No sidecar files, no sync issues, no export/import steps.
+
+### 6.5 Editor Responsibilities
+
+The editor parses CriticMarkup and hides it from the rendered view. Comments are displayed as UI elements — colored indicators in the margin that expand into comment cards. Highlights are shown as subtle background colors on the referenced text. When the user adds a comment through the UI, the editor inserts CriticMarkup at the correct position in the raw markdown. App-created `question:` comments receive hidden thread metadata so later `answer:` replies can link back to them. When the user deletes a comment, the editor removes the CriticMarkup from the file.
 
 ---
 
@@ -174,7 +197,8 @@ Typeform-inspired: the content is the interface. Light mode default with dark mo
 ## 10. Success Metrics
 
 - Time from opening a folder to leaving the first comment: under 10 seconds
-- The LLM addresses CriticMarkup comments correctly without additional prompting beyond "read and address the comments in this file"
+- The LLM addresses standard CriticMarkup comments correctly without additional prompting beyond "read and address the comments in this file"
+- Threaded `question:` comments can be handed off with `Copy agent prompt`, and the resulting `answer:` replies render as linked inline threads
 - A full review-comment-revise cycle completes in under 5 minutes
 - The reading experience is rated as comfortable and clean for documents over 3,000 words
 - Zero data leaves the user's machine

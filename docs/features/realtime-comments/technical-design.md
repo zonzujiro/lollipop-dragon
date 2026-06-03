@@ -221,6 +221,7 @@ The WebSocket instance and timers stay in `src/services/relay.ts`, not in the Zu
 
 ## 10. Non-Goals
 
+- syncing host-local `question:` / `answer:` threads through the relay
 - collaborative peer-to-peer comment thread rendering
 - peer self-delete after submit
 - submitted comment edit flow

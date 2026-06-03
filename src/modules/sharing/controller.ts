@@ -504,14 +504,14 @@ export function createSharingControllerActions<
 
       const { cleanMarkdown } = parseCriticMarkup(tab.rawContent);
       const attribution = ` — ${comment.peerName}`;
-      const newRaw = insertCommentService(
-        tab.rawContent,
-        tab.comments,
+      const newRaw = insertCommentService({
+        rawContent: tab.rawContent,
+        existingComments: tab.comments,
         cleanMarkdown,
-        comment.blockRef.blockIndex,
-        comment.commentType,
-        comment.text + attribution,
-      );
+        blockIndex: comment.blockRef.blockIndex,
+        type: comment.commentType,
+        text: comment.text + attribution,
+      });
       if (newRaw === tab.rawContent) {
         console.error("[mergeComment] insert had no effect", {
           blockIndex: comment.blockRef.blockIndex,

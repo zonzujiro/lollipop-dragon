@@ -1,29 +1,7 @@
-import type { Comment, CommentType, CriticType } from '../types/criticmarkup'
+import type { Comment, CommentType, CriticType } from "../types/criticmarkup";
+import { parseStructuredCommentBody } from "./commentProtocol";
 
-// Recognized Conventional Comments prefixes
-const PREFIX_RE = /^(fix|rewrite|expand|clarify|question|remove):\s*/i
-
-const COMMENT_TYPES: ReadonlySet<string> = new Set<CommentType>([
-  'note', 'fix', 'rewrite', 'expand', 'clarify', 'question', 'remove',
-])
-
-export function isCommentType(value: string): value is CommentType {
-  return COMMENT_TYPES.has(value)
-}
-
-// Parse a semantic type from the start of a comment body.
-// Returns the matched type and the text with the prefix stripped.
-export function parseCommentType(text: string): { type: CommentType; text: string } {
-  const m = PREFIX_RE.exec(text)
-  if (!m) {
-    return { type: 'note', text }
-  }
-  const lower = m[1].toLowerCase()
-  return {
-    type: isCommentType(lower) ? lower : 'note',
-    text: text.slice(m[0].length),
-  }
-}
+export { isCommentType, parseCommentType } from "./commentProtocol";
 
 // Combined regex matching all 5 CriticMarkup syntax types.
 // Capture groups:
@@ -110,30 +88,31 @@ export function parseCriticMarkup(source: string): {
     let from: string | undefined
     let to: string | undefined
     let cleanReplacement: string
+    let thread: Comment["thread"] = undefined
 
     if (match[1] !== undefined) {
       criticType = 'highlight'
       highlightedText = match[1]
-      ;({ type, text } = parseCommentType(match[2]))
-      cleanReplacement = match[1]      // keep the highlighted span
+      ({ type, text, thread } = parseStructuredCommentBody(match[2]));
+      cleanReplacement = match[1];
     } else if (match[3] !== undefined) {
-      criticType = 'comment'
-      ;({ type, text } = parseCommentType(match[3]))
-      cleanReplacement = ''            // pure annotation, nothing visible
+      criticType = "comment";
+      ({ type, text, thread } = parseStructuredCommentBody(match[3]));
+      cleanReplacement = "";
     } else if (match[4] !== undefined) {
-      criticType = 'addition'
-      text = match[4]
-      cleanReplacement = match[4]      // keep the added text
+      criticType = "addition";
+      text = match[4];
+      cleanReplacement = match[4];
     } else if (match[5] !== undefined) {
-      criticType = 'deletion'
-      text = match[5]
-      cleanReplacement = ''            // removed text disappears
+      criticType = "deletion";
+      text = match[5];
+      cleanReplacement = "";
     } else {
-      criticType = 'substitution'
-      from = match[6]
-      to = match[7]
-      text = match[7]
-      cleanReplacement = match[7]      // keep the replacement text
+      criticType = "substitution";
+      from = match[6];
+      to = match[7];
+      text = match[7];
+      cleanReplacement = match[7];
     }
 
     const cleanStart = cleanOffset
@@ -156,6 +135,7 @@ export function parseCriticMarkup(source: string): {
       rawEnd,
       cleanStart,
       cleanEnd,
+      thread,
     })
   }
 

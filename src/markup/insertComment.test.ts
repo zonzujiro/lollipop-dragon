@@ -5,26 +5,77 @@ import { makeComment } from '../testing/testHelpers'
 describe('insertComment — plain content (no existing markup)', () => {
   it('appends a note comment (no prefix) after the first paragraph', () => {
     const raw = 'Hello world.\n\nSecond paragraph.'
-    const result = insertComment(raw, [], raw, 0, 'note', 'my note')
+    const result = insertComment({
+      rawContent: raw,
+      existingComments: [],
+      cleanMarkdown: raw,
+      blockIndex: 0,
+      type: 'note',
+      text: 'my note',
+    })
     expect(result).toBe('Hello world.{>>my note<<}\n\nSecond paragraph.')
   })
 
   it('appends a typed comment with its prefix after a later paragraph', () => {
     const raw = 'First.\n\nSecond.'
-    const result = insertComment(raw, [], raw, 1, 'fix', 'fix this')
+    const result = insertComment({
+      rawContent: raw,
+      existingComments: [],
+      cleanMarkdown: raw,
+      blockIndex: 1,
+      type: 'fix',
+      text: 'fix this',
+    })
     expect(result).toBe('First.\n\nSecond.{>>fix: fix this<<}')
   })
 
   it('returns rawContent unchanged when blockIndex is out of range', () => {
     const raw = 'Single paragraph.'
-    expect(insertComment(raw, [], raw, 5, 'note', 'hi')).toBe(raw)
-    expect(insertComment(raw, [], raw, -1, 'note', 'hi')).toBe(raw)
+    expect(insertComment({
+      rawContent: raw,
+      existingComments: [],
+      cleanMarkdown: raw,
+      blockIndex: 5,
+      type: 'note',
+      text: 'hi',
+    })).toBe(raw)
+    expect(insertComment({
+      rawContent: raw,
+      existingComments: [],
+      cleanMarkdown: raw,
+      blockIndex: -1,
+      type: 'note',
+      text: 'hi',
+    })).toBe(raw)
   })
 
   it('handles a single-paragraph document', () => {
     const raw = 'Only paragraph.'
-    const result = insertComment(raw, [], raw, 0, 'rewrite', 'rewrite it')
+    const result = insertComment({
+      rawContent: raw,
+      existingComments: [],
+      cleanMarkdown: raw,
+      blockIndex: 0,
+      type: 'rewrite',
+      text: 'rewrite it',
+    })
     expect(result).toBe('Only paragraph.{>>rewrite: rewrite it<<}')
+  })
+
+  it('adds hidden thread metadata when inserting a question', () => {
+    const raw = 'Only paragraph.'
+    const result = insertComment({
+      rawContent: raw,
+      existingComments: [],
+      cleanMarkdown: raw,
+      blockIndex: 0,
+      type: 'question',
+      text: 'Why is this here?',
+    })
+
+    expect(result).toMatch(
+      /Only paragraph\.\{>>question: Why is this here\? \[markreview id="mr-[^"]+" thread="mr-[^"]+"\]<<}/,
+    )
   })
 })
 
@@ -38,7 +89,14 @@ describe('insertComment — content with existing CriticMarkup', () => {
       makeComment({ rawStart: 6, rawEnd: 20, cleanStart: 6, cleanEnd: 6 }),
       // {>>existing<<} = 14 chars (6..20)
     ]
-    const result = insertComment(raw, existing, clean, 0, 'note', 'new')
+    const result = insertComment({
+      rawContent: raw,
+      existingComments: existing,
+      cleanMarkdown: clean,
+      blockIndex: 0,
+      type: 'note',
+      text: 'new',
+    })
     // Block 0 ends at clean offset 6, which maps to raw offset 20 (after the markup)
     expect(result).toBe('Hello.{>>existing<<}{>>new<<}\n\nSecond.')
   })
@@ -55,7 +113,14 @@ describe('insertComment — content with existing CriticMarkup', () => {
         cleanStart: 6, cleanEnd: 11, // "world" = 5 chars
       }),
     ]
-    const result = insertComment(raw, existing, clean, 0, 'note', 'note')
+    const result = insertComment({
+      rawContent: raw,
+      existingComments: existing,
+      cleanMarkdown: clean,
+      blockIndex: 0,
+      type: 'note',
+      text: 'note',
+    })
     // Block 0 ends at clean offset 12 ("Hello world."), which is in the plain
     // segment after the addition span. Raw offset = 17 + (12 - 11) = 18 (the '.')
     expect(result).toBe('Hello {++world++}.{>>note<<}\n\nSecond.')
@@ -67,7 +132,14 @@ describe('insertComment — content with existing CriticMarkup', () => {
     const existing = [
       makeComment({ rawStart: 20, rawEnd: 34, cleanStart: 20, cleanEnd: 20 }),
     ]
-    const result = insertComment(raw, existing, clean, 1, 'fix', 'fix it')
+    const result = insertComment({
+      rawContent: raw,
+      existingComments: existing,
+      cleanMarkdown: clean,
+      blockIndex: 1,
+      type: 'fix',
+      text: 'fix it',
+    })
     expect(result).toBe('Para one.\n\nPara two.{>>existing<<}{>>fix: fix it<<}')
   })
 })
