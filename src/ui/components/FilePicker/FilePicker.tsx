@@ -331,37 +331,41 @@ function GeoShare() {
 
 /* ── Animated demo editor ── */
 
+const DEMO_QUESTION_MARKUP =
+  '{>>question: why keep this fallback? [markreview id="mr-q1" thread="mr-q1"]<<}';
+const DEMO_ANSWER_MARKUP =
+  '{>>answer: it protects peers after missed live updates. [markreview id="mr-a1" thread="mr-q1" replyTo="mr-q1" author="Codex"]<<}';
+
 const DEMO_LINES = [
-  { type: "heading", text: "# Project Overview" },
-  { type: "text", text: "The architecture uses a modular approach with clear" },
-  { type: "text", text: "separation of concerns between the data layer" },
+  { type: "heading", text: "# Review Notes" },
+  { type: "text", text: "The markdown file is the review surface, not an" },
+  { type: "text", text: "export target. Comments stay inline where agents" },
+  { type: "text", text: "and people can both read them." },
   {
     type: "comment-fix",
-    markup: "{~~modular approach~>component-based architecture~~}",
+    markup: "{>>fix: tighten this claim before sharing<<}",
     label: "fix",
     color: "#E63946",
   },
-  { type: "text", text: "and the presentation layer." },
   { type: "blank", text: "" },
-  { type: "heading", text: "## Key Features" },
-  { type: "text", text: "- Real-time collaboration support" },
-  {
-    type: "comment-note",
-    markup: "{>>Consider adding WebSocket details<<}",
-    label: "note",
-    color: "#1D3557",
-  },
-  { type: "text", text: "- End-to-end encryption for shared documents" },
-  { type: "text", text: "- Multi-tab editing with independent state" },
+  { type: "heading", text: "## Agent Question" },
   {
     type: "comment-question",
-    markup: "{>>Is this per-browser or per-device?<<}",
+    markup: DEMO_QUESTION_MARKUP,
     label: "question",
     color: "#FFB800",
   },
+  {
+    type: "comment-answer",
+    markup: DEMO_ANSWER_MARKUP,
+    label: "answer",
+    color: "#1D3557",
+  },
   { type: "blank", text: "" },
-  { type: "text", text: "Each reviewer can annotate inline, suggest edits," },
-  { type: "text", text: "and track resolved feedback — all from the browser." },
+  { type: "heading", text: "## Peer Review" },
+  { type: "text", text: "- encrypted share links for files or folders" },
+  { type: "text", text: "- live reviewer comments through the relay" },
+  { type: "text", text: "- merge or dismiss without losing context" },
 ];
 
 function DemoEditor() {
@@ -667,7 +671,7 @@ export function FilePicker() {
             dragon
           </h1>
           <p className="bh-hero__tagline">
-            collaboration for you, your agent &amp; your peers
+            local-first markdown review for you, your agent &amp; your peers
           </p>
           <div className="bh-hero__actions">
             <button onClick={openFile} className="bh-btn bh-btn--primary">
@@ -695,21 +699,21 @@ export function FilePicker() {
                 className="bh-features__dot"
                 style={{ background: "#E63946" }}
               />
-              criticmarkup comments
+              inline criticmarkup comments
             </li>
             <li>
               <span
                 className="bh-features__dot"
                 style={{ background: "#FFB800" }}
               />
-              mermaid diagrams
+              threaded questions &amp; answers
             </li>
             <li>
               <span
                 className="bh-features__dot"
                 style={{ background: "#1D3557" }}
               />
-              syntax-highlighted code
+              mermaid diagrams &amp; code
             </li>
             <li>
               <span
@@ -723,28 +727,28 @@ export function FilePicker() {
                 className="bh-features__dot"
                 style={{ background: "#FFB800" }}
               />
-              multi-tab editing
+              tabs for files &amp; folders
             </li>
             <li>
               <span
                 className="bh-features__dot"
                 style={{ background: "#1D3557" }}
               />
-              folder tree sidebar
+              encrypted file or folder sharing
             </li>
             <li>
               <span
                 className="bh-features__dot"
                 style={{ background: "#E63946" }}
               />
-              dark mode &amp; focus mode
+              live peer comments
             </li>
             <li>
               <span
                 className="bh-features__dot"
                 style={{ background: "#FFB800" }}
               />
-              works offline
+              local review works offline
             </li>
           </ul>
         </div>
@@ -774,28 +778,28 @@ export function FilePicker() {
                 className="bh-features__dot"
                 style={{ background: "#FFB800" }}
               />
-              seven structured comment types
+              comments live in the markdown
             </li>
             <li>
               <span
                 className="bh-features__dot"
                 style={{ background: "#E63946" }}
               />
-              any llm reads &amp; writes criticmarkup
+              any agent can read criticmarkup
             </li>
             <li>
               <span
                 className="bh-features__dot"
                 style={{ background: "#FFB800" }}
               />
-              no plugins, no cli
+              copy instructions for questions
             </li>
             <li>
               <span
                 className="bh-features__dot"
                 style={{ background: "#E63946" }}
               />
-              copy-paste or point an agent
+              answers render as inline threads
             </li>
           </ul>
         </div>
@@ -823,7 +827,7 @@ export function FilePicker() {
                 className="bh-features__dot"
                 style={{ background: "#1D3557" }}
               />
-              reviewer comments in the browser
+              live reviewer comments
             </li>
             <li>
               <span
@@ -837,7 +841,7 @@ export function FilePicker() {
                 className="bh-features__dot"
                 style={{ background: "#1D3557" }}
               />
-              pull &amp; merge with one click
+              merge or dismiss with one click
             </li>
           </ul>
         </div>
