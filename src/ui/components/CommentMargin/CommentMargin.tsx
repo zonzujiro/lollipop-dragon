@@ -6,6 +6,8 @@ import {
 } from "../../../markup";
 import { useAppStore } from "../../../store";
 import { useActiveTab } from "../../../store/selectors";
+import { selectDocumentUpdateAvailable } from "../../../modules/relay";
+import { selectPeerDraftCommentOpen } from "../../../modules/peer-review";
 import { CommentThreadCard } from "../CommentThreadCard";
 import { peerColor, initials } from "../../../utils/peerDisplay";
 import { COMMENT_TYPE_COLOR } from "../../../types/criticmarkup";
@@ -26,12 +28,14 @@ interface AddCommentFormProps {
   top: number;
   onSubmit: (type: CommentType, text: string) => void;
   onCancel: () => void;
+  disabled?: boolean;
 }
 
 function AddCommentForm({
   top,
   onSubmit,
   onCancel,
+  disabled = false,
 }: AddCommentFormProps) {
   const [type, setType] = useState<CommentType>("note");
   const [text, setText] = useState("");
@@ -59,6 +63,7 @@ function AddCommentForm({
             type="button"
             className={`comment-add-form__type${type === t ? " comment-add-form__type--active" : ""}`}
             onClick={() => setType(t)}
+            disabled={disabled}
           >
             {t}
           </button>
@@ -71,12 +76,13 @@ function AddCommentForm({
         onChange={(e) => setText(e.target.value)}
         rows={3}
         autoFocus
+        disabled={disabled}
       />
       <div className="comment-add-form__actions">
         <button
           type="submit"
           className="comment-add-form__save"
-          disabled={!text.trim()}
+          disabled={disabled || !text.trim()}
         >
           Save
         </button>
@@ -131,6 +137,11 @@ export function CommentMargin({
   const activeDocId = tab?.activeDocId ?? null;
   const activeFilePath = tab?.activeFilePath ?? null;
   const fileName = tab?.fileName ?? null;
+  const documentUpdateAvailable = useAppStore(selectDocumentUpdateAvailable);
+  const peerDraftCommentOpen = useAppStore(selectPeerDraftCommentOpen);
+  const setPeerDraftCommentOpen = useAppStore(
+    (state) => state.setPeerDraftCommentOpen,
+  );
   const [blockTops, setBlockTops] = useState<Map<number, number>>(new Map());
   // 'resolved' means the comments are gone from the file — no dots to show.
   // 'pending' is the same as 'all' for current (still-in-file) comments.
@@ -207,6 +218,20 @@ export function CommentMargin({
     document.addEventListener("click", onDocClick);
     return () => document.removeEventListener("click", onDocClick);
   }, [setActiveId]);
+
+  useEffect(() => {
+    return () => {
+      if (peerMode) {
+        setPeerDraftCommentOpen(false);
+      }
+    };
+  }, [peerMode, setPeerDraftCommentOpen]);
+
+  useEffect(() => {
+    if (peerMode && addingBlock && !peerDraftCommentOpen) {
+      setAddingBlock(null);
+    }
+  }, [addingBlock, peerDraftCommentOpen, peerMode]);
 
   useEffect(() => {
     measureRef.current = () => {
@@ -323,7 +348,7 @@ export function CommentMargin({
 
   return (
     <div className="comment-margin">
-      {hoveredBlock && !addingBlock && (
+      {hoveredBlock && !addingBlock && !(peerMode && documentUpdateAvailable) && (
         <div
           className="comment-margin__add-wrapper"
           style={{ top: hoveredBlock.top }}
@@ -334,6 +359,9 @@ export function CommentMargin({
             onClick={(e) => {
               e.stopPropagation();
               setAddingBlock(hoveredBlock);
+              if (peerMode) {
+                setPeerDraftCommentOpen(true);
+              }
             }}
           >
             <svg
@@ -353,19 +381,26 @@ export function CommentMargin({
         </div>
       )}
       {addingBlock && (
-          <AddCommentForm
-            top={addingBlock.top}
-            onSubmit={(type, text) => {
-              if (peerMode && onPostPeerComment) {
-                onPostPeerComment(addingBlock.index, type, text);
-              } else {
-                onAddComment(addingBlock.index, type, text);
-              }
-              setAddingBlock(null);
-            }}
-            onCancel={() => setAddingBlock(null)}
-          />
-        )}
+        <AddCommentForm
+          top={addingBlock.top}
+          onSubmit={(type, text) => {
+            if (peerMode && onPostPeerComment) {
+              onPostPeerComment(addingBlock.index, type, text);
+              setPeerDraftCommentOpen(false);
+            } else {
+              onAddComment(addingBlock.index, type, text);
+            }
+            setAddingBlock(null);
+          }}
+          onCancel={() => {
+            if (peerMode) {
+              setPeerDraftCommentOpen(false);
+            }
+            setAddingBlock(null);
+          }}
+          disabled={peerMode && documentUpdateAvailable}
+        />
+      )}
       {groups.map(({ top, threads }, i) => {
         const activeThread =
           threads.find(
@@ -438,7 +473,11 @@ export function CommentMargin({
       {/* Peer-only blocks (no host comments at this block) */}
       {Array.from(peerDotGroups.entries()).map(([blockIdx, peerComments]) => {
         // Skip blocks already rendered with host groups
-        if (groups.some((group) => group.threads[0]?.root.blockIndex === blockIdx)) {
+        if (
+          groups.some(
+            (group) => group.threads[0]?.root.blockIndex === blockIdx,
+          )
+        ) {
           return null;
         }
         const top = blockTops.get(blockIdx);

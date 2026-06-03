@@ -11,7 +11,11 @@ export function useHashRouter(): boolean {
   useEffect(() => {
     function checkHash() {
       if (isShareHash() && WORKER_URL) {
-        loadSharedContent().finally(() => setPeerModeChecked(true));
+        loadSharedContent()
+          .catch((error: unknown) => {
+            console.warn("[useHashRouter] failed to load shared content:", error);
+          })
+          .finally(() => setPeerModeChecked(true));
       } else {
         setPeerModeChecked(true);
         restoreTabs();

@@ -11,6 +11,7 @@ interface MockResponseShape {
   status?: number;
   json?: unknown;
   arrayBuffer?: ArrayBuffer;
+  headers?: Record<string, string>;
 }
 
 function makeFetchMock(responses: MockResponseShape[]) {
@@ -23,6 +24,9 @@ function makeFetchMock(responses: MockResponseShape[]) {
       status: response.status ?? (response.ok ? 200 : 500),
       json: async () => response.json,
       arrayBuffer: async () => response.arrayBuffer ?? new ArrayBuffer(0),
+      headers: {
+        get: (name: string) => response.headers?.[name] ?? null,
+      },
     };
   });
 }
@@ -104,6 +108,28 @@ describe("ShareStorage.fetchContent", () => {
     await expect(storage.fetchContent("missing", key)).rejects.toThrow(
       "Share not found or expired",
     );
+  });
+});
+
+describe("ShareStorage.fetchLastModified", () => {
+  it("HEADs /share/:docId and returns Last-Modified", async () => {
+    const fetchMock = makeFetchMock([
+      {
+        ok: true,
+        headers: {
+          "Last-Modified": "2026-04-22T10:00:00.000Z",
+        },
+      },
+    ]);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const storage = new ShareStorage(WORKER_URL);
+    const lastModified = await storage.fetchLastModified("doc1");
+
+    expect(lastModified).toBe("2026-04-22T10:00:00.000Z");
+    expect(fetchMock).toHaveBeenCalledWith(`${WORKER_URL}/share/doc1`, {
+      method: "HEAD",
+    });
   });
 });
 

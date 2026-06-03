@@ -49,6 +49,12 @@ export function selectMyPeerComments<StoreState extends PeerReviewState>(
   return state.myPeerComments;
 }
 
+export function selectPeerDraftCommentOpen<StoreState extends PeerReviewState>(
+  state: StoreState,
+) {
+  return state.peerDraftCommentOpen;
+}
+
 export function selectUnsubmittedPeerComments<
   StoreState extends Pick<
     PeerReviewState,
@@ -57,5 +63,16 @@ export function selectUnsubmittedPeerComments<
 >(state: StoreState): PeerComment[] {
   return state.myPeerComments.filter(
     (comment) => !state.submittedPeerCommentIds.includes(comment.id),
+  );
+}
+
+export function selectHasPeerLocalCommentWork<
+  StoreState extends Pick<
+    PeerReviewState,
+    "peerDraftCommentOpen" | "myPeerComments" | "submittedPeerCommentIds"
+  >,
+>(state: StoreState): boolean {
+  return (
+    state.peerDraftCommentOpen || selectUnsubmittedPeerComments(state).length > 0
   );
 }

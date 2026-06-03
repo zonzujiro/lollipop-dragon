@@ -1,6 +1,7 @@
 import type { StoreApi } from "zustand";
 import type { CommentType } from "../../types/criticmarkup";
 import type { PeerComment } from "../../types/share";
+import type { RelayState } from "../relay";
 import type { PeerReviewActions, PeerReviewState } from "./types";
 
 type SetState<StoreState> = StoreApi<StoreState>["setState"];
@@ -29,10 +30,12 @@ export function createPeerReviewState(): PeerReviewState {
     isPeerMode: false,
     peerName: null,
     sharedContent: null,
+    peerDraftCommentOpen: false,
     myPeerComments: [],
     submittedPeerCommentIds: [],
     peerShareKeys: {},
     peerActiveDocId: null,
+    peerLoadedUpdatedAt: null,
     peerRawContent: "",
     peerFileName: null,
     peerActiveFilePath: null,
@@ -42,7 +45,9 @@ export function createPeerReviewState(): PeerReviewState {
   };
 }
 
-export function createPeerReviewActions<StoreState extends PeerReviewState>(
+export function createPeerReviewActions<
+  StoreState extends PeerReviewState & Pick<RelayState, "documentUpdateAvailable">,
+>(
   set: SetState<StoreState>,
   get: GetState<StoreState>,
 ): Pick<
@@ -52,11 +57,17 @@ export function createPeerReviewActions<StoreState extends PeerReviewState>(
   | "postPeerComment"
   | "deletePeerComment"
   | "editPeerComment"
+  | "setPeerDraftCommentOpen"
+  | "discardUnsubmittedPeerComments"
   | "confirmPeerCommentSubmitted"
 > {
   return {
     setPeerName: (name) => {
       set({ peerName: name });
+    },
+
+    setPeerDraftCommentOpen: (open) => {
+      set({ peerDraftCommentOpen: open });
     },
 
     selectPeerFile: (path) => {
@@ -79,9 +90,19 @@ export function createPeerReviewActions<StoreState extends PeerReviewState>(
     },
 
     postPeerComment: (blockIndex, type, text, path) => {
-      const comment = createPeerComment(get().peerName, blockIndex, type, text, path);
+      if (get().documentUpdateAvailable) {
+        return;
+      }
+      const comment = createPeerComment(
+        get().peerName,
+        blockIndex,
+        type,
+        text,
+        path,
+      );
       set((state) => ({
         myPeerComments: [comment, ...state.myPeerComments],
+        peerDraftCommentOpen: false,
       }));
     },
 
@@ -103,6 +124,15 @@ export function createPeerReviewActions<StoreState extends PeerReviewState>(
             ? { ...comment, commentType: type, text }
             : comment,
         ),
+      }));
+    },
+
+    discardUnsubmittedPeerComments: () => {
+      set((state) => ({
+        myPeerComments: state.myPeerComments.filter((comment) =>
+          state.submittedPeerCommentIds.includes(comment.id),
+        ),
+        peerDraftCommentOpen: false,
       }));
     },
 
