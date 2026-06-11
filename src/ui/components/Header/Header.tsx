@@ -76,6 +76,45 @@ function FloppyDiskIcon() {
   );
 }
 
+function OpenFileIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+      <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+    </svg>
+  );
+}
+
+function OpenFolderIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
+    </svg>
+  );
+}
+
 function ShareFileIcon() {
   return (
     <svg
@@ -115,6 +154,87 @@ function ShareFolderIcon() {
       <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
       <path d="M10 15l2-2 2 2" />
       <path d="M12 17v-4" />
+    </svg>
+  );
+}
+
+function SharedLinksIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+  );
+}
+
+function SyncIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M21 12a9 9 0 0 0-15-6.7L3 8" />
+      <path d="M3 3v5h5" />
+      <path d="M3 12a9 9 0 0 0 15 6.7l3-2.7" />
+      <path d="M16 16h5v5" />
+    </svg>
+  );
+}
+
+function SubmitIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 19V5" />
+      <path d="m5 12 7-7 7 7" />
+    </svg>
+  );
+}
+
+function CommentIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z" />
     </svg>
   );
 }
@@ -248,14 +368,18 @@ export function Header({
               <button
                 onClick={openFileInNewTab}
                 className="app-header__btn app-header__btn--text"
+                title="Open file"
               >
-                Open file
+                <OpenFileIcon />
+                <span className="app-header__btn-label">Open file</span>
               </button>
               <button
                 onClick={openDirectoryInNewTab}
                 className="app-header__btn app-header__btn--text"
+                title="Open folder"
               >
-                Open folder
+                <OpenFolderIcon />
+                <span className="app-header__btn-label">Open folder</span>
               </button>
 
               <HistoryDropdown />
@@ -273,7 +397,7 @@ export function Header({
                   disabled={disableHostReviewActions}
                 >
                   <ShareFileIcon />
-                  Share file
+                  <span className="app-header__btn-label">Share file</span>
                 </button>
               )}
               {hasFolderOpen && onShareFolder && (
@@ -285,7 +409,7 @@ export function Header({
                   disabled={disableHostReviewActions}
                 >
                   <ShareFolderIcon />
-                  Share folder
+                  <span className="app-header__btn-label">Share folder</span>
                 </button>
               )}
               <button
@@ -294,7 +418,8 @@ export function Header({
                 title="Manage shared review links"
                 disabled={disableHostReviewActions}
               >
-                Shared links
+                <SharedLinksIcon />
+                <span className="app-header__btn-label">Shared links</span>
                 {totalPending > 0 && (
                   <span className="app-header__badge app-header__badge--pending">
                     {totalPending}
@@ -308,7 +433,8 @@ export function Header({
                   className="app-header__btn app-header__btn--text"
                   disabled={disableHostReviewActions}
                 >
-                  Push update
+                  <SyncIcon />
+                  <span className="app-header__btn-label">Push update</span>
                 </button>
               )}
             </div>
@@ -343,7 +469,10 @@ export function Header({
                   className="app-header__btn app-header__btn--text"
                   disabled={documentUpdateAvailable}
                 >
-                  Submit comments ({unsubmittedPeerCount})
+                  <SubmitIcon />
+                  <span className="app-header__btn-label">
+                    Submit comments ({unsubmittedPeerCount})
+                  </span>
                 </button>
               )}
               <button
@@ -353,7 +482,7 @@ export function Header({
                 className="app-header__btn app-header__btn--text"
               >
                 <FloppyDiskIcon />
-                Save file
+                <span className="app-header__btn-label">Save file</span>
               </button>
             </div>
           )}
@@ -374,7 +503,8 @@ export function Header({
               className={`app-header__btn app-header__btn--text app-header__btn--review${commentPanelOpen ? " app-header__btn--active" : ""}`}
               disabled={disableHostReviewActions}
             >
-              Comments
+              <CommentIcon />
+              <span className="app-header__btn-label">Comments</span>
               {commentCount > 0 && (
                 <span className="app-header__badge">{commentCount}</span>
               )}

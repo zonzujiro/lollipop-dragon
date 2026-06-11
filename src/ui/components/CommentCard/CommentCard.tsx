@@ -165,6 +165,7 @@ export function CommentCard({
                 key={t}
                 type="button"
                 className={`comment-add-form__type${editType === t ? " comment-add-form__type--active" : ""}`}
+                aria-pressed={editType === t}
                 onClick={() => setEditType(t)}
               >
                 {t}
@@ -173,6 +174,7 @@ export function CommentCard({
           </div>
           <textarea
             className="comment-add-form__input"
+            aria-label="Comment text"
             value={editText}
             onChange={(e) => setEditText(e.target.value)}
             rows={3}
