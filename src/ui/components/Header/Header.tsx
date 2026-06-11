@@ -266,33 +266,35 @@ export function Header({
             <div className="app-header__group app-header__group--share">
               {fileName && onShareFile && (
                 <button
-                  className="app-header__btn app-header__btn--icon"
+                  className="app-header__btn app-header__btn--text app-header__btn--share"
                   onClick={onShareFile}
                   aria-label="Share file"
-                  title="Share file"
+                  title="Create a review link for the current file"
                   disabled={disableHostReviewActions}
                 >
                   <ShareFileIcon />
+                  Share file
                 </button>
               )}
               {hasFolderOpen && onShareFolder && (
                 <button
-                  className="app-header__btn app-header__btn--icon"
+                  className="app-header__btn app-header__btn--text app-header__btn--share"
                   onClick={onShareFolder}
                   aria-label="Share folder"
-                  title="Share folder"
+                  title="Create a review link for the current folder"
                   disabled={disableHostReviewActions}
                 >
                   <ShareFolderIcon />
+                  Share folder
                 </button>
               )}
               <button
                 className={`app-header__btn app-header__btn--text${sharedPanelOpen ? " app-header__btn--active" : ""}`}
                 onClick={toggleSharedPanel}
-                title="Manage shared documents"
+                title="Manage shared review links"
                 disabled={disableHostReviewActions}
               >
-                Shared
+                Shared links
                 {totalPending > 0 && (
                   <span className="app-header__badge app-header__badge--pending">
                     {totalPending}

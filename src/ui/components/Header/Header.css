@@ -87,6 +87,19 @@
   font-weight: 500;
 }
 
+.app-header__btn--share {
+  background-color: color-mix(in srgb, var(--c-green) 10%, var(--surface-alt));
+  border-color: color-mix(in srgb, var(--c-green) 28%, var(--border-light));
+  color: color-mix(in srgb, var(--c-green) 78%, var(--text));
+  font-weight: 650;
+}
+
+.app-header__btn--share:hover {
+  background-color: var(--c-green);
+  border-color: var(--c-green);
+  color: #fff;
+}
+
 .app-header__btn--review {
   background-color: var(--accent-bg);
   border-color: color-mix(in srgb, var(--accent) 35%, var(--border-light));
