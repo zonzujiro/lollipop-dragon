@@ -4,5 +4,6 @@ export * from "./commentProtocol";
 export * from "./criticmarkup";
 export * from "./deleteComment";
 export * from "./editComment";
+export * from "./frontmatter";
 export * from "./insertComment";
 export * from "./useShikiRehypePlugin";

@@ -1,40 +1,44 @@
 /* ── Comment margin column ───────────────────────────────────── */
 .comment-margin {
-  width: 2.5rem;
+  width: 3rem;
   flex-shrink: 0;
   position: relative;
 }
 
 .comment-margin__dots {
   position: absolute;
-  right: 0.5rem;
+  right: 0.7rem;
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
 
 .comment-margin__dot {
-  width: 8px;
-  height: 8px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
-  border: none;
+  border: 2px solid var(--surface);
   padding: 0;
   cursor: pointer;
   flex-shrink: 0;
+  box-shadow: 0 0 0 1px color-mix(in srgb, currentColor 30%, transparent);
   transition:
     transform 0.15s,
     box-shadow 0.15s;
 }
 
 .comment-margin__dot:hover {
-  transform: scale(1.4);
+  transform: scale(1.25);
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px currentColor;
 }
 
 .comment-margin__dot--active {
-  transform: scale(1.4);
+  transform: scale(1.25);
   box-shadow:
     0 0 0 2px var(--surface),
-    0 0 0 3px currentColor;
+    0 0 0 4px currentColor;
 }
 
 .comment-margin__add-wrapper {
@@ -44,12 +48,12 @@
 }
 
 .comment-margin__add {
-  width: 20px;
-  height: 20px;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text-secondary);
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -61,8 +65,9 @@
 }
 
 .comment-margin__add:hover {
-  background: var(--accent-bg);
-  color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
 }
 
 .comment-margin__peer-dot {

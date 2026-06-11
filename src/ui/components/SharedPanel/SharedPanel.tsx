@@ -50,7 +50,7 @@ export function SharedPanel() {
           onClick={toggleSharedPanel}
           aria-label="Close shared panel"
         >
-          ?
+          ×
         </button>
       </div>
 

@@ -80,6 +80,35 @@ describe("store.addComment", () => {
     expect(tab?.rawContent).toBe("Para.{>>fix: fix it<<}");
   });
 
+  it("inserts comments into the body when markdown starts with metadata", async () => {
+    const mockWritable = createWritableStub();
+    const rawContent = [
+      "---",
+      "id: DEC-example",
+      "participants:",
+      "  - Ivan",
+      "  - Codex",
+      "---",
+      "# Decision",
+      "",
+      "Body paragraph.",
+    ].join("\n");
+    setTestState({
+      fileHandle: createFileHandleStub(mockWritable),
+      rawContent,
+    });
+
+    await useAppStore.getState().addComment(0, "note", "body note");
+
+    const expectedContent = rawContent.replace(
+      "# Decision",
+      "# Decision{>>body note<<}",
+    );
+    expect(mockWritable.write).toHaveBeenCalledWith(expectedContent);
+    const tab = getActiveTab(useAppStore.getState());
+    expect(tab?.rawContent).toBe(expectedContent);
+  });
+
   it("sets writeAllowed to false on NotAllowedError", async () => {
     const error = Object.assign(new Error("no permission"), {
       name: "NotAllowedError",

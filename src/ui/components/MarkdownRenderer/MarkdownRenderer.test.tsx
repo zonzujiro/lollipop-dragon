@@ -161,6 +161,45 @@ describe("MarkdownRenderer — GFM extras", () => {
   });
 });
 
+describe("MarkdownRenderer — metadata", () => {
+  it("renders frontmatter as a metadata panel and removes it from the body", () => {
+    setContent(
+      [
+        "---",
+        "id: DEC-retrieval-fast-paths-use-generated-metadata",
+        "date: 11/06/2026",
+        "status: Proposed",
+        "summary: Fast-path retrieval should not require broad document reads.",
+        "participants:",
+        "  - Ivan Tytarenko",
+        "  - Codex",
+        "extends: [decision-records-carry-summary, agent-quality-gates]",
+        "---",
+        "# Decision: Retrieval Fast Paths",
+      ].join("\n"),
+    );
+
+    const { container } = render(<MarkdownRenderer />);
+
+    expect(screen.getByRole("region", { name: "Metadata" })).toBeInTheDocument();
+    expect(screen.getByText("id")).toBeInTheDocument();
+    expect(
+      screen.getByText("DEC-retrieval-fast-paths-use-generated-metadata"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Ivan Tytarenko")).toBeInTheDocument();
+    expect(screen.getByText("Codex")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: "Decision: Retrieval Fast Paths",
+      }),
+    ).toBeInTheDocument();
+    expect(container.querySelector(".markdown-body")?.textContent).not.toContain(
+      "participants:",
+    );
+  });
+});
+
 describe("MarkdownRenderer — read-only banner", () => {
   it("does not show the banner when writeAllowed is true", () => {
     setTestState({ writeAllowed: true });

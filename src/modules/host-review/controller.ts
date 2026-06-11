@@ -4,7 +4,9 @@ import {
   applyEdit,
   assignBlockIndices,
   insertComment as insertCommentService,
+  parseMarkdownFrontmatter,
   parseCriticMarkup,
+  shiftCommentRawOffsets,
 } from "../../markup";
 import { findLiveFileInTree } from "../../types/fileTree";
 import type { Comment } from "../../types/criticmarkup";
@@ -126,15 +128,20 @@ export async function scanAllTabFileComments(
       if (node.kind === "file") {
         try {
           const content = await readFile(node.handle);
-          const parsed = parseCriticMarkup(content);
+          const document = parseMarkdownFrontmatter(content);
+          const parsed = parseCriticMarkup(document.body);
           const comments = assignBlockIndices(
             parsed.comments,
             parsed.cleanMarkdown,
           );
+          const commentsWithRawOffsets = shiftCommentRawOffsets(
+            comments,
+            document.bodyStart,
+          );
           result[node.path] = {
             filePath: node.path,
             fileName: node.name,
-            comments: comments.map((comment) => ({
+            comments: commentsWithRawOffsets.map((comment) => ({
               ...comment,
               filePath: node.path,
             })),
@@ -340,15 +347,18 @@ export function createHostReviewControllerActions<
         return;
       }
 
-      const { cleanMarkdown } = parseCriticMarkup(tab.rawContent);
-      const nextRawContent = insertCommentService({
-        rawContent: tab.rawContent,
-        existingComments: tab.comments,
-        cleanMarkdown,
+      const document = parseMarkdownFrontmatter(tab.rawContent);
+      const parsed = parseCriticMarkup(document.body);
+      const nextBody = insertCommentService({
+        rawContent: document.body,
+        existingComments: parsed.comments,
+        cleanMarkdown: parsed.cleanMarkdown,
         blockIndex,
         type,
         text,
       });
+      const nextRawContent =
+        tab.rawContent.slice(0, document.bodyStart) + nextBody;
 
       await writeAndUpdate({
         set,

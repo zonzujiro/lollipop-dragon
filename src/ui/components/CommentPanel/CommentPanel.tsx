@@ -137,6 +137,7 @@ export function CommentPanel({ peerMode = false }: Props) {
   const deletePeerComment = useAppStore((state) => state.deletePeerComment);
   const selectPeerFile = useAppStore((state) => state.selectPeerFile);
   const sharedContent = useAppStore((state) => state.sharedContent);
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
 
   const isFolderMode = fileTree.length > 0 && !peerMode;
   const isPeerMultiFile =
@@ -346,7 +347,7 @@ export function CommentPanel({ peerMode = false }: Props) {
           <>
             {hasQuestionThreads && (
               <button
-                className="comment-panel__delete-all"
+                className="comment-panel__secondary-action"
                 onClick={() => {
                   void handleCopyAgentPrompt();
                 }}
@@ -356,11 +357,11 @@ export function CommentPanel({ peerMode = false }: Props) {
               </button>
             )}
             <button
-              className="comment-panel__delete-all"
-              onClick={deleteAllComments}
-              title="Delete all comments from the file"
+              className="comment-panel__danger-trigger"
+              onClick={() => setConfirmDeleteAll(true)}
+              title="Review before deleting all comments from the file"
             >
-              Delete all
+              Clear
             </button>
           </>
         )}
@@ -372,6 +373,27 @@ export function CommentPanel({ peerMode = false }: Props) {
           ×
         </button>
       </div>
+
+      {confirmDeleteAll && (
+        <div className="comment-panel__danger-confirm" role="alert">
+          <span>Delete all comments from this file?</span>
+          <button
+            className="comment-panel__danger-confirm-delete"
+            onClick={() => {
+              deleteAllComments();
+              setConfirmDeleteAll(false);
+            }}
+          >
+            Delete all
+          </button>
+          <button
+            className="comment-panel__danger-confirm-cancel"
+            onClick={() => setConfirmDeleteAll(false)}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
 
       {(showStatusFilters || showTypeFilters) && (
         <div className="comment-panel__filters">

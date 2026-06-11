@@ -148,10 +148,10 @@ describe("App — single file open", () => {
     });
   });
 
-  it("shows the header with the file name", () => {
+  it("shows the header workflow context", () => {
     const { container } = render(<App />);
     const headerFilename = container.querySelector(".app-header__filename");
-    expect(headerFilename?.textContent).toBe("research.md");
+    expect(headerFilename?.textContent).toBe("File review");
   });
 
   it("renders the MarkdownRenderer", () => {
@@ -230,8 +230,9 @@ describe("App — folder open", () => {
   it("shows an empty state when no file is selected", () => {
     render(<App />);
     expect(
-      screen.getByText(/Select a file from the sidebar/),
+      screen.getByText(/Choose a Markdown file from the sidebar/),
     ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "my-docs" })).toBeInTheDocument();
     expect(screen.queryByTestId("markdown-renderer")).not.toBeInTheDocument();
   });
 
@@ -265,14 +266,14 @@ describe("App — folder open", () => {
     render(<App />);
     expect(screen.getByTestId("markdown-renderer")).toBeInTheDocument();
     expect(
-      screen.queryByText(/Select a file from the sidebar/),
+      screen.queryByText(/Choose a Markdown file from the sidebar/),
     ).not.toBeInTheDocument();
   });
 
-  it('shows "my-docs / readme.md" in the header when a file is selected', () => {
+  it('shows "Folder review" in the header when a folder file is selected', () => {
     setTestState({ fileName: "readme.md", activeFilePath: "readme.md" });
     render(<App />);
-    expect(screen.getByText("my-docs / readme.md")).toBeInTheDocument();
+    expect(screen.getByText("Folder review")).toBeInTheDocument();
   });
 
   it('shows "Open file" and "Open folder" buttons in folder mode', () => {

@@ -213,11 +213,13 @@ export function Header({
     0,
   );
 
-  const displayName = peerMode
+  const contextLabel = peerMode
     ? (useAppStore.getState().peerFileName ?? "Shared document")
-    : hasFolderOpen && fileName
-      ? `${directoryName} / ${fileName}`
-      : (fileName ?? directoryName ?? "");
+    : hasFolderOpen
+      ? "Folder review"
+      : hasContent
+        ? "File review"
+        : "";
 
   return (
     <>
@@ -233,7 +235,7 @@ export function Header({
               <SidebarIcon />
             </button>
           )}
-          <span className="app-header__filename">{displayName}</span>
+          <span className="app-header__filename">{contextLabel}</span>
           {peerMode && (
             <span className="app-header__peer-badge">Reviewing</span>
           )}
@@ -242,7 +244,7 @@ export function Header({
 
         <div className="app-header__actions">
           {!peerMode && (
-            <>
+            <div className="app-header__group app-header__group--source">
               <button
                 onClick={openFileInNewTab}
                 className="app-header__btn app-header__btn--text"
@@ -257,75 +259,76 @@ export function Header({
               </button>
 
               <HistoryDropdown />
-
-              {WORKER_URL && hasContent && (
-                <>
-                  <div className="app-header__divider" aria-hidden="true" />
-                  {fileName && onShareFile && (
-                    <button
-                      className="app-header__btn app-header__btn--icon"
-                      onClick={onShareFile}
-                      aria-label="Share file"
-                      title="Share file"
-                      disabled={disableHostReviewActions}
-                    >
-                      <ShareFileIcon />
-                    </button>
-                  )}
-                  {hasFolderOpen && onShareFolder && (
-                    <button
-                      className="app-header__btn app-header__btn--icon"
-                      onClick={onShareFolder}
-                      aria-label="Share folder"
-                      title="Share folder"
-                      disabled={disableHostReviewActions}
-                    >
-                      <ShareFolderIcon />
-                    </button>
-                  )}
-                  <button
-                    className={`app-header__btn app-header__btn--text${sharedPanelOpen ? " app-header__btn--active" : ""}`}
-                    onClick={toggleSharedPanel}
-                    title="Manage shared documents"
-                    disabled={disableHostReviewActions}
-                  >
-                    Shared
-                    {totalPending > 0 && (
-                      <span className="app-header__badge app-header__badge--pending">
-                        {totalPending}
-                      </span>
-                    )}
-                  </button>
-                  {hasActiveShares && (
-                    <button
-                      onClick={syncActiveShares}
-                      title="Push latest content to all active shares"
-                      className="app-header__btn app-header__btn--text"
-                      disabled={disableHostReviewActions}
-                    >
-                      Push update
-                    </button>
-                  )}
-                </>
-              )}
-
-              <div className="app-header__divider" aria-hidden="true" />
-            </>
+            </div>
           )}
 
-          <TableOfContents peerMode={peerMode} />
+          {!peerMode && WORKER_URL && hasContent && (
+            <div className="app-header__group app-header__group--share">
+              {fileName && onShareFile && (
+                <button
+                  className="app-header__btn app-header__btn--icon"
+                  onClick={onShareFile}
+                  aria-label="Share file"
+                  title="Share file"
+                  disabled={disableHostReviewActions}
+                >
+                  <ShareFileIcon />
+                </button>
+              )}
+              {hasFolderOpen && onShareFolder && (
+                <button
+                  className="app-header__btn app-header__btn--icon"
+                  onClick={onShareFolder}
+                  aria-label="Share folder"
+                  title="Share folder"
+                  disabled={disableHostReviewActions}
+                >
+                  <ShareFolderIcon />
+                </button>
+              )}
+              <button
+                className={`app-header__btn app-header__btn--text${sharedPanelOpen ? " app-header__btn--active" : ""}`}
+                onClick={toggleSharedPanel}
+                title="Manage shared documents"
+                disabled={disableHostReviewActions}
+              >
+                Shared
+                {totalPending > 0 && (
+                  <span className="app-header__badge app-header__badge--pending">
+                    {totalPending}
+                  </span>
+                )}
+              </button>
+              {hasActiveShares && (
+                <button
+                  onClick={syncActiveShares}
+                  title="Push latest content to all active shares"
+                  className="app-header__btn app-header__btn--text"
+                  disabled={disableHostReviewActions}
+                >
+                  Push update
+                </button>
+              )}
+            </div>
+          )}
 
-          <button
-            onClick={() => setTheme(isDark ? "light" : "dark")}
-            aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-            title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-            className="app-header__btn app-header__btn--icon"
-          >
-            {isDark ? <SunIcon /> : <MoonIcon />}
-          </button>
+          <div className="app-header__group app-header__group--view">
+            <TableOfContents peerMode={peerMode} />
+
+            <button
+              onClick={() => setTheme(isDark ? "light" : "dark")}
+              aria-label={
+                isDark ? "Switch to light mode" : "Switch to dark mode"
+              }
+              title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              className="app-header__btn app-header__btn--icon"
+            >
+              {isDark ? <SunIcon /> : <MoonIcon />}
+            </button>
+          </div>
 
           {peerMode && (
-            <>
+            <div className="app-header__group app-header__group--peer">
               {unsubmittedPeerCount > 0 && (
                 <button
                   onClick={syncPeerComments}
@@ -350,47 +353,53 @@ export function Header({
                 <FloppyDiskIcon />
                 Save file
               </button>
-            </>
+            </div>
           )}
 
-          <button
-            onClick={toggleCommentPanel}
-            aria-label={
-              commentPanelOpen ? "Close comments panel" : "Open comments panel"
-            }
-            title={
-              commentPanelOpen ? "Close comments panel" : "Open comments panel"
-            }
-            className={`app-header__btn app-header__btn--text${commentPanelOpen ? " app-header__btn--active" : ""}`}
-            disabled={disableHostReviewActions}
-          >
-            Comments
-            {commentCount > 0 && (
-              <span className="app-header__badge">{commentCount}</span>
+          <div className="app-header__group app-header__group--review">
+            <button
+              onClick={toggleCommentPanel}
+              aria-label={
+                commentPanelOpen
+                  ? "Close comments panel"
+                  : "Open comments panel"
+              }
+              title={
+                commentPanelOpen
+                  ? "Close comments panel"
+                  : "Open comments panel"
+              }
+              className={`app-header__btn app-header__btn--text app-header__btn--review${commentPanelOpen ? " app-header__btn--active" : ""}`}
+              disabled={disableHostReviewActions}
+            >
+              Comments
+              {commentCount > 0 && (
+                <span className="app-header__badge">{commentCount}</span>
+              )}
+            </button>
+
+            {!peerMode && hasContent && onPresent && (
+              <button
+                onClick={onPresent}
+                aria-label="Enter presentation mode"
+                title="Enter presentation mode"
+                className="app-header__btn app-header__btn--icon"
+              >
+                <PresentIcon />
+              </button>
             )}
-          </button>
 
-          {!peerMode && hasContent && onPresent && (
-            <button
-              onClick={onPresent}
-              aria-label="Enter presentation mode"
-              title="Enter presentation mode"
-              className="app-header__btn app-header__btn--icon"
-            >
-              <PresentIcon />
-            </button>
-          )}
-
-          {!peerMode && (
-            <button
-              onClick={toggleFocusMode}
-              aria-label="Enter focus mode"
-              title="Enter focus mode"
-              className="app-header__btn app-header__btn--icon"
-            >
-              <FocusIcon />
-            </button>
-          )}
+            {!peerMode && (
+              <button
+                onClick={toggleFocusMode}
+                aria-label="Enter focus mode"
+                title="Enter focus mode"
+                className="app-header__btn app-header__btn--icon"
+              >
+                <FocusIcon />
+              </button>
+            )}
+          </div>
         </div>
       </header>
     </>
