@@ -1,5 +1,9 @@
 import type { StoreApi } from "zustand";
-import { insertComment as insertCommentService, parseCriticMarkup } from "../../markup";
+import {
+  insertComment as insertCommentService,
+  parseMarkdownFrontmatter,
+  parseCriticMarkup,
+} from "../../markup";
 import { WORKER_URL } from "../../config";
 import {
   base64urlToKey,
@@ -502,16 +506,18 @@ export function createSharingControllerActions<
         blockIndex: comment.blockRef.blockIndex,
       });
 
-      const { cleanMarkdown } = parseCriticMarkup(tab.rawContent);
+      const document = parseMarkdownFrontmatter(tab.rawContent);
+      const parsed = parseCriticMarkup(document.body);
       const attribution = ` — ${comment.peerName}`;
-      const newRaw = insertCommentService({
-        rawContent: tab.rawContent,
-        existingComments: tab.comments,
-        cleanMarkdown,
+      const newBody = insertCommentService({
+        rawContent: document.body,
+        existingComments: parsed.comments,
+        cleanMarkdown: parsed.cleanMarkdown,
         blockIndex: comment.blockRef.blockIndex,
         type: comment.commentType,
         text: comment.text + attribution,
       });
+      const newRaw = tab.rawContent.slice(0, document.bodyStart) + newBody;
       if (newRaw === tab.rawContent) {
         console.error("[mergeComment] insert had no effect", {
           blockIndex: comment.blockRef.blockIndex,

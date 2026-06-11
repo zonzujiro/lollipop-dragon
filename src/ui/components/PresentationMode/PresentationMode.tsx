@@ -6,7 +6,11 @@ import { CodeBlock, PreBlock } from "../MarkdownRenderer";
 import { SunIcon, MoonIcon } from "../Icons";
 import { useAppStore } from "../../../store";
 import { useActiveTab } from "../../../store/selectors";
-import { parseCriticMarkup, useShikiRehypePlugin } from "../../../markup";
+import {
+  parseCriticMarkup,
+  parseMarkdownFrontmatter,
+  useShikiRehypePlugin,
+} from "../../../markup";
 
 function splitIntoSlides(markdown: string): string[] {
   const lines = markdown.split("\n");
@@ -69,7 +73,8 @@ export function PresentationMode() {
   const viewportRef = useRef<HTMLDivElement>(null);
 
   const cleanMarkdown = useMemo(() => {
-    return parseCriticMarkup(rawContent).cleanMarkdown;
+    const document = parseMarkdownFrontmatter(rawContent);
+    return parseCriticMarkup(document.body).cleanMarkdown;
   }, [rawContent]);
 
   const slides = useMemo(() => splitIntoSlides(cleanMarkdown), [cleanMarkdown]);

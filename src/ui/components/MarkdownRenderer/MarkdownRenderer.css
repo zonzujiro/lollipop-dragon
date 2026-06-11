@@ -70,6 +70,68 @@
   line-height: var(--leading);
 }
 
+.markdown-metadata {
+  margin: 0 0 2rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface-alt) 72%, var(--surface));
+  color: var(--text);
+}
+
+.markdown-metadata__title {
+  margin: 0 0 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+
+.markdown-metadata__list {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.markdown-metadata__row {
+  display: grid;
+  grid-template-columns: minmax(7rem, 10rem) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.markdown-metadata__key {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.markdown-metadata__value {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.markdown-metadata__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.markdown-metadata__chip {
+  display: inline-flex;
+  max-width: 100%;
+  padding: 0.08rem 0.48rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border) 62%, transparent);
+  color: var(--text);
+  line-height: 1.45;
+}
+
 .markdown-body h1,
 .markdown-body h2,
 .markdown-body h3,
@@ -370,6 +432,10 @@
   }
   .markdown-body h3 {
     font-size: 1.125rem;
+  }
+  .markdown-metadata__row {
+    grid-template-columns: 1fr;
+    gap: 0.1rem;
   }
   .markdown-body pre {
     font-size: 0.8125rem;

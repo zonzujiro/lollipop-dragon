@@ -52,11 +52,59 @@
   height: 100%;
   align-items: center;
   justify-content: center;
+  padding: 2rem;
+}
+
+.content-empty__panel {
+  width: min(28rem, 100%);
+  text-align: center;
+  color: var(--text);
+}
+
+.content-empty__eyebrow {
+  margin: 0 0 0.6rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.content-empty__title {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.6rem;
+  font-weight: 650;
 }
 
 .content-empty__text {
+  margin: 0.7rem 0 0;
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.content-empty__meta {
+  margin: 0.7rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.content-empty__action {
+  margin-top: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.45rem 0.8rem;
+}
+
+.content-empty__action:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* ── Share status screen (revoked / expired) ─────────────────── */

@@ -94,7 +94,9 @@ describe("Header share buttons", () => {
       render(<Header onShareFile={vi.fn()} onShareFolder={vi.fn()} />);
 
       expect(screen.getByRole("button", { name: "Share file" })).toBeDisabled();
-      expect(screen.getByRole("button", { name: "Shared" })).toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: "Shared links" }),
+      ).toBeDisabled();
       expect(
         screen.getByRole("button", { name: "Open comments panel" }),
       ).toBeDisabled();

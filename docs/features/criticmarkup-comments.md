@@ -172,9 +172,17 @@ File tree sidebar showing the project structure with nested folders. Filters to 
 
 Standard markdown (CommonMark + GFM). Tables with proper alignment and clean styling. Fenced code blocks with syntax highlighting. Mermaid diagrams (flowcharts, sequence, ER, Gantt, mindmaps). KaTeX/LaTeX math — inline and block. Task lists, footnotes, admonitions/callouts. Article-quality typography: 16–18px body, 1.6–1.8 line height, clear heading hierarchy, comfortable paragraph spacing.
 
+Markdown files may start with YAML-style frontmatter metadata. The rendered
+review surface hides the raw frontmatter from the document body and displays it
+as a quiet metadata panel before the first rendered heading. Scalar values render
+as label/value rows, while list-style fields such as participants, tags, extends,
+amends, and relates render as compact chips. Comment anchors and inserted
+CriticMarkup comments still target the rendered document body, not the hidden
+metadata block.
+
 ### 8.3 Block-Level Commenting UI
 
-Every rendered block (paragraph, heading, table, code block, diagram, list item) is commentable. On hover, a subtle comment icon appears in the left margin. Clicking opens an inline comment form with type selector and text input. Existing comments show as colored dots in the margin — color-coded by type. Clicking a dot expands the comment card. The right sidebar shows all comments in document order. Filters: all, by type, pending only (CriticMarkup still present), resolved (CriticMarkup removed by the LLM).
+Every rendered block (paragraph, heading, table, code block, diagram, list item) is commentable. On hover, a visible comment icon appears in the left margin. Clicking opens an inline comment form with type selector and text input. Existing comments show as colored markers in the margin — color-coded by type, with a stronger selected state so their document anchor is clear. Clicking a marker expands the comment card. The right sidebar shows all comments in document order. Filters: all, by type, pending only (CriticMarkup still present), resolved (CriticMarkup removed by the LLM). Bulk deletion requires a confirmation step instead of deleting directly from the panel header.
 
 ### 8.4 Design
 

@@ -2,7 +2,7 @@ import "./TableOfContents.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "../../../store";
 import { useActiveTab } from "../../../store/selectors";
-import { parseCriticMarkup } from "../../../markup";
+import { parseCriticMarkup, parseMarkdownFrontmatter } from "../../../markup";
 import { extractHeadings } from "../../../utils/extractHeadings";
 
 function OutlineIcon() {
@@ -53,7 +53,8 @@ export function TableOfContents({ peerMode = false }: Props) {
     if (!rawContent) {
       return [];
     }
-    const { cleanMarkdown } = parseCriticMarkup(rawContent);
+    const document = parseMarkdownFrontmatter(rawContent);
+    const { cleanMarkdown } = parseCriticMarkup(document.body);
     return extractHeadings(cleanMarkdown);
   }, [rawContent]);
 

@@ -53,12 +53,44 @@ const folderIcon = (
   </svg>
 );
 
-function NoFileSelected() {
+function countFiles(nodes: SidebarTreeNode[]): number {
+  return nodes.reduce((total, node) => {
+    if (node.kind === "file") {
+      return total + 1;
+    }
+    return total + countFiles(node.children);
+  }, 0);
+}
+
+function NoFileSelected({
+  directoryName,
+  fileCount,
+  onOpenFolder,
+}: {
+  directoryName: string | null;
+  fileCount: number;
+  onOpenFolder: () => void;
+}) {
   return (
     <div className="content-empty">
-      <p className="content-empty__text">
-        Select a file from the sidebar to start reading
-      </p>
+      <div className="content-empty__panel">
+        <p className="content-empty__eyebrow">Folder open</p>
+        <h1 className="content-empty__title">
+          {directoryName ?? "Select a file"}
+        </h1>
+        <p className="content-empty__text">
+          Choose a Markdown file from the sidebar to start reviewing.
+        </p>
+        {fileCount > 0 && (
+          <p className="content-empty__meta">
+            {fileCount} readable file{fileCount === 1 ? "" : "s"} in this
+            workspace
+          </p>
+        )}
+        <button className="content-empty__action" onClick={onOpenFolder}>
+          Open another folder
+        </button>
+      </div>
     </div>
   );
 }
@@ -359,7 +391,11 @@ function App() {
           ) : tab?.fileName ? (
             <MarkdownRenderer />
           ) : (
-            <NoFileSelected />
+            <NoFileSelected
+              directoryName={tab?.directoryName ?? null}
+              fileCount={countFiles(hostTree)}
+              onOpenFolder={openDirectoryInNewTab}
+            />
           )}
         </main>
         {tab?.commentPanelOpen && !focusMode && !disableReviewPanels && (

@@ -32,7 +32,19 @@
 .app-header__actions {
   display: flex;
   align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.app-header__group {
+  display: inline-flex;
+  align-items: center;
   gap: 0.25rem;
+}
+
+.app-header__group + .app-header__group {
+  border-left: 1px solid var(--border-light);
+  padding-left: 0.45rem;
 }
 
 .app-header__divider {
@@ -73,6 +85,32 @@
   padding: 0.35rem 0.5rem;
   font-size: 0.8rem;
   font-weight: 500;
+}
+
+.app-header__btn--share {
+  background-color: color-mix(in srgb, var(--c-green) 10%, var(--surface-alt));
+  border-color: color-mix(in srgb, var(--c-green) 28%, var(--border-light));
+  color: color-mix(in srgb, var(--c-green) 78%, var(--text));
+  font-weight: 650;
+}
+
+.app-header__btn--share:hover {
+  background-color: var(--c-green);
+  border-color: var(--c-green);
+  color: #fff;
+}
+
+.app-header__btn--review {
+  background-color: var(--accent-bg);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border-light));
+  color: var(--accent);
+  font-weight: 650;
+}
+
+.app-header__btn--review:hover {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
 }
 
 .focus-exit-btn {
