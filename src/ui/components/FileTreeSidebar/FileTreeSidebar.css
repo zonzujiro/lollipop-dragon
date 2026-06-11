@@ -145,23 +145,28 @@
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  opacity: 0.38;
+  opacity: 0;
+  pointer-events: none;
   transition:
     opacity 0.15s,
     color 0.15s;
 }
 
-.tree-item-row:hover .tree-item-share-btn {
+.tree-item-row:hover .tree-item-share-btn,
+.tree-item-row:focus-within .tree-item-share-btn {
   opacity: 1;
+  pointer-events: auto;
   background: linear-gradient(to right, transparent, var(--surface-alt) 35%);
   filter: drop-shadow(-2px 0 3px rgba(0, 0, 0, 0.08));
 }
 
-.tree-item-row:has(.tree-item--active):hover .tree-item-share-btn {
+.tree-item-row:has(.tree-item--active):hover .tree-item-share-btn,
+.tree-item-row:has(.tree-item--active):focus-within .tree-item-share-btn {
   background: linear-gradient(to right, transparent, var(--accent-bg) 35%);
 }
 
-.dark .tree-item-row:hover .tree-item-share-btn {
+.dark .tree-item-row:hover .tree-item-share-btn,
+.dark .tree-item-row:focus-within .tree-item-share-btn {
   filter: drop-shadow(-2px 0 3px rgba(0, 0, 0, 0.25));
 }
 
