@@ -539,6 +539,7 @@ function InlineEditForm({
             key={commentType}
             type="button"
             className={`comment-add-form__type${editType === commentType ? " comment-add-form__type--active" : ""}`}
+            aria-pressed={editType === commentType}
             onClick={() => setEditType(commentType)}
           >
             {commentType}
@@ -547,6 +548,7 @@ function InlineEditForm({
       </div>
       <textarea
         className="comment-add-form__input"
+        aria-label="Comment text"
         value={editText}
         onChange={(event) => setEditText(event.target.value)}
         rows={2}

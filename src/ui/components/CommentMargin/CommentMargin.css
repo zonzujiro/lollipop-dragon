@@ -115,85 +115,142 @@
   position: absolute;
   left: calc(100% + 0.75rem);
   z-index: 60;
-  width: 400px;
+  width: min(420px, calc(100vw - 7rem));
+  max-height: min(72vh, 560px);
+  overflow-y: auto;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.75rem;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  border-radius: var(--radius);
+  padding: 0.85rem;
+  box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.7rem;
+}
+
+.comment-add-form__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.comment-add-form__title {
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.comment-add-form__meta {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .comment-add-form__types {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem;
+  gap: 0.35rem;
+  padding: 0.15rem;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--surface-alt) 70%, transparent);
 }
 
 .comment-add-form__type {
-  font-size: 0.7rem;
-  padding: 0.15rem 0.45rem;
+  min-height: 1.75rem;
+  font-size: 0.72rem;
+  font-weight: 650;
+  padding: 0.24rem 0.55rem;
   border-radius: 999px;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   cursor: pointer;
   transition:
     background 0.1s,
     color 0.1s,
-    border-color 0.1s;
+    border-color 0.1s,
+    box-shadow 0.1s;
 }
 
 .comment-add-form__type:hover {
-  border-color: var(--accent);
+  background: var(--surface);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
   color: var(--accent);
+}
+
+.comment-add-form__type:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .comment-add-form__type--active {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
+  box-shadow: var(--shadow-sm);
 }
 
 .comment-add-form__input {
   width: 100%;
-  min-height: 200px;
+  min-height: 9.5rem;
   box-sizing: border-box;
   resize: vertical;
-  font-size: 0.875rem;
+  font-size: 0.92rem;
+  line-height: 1.5;
   font-family: inherit;
-  padding: 0.4rem 0.5rem;
+  padding: 0.65rem 0.7rem;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: var(--bg);
   color: var(--text);
   outline: none;
+  transition:
+    border-color 0.12s,
+    box-shadow 0.12s,
+    background-color 0.12s;
 }
 
 .comment-add-form__input:focus {
   border-color: var(--accent);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
 }
 
 .comment-add-form__actions {
   display: flex;
-  gap: 0.4rem;
+  gap: 0.5rem;
   justify-content: flex-end;
 }
 
 .comment-add-form__save,
 .comment-add-form__cancel {
-  font-size: 0.75rem;
-  padding: 0.25rem 0.75rem;
-  border-radius: 4px;
+  min-height: 2rem;
+  font-size: 0.78rem;
+  font-weight: 650;
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--radius);
   cursor: pointer;
   border: 1px solid transparent;
+  transition:
+    background-color 0.12s,
+    border-color 0.12s,
+    color 0.12s,
+    opacity 0.12s;
 }
 
 .comment-add-form__save {
   background: var(--accent);
+  border-color: var(--accent);
   color: #fff;
+}
+
+.comment-add-form__save:hover:not(:disabled) {
+  background: var(--accent-light);
+  border-color: var(--accent-light);
 }
 
 .comment-add-form__save:disabled {
@@ -202,11 +259,27 @@
 }
 
 .comment-add-form__cancel {
-  background: transparent;
+  background: var(--surface);
   border-color: var(--border);
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .comment-add-form__cancel:hover {
-  border-color: var(--text-muted);
+  border-color: var(--text-secondary);
+  color: var(--text);
+}
+
+@media (max-width: 720px) {
+  .comment-add-form {
+    left: 0;
+    width: min(21rem, calc(100vw - 3.5rem));
+  }
+
+  .comment-add-form__types {
+    gap: 0.25rem;
+  }
+
+  .comment-add-form__type {
+    flex: 1 1 calc(50% - 0.25rem);
+  }
 }

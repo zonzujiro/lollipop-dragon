@@ -56,12 +56,17 @@ function AddCommentForm({
       onSubmit={handleSubmit}
       onClick={(e) => e.stopPropagation()}
     >
+      <div className="comment-add-form__header">
+        <span className="comment-add-form__title">Add comment</span>
+        <span className="comment-add-form__meta">{type}</span>
+      </div>
       <div className="comment-add-form__types">
         {COMMENT_TYPES.map((t) => (
           <button
             key={t}
             type="button"
             className={`comment-add-form__type${type === t ? " comment-add-form__type--active" : ""}`}
+            aria-pressed={type === t}
             onClick={() => setType(t)}
             disabled={disabled}
           >
@@ -72,6 +77,7 @@ function AddCommentForm({
       <textarea
         className="comment-add-form__input"
         placeholder="Add a comment…"
+        aria-label="Comment text"
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={3}
