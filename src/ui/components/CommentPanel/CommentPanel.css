@@ -153,6 +153,13 @@
   color: var(--text);
 }
 
+.comment-panel__agent-run-scope {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
 .comment-panel__agent-run-error {
   overflow: hidden;
   text-overflow: ellipsis;

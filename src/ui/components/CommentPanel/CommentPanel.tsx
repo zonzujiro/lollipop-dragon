@@ -56,6 +56,11 @@ const AGENT_RUN_STATUS_LABEL: Record<AgentRunStatus, string> = {
   failed: "Failed",
   stopped: "Stopped",
 };
+const AGENT_RUN_TASK_LABEL = {
+  address_comments: "Address comments",
+  answer_questions: "Answer questions",
+  review_peer_comments: "Review peer comments",
+};
 const EMPTY_COMMENTS: Comment[] = [];
 const EMPTY_FILE_TREE: TabState["fileTree"] = [];
 const EMPTY_ALL_FILE_COMMENTS: TabState["allFileComments"] = {};
@@ -89,6 +94,26 @@ function peerCommentToDisplay(comment: PeerComment): DisplayComment {
     text: comment.text,
     blockIndex: comment.blockRef.blockIndex,
   };
+}
+
+function formatAgentRunTargets(targetPaths: string[]): string {
+  if (targetPaths.length === 0) {
+    return "No target";
+  }
+  if (targetPaths.length === 1) {
+    return targetPaths[0];
+  }
+  return `${targetPaths[0]} +${targetPaths.length - 1} more`;
+}
+
+function formatAgentRunCommentCount(commentCount: number): string {
+  if (commentCount === 0) {
+    return "no comments";
+  }
+  if (commentCount === 1) {
+    return "1 comment";
+  }
+  return `${commentCount} comments`;
 }
 
 interface CrossFileEntry<C extends { type: CommentType }> {
@@ -405,6 +430,13 @@ export function CommentPanel({ peerMode = false }: Props) {
     activeAgentRun && ACTIVE_AGENT_RUN_STATUSES.has(activeAgentRun.status),
   );
   const showAgentRunStatus = !peerMode && activeAgentRun;
+  const activeAgentRunScope = activeAgentRun
+    ? `${AGENT_RUN_TASK_LABEL[activeAgentRun.taskKind]} · ${formatAgentRunTargets(
+        activeAgentRun.targetPaths,
+      )} · ${formatAgentRunCommentCount(
+        activeAgentRun.selectedCommentIds.length,
+      )}`
+    : null;
   const showAgentCapabilityWarning = Boolean(
     !peerMode &&
     canRunAgent &&
@@ -596,6 +628,11 @@ export function CommentPanel({ peerMode = false }: Props) {
             <span className="comment-panel__agent-run-label">
               Agent {AGENT_RUN_STATUS_LABEL[activeAgentRun.status]}
             </span>
+            {activeAgentRunScope && (
+              <span className="comment-panel__agent-run-scope">
+                {activeAgentRunScope}
+              </span>
+            )}
             {activeAgentRun.errorMessage && (
               <span className="comment-panel__agent-run-error">
                 {activeAgentRun.errorMessage}

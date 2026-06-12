@@ -325,6 +325,7 @@ describe("CommentPanel — agent prompt", () => {
       tabId: "test-tab",
       taskKind: "answer_questions",
       targetPaths: ["spec.md"],
+      selectedCommentIds: ["mr-question-1"],
       prompt: "Review spec.md and answer questions",
       runnerKind: "terminal",
     });
@@ -338,6 +339,9 @@ describe("CommentPanel — agent prompt", () => {
     render(<CommentPanel />);
 
     expect(screen.getByText("Agent Running")).toBeInTheDocument();
+    expect(
+      screen.getByText("Answer questions · spec.md · 1 comment"),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Working on questions/)).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Copy agent prompt" }),

@@ -127,6 +127,7 @@ Owns serializable host-mode agent review run metadata:
 - active run per tab mapping
 - run lifecycle status
 - generated prompt snapshots for inspection/copying
+- target and comment scope metadata shown in the active run panel
 - active-file question-thread run request orchestration
 
 Mutable runner, process, socket, and terminal objects stay in runtime services,
