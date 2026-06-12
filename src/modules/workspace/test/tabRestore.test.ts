@@ -15,7 +15,11 @@ vi.mock("../storage", async (importOriginal) => {
 
 import { useAppStore } from "../../../store";
 import { createDefaultTab } from "../../../types/tab";
-import type { FileTreeNode } from "../../../types/fileTree";
+import type {
+  FileTreeNode,
+  NativeDirectoryTarget,
+  NativeFileTarget,
+} from "../../../types/fileTree";
 import { resetTestStore, setTestState } from "../../../testing/testHelpers";
 import { getActiveTab } from "../selectors";
 import {
@@ -30,6 +34,40 @@ beforeEach(() => {
   resetTestStore();
   vi.clearAllMocks();
 });
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isUnknownArray(value: unknown): value is unknown[] {
+  return Array.isArray(value);
+}
+
+function getPersistedStoreState(): Record<string, unknown> {
+  const raw = localStorage.getItem("markreview-store");
+  if (!raw) {
+    throw new Error("Expected markreview-store to be persisted");
+  }
+
+  const parsed: unknown = JSON.parse(raw);
+  if (!isRecord(parsed) || !isRecord(parsed["state"])) {
+    throw new Error("Expected persisted store state object");
+  }
+
+  return parsed["state"];
+}
+
+function findRecordById(
+  values: unknown[],
+  id: string,
+): Record<string, unknown> {
+  const record = values.find((value) => isRecord(value) && value["id"] === id);
+  if (!isRecord(record)) {
+    throw new Error(`Expected persisted record ${id}`);
+  }
+
+  return record;
+}
 
 describe("store.switchTab", () => {
   it("restores a persisted folder tab when it becomes active", async () => {
@@ -144,6 +182,152 @@ describe("store.switchTab", () => {
 });
 
 describe("store.restoreTabs", () => {
+  it("restores a native file tab from its persisted path target", async () => {
+    const nativeFileHandle: NativeFileTarget = {
+      kind: "native_file",
+      path: "/tmp/project/notes.md",
+      name: "notes.md",
+    };
+    const fileTab = createDefaultTab({
+      id: "file-tab",
+      label: "notes.md",
+      fileHandle: nativeFileHandle,
+      fileName: "notes.md",
+      rawContent: "# Stale content",
+      restoreError: "Previous error",
+      writeAllowed: false,
+    });
+
+    useAppStore.setState({
+      tabs: [fileTab],
+      activeTabId: fileTab.id,
+    });
+
+    vi.mocked(readFile).mockResolvedValue("# Native restored content");
+
+    await useAppStore.getState().restoreTabs();
+
+    const tab = useAppStore.getState().tabs.find((t) => t.id === "file-tab");
+    expect(getHandle).not.toHaveBeenCalledWith("tab:file-tab:file");
+    expect(readFile).toHaveBeenCalledWith(nativeFileHandle);
+    expect(tab?.fileHandle).toBe(nativeFileHandle);
+    expect(tab?.rawContent).toBe("# Native restored content");
+    expect(tab?.restoreError).toBeNull();
+    expect(tab?.writeAllowed).toBe(true);
+  });
+
+  it("restores a native folder tab from its persisted path target", async () => {
+    const nativeDirectoryHandle: NativeDirectoryTarget = {
+      kind: "native_directory",
+      path: "/tmp/project",
+      name: "project",
+    };
+    const nativeFileHandle: NativeFileTarget = {
+      kind: "native_file",
+      path: "/tmp/project/docs/readme.md",
+      name: "readme.md",
+    };
+    const directoryTab = createDefaultTab({
+      id: "folder-tab",
+      label: "project",
+      directoryHandle: nativeDirectoryHandle,
+      directoryName: "project",
+      fileName: "readme.md",
+      rawContent: "# Stale content",
+      activeFilePath: "docs/readme.md",
+      restoreError: "Previous error",
+      writeAllowed: false,
+    });
+    const tree: FileTreeNode[] = [
+      {
+        kind: "directory",
+        name: "docs",
+        path: "docs",
+        children: [
+          {
+            kind: "file",
+            name: "readme.md",
+            path: "docs/readme.md",
+            handle: nativeFileHandle,
+          },
+        ],
+      },
+    ];
+
+    useAppStore.setState({
+      tabs: [directoryTab],
+      activeTabId: directoryTab.id,
+    });
+
+    vi.mocked(buildFileTree).mockResolvedValue(tree);
+    vi.mocked(readFile).mockResolvedValue("# Native folder content");
+
+    await useAppStore.getState().restoreTabs();
+
+    const tab = useAppStore.getState().tabs.find((t) => t.id === "folder-tab");
+    expect(getHandle).not.toHaveBeenCalledWith("tab:folder-tab:directory");
+    expect(buildFileTree).toHaveBeenCalledWith(nativeDirectoryHandle);
+    expect(readFile).toHaveBeenCalledWith(nativeFileHandle);
+    expect(tab?.directoryHandle).toBe(nativeDirectoryHandle);
+    expect(tab?.fileTree).toEqual(tree);
+    expect(tab?.fileHandle).toBe(nativeFileHandle);
+    expect(tab?.rawContent).toBe("# Native folder content");
+    expect(tab?.restoreError).toBeNull();
+    expect(tab?.writeAllowed).toBe(true);
+  });
+
+  it("persists native path targets while omitting browser handles", () => {
+    localStorage.removeItem("markreview-store");
+    const nativeFileHandle: NativeFileTarget = {
+      kind: "native_file",
+      path: "/tmp/project/notes.md",
+      name: "notes.md",
+    };
+    const nativeDirectoryHandle: NativeDirectoryTarget = {
+      kind: "native_directory",
+      path: "/tmp/project",
+      name: "project",
+    };
+    const nativeTab = createDefaultTab({
+      id: "native-tab",
+      label: "project",
+      fileHandle: nativeFileHandle,
+      fileName: "notes.md",
+      directoryHandle: nativeDirectoryHandle,
+      directoryName: "project",
+    });
+    const browserTab = createDefaultTab({
+      id: "browser-tab",
+      label: "browser.md",
+      fileHandle: {
+        kind: "file",
+        name: "browser.md",
+      },
+      fileName: "browser.md",
+    });
+
+    useAppStore.setState({
+      tabs: [nativeTab, browserTab],
+      activeTabId: nativeTab.id,
+    });
+
+    const persistedState = getPersistedStoreState();
+    const persistedTabs = persistedState["tabs"];
+    if (!isUnknownArray(persistedTabs)) {
+      throw new Error("Expected persisted tabs array");
+    }
+
+    const persistedNativeTab = findRecordById(persistedTabs, "native-tab");
+    const persistedBrowserTab = findRecordById(persistedTabs, "browser-tab");
+
+    expect(persistedNativeTab["fileHandle"]).toEqual(nativeFileHandle);
+    expect(persistedNativeTab["directoryHandle"]).toEqual(
+      nativeDirectoryHandle,
+    );
+    expect(persistedBrowserTab["fileHandle"]).toBeNull();
+    expect(persistedBrowserTab["directoryHandle"]).toBeNull();
+  });
+
   it("sets restoreError on file tab when handle is missing from IndexedDB", async () => {
     const fileTab = createDefaultTab({
       id: "file-tab",

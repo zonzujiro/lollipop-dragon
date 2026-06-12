@@ -188,9 +188,9 @@ commands. The desktop workspace runtime uses those dialogs for host open flows
 and returns native path targets.
 
 Host tab state can store either browser handles or native path targets for live
-file and directory access. Browser handles remain the only targets persisted in
-IndexedDB restore storage; native target persistence is a separate desktop
-runtime concern.
+file and directory access. Browser handles use IndexedDB restore storage, while
+serializable native path targets are persisted with tab state and restored
+through the active workspace runtime.
 
 ### `workspace`
 

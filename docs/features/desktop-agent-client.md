@@ -243,13 +243,15 @@ outside this first desktop planning scope.
   app-wide.
 - Desktop reads agent availability before showing run actions, so missing
   `DRAGON_AGENT_COMMAND` falls back to prompt copying with a setup message.
+- Native file and folder targets are persisted by path, so desktop tabs can
+  restore live access after reload without browser handle storage.
 
 ## Open Questions
 
 - How should desktop handle agent authentication and first-run setup?
 - What is the minimum Windows backend for terminal/session support if `tmux` is
   not available?
-- How much native file/session persistence should desktop restore across app
+- How much agent terminal/session persistence should desktop restore across app
   restarts?
 - Which structured runner should follow the first configurable terminal-command
   runner?

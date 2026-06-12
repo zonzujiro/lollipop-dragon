@@ -359,8 +359,8 @@ on browser handles until tab state is widened to store native sessions.
 
 Native tab target note: host tab state now accepts browser handles or native path
 targets for live file and directory access. Existing browser handle restore logic
-is preserved; native restore/session persistence will be handled in a later
-desktop runtime slice.
+is preserved; serializable native file and folder path targets are persisted
+with tab state and restored through the active workspace runtime.
 
 ## Risks
 

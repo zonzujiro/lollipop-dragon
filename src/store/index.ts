@@ -54,8 +54,11 @@ import {
 } from "../modules/workspace";
 import type { WorkspaceActions, WorkspaceState } from "../modules/workspace";
 import { toPersistedTree } from "../types/fileTree";
+import { isNativeDirectoryTarget, isNativeFileTarget } from "../types/fileTree";
 import type {
   HydratedSidebarTreeNode,
+  NativeDirectoryTarget,
+  NativeFileTarget,
   SidebarTreeNode,
 } from "../types/fileTree";
 import type { CommentType } from "../types/criticmarkup";
@@ -118,6 +121,20 @@ interface OldPersistedState {
   activeFilePath?: string | null;
   directoryName?: string | null;
   peerName?: string | null;
+}
+
+function getPersistedNativeFileTarget(tab: TabState): NativeFileTarget | null {
+  return tab.fileHandle && isNativeFileTarget(tab.fileHandle)
+    ? tab.fileHandle
+    : null;
+}
+
+function getPersistedNativeDirectoryTarget(
+  tab: TabState,
+): NativeDirectoryTarget | null {
+  return tab.directoryHandle && isNativeDirectoryTarget(tab.directoryHandle)
+    ? tab.directoryHandle
+    : null;
 }
 
 function isOldFormat(p: unknown): p is OldPersistedState {
@@ -318,8 +335,10 @@ export const useAppStore = create<AppState>()(
         tabs: s.tabs.map((t) => ({
           id: t.id,
           label: t.label,
+          fileHandle: getPersistedNativeFileTarget(t),
           fileName: t.fileName,
           rawContent: t.rawContent,
+          directoryHandle: getPersistedNativeDirectoryTarget(t),
           directoryName: t.directoryName,
           activeFilePath: t.activeFilePath,
           fileTree: toPersistedTree(t.fileTree),

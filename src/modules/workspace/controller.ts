@@ -171,8 +171,14 @@ export async function restoreDirectoryTabState<
   }
 
   try {
-    const handle = await getHandle(`tab:${tab.id}:directory`);
-    if (!handle || handle.kind !== "directory") {
+    const handle =
+      tab.directoryHandle && isNativeDirectoryTarget(tab.directoryHandle)
+        ? tab.directoryHandle
+        : await getHandle(`tab:${tab.id}:directory`);
+    if (
+      !handle ||
+      (!isBrowserDirectoryHandle(handle) && !isNativeDirectoryTarget(handle))
+    ) {
       console.debug(
         "[restoreDirectoryTabState] no saved directory handle:",
         tab.id,
@@ -191,30 +197,32 @@ export async function restoreDirectoryTabState<
       return;
     }
 
-    let readPermission = await handle.queryPermission({ mode: "read" });
-    if (readPermission !== "granted" && requestPermissionOnPrompt) {
-      readPermission = await handle.requestPermission({ mode: "read" });
-    }
-    if (readPermission !== "granted") {
-      console.debug(
-        "[restoreDirectoryTabState] directory permission not granted:",
-        {
-          tabId: tab.id,
-          directoryName: tab.directoryName,
-          readPermission,
-        },
-      );
-      set((state) => ({
-        tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
-          ...buildRestoreAccessState(
-            buildFolderRestoreMessage({
-              directoryName: tab.directoryName,
-              fileName: tab.fileName,
-            }),
-          ),
-        })),
-      }));
-      return;
+    if (isBrowserDirectoryHandle(handle)) {
+      let readPermission = await handle.queryPermission({ mode: "read" });
+      if (readPermission !== "granted" && requestPermissionOnPrompt) {
+        readPermission = await handle.requestPermission({ mode: "read" });
+      }
+      if (readPermission !== "granted") {
+        console.debug(
+          "[restoreDirectoryTabState] directory permission not granted:",
+          {
+            tabId: tab.id,
+            directoryName: tab.directoryName,
+            readPermission,
+          },
+        );
+        set((state) => ({
+          tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
+            ...buildRestoreAccessState(
+              buildFolderRestoreMessage({
+                directoryName: tab.directoryName,
+                fileName: tab.fileName,
+              }),
+            ),
+          })),
+        }));
+        return;
+      }
     }
 
     const tree = await buildFileTree(handle);
@@ -1096,6 +1104,18 @@ export function createWorkspaceControllerActions<
           }
         } else if (tab.fileName) {
           try {
+            if (tab.fileHandle && isNativeFileTarget(tab.fileHandle)) {
+              const restoredRawContent = await readFile(tab.fileHandle);
+              set((state) => ({
+                tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
+                  rawContent: restoredRawContent,
+                  writeAllowed: true,
+                  restoreError: null,
+                })),
+              }));
+              continue;
+            }
+
             const handle = await getHandle(`tab:${tab.id}:file`);
             if (!handle || handle.kind !== "file") {
               console.warn(
