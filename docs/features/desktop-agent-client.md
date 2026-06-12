@@ -234,6 +234,8 @@ outside this first desktop planning scope.
   reflected in the UI.
 - Agent run state keeps the generated prompt snapshot, and the active run panel
   can copy that exact prompt for inspection or manual recovery.
+- The active run panel shows the run task, target path summary, and selected
+  comment count.
 - Native runner stdout and stderr are captured into a bounded output tail shown
   on the active run panel for same-window observability.
 - Closing a tab with a queued, running, or attention-needed run is blocked until
