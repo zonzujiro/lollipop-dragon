@@ -135,17 +135,18 @@ not in Zustand.
 
 The Tauri shell under `src-tauri/` loads the same React app as the website. It is
 the native container for future filesystem, watcher, terminal, and agent runtime
-adapters. The website runtime remains the default `src/runtime/` export until a
-desktop-specific runtime entrypoint is added.
+adapters. Normal Vite builds use the web runtime. Tauri dev/build commands run
+Vite in `desktop` mode, where `vite.config.ts` aliases the active runtime module
+to the desktop runtime implementation.
 
 The bridge from the frontend to native commands lives in
 `src/runtime/tauriBridge.ts`. It uses Tauri v2's global `window.__TAURI__.core`
 API, which is enabled only by the desktop shell config. Web execution therefore
 continues to reject desktop command calls instead of importing native APIs.
 
-Desktop runtime composition lives in `src/runtime/desktop.ts`. It is not the
-default website runtime export; it gives the desktop shell a separate module to
-adopt once native filesystem and agent adapters are ready.
+Desktop runtime composition lives in `src/runtime/desktop.ts`. The public
+`src/runtime/` facade imports `runtime.active`; website builds resolve that to
+`runtime.web`, while desktop builds resolve it to `runtime.desktop`.
 
 Workspace runtime file operations accept runtime targets. Browser targets are
 the current `FileSystem*Handle` values, while native targets are path-based
@@ -159,8 +160,8 @@ to those commands stays behind `src/runtime/tauriBridge.ts` response validation.
 `WorkspaceRuntime` interface for native path targets.
 
 Native open-file and open-folder dialogs are also exposed through Tauri bridge
-commands. They return path targets and are kept separate from the default web
-open flow until host tab state can store native workspace sessions.
+commands. The desktop workspace runtime uses those dialogs for host open flows
+and returns native path targets.
 
 Host tab state can store either browser handles or native path targets for live
 file and directory access. Browser handles remain the only targets persisted in

@@ -1,6 +1,4 @@
-import { webAgentRuntime } from "./agent";
-import { webTerminalRuntime } from "./terminal";
-import { webWorkspaceRuntime } from "./webWorkspaceRuntime";
+import { activeRuntime } from "./runtime.active";
 import type {
   WorkspaceDirectoryTarget,
   WorkspaceFileTarget,
@@ -22,9 +20,9 @@ export {
   isNativeWorkspaceFileTarget,
 } from "./workspace";
 
-export const workspaceRuntime = webWorkspaceRuntime;
-export const agentRuntime = webAgentRuntime;
-export const terminalRuntime = webTerminalRuntime;
+export const workspaceRuntime = activeRuntime.workspaceRuntime;
+export const agentRuntime = activeRuntime.agentRuntime;
+export const terminalRuntime = activeRuntime.terminalRuntime;
 
 export const canRunAgent = agentRuntime.canRunAgent;
 export const canShowTerminal = terminalRuntime.canShowTerminal;

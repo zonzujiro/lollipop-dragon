@@ -1,18 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./tauriBridge", () => ({
+  openTauriDirectory: vi.fn(),
+  openTauriTextFile: vi.fn(),
   readTauriDirectoryTree: vi.fn(),
   readTauriTextFile: vi.fn(),
   writeTauriTextFile: vi.fn(),
 }));
 
 import {
+  openTauriDirectory,
+  openTauriTextFile,
   readTauriDirectoryTree,
   readTauriTextFile,
   writeTauriTextFile,
 } from "./tauriBridge";
 import { desktopWorkspaceRuntime } from "./desktopWorkspaceRuntime";
-import type { NativeWorkspaceFileTarget } from "./workspace";
+import type {
+  NativeWorkspaceDirectoryTarget,
+  NativeWorkspaceFileTarget,
+} from "./workspace";
 
 function createFileHandle(name: string): FileSystemFileHandle {
   return {
@@ -48,6 +55,33 @@ beforeEach(() => {
 });
 
 describe("desktopWorkspaceRuntime", () => {
+  it("delegates native file and directory opens to Tauri dialogs", async () => {
+    const fileTarget: NativeWorkspaceFileTarget = {
+      kind: "native_file",
+      path: "/tmp/project/notes.md",
+      name: "notes.md",
+    };
+    const directoryTarget: NativeWorkspaceDirectoryTarget = {
+      kind: "native_directory",
+      path: "/tmp/project",
+      name: "project",
+    };
+    vi.mocked(openTauriTextFile).mockResolvedValue(fileTarget);
+    vi.mocked(openTauriDirectory).mockResolvedValue(directoryTarget);
+
+    await expect(desktopWorkspaceRuntime.openFile()).resolves.toEqual({
+      handle: fileTarget,
+      name: "notes.md",
+    });
+    await expect(desktopWorkspaceRuntime.openDirectory()).resolves.toEqual({
+      handle: directoryTarget,
+      name: "project",
+    });
+
+    expect(openTauriTextFile).toHaveBeenCalled();
+    expect(openTauriDirectory).toHaveBeenCalled();
+  });
+
   it("delegates native file reads and writes to Tauri commands", async () => {
     const target: NativeWorkspaceFileTarget = {
       kind: "native_file",

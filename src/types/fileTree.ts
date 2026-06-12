@@ -27,13 +27,13 @@ export function isNativeDirectoryTarget(
 }
 
 export function isBrowserFileHandle(
-  target: FileTarget,
+  target: FileTarget | DirectoryTarget,
 ): target is FileSystemFileHandle {
   return target.kind === "file";
 }
 
 export function isBrowserDirectoryHandle(
-  target: DirectoryTarget,
+  target: FileTarget | DirectoryTarget,
 ): target is FileSystemDirectoryHandle {
   return target.kind === "directory";
 }

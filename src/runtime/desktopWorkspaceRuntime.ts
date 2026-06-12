@@ -1,5 +1,7 @@
 import type { DirectoryNode, FileTreeNode } from "../types/fileTree";
 import {
+  openTauriDirectory,
+  openTauriTextFile,
   readTauriDirectoryTree,
   readTauriTextFile,
   type TauriNativeTreeNode,
@@ -40,8 +42,28 @@ function nativeTreeNodeToFileTreeNode(
 }
 
 export const desktopWorkspaceRuntime: WorkspaceRuntime = {
-  openFile: () => Promise.resolve(null),
-  openDirectory: () => Promise.resolve(null),
+  openFile: async () => {
+    const target = await openTauriTextFile();
+    if (!target) {
+      return null;
+    }
+
+    return {
+      handle: target,
+      name: target.name,
+    };
+  },
+  openDirectory: async () => {
+    const target = await openTauriDirectory();
+    if (!target) {
+      return null;
+    }
+
+    return {
+      handle: target,
+      name: target.name,
+    };
+  },
   readFile: (target) => {
     if (!isNativeWorkspaceFileTarget(target)) {
       return Promise.reject(
