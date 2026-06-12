@@ -227,7 +227,7 @@ Rules:
 - Closing a tab with a queued/running/attention run is blocked until the run is
   stopped or finishes. A richer stop/detach/cancel decision can follow once
   detachable terminal sessions exist.
-- A small app-wide active-run limit should prevent accidental over-parallelism.
+- At most three queued/running/attention runs may exist app-wide in v1.
 
 ## Website Preservation
 

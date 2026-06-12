@@ -167,6 +167,8 @@ attention-needed agent runs, then cleans finished run metadata when the owning
 tab is closed.
 The comment panel can start desktop runtime runs for active-file unresolved
 comments and threaded questions, while web builds keep copy-prompt fallbacks.
+Agent start actions refuse to create a second active run for the same tab and
+cap v1 to three active runs app-wide.
 
 Workspace runtime file operations accept runtime targets. Browser targets are
 the current `FileSystem*Handle` values, while native targets are path-based

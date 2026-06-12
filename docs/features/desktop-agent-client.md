@@ -239,10 +239,11 @@ outside this first desktop planning scope.
 - Active-file unresolved comments now have a comment-panel action: desktop
   starts an address-comments run, while the website copies the same scoped
   review prompt.
+- Agent starts are guarded to one active run per tab and three active runs
+  app-wide.
 
 ## Open Questions
 
-- What is the exact global concurrency limit for active runs?
 - How should desktop handle agent authentication and first-run setup?
 - What is the minimum Windows backend for terminal/session support if `tmux` is
   not available?

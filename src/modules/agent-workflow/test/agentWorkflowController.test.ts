@@ -222,6 +222,112 @@ describe("address comments agent run controller", () => {
     expect(showToastMessages).toEqual(["Agent run started"]);
   });
 
+  it("does not start a second run for the active tab", async () => {
+    const requests: AgentRunRequest[] = [];
+    const runtime: AgentRuntime = {
+      canRunAgent: true,
+      startRun: (request) => {
+        requests.push(request);
+        return Promise.resolve("terminal-session-1");
+      },
+      stopRun: () => Promise.resolve(),
+      getRunStatus: () => Promise.resolve({ status: "running", output: "" }),
+    };
+    const actions = createAgentWorkflowControllerActions({
+      get: useAppStore.getState,
+      getActiveTab: (get) => getActiveTab(get()),
+      showToast: () => {},
+      runtime,
+    });
+
+    setTestState({
+      fileName: "spec.md",
+      comments: [
+        makeComment({
+          id: "fix-root",
+          type: "fix",
+          text: "Fix the intro",
+        }),
+      ],
+    });
+    const run = useAppStore.getState().createAgentRun({
+      tabId: "test-tab",
+      taskKind: "address_comments",
+      targetPaths: ["spec.md"],
+      runnerKind: "terminal",
+    });
+    useAppStore.getState().updateAgentRunStatus({
+      runId: run.id,
+      status: "running",
+      terminalAttachmentId: "native-run-1",
+    });
+
+    const result = await actions.startAddressCommentsAgentRun();
+
+    expect(result).toEqual({
+      status: "unavailable",
+      reason: "tab_agent_run_active",
+      message: "Stop the active agent run in this tab before starting another.",
+    });
+    expect(requests).toEqual([]);
+    expect(useAppStore.getState().activeAgentRunIdByTabId["test-tab"]).toBe(
+      run.id,
+    );
+  });
+
+  it("does not start a run when the app-wide active run limit is reached", async () => {
+    const requests: AgentRunRequest[] = [];
+    const runtime: AgentRuntime = {
+      canRunAgent: true,
+      startRun: (request) => {
+        requests.push(request);
+        return Promise.resolve("terminal-session-1");
+      },
+      stopRun: () => Promise.resolve(),
+      getRunStatus: () => Promise.resolve({ status: "running", output: "" }),
+    };
+    const actions = createAgentWorkflowControllerActions({
+      get: useAppStore.getState,
+      getActiveTab: (get) => getActiveTab(get()),
+      showToast: () => {},
+      runtime,
+    });
+
+    setTestState({
+      fileName: "spec.md",
+      comments: [
+        makeComment({
+          id: "fix-root",
+          type: "fix",
+          text: "Fix the intro",
+        }),
+      ],
+    });
+    for (const tabId of ["tab-1", "tab-2", "tab-3"]) {
+      const run = useAppStore.getState().createAgentRun({
+        tabId,
+        taskKind: "address_comments",
+        targetPaths: [`${tabId}.md`],
+        runnerKind: "terminal",
+      });
+      useAppStore.getState().updateAgentRunStatus({
+        runId: run.id,
+        status: "running",
+        terminalAttachmentId: `native-${tabId}`,
+      });
+    }
+
+    const result = await actions.startAddressCommentsAgentRun();
+
+    expect(result).toEqual({
+      status: "unavailable",
+      reason: "active_run_limit_reached",
+      message:
+        "Too many agent runs are active. Stop or wait for one run before starting another.",
+    });
+    expect(requests).toEqual([]);
+  });
+
   it("returns unavailable when no actionable comments exist", async () => {
     const runtime: AgentRuntime = {
       canRunAgent: true,
