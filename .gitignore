@@ -14,6 +14,7 @@ node_modules
 dist
 dist-ssr
 *.local
+src-tauri/target
 
 # Yarn Berry
 .yarn/cache

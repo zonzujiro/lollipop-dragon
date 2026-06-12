@@ -5,12 +5,14 @@
 - Node.js 18+
 - Yarn 4 (`corepack enable && corepack prepare yarn@4.12.0`)
 - Chrome or Edge (for testing host mode — requires File System Access API over HTTPS/localhost)
+- Rust and Tauri v2 platform prerequisites for desktop shell development
 
 ## Setup
 
 ```bash
 yarn install
 yarn dev          # starts dev server at http://localhost:5173
+yarn desktop:dev  # starts the Tauri desktop shell
 ```
 
 To enable sharing features locally:

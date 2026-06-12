@@ -67,6 +67,7 @@ Shared module shape:
 Lower-level reusable code lives outside modules:
 
 - `src/runtime/`: runtime capability boundaries and active runtime adapters
+- `src-tauri/`: native desktop shell configuration and Rust entrypoint
 - `src/services/`: browser, network, crypto, and file-system adapters
 - `src/markup/`: CriticMarkup parsing and editing helpers
 - `src/types/`: shared application types
@@ -129,6 +130,13 @@ Owns serializable host-mode agent review run metadata:
 
 Mutable runner, process, socket, and terminal objects stay in runtime services,
 not in Zustand.
+
+### Desktop Shell
+
+The Tauri shell under `src-tauri/` loads the same React app as the website. It is
+the native container for future filesystem, watcher, terminal, and agent runtime
+adapters. The website runtime remains the default `src/runtime/` export until a
+desktop-specific runtime entrypoint is added.
 
 ### `workspace`
 
