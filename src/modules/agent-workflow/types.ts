@@ -57,11 +57,13 @@ export interface AgentWorkflowActions {
 }
 
 export type AgentRunStartUnavailableReason =
+  | "active_run_limit_reached"
   | "agent_unavailable"
   | "no_active_tab"
   | "no_active_file"
   | "no_addressable_comments"
-  | "no_question_threads";
+  | "no_question_threads"
+  | "tab_agent_run_active";
 
 export type AgentRunStartResult =
   | {

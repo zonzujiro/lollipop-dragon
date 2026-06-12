@@ -27,6 +27,8 @@ narrow agent run request.
 - Agent runs are host-mode concepts.
 - Runtime-owned objects stay outside Zustand.
 - A tab has at most one active run in the current model.
+- The app allows at most three queued, running, or attention-needed runs at a
+  time in v1.
 - Web runtime support can expose the same metadata while reporting that local
   execution is unavailable.
 - Executable actions are scoped to the active tab's active file.

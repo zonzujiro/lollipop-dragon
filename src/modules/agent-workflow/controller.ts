@@ -68,6 +68,7 @@ const SYNCABLE_AGENT_RUN_STATUSES = new Set<AgentRunStatus>([
   "running",
   "needs_attention",
 ]);
+const MAX_ACTIVE_AGENT_RUNS = 3;
 const ADDRESSABLE_COMMENT_TYPES = new Set<Comment["type"]>([
   "fix",
   "rewrite",
@@ -228,6 +229,43 @@ function failedRuntimeStatusMessage(status: AgentRuntimeRunStatus): string {
   return "Agent run failed";
 }
 
+function countActiveAgentRuns(state: AgentWorkflowState): number {
+  return Object.values(state.agentRuns).filter((run) =>
+    SYNCABLE_AGENT_RUN_STATUSES.has(run.status),
+  ).length;
+}
+
+function hasActiveAgentRunForTab(
+  state: AgentWorkflowState,
+  tabId: string,
+): boolean {
+  const runId = state.activeAgentRunIdByTabId[tabId];
+  const run = runId ? state.agentRuns[runId] : null;
+  return Boolean(run && SYNCABLE_AGENT_RUN_STATUSES.has(run.status));
+}
+
+function getRunStartGuardResult(
+  state: AgentWorkflowState,
+  tabId: string,
+): AgentRunStartResult | null {
+  if (hasActiveAgentRunForTab(state, tabId)) {
+    return unavailableResult({
+      reason: "tab_agent_run_active",
+      message: "Stop the active agent run in this tab before starting another.",
+    });
+  }
+
+  if (countActiveAgentRuns(state) >= MAX_ACTIVE_AGENT_RUNS) {
+    return unavailableResult({
+      reason: "active_run_limit_reached",
+      message:
+        "Too many agent runs are active. Stop or wait for one run before starting another.",
+    });
+  }
+
+  return null;
+}
+
 export function createAgentWorkflowControllerActions<
   StoreState extends AgentWorkflowControllerStoreState,
 >(
@@ -313,6 +351,11 @@ export function createAgentWorkflowControllerActions<
         });
       }
 
+      const guardResult = getRunStartGuardResult(deps.get(), activeTab.tab.id);
+      if (guardResult) {
+        return guardResult;
+      }
+
       const addressableComments = getAddressableCommentTargets(
         activeTab.tab.comments,
       );
@@ -350,6 +393,11 @@ export function createAgentWorkflowControllerActions<
             ? "Select a markdown file before starting an agent run."
             : "Open a file or folder before starting an agent run.",
         });
+      }
+
+      const guardResult = getRunStartGuardResult(deps.get(), activeTab.tab.id);
+      if (guardResult) {
+        return guardResult;
       }
 
       const questionCommentIds = getQuestionThreadCommentIds(
