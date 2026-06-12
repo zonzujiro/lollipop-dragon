@@ -1,8 +1,24 @@
+export interface NativeFileTarget {
+  kind: "native_file";
+  path: string;
+  name: string;
+}
+
+export interface NativeDirectoryTarget {
+  kind: "native_directory";
+  path: string;
+  name: string;
+}
+
+export type FileTarget = FileSystemFileHandle | NativeFileTarget;
+
+export type DirectoryTarget = FileSystemDirectoryHandle | NativeDirectoryTarget;
+
 export interface FileNode {
   kind: "file";
   name: string;
   path: string;
-  handle: FileSystemFileHandle;
+  handle: FileTarget;
 }
 
 export interface DirectoryNode {
@@ -31,7 +47,7 @@ export interface SidebarDirectoryNode {
 export type SidebarTreeNode = SidebarFileNode | SidebarDirectoryNode;
 
 export interface HydratedSidebarFileNode extends SidebarFileNode {
-  handle?: FileSystemFileHandle;
+  handle?: FileTarget;
 }
 
 export interface HydratedSidebarDirectoryNode {

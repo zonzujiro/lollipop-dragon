@@ -1,24 +1,15 @@
-import type { FileTreeNode } from "../types/fileTree";
+import type {
+  DirectoryTarget,
+  FileTarget,
+  FileTreeNode,
+  NativeDirectoryTarget,
+  NativeFileTarget,
+} from "../types/fileTree";
 
-export interface NativeWorkspaceFileTarget {
-  kind: "native_file";
-  path: string;
-  name: string;
-}
-
-export interface NativeWorkspaceDirectoryTarget {
-  kind: "native_directory";
-  path: string;
-  name: string;
-}
-
-export type WorkspaceFileTarget =
-  | FileSystemFileHandle
-  | NativeWorkspaceFileTarget;
-
-export type WorkspaceDirectoryTarget =
-  | FileSystemDirectoryHandle
-  | NativeWorkspaceDirectoryTarget;
+export type NativeWorkspaceFileTarget = NativeFileTarget;
+export type NativeWorkspaceDirectoryTarget = NativeDirectoryTarget;
+export type WorkspaceFileTarget = FileTarget;
+export type WorkspaceDirectoryTarget = DirectoryTarget;
 
 export interface OpenedWorkspaceFile {
   handle: FileSystemFileHandle;

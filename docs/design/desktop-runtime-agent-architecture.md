@@ -305,6 +305,11 @@ reading and writing UTF-8 text files plus reading a markdown-only directory tree
 The frontend bridge validates those command responses before future desktop
 workspace adapters consume them.
 
+Desktop workspace runtime note: `src/runtime/desktopWorkspaceRuntime.ts` now
+implements read, write, and directory-tree operations for native path targets.
+Open-file and open-folder UI still use the web runtime until native dialog
+commands are added and the desktop shell switches to the desktop runtime module.
+
 ## Risks
 
 - Runtime abstraction may be too broad if introduced before the first desktop
