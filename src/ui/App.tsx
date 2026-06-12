@@ -14,7 +14,7 @@ import { PresentationMode } from "./components/PresentationMode";
 import { UndoToast } from "./components/UndoToast";
 import { Toast } from "./components/Toast";
 import { PeerNamePrompt } from "./components/PeerNamePrompt";
-import { buildVirtualTree } from "../services/fileSystem";
+import { buildVirtualTree } from "../types/fileTree";
 import { findLiveFileInTree, toFileTreeNodes } from "../types/fileTree";
 import type { SidebarTreeNode } from "../types/fileTree";
 import { RestoreError } from "./components/RestoreError";
@@ -406,10 +406,7 @@ function App() {
         )}
       </div>
       {shareScope && (
-        <ShareDialog
-          onClose={() => setShareScope(null)}
-          scope={shareScope}
-        />
+        <ShareDialog onClose={() => setShareScope(null)} scope={shareScope} />
       )}
       <UndoToast />
       <Toast />

@@ -253,6 +253,12 @@ Suggested implementation phases:
 
 Each phase should keep the website runnable.
 
+Initial implementation note: the first foundation slice introduces
+`src/runtime/` and routes host file and folder operations through a web workspace
+runtime that delegates to the existing browser filesystem implementation. This
+does not add desktop execution yet; it creates the boundary the desktop runtime
+can implement later.
+
 ## Risks
 
 - Runtime abstraction may be too broad if introduced before the first desktop
