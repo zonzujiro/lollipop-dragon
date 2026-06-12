@@ -147,6 +147,11 @@ Desktop runtime composition lives in `src/runtime/desktop.ts`. It is not the
 default website runtime export; it gives the desktop shell a separate module to
 adopt once native filesystem and agent adapters are ready.
 
+Workspace runtime file operations accept runtime targets. Browser targets are
+the current `FileSystem*Handle` values, while native targets are path-based
+objects reserved for desktop adapters. The web runtime rejects native targets
+explicitly.
+
 ### `workspace`
 
 Owns host-side file session lifecycle:

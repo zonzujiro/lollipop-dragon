@@ -99,6 +99,26 @@ describe("workspaceRuntime", () => {
     );
 
     expect(openDirectory).toHaveBeenCalled();
-    expect(buildFileTree).toHaveBeenCalledWith(directoryHandle);
+    expect(buildFileTree).toHaveBeenCalledWith(directoryHandle, undefined);
+  });
+
+  it("rejects native targets in the web runtime", async () => {
+    await expect(
+      workspaceRuntime.readFile({
+        kind: "native_file",
+        path: "/tmp/notes.md",
+        name: "notes.md",
+      }),
+    ).rejects.toThrow("Native file targets are unavailable in the web runtime");
+
+    await expect(
+      workspaceRuntime.buildFileTree({
+        kind: "native_directory",
+        path: "/tmp/docs",
+        name: "docs",
+      }),
+    ).rejects.toThrow(
+      "Native directory targets are unavailable in the web runtime",
+    );
   });
 });
