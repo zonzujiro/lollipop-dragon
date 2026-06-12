@@ -315,6 +315,11 @@ open-folder commands through `tauri-plugin-dialog`. The frontend bridge converts
 their results into native path targets, while the visible host open flow remains
 on browser handles until tab state is widened to store native sessions.
 
+Native tab target note: host tab state now accepts browser handles or native path
+targets for live file and directory access. Existing browser handle restore logic
+is preserved; native restore/session persistence will be handled in a later
+desktop runtime slice.
+
 ## Risks
 
 - Runtime abstraction may be too broad if introduced before the first desktop

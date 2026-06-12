@@ -1,4 +1,5 @@
 import type { HydratedSidebarTreeNode } from "./fileTree";
+import type { DirectoryTarget, FileTarget } from "./fileTree";
 import {
   createSharingTabState,
   type SharingTabState,
@@ -14,11 +15,11 @@ export interface TabState extends SharingTabState, HostReviewTabState {
   id: string;
   label: string;
 
-  fileHandle: FileSystemFileHandle | null;
+  fileHandle: FileTarget | null;
   fileName: string | null;
   rawContent: string;
 
-  directoryHandle: FileSystemDirectoryHandle | null;
+  directoryHandle: DirectoryTarget | null;
   directoryName: string | null;
   fileTree: HydratedSidebarTreeNode[];
   activeFilePath: string | null;

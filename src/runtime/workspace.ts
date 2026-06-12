@@ -5,6 +5,7 @@ import type {
   NativeDirectoryTarget,
   NativeFileTarget,
 } from "../types/fileTree";
+import { isNativeDirectoryTarget, isNativeFileTarget } from "../types/fileTree";
 
 export type NativeWorkspaceFileTarget = NativeFileTarget;
 export type NativeWorkspaceDirectoryTarget = NativeDirectoryTarget;
@@ -35,11 +36,11 @@ export interface WorkspaceRuntime {
 export function isNativeWorkspaceFileTarget(
   target: WorkspaceFileTarget,
 ): target is NativeWorkspaceFileTarget {
-  return target.kind === "native_file";
+  return isNativeFileTarget(target);
 }
 
 export function isNativeWorkspaceDirectoryTarget(
   target: WorkspaceDirectoryTarget,
 ): target is NativeWorkspaceDirectoryTarget {
-  return target.kind === "native_directory";
+  return isNativeDirectoryTarget(target);
 }

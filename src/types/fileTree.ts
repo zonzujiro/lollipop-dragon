@@ -14,6 +14,30 @@ export type FileTarget = FileSystemFileHandle | NativeFileTarget;
 
 export type DirectoryTarget = FileSystemDirectoryHandle | NativeDirectoryTarget;
 
+export function isNativeFileTarget(
+  target: FileTarget,
+): target is NativeFileTarget {
+  return target.kind === "native_file";
+}
+
+export function isNativeDirectoryTarget(
+  target: DirectoryTarget,
+): target is NativeDirectoryTarget {
+  return target.kind === "native_directory";
+}
+
+export function isBrowserFileHandle(
+  target: FileTarget,
+): target is FileSystemFileHandle {
+  return target.kind === "file";
+}
+
+export function isBrowserDirectoryHandle(
+  target: DirectoryTarget,
+): target is FileSystemDirectoryHandle {
+  return target.kind === "directory";
+}
+
 export interface FileNode {
   kind: "file";
   name: string;

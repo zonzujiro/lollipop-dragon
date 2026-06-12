@@ -6,9 +6,20 @@ import {
   restoreShareKeys,
   stableShareKey,
 } from "../sharing";
-import { findLiveFileInTree } from "../../types/fileTree";
-import type { FileNode } from "../../types/fileTree";
+import {
+  findLiveFileInTree,
+  isBrowserDirectoryHandle,
+  isBrowserFileHandle,
+  isNativeDirectoryTarget,
+  isNativeFileTarget,
+} from "../../types/fileTree";
+import type {
+  DirectoryTarget,
+  FileNode,
+  FileTarget,
+} from "../../types/fileTree";
 import type { HistoryEntry } from "../../types/history";
+import type { ShareRecord } from "../../types/share";
 import type { TabState } from "../../types/tab";
 import { createDefaultTab } from "../../types/tab";
 import {
@@ -242,13 +253,45 @@ export async function restoreDirectoryTabState<
 
 export async function findTabByHandle(
   tabs: TabState[],
-  handle: FileSystemFileHandle | FileSystemDirectoryHandle,
+  handle: FileTarget | DirectoryTarget,
   kind: "file" | "directory",
 ): Promise<TabState | null> {
   for (const tab of tabs) {
     const existingHandle =
       kind === "file" ? tab.fileHandle : tab.directoryHandle;
-    if (existingHandle && (await existingHandle.isSameEntry(handle))) {
+    if (!existingHandle) {
+      continue;
+    }
+
+    if (
+      isNativeFileTarget(existingHandle) &&
+      isNativeFileTarget(handle) &&
+      existingHandle.path === handle.path
+    ) {
+      return tab;
+    }
+
+    if (
+      isNativeDirectoryTarget(existingHandle) &&
+      isNativeDirectoryTarget(handle) &&
+      existingHandle.path === handle.path
+    ) {
+      return tab;
+    }
+
+    if (
+      isBrowserFileHandle(existingHandle) &&
+      isBrowserFileHandle(handle) &&
+      (await existingHandle.isSameEntry(handle))
+    ) {
+      return tab;
+    }
+
+    if (
+      isBrowserDirectoryHandle(existingHandle) &&
+      isBrowserDirectoryHandle(handle) &&
+      (await existingHandle.isSameEntry(handle))
+    ) {
       return tab;
     }
   }
@@ -256,10 +299,8 @@ export async function findTabByHandle(
   return null;
 }
 
-interface WorkspaceControllerStoreState extends WorkspaceState {}
-
 interface WorkspaceControllerActionDeps<
-  StoreState extends WorkspaceControllerStoreState,
+  StoreState extends WorkspaceState,
 > extends WorkspaceControllerDeps {
   set: SetState<StoreState>;
   get: GetState<StoreState>;
@@ -349,7 +390,7 @@ async function restoreActiveFileFromTree(input: {
   persistedFileName: string | null;
   persistedRawContent: string;
 }): Promise<{
-  fileHandle: FileSystemFileHandle | null;
+  fileHandle: FileTarget | null;
   fileName: string | null;
   rawContent: string;
   restoreMessage: string | null;
@@ -606,14 +647,17 @@ export function createWorkspaceControllerActions<
         return;
       }
 
-      const docIdsToUnsubscribe = tab.shares
-        .map((share) => share.docId)
-        .filter(
-          (docId) =>
-            !nextTabState.updatedTabs.some((currentTab) =>
-              currentTab.shares.some((share) => share.docId === docId),
-            ),
+      const docIdsToUnsubscribe: string[] = [];
+      for (const share of tab.shares) {
+        const isStillOpen = nextTabState.updatedTabs.some((currentTab) =>
+          currentTab.shares.some(
+            (currentShare) => currentShare.docId === share.docId,
+          ),
         );
+        if (!isStillOpen) {
+          docIdsToUnsubscribe.push(share.docId);
+        }
+      }
 
       const historyEntry = createHistoryEntry(tab);
       if (historyEntry) {
@@ -1105,7 +1149,10 @@ export function createWorkspaceControllerActions<
         }));
       }
 
-      const activeShares = get().tabs.flatMap((tab) => tab.shares);
+      const activeShares: ShareRecord[] = [];
+      for (const tab of get().tabs) {
+        activeShares.push(...tab.shares);
+      }
       ensureRelaySubscriptions(activeShares);
     },
   };
