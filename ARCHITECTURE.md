@@ -154,6 +154,10 @@ review prompt to stdin, and tracks the child process by runtime run id. Runner
 processes remain outside Zustand; the store keeps only serializable run
 metadata.
 
+Host UI surfaces active agent run state per tab. The comment panel hides new
+agent-start actions while the tab has a queued/running/attention run and exposes
+a stop control that routes through the runtime before marking the run stopped.
+
 Workspace runtime file operations accept runtime targets. Browser targets are
 the current `FileSystem*Handle` values, while native targets are path-based
 objects reserved for desktop adapters. The web runtime rejects native targets
