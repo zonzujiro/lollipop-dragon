@@ -125,14 +125,16 @@ function parseNativeAgentRunStatus(value: unknown): AgentRuntimeRunStatus {
   }
 
   const status = readStringField(value, "status");
+  const output = readStringField(value, "output");
   if (status === "running") {
-    return { status };
+    return { status, output };
   }
 
   if (status === "completed") {
     return {
       status,
       exitCode: readOptionalNumberField(value, "exitCode"),
+      output,
     };
   }
 
@@ -141,6 +143,7 @@ function parseNativeAgentRunStatus(value: unknown): AgentRuntimeRunStatus {
       status,
       exitCode: readOptionalNumberField(value, "exitCode"),
       message: readStringField(value, "message"),
+      output,
     };
   }
 
@@ -148,6 +151,7 @@ function parseNativeAgentRunStatus(value: unknown): AgentRuntimeRunStatus {
     return {
       status,
       message: readStringField(value, "message"),
+      output,
     };
   }
 

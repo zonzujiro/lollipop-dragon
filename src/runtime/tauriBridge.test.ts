@@ -83,7 +83,7 @@ describe("tauri bridge", () => {
         invoke: (command, args) => {
           calls.push({ command, args });
           if (command === "dragon_get_agent_run_status") {
-            return Promise.resolve({ status: "running" });
+            return Promise.resolve({ status: "running", output: "Working\n" });
           }
           return Promise.resolve("native-run-1");
         },
@@ -103,6 +103,7 @@ describe("tauri bridge", () => {
     await stopTauriAgentRun("native-run-1");
     await expect(getTauriAgentRunStatus("native-run-1")).resolves.toEqual({
       status: "running",
+      output: "Working\n",
     });
 
     expect(calls).toEqual([
@@ -144,7 +145,12 @@ describe("tauri bridge", () => {
   it("rejects malformed native agent run status responses", async () => {
     window.__TAURI__ = {
       core: {
-        invoke: () => Promise.resolve({ status: "completed", exitCode: "0" }),
+        invoke: () =>
+          Promise.resolve({
+            status: "completed",
+            exitCode: "0",
+            output: "",
+          }),
       },
     };
 

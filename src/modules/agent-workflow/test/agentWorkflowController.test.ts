@@ -103,7 +103,7 @@ describe("question thread agent run controller", () => {
         return Promise.resolve("terminal-session-1");
       },
       stopRun: () => Promise.resolve(),
-      getRunStatus: () => Promise.resolve({ status: "running" }),
+      getRunStatus: () => Promise.resolve({ status: "running", output: "" }),
     };
     const showToastMessages: string[] = [];
     const actions = createAgentWorkflowControllerActions({
@@ -169,7 +169,7 @@ describe("question thread agent run controller", () => {
         stoppedRuntimeRunIds.push(runId);
         return Promise.resolve();
       },
-      getRunStatus: () => Promise.resolve({ status: "running" }),
+      getRunStatus: () => Promise.resolve({ status: "running", output: "" }),
     };
     const showToastMessages: string[] = [];
     const actions = createAgentWorkflowControllerActions({
@@ -218,6 +218,7 @@ describe("question thread agent run controller", () => {
         return Promise.resolve({
           status: "completed",
           exitCode: 0,
+          output: "Done\n",
         });
       },
     };
@@ -255,6 +256,7 @@ describe("question thread agent run controller", () => {
     });
     expect(checkedRuntimeRunIds).toEqual(["native-run-1"]);
     expect(useAppStore.getState().agentRuns[run.id]?.status).toBe("completed");
+    expect(useAppStore.getState().agentRuns[run.id]?.output).toBe("Done\n");
     expect(showToastMessages).toEqual(["Agent run completed"]);
   });
 
@@ -268,6 +270,7 @@ describe("question thread agent run controller", () => {
           status: "failed",
           exitCode: 7,
           message: "Agent exited with code 7",
+          output: "Command failed\n",
         }),
     };
     const showToastMessages: string[] = [];
@@ -305,6 +308,7 @@ describe("question thread agent run controller", () => {
     expect(useAppStore.getState().agentRuns[run.id]).toMatchObject({
       status: "failed",
       errorMessage: "Agent exited with code 7",
+      output: "Command failed\n",
     });
     expect(showToastMessages).toEqual(["Agent run failed"]);
   });

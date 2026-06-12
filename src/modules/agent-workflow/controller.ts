@@ -332,6 +332,11 @@ export function createAgentWorkflowControllerActions<
           run.terminalAttachmentId,
         );
         if (runtimeStatus.status === "running") {
+          deps.get().updateAgentRunStatus({
+            runId: run.id,
+            status: "running",
+            output: runtimeStatus.output,
+          });
           return {
             status: "synced",
             runId: run.id,
@@ -343,6 +348,7 @@ export function createAgentWorkflowControllerActions<
           deps.get().updateAgentRunStatus({
             runId: run.id,
             status: "completed",
+            output: runtimeStatus.output,
           });
           deps.showToast("Agent run completed");
           return {
@@ -357,6 +363,7 @@ export function createAgentWorkflowControllerActions<
           runId: run.id,
           status: "failed",
           errorMessage: message,
+          output: runtimeStatus.output,
         });
         deps.showToast("Agent run failed");
         return {

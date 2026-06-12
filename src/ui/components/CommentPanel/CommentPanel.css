@@ -160,6 +160,21 @@
   color: var(--c-red);
 }
 
+.comment-panel__agent-run-output {
+  max-height: 9rem;
+  overflow: auto;
+  margin: 0.25rem 0 0;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
 .comment-panel__agent-run-action {
   flex-shrink: 0;
   border: 1px solid var(--border);

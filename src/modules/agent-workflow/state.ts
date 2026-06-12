@@ -50,6 +50,7 @@ function createRun(input: {
     runnerKind: input.runnerKind,
     terminalAttachmentId: null,
     errorMessage: null,
+    output: "",
   };
 }
 
@@ -109,6 +110,8 @@ export function createAgentWorkflowActions<
             input.terminalAttachmentId !== undefined
               ? input.terminalAttachmentId
               : run.terminalAttachmentId,
+          output:
+            input.output !== undefined ? input.output : (run.output ?? ""),
         };
 
         return {

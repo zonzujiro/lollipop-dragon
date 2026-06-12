@@ -25,6 +25,7 @@ export interface AgentRun {
   runnerKind: AgentRunnerKind | null;
   terminalAttachmentId: string | null;
   errorMessage: string | null;
+  output: string;
 }
 
 export interface CreateAgentRunInput {
@@ -40,6 +41,7 @@ export interface UpdateAgentRunStatusInput {
   status: AgentRunStatus;
   errorMessage?: string | null;
   terminalAttachmentId?: string | null;
+  output?: string;
 }
 
 export interface AgentWorkflowState {
