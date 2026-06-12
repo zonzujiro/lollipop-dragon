@@ -259,6 +259,13 @@ runtime that delegates to the existing browser filesystem implementation. This
 does not add desktop execution yet; it creates the boundary the desktop runtime
 can implement later.
 
+Agent workflow implementation note: `src/modules/agent-workflow/` now owns
+serializable run metadata and a controller action for active-file threaded
+questions. The action builds an `AgentRunRequest` with one tab, one target path,
+and explicit question thread ids. The web runtime still reports
+`canRunAgent: false`, so the website keeps the copy-prompt path until a desktop
+runtime provides an executable `AgentRuntime`.
+
 Second implementation note: the next foundation slice adds serializable
 `agent-workflow` run metadata plus web runtime agent and terminal capabilities
 that explicitly report local execution as unavailable. This keeps website

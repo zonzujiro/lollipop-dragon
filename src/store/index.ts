@@ -2,10 +2,12 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
   createAgentWorkflowActions,
+  createAgentWorkflowControllerActions,
   createAgentWorkflowState,
 } from "../modules/agent-workflow";
 import type {
   AgentWorkflowActions,
+  AgentWorkflowControllerActions,
   AgentWorkflowState,
 } from "../modules/agent-workflow";
 import {
@@ -67,6 +69,7 @@ interface AppState
   extends
     AgentWorkflowState,
     AgentWorkflowActions,
+    AgentWorkflowControllerActions,
     AppShellState,
     AppShellActions,
     WorkspaceState,
@@ -182,6 +185,13 @@ export const useAppStore = create<AppState>()(
         get,
       );
       const relayActions = createRelayActions(set);
+      const agentWorkflowActions = createAgentWorkflowActions(set);
+      const agentWorkflowControllerActions =
+        createAgentWorkflowControllerActions({
+          get,
+          getActiveTab: activeTab,
+          showToast: appShellActions.showToast,
+        });
 
       return {
         ...createWorkspaceState(loadWorkspaceHistory()),
@@ -198,7 +208,8 @@ export const useAppStore = create<AppState>()(
         ...workspaceControllerActions,
 
         // ── Agent workflow metadata ───────────────────────────────────────
-        ...createAgentWorkflowActions(set),
+        ...agentWorkflowActions,
+        ...agentWorkflowControllerActions,
 
         // ── Tab-scoped actions ──────────────────────────────────────────────
         ...hostReviewActions,
