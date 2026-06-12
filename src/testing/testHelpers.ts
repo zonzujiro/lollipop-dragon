@@ -1,4 +1,5 @@
 import { useAppStore } from "../store";
+import { createAgentWorkflowState } from "../modules/agent-workflow";
 import { createAppShellState } from "../modules/app-shell";
 import { createPeerReviewState } from "../modules/peer-review";
 import { createRelayState } from "../modules/relay";
@@ -90,12 +91,14 @@ export function makePeerComment(
  */
 export function resetTestStore() {
   const appShellState = createAppShellState();
+  const agentWorkflowState = createAgentWorkflowState();
   const peerReviewState = createPeerReviewState();
   const relayState = createRelayState();
   useAppStore.setState({
     tabs: [],
     activeTabId: null,
     ...appShellState,
+    ...agentWorkflowState,
     ...peerReviewState,
     history: [],
     historyDropdownOpen: false,

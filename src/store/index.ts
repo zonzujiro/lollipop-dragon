@@ -1,6 +1,14 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
+  createAgentWorkflowActions,
+  createAgentWorkflowState,
+} from "../modules/agent-workflow";
+import type {
+  AgentWorkflowActions,
+  AgentWorkflowState,
+} from "../modules/agent-workflow";
+import {
   createAppShellActions,
   createAppShellControllerActions,
   createAppShellState,
@@ -31,9 +39,7 @@ import {
   createSharingControllerActions,
 } from "../modules/sharing";
 import type { SharingActions } from "../modules/sharing";
-import {
-  syncActiveShares as syncActiveSharesService,
-} from "../modules/sharing/sync";
+import { syncActiveShares as syncActiveSharesService } from "../modules/sharing/sync";
 import {
   buildUpdatedActiveTabs,
   buildUpdatedTabs,
@@ -44,10 +50,7 @@ import {
   getLiveFileTree,
   loadWorkspaceHistory,
 } from "../modules/workspace";
-import type {
-  WorkspaceActions,
-  WorkspaceState,
-} from "../modules/workspace";
+import type { WorkspaceActions, WorkspaceState } from "../modules/workspace";
 import { toPersistedTree } from "../types/fileTree";
 import type {
   HydratedSidebarTreeNode,
@@ -61,7 +64,10 @@ import type { ShareRecord } from "../types/share";
 const SHARES_KEY = "markreview-shares";
 
 interface AppState
-  extends AppShellState,
+  extends
+    AgentWorkflowState,
+    AgentWorkflowActions,
+    AppShellState,
     AppShellActions,
     WorkspaceState,
     WorkspaceActions,
@@ -179,6 +185,7 @@ export const useAppStore = create<AppState>()(
 
       return {
         ...createWorkspaceState(loadWorkspaceHistory()),
+        ...createAgentWorkflowState(),
         ...createAppShellState(),
         ...createRelayState(),
         ...createPeerReviewState(),
@@ -189,6 +196,9 @@ export const useAppStore = create<AppState>()(
 
         ...workspaceActions,
         ...workspaceControllerActions,
+
+        // ── Agent workflow metadata ───────────────────────────────────────
+        ...createAgentWorkflowActions(set),
 
         // ── Tab-scoped actions ──────────────────────────────────────────────
         ...hostReviewActions,
@@ -330,10 +340,12 @@ export const useAppStore = create<AppState>()(
           : current.tabs;
         const relayDefaults = createRelayState();
         const peerReviewDefaults = createPeerReviewState();
+        const agentWorkflowDefaults = createAgentWorkflowState();
         return {
           ...current,
           ...p,
           tabs,
+          ...agentWorkflowDefaults,
           ...peerReviewDefaults,
           submittedPeerCommentIds: Array.isArray(p.submittedPeerCommentIds)
             ? p.submittedPeerCommentIds

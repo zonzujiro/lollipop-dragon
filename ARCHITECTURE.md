@@ -118,6 +118,17 @@ Owns application-level shell state:
 - focus mode
 - presentation mode
 
+### `agent-workflow`
+
+Owns serializable host-mode agent review run metadata:
+
+- run records
+- active run per tab mapping
+- run lifecycle status
+
+Mutable runner, process, socket, and terminal objects stay in runtime services,
+not in Zustand.
+
 ### `workspace`
 
 Owns host-side file session lifecycle:
