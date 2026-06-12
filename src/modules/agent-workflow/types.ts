@@ -60,6 +60,7 @@ export type AgentRunStartUnavailableReason =
   | "agent_unavailable"
   | "no_active_tab"
   | "no_active_file"
+  | "no_addressable_comments"
   | "no_question_threads";
 
 export type AgentRunStartResult =
@@ -115,6 +116,7 @@ export type AgentRunSyncStatusResult =
     };
 
 export interface AgentWorkflowControllerActions {
+  startAddressCommentsAgentRun: () => Promise<AgentRunStartResult>;
   startQuestionThreadAgentRun: () => Promise<AgentRunStartResult>;
   stopActiveAgentRun: () => Promise<AgentRunStopResult>;
   syncActiveAgentRunStatus: () => Promise<AgentRunSyncStatusResult>;

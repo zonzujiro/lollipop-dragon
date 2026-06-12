@@ -206,6 +206,54 @@ describe("CommentPanel — close", () => {
 });
 
 describe("CommentPanel — agent prompt", () => {
+  it("shows a copy review prompt button when actionable comments exist", () => {
+    setTestState({
+      activeFilePath: "docs/spec.md",
+      comments: [
+        makeCommentBase({
+          id: "fix-root",
+          type: "fix",
+          text: "Fix the intro",
+        }),
+      ],
+    });
+
+    render(<CommentPanel />);
+    expect(
+      screen.getByRole("button", { name: "Copy review prompt" }),
+    ).toBeInTheDocument();
+  });
+
+  it("copies the address-comments prompt to the clipboard", async () => {
+    const user = userEvent.setup();
+    const writeText = vi
+      .spyOn(navigator.clipboard, "writeText")
+      .mockResolvedValue(undefined);
+
+    setTestState({
+      activeFilePath: "docs/spec.md",
+      comments: [
+        makeCommentBase({
+          id: "fix-root",
+          type: "fix",
+          text: "Fix the intro",
+        }),
+      ],
+    });
+
+    render(<CommentPanel />);
+    await user.click(
+      screen.getByRole("button", { name: "Copy review prompt" }),
+    );
+
+    expect(writeText).toHaveBeenCalledOnce();
+    expect(writeText.mock.calls[0]?.[0]).toContain("Work only in docs/spec.md");
+    expect(writeText.mock.calls[0]?.[0]).toContain(
+      "- fix-root (fix): Fix the intro",
+    );
+    expect(useAppStore.getState().toast).toBe("Agent review prompt copied");
+  });
+
   it("shows a copy prompt button when question threads exist", () => {
     setTestState({
       comments: [

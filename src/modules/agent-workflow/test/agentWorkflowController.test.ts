@@ -8,13 +8,101 @@ import {
 } from "../../../testing/testHelpers";
 import type { AgentRuntime, AgentRunRequest } from "../../../runtime";
 import {
+  buildAddressCommentsAgentRunRequest,
   buildQuestionThreadAgentRunRequest,
   createAgentWorkflowControllerActions,
+  getAddressableCommentTargets,
   getQuestionThreadCommentIds,
 } from "../controller";
 
 beforeEach(() => {
   resetTestStore();
+});
+
+describe("address comments agent run context", () => {
+  it("selects unresolved actionable root comments", () => {
+    const commentTargets = getAddressableCommentTargets([
+      makeComment({
+        id: "fix-root",
+        type: "fix",
+        text: "Fix the intro",
+      }),
+      makeComment({
+        id: "question-root",
+        type: "question",
+        text: "Why is this here?",
+        thread: {
+          commentId: "mr-question-1",
+          threadId: "mr-question-1",
+        },
+      }),
+      makeComment({
+        id: "answer-reply",
+        type: "answer",
+        text: "Because it explains reconnect fallback.",
+        thread: {
+          commentId: "mr-answer-1",
+          threadId: "mr-question-1",
+          replyTo: "mr-question-1",
+        },
+      }),
+      makeComment({
+        id: "note-root",
+        type: "note",
+        text: "Check this claim",
+      }),
+    ]);
+
+    expect(commentTargets).toEqual([
+      {
+        id: "fix-root",
+        type: "fix",
+        text: "Fix the intro",
+      },
+      {
+        id: "note-root",
+        type: "note",
+        text: "Check this claim",
+      },
+    ]);
+  });
+
+  it("builds a narrow active-file request for addressing comments", () => {
+    const request = buildAddressCommentsAgentRunRequest({
+      tabId: "tab-1",
+      targetPath: "docs/spec.md",
+      comments: [
+        {
+          id: "comment-1",
+          type: "fix",
+          text: "Fix the intro",
+        },
+        {
+          id: "comment-2",
+          type: "rewrite",
+          text: "Rewrite this paragraph",
+        },
+      ],
+      workspaceRootPath: "/tmp/project",
+    });
+
+    expect(request).toMatchObject({
+      tabId: "tab-1",
+      taskKind: "address_comments",
+      targetPaths: ["docs/spec.md"],
+      selectedCommentIds: ["comment-1", "comment-2"],
+      runnerKind: "terminal",
+      workspaceRootPath: "/tmp/project",
+    });
+    expect(request.prompt).toContain("Work only in docs/spec.md");
+    expect(request.prompt).toContain("- comment-1 (fix): Fix the intro");
+    expect(request.prompt).toContain(
+      "- comment-2 (rewrite): Rewrite this paragraph",
+    );
+    expect(request.prompt).toContain(
+      "Do not answer threaded question comments",
+    );
+  });
 });
 
 describe("question thread agent run context", () => {
@@ -66,6 +154,109 @@ describe("question thread agent run context", () => {
     expect(request.prompt).toContain("- mr-question-1");
     expect(request.prompt).toContain("- mr-question-2");
     expect(request.prompt).toContain("Do not edit unrelated files");
+  });
+});
+
+describe("address comments agent run controller", () => {
+  it("creates a run and starts the injected runtime", async () => {
+    const requests: AgentRunRequest[] = [];
+    const runtime: AgentRuntime = {
+      canRunAgent: true,
+      startRun: (request) => {
+        requests.push(request);
+        return Promise.resolve("terminal-session-1");
+      },
+      stopRun: () => Promise.resolve(),
+      getRunStatus: () => Promise.resolve({ status: "running", output: "" }),
+    };
+    const showToastMessages: string[] = [];
+    const actions = createAgentWorkflowControllerActions({
+      get: useAppStore.getState,
+      getActiveTab: (get) => getActiveTab(get()),
+      showToast: (message) => {
+        showToastMessages.push(message);
+      },
+      runtime,
+    });
+
+    setTestState({
+      fileName: "spec.md",
+      activeFilePath: "docs/spec.md",
+      directoryHandle: {
+        kind: "native_directory",
+        path: "/tmp/project",
+        name: "project",
+      },
+      comments: [
+        makeComment({
+          id: "fix-root",
+          type: "fix",
+          text: "Fix the intro",
+        }),
+      ],
+    });
+
+    const result = await actions.startAddressCommentsAgentRun();
+
+    expect(result.status).toBe("started");
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({
+      tabId: "test-tab",
+      taskKind: "address_comments",
+      targetPaths: ["docs/spec.md"],
+      selectedCommentIds: ["fix-root"],
+      workspaceRootPath: "/tmp/project",
+    });
+    const state = useAppStore.getState();
+    const runId = state.activeAgentRunIdByTabId["test-tab"];
+    const run = runId ? state.agentRuns[runId] : null;
+    expect(run).toMatchObject({
+      tabId: "test-tab",
+      status: "running",
+      taskKind: "address_comments",
+      targetPaths: ["docs/spec.md"],
+      selectedCommentIds: ["fix-root"],
+      runnerKind: "terminal",
+      terminalAttachmentId: "terminal-session-1",
+    });
+    expect(showToastMessages).toEqual(["Agent run started"]);
+  });
+
+  it("returns unavailable when no actionable comments exist", async () => {
+    const runtime: AgentRuntime = {
+      canRunAgent: true,
+      startRun: () => Promise.resolve("terminal-session-1"),
+      stopRun: () => Promise.resolve(),
+      getRunStatus: () => Promise.resolve({ status: "running", output: "" }),
+    };
+    const actions = createAgentWorkflowControllerActions({
+      get: useAppStore.getState,
+      getActiveTab: (get) => getActiveTab(get()),
+      showToast: () => {},
+      runtime,
+    });
+
+    setTestState({
+      fileName: "spec.md",
+      comments: [
+        makeComment({
+          type: "question",
+          thread: {
+            commentId: "mr-question-1",
+            threadId: "mr-question-1",
+          },
+        }),
+      ],
+    });
+
+    const result = await actions.startAddressCommentsAgentRun();
+
+    expect(result).toEqual({
+      status: "unavailable",
+      reason: "no_addressable_comments",
+      message: "No unresolved actionable comments are available.",
+    });
+    expect(useAppStore.getState().agentRuns).toEqual({});
   });
 });
 

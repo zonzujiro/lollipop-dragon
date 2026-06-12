@@ -1,3 +1,14 @@
+interface AddressCommentsPromptComment {
+  id: string;
+  type: string;
+  text: string;
+}
+
+interface AddressCommentsPromptInput {
+  targetPath: string;
+  comments: AddressCommentsPromptComment[];
+}
+
 export function buildAgentReplyPrompt(): string {
   return `Review this markdown file and answer MarkReview threaded questions inline.
 
@@ -16,4 +27,23 @@ Example question:
 
 Example answer:
 {>>answer: This section explains the reconnect fallback path after a missed live event. [markreview id="mr-answer-1" thread="mr-question-1" replyTo="mr-question-1" author="Codex"]<<}`;
+}
+
+export function buildAddressCommentsAgentPrompt(
+  input: AddressCommentsPromptInput,
+): string {
+  const commentList = input.comments
+    .map((comment) => `- ${comment.id} (${comment.type}): ${comment.text}`)
+    .join("\n");
+
+  return `Review this markdown file and address the listed MarkReview comments.
+
+Scope:
+- Work only in ${input.targetPath}.
+- Address only these unresolved comment ids:
+${commentList}
+- Apply the requested edits directly in the markdown.
+- Remove each addressed MarkReview comment once its requested change is applied.
+- Do not answer threaded question comments in this run.
+- Do not edit unrelated files or unrelated comments.`;
 }

@@ -165,6 +165,8 @@ active runtime run id is attached and shows the latest bounded output tail.
 Workspace tab removal refuses to close tabs with queued, running, or
 attention-needed agent runs, then cleans finished run metadata when the owning
 tab is closed.
+The comment panel can start desktop runtime runs for active-file unresolved
+comments and threaded questions, while web builds keep copy-prompt fallbacks.
 
 Workspace runtime file operations accept runtime targets. Browser targets are
 the current `FileSystem*Handle` values, while native targets are path-based

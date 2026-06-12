@@ -236,6 +236,9 @@ outside this first desktop planning scope.
   on the active run panel for same-window observability.
 - Closing a tab with a queued, running, or attention-needed run is blocked until
   the user stops the run or it finishes.
+- Active-file unresolved comments now have a comment-panel action: desktop
+  starts an address-comments run, while the website copies the same scoped
+  review prompt.
 
 ## Open Questions
 

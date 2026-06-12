@@ -1,5 +1,9 @@
 import type { StoreApi } from "zustand";
-import { buildAgentReplyPrompt, buildCommentThreadGroups } from "../../markup";
+import {
+  buildAddressCommentsAgentPrompt,
+  buildAgentReplyPrompt,
+  buildCommentThreadGroups,
+} from "../../markup";
 import { agentRuntime } from "../../runtime";
 import type {
   AgentRuntime,
@@ -46,16 +50,60 @@ interface QuestionThreadRunContext {
   workspaceRootPath: string | null;
 }
 
+interface AddressableCommentTarget {
+  id: string;
+  type: string;
+  text: string;
+}
+
+interface AddressCommentsRunContext {
+  tabId: string;
+  targetPath: string;
+  comments: AddressableCommentTarget[];
+  workspaceRootPath: string | null;
+}
+
 const SYNCABLE_AGENT_RUN_STATUSES = new Set<AgentRunStatus>([
   "queued",
   "running",
   "needs_attention",
+]);
+const ADDRESSABLE_COMMENT_TYPES = new Set<Comment["type"]>([
+  "fix",
+  "rewrite",
+  "expand",
+  "clarify",
+  "remove",
+  "note",
 ]);
 
 export function getQuestionThreadCommentIds(comments: Comment[]): string[] {
   return buildCommentThreadGroups(comments)
     .filter((group) => group.root.type === "question" && !!group.root.thread)
     .map((group) => group.root.thread?.commentId ?? group.root.id);
+}
+
+function commentPromptText(comment: Comment): string {
+  return (
+    comment.text ||
+    comment.highlightedText ||
+    comment.from ||
+    comment.to ||
+    comment.raw
+  );
+}
+
+export function getAddressableCommentTargets(
+  comments: Comment[],
+): AddressableCommentTarget[] {
+  return buildCommentThreadGroups(comments)
+    .map((group) => group.root)
+    .filter((comment) => ADDRESSABLE_COMMENT_TYPES.has(comment.type))
+    .map((comment) => ({
+      id: comment.thread?.commentId ?? comment.id,
+      type: comment.type,
+      text: commentPromptText(comment),
+    }));
 }
 
 function getAgentTargetPath(tab: TabState): string | null {
@@ -106,6 +154,23 @@ Scope:
 - Answer only these MarkReview question thread ids:
 ${questionList}
 - Do not edit unrelated files or unrelated comments.`,
+  };
+}
+
+export function buildAddressCommentsAgentRunRequest(
+  context: AddressCommentsRunContext,
+): AgentRunRequest {
+  return {
+    tabId: context.tabId,
+    taskKind: "address_comments",
+    targetPaths: [context.targetPath],
+    selectedCommentIds: context.comments.map((comment) => comment.id),
+    runnerKind: "terminal",
+    workspaceRootPath: context.workspaceRootPath,
+    prompt: buildAddressCommentsAgentPrompt({
+      targetPath: context.targetPath,
+      comments: context.comments,
+    }),
   };
 }
 
@@ -170,7 +235,104 @@ export function createAgentWorkflowControllerActions<
 ): AgentWorkflowControllerActions {
   const runtime = deps.runtime ?? agentRuntime;
 
+  async function startRuntimeAgentRun(
+    request: AgentRunRequest,
+  ): Promise<AgentRunStartResult> {
+    const run = deps.get().createAgentRun({
+      tabId: request.tabId,
+      taskKind: request.taskKind,
+      targetPaths: request.targetPaths,
+      selectedCommentIds: request.selectedCommentIds,
+      runnerKind: request.runnerKind,
+    });
+
+    try {
+      const runtimeRunId = await runtime.startRun(request);
+      deps.get().updateAgentRunStatus({
+        runId: run.id,
+        status: "running",
+        terminalAttachmentId: runtimeRunId,
+      });
+      deps.showToast("Agent run started");
+      return {
+        status: "started",
+        run,
+        runtimeRunId,
+      };
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Agent run failed to start";
+      console.error("[agent-workflow] failed to start agent run:", error);
+      deps.get().updateAgentRunStatus({
+        runId: run.id,
+        status: "failed",
+        errorMessage: message,
+      });
+      deps.showToast("Agent run failed to start");
+      return unavailableResult({
+        reason: "agent_unavailable",
+        message,
+      });
+    }
+  }
+
+  function getRunnableActiveTab(): {
+    tab: TabState;
+    targetPath: string;
+  } | null {
+    const tab = deps.getActiveTab(deps.get);
+    if (!tab) {
+      return null;
+    }
+
+    const targetPath = getAgentTargetPath(tab);
+    if (!targetPath) {
+      return null;
+    }
+
+    return { tab, targetPath };
+  }
+
   return {
+    startAddressCommentsAgentRun: async () => {
+      if (!runtime.canRunAgent) {
+        return unavailableResult({
+          reason: "agent_unavailable",
+          message: "Local agent execution is unavailable in this runtime.",
+        });
+      }
+
+      const activeTab = getRunnableActiveTab();
+      if (!activeTab) {
+        const tab = deps.getActiveTab(deps.get);
+        return unavailableResult({
+          reason: tab ? "no_active_file" : "no_active_tab",
+          message: tab
+            ? "Select a markdown file before starting an agent run."
+            : "Open a file or folder before starting an agent run.",
+        });
+      }
+
+      const addressableComments = getAddressableCommentTargets(
+        activeTab.tab.comments,
+      );
+      if (addressableComments.length === 0) {
+        return unavailableResult({
+          reason: "no_addressable_comments",
+          message: "No unresolved actionable comments are available.",
+        });
+      }
+
+      return startRuntimeAgentRun(
+        buildAddressCommentsAgentRunRequest({
+          tabId: activeTab.tab.id,
+          targetPath: activeTab.targetPath,
+          comments: addressableComments,
+          workspaceRootPath: getAgentWorkspaceRootPath(activeTab.tab),
+        }),
+      );
+    },
+
     startQuestionThreadAgentRun: async () => {
       if (!runtime.canRunAgent) {
         return unavailableResult({
@@ -179,23 +341,20 @@ export function createAgentWorkflowControllerActions<
         });
       }
 
-      const tab = deps.getActiveTab(deps.get);
-      if (!tab) {
+      const activeTab = getRunnableActiveTab();
+      if (!activeTab) {
+        const tab = deps.getActiveTab(deps.get);
         return unavailableResult({
-          reason: "no_active_tab",
-          message: "Open a file or folder before starting an agent run.",
+          reason: tab ? "no_active_file" : "no_active_tab",
+          message: tab
+            ? "Select a markdown file before starting an agent run."
+            : "Open a file or folder before starting an agent run.",
         });
       }
 
-      const targetPath = getAgentTargetPath(tab);
-      if (!targetPath) {
-        return unavailableResult({
-          reason: "no_active_file",
-          message: "Select a markdown file before starting an agent run.",
-        });
-      }
-
-      const questionCommentIds = getQuestionThreadCommentIds(tab.comments);
+      const questionCommentIds = getQuestionThreadCommentIds(
+        activeTab.tab.comments,
+      );
       if (questionCommentIds.length === 0) {
         return unavailableResult({
           reason: "no_question_threads",
@@ -203,48 +362,14 @@ export function createAgentWorkflowControllerActions<
         });
       }
 
-      const request = buildQuestionThreadAgentRunRequest({
-        tabId: tab.id,
-        targetPath,
-        questionCommentIds,
-        workspaceRootPath: getAgentWorkspaceRootPath(tab),
-      });
-      const run = deps.get().createAgentRun({
-        tabId: request.tabId,
-        taskKind: request.taskKind,
-        targetPaths: request.targetPaths,
-        selectedCommentIds: request.selectedCommentIds,
-        runnerKind: request.runnerKind,
-      });
-
-      try {
-        const runtimeRunId = await runtime.startRun(request);
-        deps.get().updateAgentRunStatus({
-          runId: run.id,
-          status: "running",
-          terminalAttachmentId: runtimeRunId,
-        });
-        deps.showToast("Agent run started");
-        return {
-          status: "started",
-          run,
-          runtimeRunId,
-        };
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Agent run failed to start";
-        console.error("[agent-workflow] failed to start agent run:", error);
-        deps.get().updateAgentRunStatus({
-          runId: run.id,
-          status: "failed",
-          errorMessage: message,
-        });
-        deps.showToast("Agent run failed to start");
-        return unavailableResult({
-          reason: "agent_unavailable",
-          message,
-        });
-      }
+      return startRuntimeAgentRun(
+        buildQuestionThreadAgentRunRequest({
+          tabId: activeTab.tab.id,
+          targetPath: activeTab.targetPath,
+          questionCommentIds,
+          workspaceRootPath: getAgentWorkspaceRootPath(activeTab.tab),
+        }),
+      );
     },
 
     stopActiveAgentRun: async () => {

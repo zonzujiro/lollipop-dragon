@@ -1,10 +1,14 @@
 import "./CommentPanel.css";
 import { useEffect, useMemo, useState } from "react";
 import {
+  buildAddressCommentsAgentPrompt,
   buildAgentReplyPrompt,
   buildCommentThreadGroups,
 } from "../../../markup";
-import { getActiveAgentRunForTab } from "../../../modules/agent-workflow";
+import {
+  getActiveAgentRunForTab,
+  getAddressableCommentTargets,
+} from "../../../modules/agent-workflow";
 import type { AgentRunStatus } from "../../../modules/agent-workflow";
 import { canRunAgent } from "../../../runtime";
 import { useAppStore } from "../../../store";
@@ -12,7 +16,11 @@ import { useActiveTab } from "../../../store/selectors";
 import { COMMENT_TYPE_COLOR } from "../../../types/criticmarkup";
 import type { Comment, CommentType } from "../../../types/criticmarkup";
 import type { PeerComment } from "../../../types/share";
-import { getQuestionThreadAgentAction } from "../../agentActions";
+import type { TabState } from "../../../types/tab";
+import {
+  getAddressCommentsAgentAction,
+  getQuestionThreadAgentAction,
+} from "../../agentActions";
 
 const ALL_TYPES: CommentType[] = [
   "fix",
@@ -47,6 +55,9 @@ const AGENT_RUN_STATUS_LABEL: Record<AgentRunStatus, string> = {
   failed: "Failed",
   stopped: "Stopped",
 };
+const EMPTY_COMMENTS: Comment[] = [];
+const EMPTY_FILE_TREE: TabState["fileTree"] = [];
+const EMPTY_ALL_FILE_COMMENTS: TabState["allFileComments"] = {};
 
 function scrollToBlock(blockIndex: number | undefined) {
   if (blockIndex === undefined) {
@@ -126,12 +137,12 @@ interface Props {
 
 export function CommentPanel({ peerMode = false }: Props) {
   const tab = useActiveTab();
-  const comments = tab?.comments ?? [];
+  const comments = tab?.comments ?? EMPTY_COMMENTS;
   const hostRootComments = useMemo(
     () => getRootOnlyComments(comments),
     [comments],
   );
-  const resolvedComments = tab?.resolvedComments ?? [];
+  const resolvedComments = tab?.resolvedComments ?? EMPTY_COMMENTS;
   const activeCommentId = tab?.activeCommentId ?? null;
   const activeRootCommentId = useMemo(
     () => getActiveRootCommentId(comments, activeCommentId),
@@ -147,8 +158,8 @@ export function CommentPanel({ peerMode = false }: Props) {
   const activeFilePath = peerMode
     ? peerActiveFilePath
     : (tab?.activeFilePath ?? null);
-  const fileTree = tab?.fileTree ?? [];
-  const allFileComments = tab?.allFileComments ?? {};
+  const fileTree = tab?.fileTree ?? EMPTY_FILE_TREE;
+  const allFileComments = tab?.allFileComments ?? EMPTY_ALL_FILE_COMMENTS;
   const navigateToComment = useAppStore((state) => state.navigateToComment);
   const editComment = useAppStore((state) => state.editComment);
   const deleteComment = useAppStore((state) => state.deleteComment);
@@ -158,6 +169,9 @@ export function CommentPanel({ peerMode = false }: Props) {
   const selectPeerFile = useAppStore((state) => state.selectPeerFile);
   const startQuestionThreadAgentRun = useAppStore(
     (state) => state.startQuestionThreadAgentRun,
+  );
+  const startAddressCommentsAgentRun = useAppStore(
+    (state) => state.startAddressCommentsAgentRun,
   );
   const stopActiveAgentRun = useAppStore((state) => state.stopActiveAgentRun);
   const syncActiveAgentRunStatus = useAppStore(
@@ -262,6 +276,13 @@ export function CommentPanel({ peerMode = false }: Props) {
       (comment) => comment.type === "question" && !!comment.thread,
     );
   }, [crossFileComments, hostRootComments, isFolderMode, peerMode]);
+  const addressableCommentTargets = useMemo(() => {
+    if (peerMode || isFolderMode) {
+      return [];
+    }
+    return getAddressableCommentTargets(comments);
+  }, [comments, isFolderMode, peerMode]);
+  const hasAddressableComments = addressableCommentTargets.length > 0;
 
   const isResolved = !peerMode && commentFilter === "resolved";
 
@@ -345,9 +366,30 @@ export function CommentPanel({ peerMode = false }: Props) {
     }
   }
 
+  async function handleCopyAddressCommentsPrompt() {
+    const targetPath =
+      activeFilePath ?? tab?.fileName ?? "the active markdown file";
+    try {
+      await navigator.clipboard.writeText(
+        buildAddressCommentsAgentPrompt({
+          targetPath,
+          comments: addressableCommentTargets,
+        }),
+      );
+      showToast("Agent review prompt copied");
+    } catch (error) {
+      console.error("[CommentPanel] failed to copy agent prompt:", error);
+      showToast("Couldn't copy agent prompt");
+    }
+  }
+
+  const addressCommentsAgentAction = getAddressCommentsAgentAction({
+    canRunAgent,
+    canStartAddressCommentsRun: hasAddressableComments,
+  });
   const questionThreadAgentAction = getQuestionThreadAgentAction({
     canRunAgent,
-    canStartQuestionThreadRun: true,
+    canStartQuestionThreadRun: hasQuestionThreads,
   });
   const canStopAgentRun = Boolean(
     activeAgentRun && ACTIVE_AGENT_RUN_STATUSES.has(activeAgentRun.status),
@@ -361,6 +403,18 @@ export function CommentPanel({ peerMode = false }: Props) {
     }
 
     const result = await startQuestionThreadAgentRun();
+    if (result.status === "unavailable") {
+      showToast(result.message);
+    }
+  }
+
+  async function handleAddressCommentsAgentAction() {
+    if (addressCommentsAgentAction.kind === "copy_prompt") {
+      await handleCopyAddressCommentsPrompt();
+      return;
+    }
+
+    const result = await startAddressCommentsAgentRun();
     if (result.status === "unavailable") {
       showToast(result.message);
     }
@@ -433,6 +487,17 @@ export function CommentPanel({ peerMode = false }: Props) {
         </span>
         {!peerMode && displayCount > 0 && (
           <>
+            {hasAddressableComments && !canStopAgentRun && (
+              <button
+                className="comment-panel__secondary-action"
+                onClick={() => {
+                  void handleAddressCommentsAgentAction();
+                }}
+                title={addressCommentsAgentAction.title}
+              >
+                {addressCommentsAgentAction.label}
+              </button>
+            )}
             {hasQuestionThreads && !canStopAgentRun && (
               <button
                 className="comment-panel__secondary-action"
