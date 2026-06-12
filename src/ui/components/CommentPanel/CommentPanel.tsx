@@ -4,11 +4,13 @@ import {
   buildAgentReplyPrompt,
   buildCommentThreadGroups,
 } from "../../../markup";
+import { canRunAgent } from "../../../runtime";
 import { useAppStore } from "../../../store";
 import { useActiveTab } from "../../../store/selectors";
 import { COMMENT_TYPE_COLOR } from "../../../types/criticmarkup";
 import type { Comment, CommentType } from "../../../types/criticmarkup";
 import type { PeerComment } from "../../../types/share";
+import { getQuestionThreadAgentAction } from "../../agentActions";
 
 const ALL_TYPES: CommentType[] = [
   "fix",
@@ -110,7 +112,10 @@ interface Props {
 export function CommentPanel({ peerMode = false }: Props) {
   const tab = useActiveTab();
   const comments = tab?.comments ?? [];
-  const hostRootComments = useMemo(() => getRootOnlyComments(comments), [comments]);
+  const hostRootComments = useMemo(
+    () => getRootOnlyComments(comments),
+    [comments],
+  );
   const resolvedComments = tab?.resolvedComments ?? [];
   const activeCommentId = tab?.activeCommentId ?? null;
   const activeRootCommentId = useMemo(
@@ -315,7 +320,9 @@ export function CommentPanel({ peerMode = false }: Props) {
   }
 
   useEffect(() => {
-    const activePanelCommentId = peerMode ? activeCommentId : activeRootCommentId;
+    const activePanelCommentId = peerMode
+      ? activeCommentId
+      : activeRootCommentId;
     if (!activePanelCommentId) {
       return;
     }
@@ -333,6 +340,10 @@ export function CommentPanel({ peerMode = false }: Props) {
       : sourceComments.length;
   const showTypeFilters = !isResolved && activeTypes.length > 1;
   const showStatusFilters = !peerMode && resolvedComments.length > 0;
+  const questionThreadAgentAction = getQuestionThreadAgentAction({
+    canRunAgent,
+    canStartQuestionThreadRun: false,
+  });
 
   return (
     <aside className="comment-panel" aria-label="Comments">
@@ -351,9 +362,9 @@ export function CommentPanel({ peerMode = false }: Props) {
                 onClick={() => {
                   void handleCopyAgentPrompt();
                 }}
-                title="Copy instructions for answering threaded questions"
+                title={questionThreadAgentAction.title}
               >
-                Copy agent prompt
+                {questionThreadAgentAction.label}
               </button>
             )}
             <button

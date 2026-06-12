@@ -265,6 +265,12 @@ that explicitly report local execution as unavailable. This keeps website
 behavior unchanged while giving desktop runtime work a stable state and
 capability boundary.
 
+UI capability note: the comment-panel threaded-question action now resolves
+through an agent action capability helper. In the web runtime it remains the
+existing "Copy agent prompt" action. Future desktop work can switch the same
+surface to "Ask agent" only after both local agent execution and the
+question-thread run handler are available.
+
 ## Risks
 
 - Runtime abstraction may be too broad if introduced before the first desktop
