@@ -35,6 +35,7 @@ describe("agent workflow state", () => {
       runnerKind: "terminal",
       terminalAttachmentId: null,
       errorMessage: null,
+      output: "",
     });
     expect(state.agentRuns[run.id]).toEqual(run);
     expect(state.activeAgentRunIdByTabId["tab-1"]).toBe(run.id);
@@ -54,12 +55,14 @@ describe("agent workflow state", () => {
       runId: run.id,
       status: "failed",
       errorMessage: "Agent unavailable",
+      output: "Failure log",
     });
 
     const updatedRun = useAppStore.getState().agentRuns[run.id];
     expect(updatedRun?.status).toBe("failed");
     expect(updatedRun?.completedAt).toBe("2026-06-12T18:01:00.000Z");
     expect(updatedRun?.errorMessage).toBe("Agent unavailable");
+    expect(updatedRun?.output).toBe("Failure log");
     expect(hasActiveAgentRunForTab(useAppStore.getState(), "tab-1")).toBe(
       false,
     );

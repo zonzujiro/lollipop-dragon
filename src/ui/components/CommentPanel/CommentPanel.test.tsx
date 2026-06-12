@@ -280,11 +280,13 @@ describe("CommentPanel — agent prompt", () => {
       runId: run.id,
       status: "running",
       terminalAttachmentId: "native-run-1",
+      output: "Working on questions\n",
     });
 
     render(<CommentPanel />);
 
     expect(screen.getByText("Agent Running")).toBeInTheDocument();
+    expect(screen.getByText(/Working on questions/)).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Copy agent prompt" }),
     ).not.toBeInTheDocument();

@@ -282,9 +282,12 @@ Run-status implementation note: desktop agent runs now expose
 `dragon_get_agent_run_status` through the Tauri bridge. The native command polls
 the tracked child process with `try_wait`, removes completed children from the
 native process map, and returns `running`, `completed`, `failed`, or `not_found`
-to the shared runtime boundary. The comment panel polls this status only when
-the active runtime can execute agents, then reconciles the tab-scoped
-serializable run state to `completed` or `failed`.
+to the shared runtime boundary. Native stdout and stderr are captured into a
+bounded output tail and returned with each status response, so the comment panel
+can show progress without depending on terminal text as the lifecycle protocol.
+The comment panel polls this status only when the active runtime can execute
+agents, then reconciles the tab-scoped serializable run state to `completed` or
+`failed`.
 
 Agent workflow implementation note: `src/modules/agent-workflow/` now owns
 serializable run metadata and a controller action for active-file threaded

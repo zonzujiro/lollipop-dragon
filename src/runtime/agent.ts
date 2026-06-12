@@ -16,19 +16,23 @@ export interface AgentRunRequest {
 export type AgentRuntimeRunStatus =
   | {
       status: "running";
+      output: string;
     }
   | {
       status: "completed";
       exitCode: number | null;
+      output: string;
     }
   | {
       status: "failed";
       exitCode: number | null;
       message: string;
+      output: string;
     }
   | {
       status: "not_found";
       message: string;
+      output: string;
     };
 
 export interface AgentRuntime {
@@ -47,5 +51,6 @@ export const webAgentRuntime: AgentRuntime = {
     Promise.resolve({
       status: "not_found",
       message: "Local agent execution is unavailable on web",
+      output: "",
     }),
 };

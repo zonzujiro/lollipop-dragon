@@ -154,13 +154,14 @@ review prompt to stdin, and tracks the child process by runtime run id. Runner
 processes remain outside Zustand; the store keeps only serializable run
 metadata. The frontend can poll a runtime run id through the Tauri bridge to
 move the tab-scoped run from `running` to `completed` or `failed` when the child
-process exits.
+process exits. Native stdout and stderr are captured into a bounded output tail
+that is returned with status polling and stored as serializable run metadata.
 
 Host UI surfaces active agent run state per tab. The comment panel hides new
 agent-start actions while the tab has a queued/running/attention run and exposes
 a stop control that routes through the runtime before marking the run stopped.
 In desktop runtime mode, the same panel polls the native run status while an
-active runtime run id is attached.
+active runtime run id is attached and shows the latest bounded output tail.
 
 Workspace runtime file operations accept runtime targets. Browser targets are
 the current `FileSystem*Handle` values, while native targets are path-based

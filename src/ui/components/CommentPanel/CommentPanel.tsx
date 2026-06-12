@@ -473,6 +473,11 @@ export function CommentPanel({ peerMode = false }: Props) {
                 {activeAgentRun.errorMessage}
               </span>
             )}
+            {activeAgentRun.output && (
+              <pre className="comment-panel__agent-run-output">
+                {activeAgentRun.output}
+              </pre>
+            )}
           </div>
           {canStopAgentRun ? (
             <button

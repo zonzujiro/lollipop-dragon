@@ -47,7 +47,11 @@ describe("desktop agent runtime", () => {
             return Promise.resolve("native-run-1");
           }
           if (command === "dragon_get_agent_run_status") {
-            return Promise.resolve({ status: "completed", exitCode: 0 });
+            return Promise.resolve({
+              status: "completed",
+              exitCode: 0,
+              output: "Done\n",
+            });
           }
           return Promise.resolve(null);
         },
@@ -72,6 +76,7 @@ describe("desktop agent runtime", () => {
     ).resolves.toEqual({
       status: "completed",
       exitCode: 0,
+      output: "Done\n",
     });
 
     expect(calls).toEqual([
