@@ -162,6 +162,9 @@ agent-start actions while the tab has a queued/running/attention run and exposes
 a stop control that routes through the runtime before marking the run stopped.
 In desktop runtime mode, the same panel polls the native run status while an
 active runtime run id is attached and shows the latest bounded output tail.
+Workspace tab removal refuses to close tabs with queued, running, or
+attention-needed agent runs, then cleans finished run metadata when the owning
+tab is closed.
 
 Workspace runtime file operations accept runtime targets. Browser targets are
 the current `FileSystem*Handle` values, while native targets are path-based

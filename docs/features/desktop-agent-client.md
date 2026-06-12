@@ -234,6 +234,8 @@ outside this first desktop planning scope.
   reflected in the UI.
 - Native runner stdout and stderr are captured into a bounded output tail shown
   on the active run panel for same-window observability.
+- Closing a tab with a queued, running, or attention-needed run is blocked until
+  the user stops the run or it finishes.
 
 ## Open Questions
 

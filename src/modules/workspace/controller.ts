@@ -49,6 +49,16 @@ type GetState<StoreState> = StoreApi<StoreState>["getState"];
 const HISTORY_KEY = "markreview-history";
 const HISTORY_LIMIT = 20;
 const HISTORY_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+const BLOCKING_AGENT_RUN_STATUSES = new Set([
+  "queued",
+  "running",
+  "needs_attention",
+]);
+
+interface AgentRunCloseGuardState {
+  agentRuns: Record<string, { status: string }>;
+  activeAgentRunIdByTabId: Record<string, string>;
+}
 
 async function saveBrowserHandle(
   key: string,
@@ -309,10 +319,38 @@ export async function findTabByHandle(
 }
 
 interface WorkspaceControllerActionDeps<
-  StoreState extends WorkspaceState,
+  StoreState extends WorkspaceState & AgentRunCloseGuardState,
 > extends WorkspaceControllerDeps {
   set: SetState<StoreState>;
   get: GetState<StoreState>;
+}
+
+function hasBlockingAgentRunForTab(
+  state: AgentRunCloseGuardState,
+  tabId: string,
+): boolean {
+  const runId = state.activeAgentRunIdByTabId[tabId];
+  const run = runId ? state.agentRuns[runId] : null;
+  return Boolean(run && BLOCKING_AGENT_RUN_STATUSES.has(run.status));
+}
+
+function removeTabAgentRunState(
+  state: AgentRunCloseGuardState,
+  tabId: string,
+): Partial<AgentRunCloseGuardState> {
+  const runId = state.activeAgentRunIdByTabId[tabId];
+  if (!runId) {
+    return {};
+  }
+
+  const nextRuns = { ...state.agentRuns };
+  delete nextRuns[runId];
+  const nextActiveByTab = { ...state.activeAgentRunIdByTabId };
+  delete nextActiveByTab[tabId];
+  return {
+    agentRuns: nextRuns,
+    activeAgentRunIdByTabId: nextActiveByTab,
+  };
 }
 
 function createHistoryEntry(tab: TabState): HistoryEntry | null {
@@ -454,7 +492,7 @@ async function restoreActiveFileFromTree(input: {
 }
 
 export function createWorkspaceControllerActions<
-  StoreState extends WorkspaceControllerStoreState,
+  StoreState extends WorkspaceState & AgentRunCloseGuardState,
 >(
   deps: WorkspaceControllerActionDeps<StoreState>,
 ): Pick<
@@ -644,9 +682,15 @@ export function createWorkspaceControllerActions<
     },
 
     removeTab: (tabId) => {
-      const { activeTabId, tabs } = get();
+      const state = get();
+      const { activeTabId, tabs } = state;
       const tabIndex = tabs.findIndex((tab) => tab.id === tabId);
       if (tabIndex === -1) {
+        return;
+      }
+
+      if (hasBlockingAgentRunForTab(state, tabId)) {
+        showToast("Stop the active agent run before closing this tab.");
         return;
       }
 
@@ -655,6 +699,7 @@ export function createWorkspaceControllerActions<
       if (!nextTabState) {
         return;
       }
+      const nextAgentRunState = removeTabAgentRunState(state, tabId);
 
       const docIdsToUnsubscribe: string[] = [];
       for (const share of tab.shares) {
@@ -696,6 +741,7 @@ export function createWorkspaceControllerActions<
           tabs: nextTabState.updatedTabs,
           activeTabId: nextTabState.nextActiveTabId,
           history: nextHistory,
+          ...nextAgentRunState,
         });
       } else {
         removeHandle(`tab:${tabId}:directory`).catch((error) =>
@@ -707,6 +753,7 @@ export function createWorkspaceControllerActions<
         set({
           tabs: nextTabState.updatedTabs,
           activeTabId: nextTabState.nextActiveTabId,
+          ...nextAgentRunState,
         });
       }
 
