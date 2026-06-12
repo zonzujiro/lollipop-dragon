@@ -232,6 +232,8 @@ outside this first desktop planning scope.
 - Agent run state is tab-scoped and serializable. The comment panel can stop an
   active run and polls native run status so completed or failed processes are
   reflected in the UI.
+- Agent run state keeps the generated prompt snapshot, and the active run panel
+  can copy that exact prompt for inspection or manual recovery.
 - Native runner stdout and stderr are captured into a bounded output tail shown
   on the active run panel for same-window observability.
 - Closing a tab with a queued, running, or attention-needed run is blocked until

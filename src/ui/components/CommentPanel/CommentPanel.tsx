@@ -443,6 +443,20 @@ export function CommentPanel({ peerMode = false }: Props) {
     }
   }
 
+  async function handleCopyActiveRunPrompt() {
+    if (!activeAgentRun?.prompt) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(activeAgentRun.prompt);
+      showToast("Agent run prompt copied");
+    } catch (error) {
+      console.error("[CommentPanel] failed to copy run prompt:", error);
+      showToast("Couldn't copy agent prompt");
+    }
+  }
+
   useEffect(() => {
     if (
       peerMode ||
@@ -593,23 +607,35 @@ export function CommentPanel({ peerMode = false }: Props) {
               </pre>
             )}
           </div>
-          {canStopAgentRun ? (
-            <button
-              className="comment-panel__agent-run-action"
-              onClick={() => {
-                void handleStopAgentRun();
-              }}
-            >
-              Stop
-            </button>
-          ) : (
-            <button
-              className="comment-panel__agent-run-action"
-              onClick={() => clearAgentRun(activeAgentRun.id)}
-            >
-              Dismiss
-            </button>
-          )}
+          <div className="comment-panel__agent-run-actions">
+            {activeAgentRun.prompt && (
+              <button
+                className="comment-panel__agent-run-action"
+                onClick={() => {
+                  void handleCopyActiveRunPrompt();
+                }}
+              >
+                Copy prompt
+              </button>
+            )}
+            {canStopAgentRun ? (
+              <button
+                className="comment-panel__agent-run-action"
+                onClick={() => {
+                  void handleStopAgentRun();
+                }}
+              >
+                Stop
+              </button>
+            ) : (
+              <button
+                className="comment-panel__agent-run-action"
+                onClick={() => clearAgentRun(activeAgentRun.id)}
+              >
+                Dismiss
+              </button>
+            )}
+          </div>
         </div>
       )}
 

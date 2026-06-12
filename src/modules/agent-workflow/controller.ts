@@ -281,6 +281,7 @@ export function createAgentWorkflowControllerActions<
       taskKind: request.taskKind,
       targetPaths: request.targetPaths,
       selectedCommentIds: request.selectedCommentIds,
+      prompt: request.prompt,
       runnerKind: request.runnerKind,
     });
 

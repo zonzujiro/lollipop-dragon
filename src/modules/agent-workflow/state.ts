@@ -35,6 +35,7 @@ function createRun(input: {
   taskKind: AgentRun["taskKind"];
   targetPaths: string[];
   selectedCommentIds: string[];
+  prompt: string;
   runnerKind: AgentRun["runnerKind"];
   createdAt: string;
 }): AgentRun {
@@ -45,6 +46,7 @@ function createRun(input: {
     taskKind: input.taskKind,
     targetPaths: input.targetPaths,
     selectedCommentIds: input.selectedCommentIds,
+    prompt: input.prompt,
     createdAt: input.createdAt,
     completedAt: null,
     runnerKind: input.runnerKind,
@@ -65,6 +67,7 @@ export function createAgentWorkflowActions<
         taskKind: input.taskKind,
         targetPaths: [...input.targetPaths],
         selectedCommentIds: [...(input.selectedCommentIds ?? [])],
+        prompt: input.prompt ?? "",
         runnerKind: input.runnerKind ?? null,
         createdAt: new Date().toISOString(),
       });

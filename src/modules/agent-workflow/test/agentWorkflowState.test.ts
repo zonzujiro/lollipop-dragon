@@ -30,6 +30,7 @@ describe("agent workflow state", () => {
       taskKind: "address_comments",
       targetPaths: ["docs/spec.md"],
       selectedCommentIds: ["comment-1"],
+      prompt: "",
       createdAt: "2026-06-12T18:00:00.000Z",
       completedAt: null,
       runnerKind: "terminal",

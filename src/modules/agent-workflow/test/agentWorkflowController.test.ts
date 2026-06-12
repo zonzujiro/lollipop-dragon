@@ -218,6 +218,7 @@ describe("address comments agent run controller", () => {
       taskKind: "address_comments",
       targetPaths: ["docs/spec.md"],
       selectedCommentIds: ["fix-root"],
+      prompt: requests[0]?.prompt,
       runnerKind: "terminal",
       terminalAttachmentId: "terminal-session-1",
     });
@@ -461,6 +462,7 @@ describe("question thread agent run controller", () => {
       taskKind: "answer_questions",
       targetPaths: ["docs/spec.md"],
       selectedCommentIds: ["mr-question-1"],
+      prompt: requests[0]?.prompt,
       runnerKind: "terminal",
       terminalAttachmentId: "terminal-session-1",
     });
