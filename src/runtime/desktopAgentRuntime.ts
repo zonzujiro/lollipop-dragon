@@ -3,6 +3,8 @@ import {
   getTauriAgentRuntimeAvailable,
   hasTauriBridge,
   pingTauriRuntime,
+  startTauriAgentRun,
+  stopTauriAgentRun,
 } from "./tauriBridge";
 
 export async function assertDesktopRuntimeAvailable(): Promise<void> {
@@ -19,14 +21,13 @@ export async function getDesktopAgentCapability(): Promise<boolean> {
 }
 
 export const desktopAgentRuntime: AgentRuntime = {
-  canRunAgent: false,
-  startRun: async () => {
-    const canRunAgent = await getDesktopAgentCapability();
-    if (!canRunAgent) {
-      throw new Error("Desktop agent execution is not configured");
-    }
-
-    throw new Error("Desktop agent runner command is not implemented");
+  canRunAgent: true,
+  startRun: async (request) => {
+    await assertDesktopRuntimeAvailable();
+    return startTauriAgentRun(request);
   },
-  stopRun: () => Promise.resolve(),
+  stopRun: async (runId) => {
+    await assertDesktopRuntimeAvailable();
+    await stopTauriAgentRun(runId);
+  },
 };

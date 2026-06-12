@@ -10,6 +10,7 @@ export interface AgentRunRequest {
   selectedCommentIds: string[];
   prompt: string;
   runnerKind: AgentRunnerKind | null;
+  workspaceRootPath: string | null;
 }
 
 export interface AgentRuntime {

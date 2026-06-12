@@ -265,6 +265,13 @@ which selects the desktop runtime facade. Desktop open-file and open-folder
 actions use native Tauri dialogs and return native path targets, while normal web
 builds continue to use the browser file API runtime.
 
+Native runner implementation note: desktop agent runs now call Tauri
+`dragon_start_agent_run`. The command is intentionally configurable through
+`DRAGON_AGENT_COMMAND`; Dragon sends the generated prompt to the process stdin
+and stores only the returned runtime run id in app state. This keeps tmux, Codex
+CLI, and other runner choices behind the native runtime boundary instead of
+hard-coding one backend into the UI/store contract.
+
 Agent workflow implementation note: `src/modules/agent-workflow/` now owns
 serializable run metadata and a controller action for active-file threaded
 questions. The action builds an `AgentRunRequest` with one tab, one target path,

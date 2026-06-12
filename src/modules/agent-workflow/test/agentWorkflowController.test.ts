@@ -51,6 +51,7 @@ describe("question thread agent run context", () => {
       tabId: "tab-1",
       targetPath: "docs/spec.md",
       questionCommentIds: ["mr-question-1", "mr-question-2"],
+      workspaceRootPath: "/tmp/project",
     });
 
     expect(request).toMatchObject({
@@ -59,6 +60,7 @@ describe("question thread agent run context", () => {
       targetPaths: ["docs/spec.md"],
       selectedCommentIds: ["mr-question-1", "mr-question-2"],
       runnerKind: "terminal",
+      workspaceRootPath: "/tmp/project",
     });
     expect(request.prompt).toContain("Work only in docs/spec.md");
     expect(request.prompt).toContain("- mr-question-1");
@@ -115,6 +117,11 @@ describe("question thread agent run controller", () => {
     setTestState({
       fileName: "spec.md",
       activeFilePath: "docs/spec.md",
+      directoryHandle: {
+        kind: "native_directory",
+        path: "/tmp/project",
+        name: "project",
+      },
       comments: [
         makeComment({
           type: "question",
@@ -135,6 +142,7 @@ describe("question thread agent run controller", () => {
       taskKind: "answer_questions",
       targetPaths: ["docs/spec.md"],
       selectedCommentIds: ["mr-question-1"],
+      workspaceRootPath: "/tmp/project",
     });
     const state = useAppStore.getState();
     const runId = state.activeAgentRunIdByTabId["test-tab"];
