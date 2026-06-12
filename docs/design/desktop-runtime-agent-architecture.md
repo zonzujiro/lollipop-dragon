@@ -278,6 +278,12 @@ an agent action capability helper. In the web runtime it remains the existing
 execution, the same surface becomes "Ask agent" and calls the
 question-thread run controller action.
 
+Desktop shell implementation note: `src-tauri/` now contains the first Tauri v2
+native shell. It loads the existing Vite app in a native window and adds
+`desktop:dev` / `desktop:build` scripts. This does not yet replace browser file
+APIs or add native agent execution; it creates the desktop container those
+runtime adapters will plug into.
+
 ## Risks
 
 - Runtime abstraction may be too broad if introduced before the first desktop

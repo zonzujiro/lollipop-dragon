@@ -23,6 +23,10 @@ Comments live directly in the markdown using CriticMarkup syntax, so any LLM can
 
 **Peer mode** (viewing shared links): any modern browser.
 
+**Desktop shell**: Rust and the platform prerequisites required by Tauri v2. The
+desktop shell runs the same React app inside a native window and is currently
+the foundation for future native filesystem and agent runtime adapters.
+
 ## Getting started
 
 ```bash
@@ -40,16 +44,18 @@ VITE_WORKER_URL=https://your-worker.dev yarn dev
 
 ## Scripts
 
-| Command | Description |
-|---------|-------------|
-| `yarn dev` | Start the Vite dev server |
-| `yarn build` | Type-check and build for production |
-| `yarn preview` | Preview the production build locally |
-| `yarn test` | Run all tests once |
-| `yarn test:watch` | Run tests in watch mode |
-| `yarn test:coverage` | Run tests with coverage |
-| `yarn lint` | Run ESLint |
-| `yarn deploy:worker` | Deploy the Cloudflare Worker |
+| Command              | Description                                  |
+| -------------------- | -------------------------------------------- |
+| `yarn dev`           | Start the Vite dev server                    |
+| `yarn desktop:dev`   | Start the Tauri desktop shell in development |
+| `yarn desktop:build` | Build the Tauri desktop app                  |
+| `yarn build`         | Type-check and build for production          |
+| `yarn preview`       | Preview the production build locally         |
+| `yarn test`          | Run all tests once                           |
+| `yarn test:watch`    | Run tests in watch mode                      |
+| `yarn test:coverage` | Run tests with coverage                      |
+| `yarn lint`          | Run ESLint                                   |
+| `yarn deploy:worker` | Deploy the Cloudflare Worker                 |
 
 ## Project structure
 
@@ -70,17 +76,17 @@ docs/                 Contributing guide, feature specs, and architecture notes
 
 ## Tech stack
 
-| Layer | Technology |
-|-------|-----------|
-| UI | React 19, TypeScript |
-| Build | Vite 6 |
-| State | Zustand 5 with persist middleware |
-| Markdown | react-markdown, remark-gfm, unified |
-| Syntax highlighting | Shiki 4 |
-| Diagrams | Mermaid 11 |
-| Testing | Vitest, Testing Library |
-| Sharing backend | Cloudflare Worker + KV + SQLite-backed Durable Objects |
-| Deployment | GitHub Pages (static), Cloudflare Worker (API) |
+| Layer               | Technology                                             |
+| ------------------- | ------------------------------------------------------ |
+| UI                  | React 19, TypeScript                                   |
+| Build               | Vite 6                                                 |
+| State               | Zustand 5 with persist middleware                      |
+| Markdown            | react-markdown, remark-gfm, unified                    |
+| Syntax highlighting | Shiki 4                                                |
+| Diagrams            | Mermaid 11                                             |
+| Testing             | Vitest, Testing Library                                |
+| Sharing backend     | Cloudflare Worker + KV + SQLite-backed Durable Objects |
+| Deployment          | GitHub Pages (static), Cloudflare Worker (API)         |
 
 ## Architecture
 
@@ -110,9 +116,9 @@ No accounts, no plaintext on the server. The Worker sees encrypted payloads and 
 
 ## Environment variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `VITE_WORKER_URL` | No | Cloudflare Worker URL. If unset, sharing features are hidden. |
+| Variable          | Required | Description                                                   |
+| ----------------- | -------- | ------------------------------------------------------------- |
+| `VITE_WORKER_URL` | No       | Cloudflare Worker URL. If unset, sharing features are hidden. |
 
 ## License
 
