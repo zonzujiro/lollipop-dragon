@@ -9,6 +9,7 @@ import {
   shiftCommentRawOffsets,
 } from "../../markup";
 import { findLiveFileInTree } from "../../types/fileTree";
+import type { FileTarget } from "../../types/fileTree";
 import type { Comment } from "../../types/criticmarkup";
 import type { FileNode, FileTreeNode } from "../../types/fileTree";
 import { readFile, writeFile } from "../../runtime";
@@ -84,7 +85,7 @@ export async function writeAndUpdate<
     activeTabId: string | null,
     updater: (tab: TabState) => Partial<TabState>,
   ) => TabState[];
-  fileHandle: FileSystemFileHandle;
+  fileHandle: FileTarget;
   newRawContent: string;
 }): Promise<boolean> {
   const { set, buildUpdatedActiveTabs, fileHandle, newRawContent } = input;

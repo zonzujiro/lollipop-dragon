@@ -12,6 +12,7 @@ import {
   keyToBase64url,
 } from "../../services/crypto";
 import { readFile } from "../../runtime";
+import { isBrowserFileHandle } from "../../types/fileTree";
 import type { FileTreeNode } from "../../types/fileTree";
 import type { ShareRecord } from "../../types/share";
 import type { TabState } from "../../types/tab";
@@ -500,12 +501,16 @@ export function createSharingControllerActions<
         return;
       }
 
-      const readPermission = await tab.fileHandle.queryPermission({
-        mode: "read",
-      });
-      const writePermission = await tab.fileHandle.queryPermission({
-        mode: "readwrite",
-      });
+      const readPermission = isBrowserFileHandle(tab.fileHandle)
+        ? await tab.fileHandle.queryPermission({
+            mode: "read",
+          })
+        : "native";
+      const writePermission = isBrowserFileHandle(tab.fileHandle)
+        ? await tab.fileHandle.queryPermission({
+            mode: "readwrite",
+          })
+        : "native";
       console.log("[mergeComment] proceeding", {
         tabId: tab.id,
         fileName: tab.fileName,

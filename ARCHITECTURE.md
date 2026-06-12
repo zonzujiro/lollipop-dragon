@@ -162,6 +162,11 @@ Native open-file and open-folder dialogs are also exposed through Tauri bridge
 commands. They return path targets and are kept separate from the default web
 open flow until host tab state can store native workspace sessions.
 
+Host tab state can store either browser handles or native path targets for live
+file and directory access. Browser handles remain the only targets persisted in
+IndexedDB restore storage; native target persistence is a separate desktop
+runtime concern.
+
 ### `workspace`
 
 Owns host-side file session lifecycle:
