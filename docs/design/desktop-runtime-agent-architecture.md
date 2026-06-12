@@ -304,6 +304,8 @@ comments and threaded questions. Each action builds an `AgentRunRequest` with
 one tab, one target path, selected comment ids, and a generated prompt. The web
 runtime still reports `canRunAgent: false`, so the website keeps copy-prompt
 paths until a desktop runtime provides an executable `AgentRuntime`.
+The generated prompt is also stored on the serializable run record so the active
+run panel can copy the exact prompt that was sent to the runtime.
 
 Second implementation note: the next foundation slice adds serializable
 `agent-workflow` run metadata plus web runtime agent and terminal capabilities

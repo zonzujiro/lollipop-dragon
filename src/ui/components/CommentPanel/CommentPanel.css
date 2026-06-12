@@ -175,8 +175,14 @@
   white-space: pre-wrap;
 }
 
-.comment-panel__agent-run-action {
+.comment-panel__agent-run-actions {
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.comment-panel__agent-run-action {
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--surface);

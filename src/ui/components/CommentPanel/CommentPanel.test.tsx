@@ -304,6 +304,9 @@ describe("CommentPanel — agent prompt", () => {
 
   it("shows and stops an active agent run for the current tab", async () => {
     const user = userEvent.setup();
+    const writeText = vi
+      .spyOn(navigator.clipboard, "writeText")
+      .mockResolvedValue(undefined);
 
     setTestState({
       comments: [
@@ -322,6 +325,7 @@ describe("CommentPanel — agent prompt", () => {
       tabId: "test-tab",
       taskKind: "answer_questions",
       targetPaths: ["spec.md"],
+      prompt: "Review spec.md and answer questions",
       runnerKind: "terminal",
     });
     useAppStore.getState().updateAgentRunStatus({
@@ -338,6 +342,12 @@ describe("CommentPanel — agent prompt", () => {
     expect(
       screen.queryByRole("button", { name: "Copy agent prompt" }),
     ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Copy prompt" }));
+    expect(writeText).toHaveBeenCalledWith(
+      "Review spec.md and answer questions",
+    );
+    expect(useAppStore.getState().toast).toBe("Agent run prompt copied");
 
     await user.click(screen.getByRole("button", { name: "Stop" }));
 

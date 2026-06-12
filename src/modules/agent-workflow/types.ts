@@ -20,6 +20,7 @@ export interface AgentRun {
   taskKind: AgentRunTaskKind;
   targetPaths: string[];
   selectedCommentIds: string[];
+  prompt: string;
   createdAt: string;
   completedAt: string | null;
   runnerKind: AgentRunnerKind | null;
@@ -33,6 +34,7 @@ export interface CreateAgentRunInput {
   taskKind: AgentRunTaskKind;
   targetPaths: string[];
   selectedCommentIds?: string[];
+  prompt?: string;
   runnerKind?: AgentRunnerKind | null;
 }
 
