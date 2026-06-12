@@ -11,7 +11,7 @@ narrow agent run request.
 - agent run records
 - active run per tab mapping
 - run lifecycle status metadata
-- active-file question-thread run request construction
+- active-file address-comments and question-thread run request construction
 
 ## Does not own
 
@@ -29,13 +29,14 @@ narrow agent run request.
 - A tab has at most one active run in the current model.
 - Web runtime support can expose the same metadata while reporting that local
   execution is unavailable.
-- The first executable action is scoped to the active tab's active file and
-  threaded `question:` comments only.
+- Executable actions are scoped to the active tab's active file.
 
 ## Public API
 
 - `createAgentWorkflowActions` creates serializable run metadata actions.
 - `createAgentWorkflowControllerActions` creates side-effecting run start
   actions backed by the active `AgentRuntime`.
+- `buildAddressCommentsAgentRunRequest` builds the narrow request passed to the
+  runtime for addressing active-file unresolved comments.
 - `buildQuestionThreadAgentRunRequest` builds the narrow request passed to the
   runtime for answering active-file question threads.

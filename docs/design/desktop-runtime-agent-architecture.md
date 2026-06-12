@@ -296,11 +296,11 @@ attention-needed runs remain open and show a toast asking the user to stop the
 run first. Finished run metadata is removed when the owning tab is closed.
 
 Agent workflow implementation note: `src/modules/agent-workflow/` now owns
-serializable run metadata and a controller action for active-file threaded
-questions. The action builds an `AgentRunRequest` with one tab, one target path,
-and explicit question thread ids. The web runtime still reports
-`canRunAgent: false`, so the website keeps the copy-prompt path until a desktop
-runtime provides an executable `AgentRuntime`.
+serializable run metadata and controller actions for active-file unresolved
+comments and threaded questions. Each action builds an `AgentRunRequest` with
+one tab, one target path, selected comment ids, and a generated prompt. The web
+runtime still reports `canRunAgent: false`, so the website keeps copy-prompt
+paths until a desktop runtime provides an executable `AgentRuntime`.
 
 Second implementation note: the next foundation slice adds serializable
 `agent-workflow` run metadata plus web runtime agent and terminal capabilities
@@ -313,6 +313,9 @@ an agent action capability helper. In the web runtime it remains the existing
 "Copy agent prompt" action. When a desktop runtime reports local agent
 execution, the same surface becomes "Ask agent" and calls the
 question-thread run controller action.
+The active-file unresolved-comments action follows the same capability path:
+website builds copy a review prompt, while desktop builds call the address
+comments run controller action.
 
 Desktop shell implementation note: `src-tauri/` now contains the first Tauri v2
 native shell. It loads the existing Vite app in a native window and adds
