@@ -289,6 +289,11 @@ registers initial `dragon_runtime_ping` and `dragon_agent_runtime_available`
 commands. `src/runtime/tauriBridge.ts` is the frontend boundary for invoking
 those commands while still rejecting cleanly in the website runtime.
 
+Desktop runtime module note: `src/runtime/desktop.ts` now composes desktop
+agent and terminal adapters behind the same runtime interfaces used by the web
+runtime. Those adapters intentionally report unavailable execution until native
+runner and terminal commands exist.
+
 ## Risks
 
 - Runtime abstraction may be too broad if introduced before the first desktop
