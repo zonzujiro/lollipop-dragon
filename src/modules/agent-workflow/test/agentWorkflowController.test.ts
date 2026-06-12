@@ -158,4 +158,50 @@ describe("question thread agent run controller", () => {
     });
     expect(showToastMessages).toEqual(["Agent run started"]);
   });
+
+  it("stops the active tab run through the injected runtime", async () => {
+    const stoppedRuntimeRunIds: string[] = [];
+    const runtime: AgentRuntime = {
+      canRunAgent: true,
+      startRun: () => Promise.resolve("terminal-session-1"),
+      stopRun: (runId) => {
+        stoppedRuntimeRunIds.push(runId);
+        return Promise.resolve();
+      },
+    };
+    const showToastMessages: string[] = [];
+    const actions = createAgentWorkflowControllerActions({
+      get: useAppStore.getState,
+      getActiveTab: (get) => getActiveTab(get()),
+      showToast: (message) => {
+        showToastMessages.push(message);
+      },
+      runtime,
+    });
+
+    setTestState({
+      fileName: "spec.md",
+    });
+    const run = useAppStore.getState().createAgentRun({
+      tabId: "test-tab",
+      taskKind: "answer_questions",
+      targetPaths: ["spec.md"],
+      runnerKind: "terminal",
+    });
+    useAppStore.getState().updateAgentRunStatus({
+      runId: run.id,
+      status: "running",
+      terminalAttachmentId: "native-run-1",
+    });
+
+    const result = await actions.stopActiveAgentRun();
+
+    expect(result).toEqual({
+      status: "stopped",
+      runId: run.id,
+    });
+    expect(stoppedRuntimeRunIds).toEqual(["native-run-1"]);
+    expect(useAppStore.getState().agentRuns[run.id]?.status).toBe("stopped");
+    expect(showToastMessages).toEqual(["Agent run stopped"]);
+  });
 });

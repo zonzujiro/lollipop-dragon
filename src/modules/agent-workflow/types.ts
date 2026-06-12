@@ -72,6 +72,23 @@ export type AgentRunStartResult =
       message: string;
     };
 
+export type AgentRunStopUnavailableReason =
+  | "no_active_tab"
+  | "no_active_run"
+  | "runtime_stop_failed";
+
+export type AgentRunStopResult =
+  | {
+      status: "stopped";
+      runId: string;
+    }
+  | {
+      status: "unavailable";
+      reason: AgentRunStopUnavailableReason;
+      message: string;
+    };
+
 export interface AgentWorkflowControllerActions {
   startQuestionThreadAgentRun: () => Promise<AgentRunStartResult>;
+  stopActiveAgentRun: () => Promise<AgentRunStopResult>;
 }

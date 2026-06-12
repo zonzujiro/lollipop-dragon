@@ -11,6 +11,8 @@ import type { TabState } from "../../types/tab";
 import type {
   AgentRunStartUnavailableReason,
   AgentRunStartResult,
+  AgentRunStopUnavailableReason,
+  AgentRunStopResult,
   AgentWorkflowActions,
   AgentWorkflowControllerActions,
   AgentWorkflowState,
@@ -105,6 +107,17 @@ function unavailableResult(input: {
   };
 }
 
+function unavailableStopResult(input: {
+  reason: AgentRunStopUnavailableReason;
+  message: string;
+}): AgentRunStopResult {
+  return {
+    status: "unavailable",
+    reason: input.reason,
+    message: input.message,
+  };
+}
+
 export function createAgentWorkflowControllerActions<
   StoreState extends AgentWorkflowControllerStoreState,
 >(
@@ -184,6 +197,54 @@ export function createAgentWorkflowControllerActions<
         deps.showToast("Agent run failed to start");
         return unavailableResult({
           reason: "agent_unavailable",
+          message,
+        });
+      }
+    },
+
+    stopActiveAgentRun: async () => {
+      const tab = deps.getActiveTab(deps.get);
+      if (!tab) {
+        return unavailableStopResult({
+          reason: "no_active_tab",
+          message: "Open a file or folder before stopping an agent run.",
+        });
+      }
+
+      const runId = deps.get().activeAgentRunIdByTabId[tab.id];
+      const run = runId ? deps.get().agentRuns[runId] : null;
+      if (!run) {
+        return unavailableStopResult({
+          reason: "no_active_run",
+          message: "No active agent run is attached to this tab.",
+        });
+      }
+
+      try {
+        if (run.terminalAttachmentId) {
+          await runtime.stopRun(run.terminalAttachmentId);
+        }
+        deps.get().updateAgentRunStatus({
+          runId: run.id,
+          status: "stopped",
+        });
+        deps.showToast("Agent run stopped");
+        return {
+          status: "stopped",
+          runId: run.id,
+        };
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Agent run failed to stop";
+        console.error("[agent-workflow] failed to stop agent run:", error);
+        deps.get().updateAgentRunStatus({
+          runId: run.id,
+          status: "failed",
+          errorMessage: message,
+        });
+        deps.showToast("Agent run failed to stop");
+        return unavailableStopResult({
+          reason: "runtime_stop_failed",
           message,
         });
       }

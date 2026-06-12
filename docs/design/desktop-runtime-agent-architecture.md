@@ -272,6 +272,11 @@ and stores only the returned runtime run id in app state. This keeps tmux, Codex
 CLI, and other runner choices behind the native runtime boundary instead of
 hard-coding one backend into the UI/store contract.
 
+Run-control implementation note: the comment panel now shows the active run for
+the current tab and exposes a stop action while the run is queued, running, or
+needs attention. Stopping calls the runtime before the serializable run status is
+updated to `stopped`.
+
 Agent workflow implementation note: `src/modules/agent-workflow/` now owns
 serializable run metadata and a controller action for active-file threaded
 questions. The action builds an `AgentRunRequest` with one tab, one target path,

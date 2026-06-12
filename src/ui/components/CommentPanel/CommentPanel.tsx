@@ -4,6 +4,8 @@ import {
   buildAgentReplyPrompt,
   buildCommentThreadGroups,
 } from "../../../markup";
+import { getActiveAgentRunForTab } from "../../../modules/agent-workflow";
+import type { AgentRunStatus } from "../../../modules/agent-workflow";
 import { canRunAgent } from "../../../runtime";
 import { useAppStore } from "../../../store";
 import { useActiveTab } from "../../../store/selectors";
@@ -32,6 +34,19 @@ const COMMENT_TYPES: CommentType[] = [
   "remove",
 ];
 const EDITABLE_CRITIC_TYPES: Comment["criticType"][] = ["comment", "highlight"];
+const ACTIVE_AGENT_RUN_STATUSES = new Set<AgentRunStatus>([
+  "queued",
+  "running",
+  "needs_attention",
+]);
+const AGENT_RUN_STATUS_LABEL: Record<AgentRunStatus, string> = {
+  queued: "Queued",
+  running: "Running",
+  needs_attention: "Needs attention",
+  completed: "Completed",
+  failed: "Failed",
+  stopped: "Stopped",
+};
 
 function scrollToBlock(blockIndex: number | undefined) {
   if (blockIndex === undefined) {
@@ -143,6 +158,11 @@ export function CommentPanel({ peerMode = false }: Props) {
   const selectPeerFile = useAppStore((state) => state.selectPeerFile);
   const startQuestionThreadAgentRun = useAppStore(
     (state) => state.startQuestionThreadAgentRun,
+  );
+  const stopActiveAgentRun = useAppStore((state) => state.stopActiveAgentRun);
+  const clearAgentRun = useAppStore((state) => state.clearAgentRun);
+  const activeAgentRun = useAppStore((state) =>
+    tab?.id ? getActiveAgentRunForTab(state, tab.id) : null,
   );
   const sharedContent = useAppStore((state) => state.sharedContent);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
@@ -326,6 +346,10 @@ export function CommentPanel({ peerMode = false }: Props) {
     canRunAgent,
     canStartQuestionThreadRun: true,
   });
+  const canStopAgentRun = Boolean(
+    activeAgentRun && ACTIVE_AGENT_RUN_STATUSES.has(activeAgentRun.status),
+  );
+  const showAgentRunStatus = !peerMode && activeAgentRun;
 
   async function handleQuestionThreadAgentAction() {
     if (questionThreadAgentAction.kind === "copy_prompt") {
@@ -334,6 +358,13 @@ export function CommentPanel({ peerMode = false }: Props) {
     }
 
     const result = await startQuestionThreadAgentRun();
+    if (result.status === "unavailable") {
+      showToast(result.message);
+    }
+  }
+
+  async function handleStopAgentRun() {
+    const result = await stopActiveAgentRun();
     if (result.status === "unavailable") {
       showToast(result.message);
     }
@@ -372,7 +403,7 @@ export function CommentPanel({ peerMode = false }: Props) {
         </span>
         {!peerMode && displayCount > 0 && (
           <>
-            {hasQuestionThreads && (
+            {hasQuestionThreads && !canStopAgentRun && (
               <button
                 className="comment-panel__secondary-action"
                 onClick={() => {
@@ -401,13 +432,45 @@ export function CommentPanel({ peerMode = false }: Props) {
         </button>
       </div>
 
+      {showAgentRunStatus && (
+        <div className="comment-panel__agent-run" role="status">
+          <div className="comment-panel__agent-run-copy">
+            <span className="comment-panel__agent-run-label">
+              Agent {AGENT_RUN_STATUS_LABEL[activeAgentRun.status]}
+            </span>
+            {activeAgentRun.errorMessage && (
+              <span className="comment-panel__agent-run-error">
+                {activeAgentRun.errorMessage}
+              </span>
+            )}
+          </div>
+          {canStopAgentRun ? (
+            <button
+              className="comment-panel__agent-run-action"
+              onClick={() => {
+                void handleStopAgentRun();
+              }}
+            >
+              Stop
+            </button>
+          ) : (
+            <button
+              className="comment-panel__agent-run-action"
+              onClick={() => clearAgentRun(activeAgentRun.id)}
+            >
+              Dismiss
+            </button>
+          )}
+        </div>
+      )}
+
       {confirmDeleteAll && (
         <div className="comment-panel__danger-confirm" role="alert">
           <span>Delete all comments from this file?</span>
           <button
             className="comment-panel__danger-confirm-delete"
             onClick={() => {
-              deleteAllComments();
+              void deleteAllComments();
               setConfirmDeleteAll(false);
             }}
           >
