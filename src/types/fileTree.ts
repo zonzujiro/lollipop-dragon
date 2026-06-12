@@ -106,3 +106,59 @@ export function toFileTreeNodes(
   }
   return liveNodes;
 }
+
+/** Build a nested sidebar tree from flat path keys like "folder/sub/file.md". */
+export function buildVirtualTree(paths: string[]): SidebarTreeNode[] {
+  const root: SidebarDirectoryNode = {
+    kind: "directory",
+    name: "",
+    path: "",
+    children: [],
+  };
+
+  for (const path of paths) {
+    const parts = path.split("/");
+    let current = root;
+    for (let index = 0; index < parts.length; index += 1) {
+      const name = parts[index];
+      const subPath = parts.slice(0, index + 1).join("/");
+      if (index === parts.length - 1) {
+        current.children.push({ kind: "file", name, path });
+      } else {
+        const found = current.children.find(
+          (child) => child.kind === "directory" && child.name === name,
+        );
+        let directory: SidebarDirectoryNode | undefined =
+          found?.kind === "directory" ? found : undefined;
+        if (!directory) {
+          directory = {
+            kind: "directory",
+            name,
+            path: subPath,
+            children: [],
+          };
+          current.children.push(directory);
+        }
+        current = directory;
+      }
+    }
+  }
+
+  return sortSidebarTreeNodes(root.children);
+}
+
+function sortSidebarTreeNodes(nodes: SidebarTreeNode[]): SidebarTreeNode[] {
+  return nodes
+    .sort((leftNode, rightNode) => {
+      if (leftNode.kind !== rightNode.kind) {
+        return leftNode.kind === "directory" ? -1 : 1;
+      }
+      return leftNode.name.localeCompare(rightNode.name);
+    })
+    .map((node) => {
+      if (node.kind === "directory") {
+        return { ...node, children: sortSidebarTreeNodes(node.children) };
+      }
+      return node;
+    });
+}

@@ -11,7 +11,7 @@ import {
   generateKey,
   keyToBase64url,
 } from "../../services/crypto";
-import { readFile } from "../../services/fileSystem";
+import { readFile } from "../../runtime";
 import type { FileTreeNode } from "../../types/fileTree";
 import type { ShareRecord } from "../../types/share";
 import type { TabState } from "../../types/tab";
@@ -22,12 +22,12 @@ import {
   relayCommentResolve,
   unsubscribeFromDoc,
 } from "../relay";
-import { removePendingCommentState, replacePendingCommentsState } from "./state";
+import {
+  removePendingCommentState,
+  replacePendingCommentsState,
+} from "./state";
 import { ShareStorage } from "./storage";
-import type {
-  ShareContentOptions,
-  SharingActions,
-} from "./types";
+import type { ShareContentOptions, SharingActions } from "./types";
 
 type SetState<StoreState> = StoreApi<StoreState>["setState"];
 type GetState<StoreState> = StoreApi<StoreState>["getState"];
@@ -39,7 +39,9 @@ interface SharingControllerStoreState {
   activeTabId: string | null;
 }
 
-interface SharingControllerDeps<StoreState extends SharingControllerStoreState> {
+interface SharingControllerDeps<
+  StoreState extends SharingControllerStoreState,
+> {
   set: SetState<StoreState>;
   get: GetState<StoreState>;
   queuePendingResolve: (docId: string, cmtId: string) => void;
@@ -100,11 +102,13 @@ export function saveShares(key: string, shares: ShareRecord[]) {
   saveAllShares(allShares);
 }
 
-export function loadAndCleanShares(tabs: {
-  id: string;
-  directoryName: string | null;
-  fileName: string | null;
-}[]): Record<string, ShareRecord[]> {
+export function loadAndCleanShares(
+  tabs: {
+    id: string;
+    directoryName: string | null;
+    fileName: string | null;
+  }[],
+): Record<string, ShareRecord[]> {
   const allShares = loadAllShares();
   let changed = false;
 
@@ -214,16 +218,14 @@ export function getSharingStorage(): ShareStorage | null {
   return new ShareStorage(WORKER_URL);
 }
 
-function buildShareRecord(
-  input: {
-    docId: string;
-    hostSecret: string;
-    keyB64: string;
-    label: string;
-    ttl: number;
-    tree: Record<string, string>;
-  },
-): ShareRecord {
+function buildShareRecord(input: {
+  docId: string;
+  hostSecret: string;
+  keyB64: string;
+  label: string;
+  ttl: number;
+  tree: Record<string, string>;
+}): ShareRecord {
   const now = new Date();
   return {
     docId: input.docId,
@@ -249,7 +251,8 @@ async function createShare(
   record: ShareRecord;
   shareUrl: string;
 }> {
-  const label = options.label ?? tab.directoryName ?? tab.fileName ?? "document";
+  const label =
+    options.label ?? tab.directoryName ?? tab.fileName ?? "document";
   const liveFileTree = getLiveFileTree(tab);
   const sourceNodes =
     options.nodes ??
@@ -292,7 +295,8 @@ function findSharingTabByDocId(
   docId: string,
 ): TabState | null {
   return (
-    tabs.find((tab) => tab.shares.some((share) => share.docId === docId)) ?? null
+    tabs.find((tab) => tab.shares.some((share) => share.docId === docId)) ??
+    null
   );
 }
 
@@ -370,9 +374,13 @@ export function createSharingControllerActions<
       }
 
       set((state) => ({
-        tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, (tabState) => ({
-          shareKeys: { ...tabState.shareKeys, ...restoredKeys },
-        })),
+        tabs: buildUpdatedActiveTabs(
+          state.tabs,
+          state.activeTabId,
+          (tabState) => ({
+            shareKeys: { ...tabState.shareKeys, ...restoredKeys },
+          }),
+        ),
       }));
     },
 
@@ -394,7 +402,9 @@ export function createSharingControllerActions<
         getLiveFileTree,
       );
 
-      const currentTab = get().tabs.find((currentTab) => currentTab.id === tabId);
+      const currentTab = get().tabs.find(
+        (currentTab) => currentTab.id === tabId,
+      );
       if (!currentTab) {
         throw new Error("Tab disappeared");
       }
@@ -406,9 +416,9 @@ export function createSharingControllerActions<
         buildUpdatedTabs,
         tabId,
         updater: (tabState) => ({
-        shares,
-        shareKeys: { ...tabState.shareKeys, [docId]: key },
-        activeDocId: docId,
+          shares,
+          shareKeys: { ...tabState.shareKeys, [docId]: key },
+          activeDocId: docId,
         }),
       });
 
@@ -541,7 +551,11 @@ export function createSharingControllerActions<
         return;
       }
 
-      const nextTabState = removePendingCommentState(latestTab, docId, comment.id);
+      const nextTabState = removePendingCommentState(
+        latestTab,
+        docId,
+        comment.id,
+      );
       saveShares(stableShareKey(latestTab), nextTabState.shares);
       updateSharingTabState({
         set,

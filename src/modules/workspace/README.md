@@ -50,6 +50,9 @@ Expected side effects:
 - file refresh
 - restore from persisted handles
 
+File and folder operations should go through the runtime workspace capability
+boundary rather than importing browser filesystem services directly.
+
 ## Related Docs
 
 - [Architecture](../../../ARCHITECTURE.md)

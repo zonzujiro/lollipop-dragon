@@ -11,7 +11,7 @@ import {
 import { findLiveFileInTree } from "../../types/fileTree";
 import type { Comment } from "../../types/criticmarkup";
 import type { FileNode, FileTreeNode } from "../../types/fileTree";
-import { readFile, writeFile } from "../../services/fileSystem";
+import { readFile, writeFile } from "../../runtime";
 import type { TabState } from "../../types/tab";
 import type { FileCommentEntry, HostReviewActions } from "./types";
 
@@ -23,7 +23,7 @@ interface ActiveTabStoreState {
   activeTabId: string | null;
 }
 
-interface HostReviewControllerStoreState extends ActiveTabStoreState {}
+type HostReviewControllerStoreState = ActiveTabStoreState;
 
 interface HostReviewControllerDeps<
   StoreState extends HostReviewControllerStoreState,
@@ -75,24 +75,19 @@ export function findResolvedComments(
   return comments.filter((comment) => !rawContent.includes(comment.raw));
 }
 
-export async function writeAndUpdate<StoreState extends ActiveTabStoreState>(
-  input: {
-    set: SetState<StoreState>;
-    buildUpdatedActiveTabs: (
-      tabs: TabState[],
-      activeTabId: string | null,
-      updater: (tab: TabState) => Partial<TabState>,
-    ) => TabState[];
-    fileHandle: FileSystemFileHandle;
-    newRawContent: string;
-  },
-): Promise<boolean> {
-  const {
-    set,
-    buildUpdatedActiveTabs,
-    fileHandle,
-    newRawContent,
-  } = input;
+export async function writeAndUpdate<
+  StoreState extends ActiveTabStoreState,
+>(input: {
+  set: SetState<StoreState>;
+  buildUpdatedActiveTabs: (
+    tabs: TabState[],
+    activeTabId: string | null,
+    updater: (tab: TabState) => Partial<TabState>,
+  ) => TabState[];
+  fileHandle: FileSystemFileHandle;
+  newRawContent: string;
+}): Promise<boolean> {
+  const { set, buildUpdatedActiveTabs, fileHandle, newRawContent } = input;
   try {
     await writeFile(fileHandle, newRawContent);
     set((state) => ({
@@ -195,7 +190,10 @@ export function createHostReviewControllerActions<
         return;
       }
 
-      const scannedComments = await scanAllTabFileComments(tab, getLiveFileTree);
+      const scannedComments = await scanAllTabFileComments(
+        tab,
+        getLiveFileTree,
+      );
       const currentTab = get().tabs.find(
         (currentTab) => currentTab.id === tab.id,
       );

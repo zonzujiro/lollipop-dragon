@@ -1,11 +1,10 @@
 export {
   buildFileTree,
-  buildVirtualTree,
   openDirectory,
   openFile,
   readFile,
   writeFile,
-} from "../../services/fileSystem";
+} from "../../runtime";
 export {
   getHandle,
   removeHandle,

@@ -66,6 +66,7 @@ Shared module shape:
 
 Lower-level reusable code lives outside modules:
 
+- `src/runtime/`: runtime capability boundaries and active runtime adapters
 - `src/services/`: browser, network, crypto, and file-system adapters
 - `src/markup/`: CriticMarkup parsing and editing helpers
 - `src/types/`: shared application types
