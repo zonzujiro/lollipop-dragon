@@ -35,8 +35,14 @@ export type AgentRuntimeRunStatus =
       output: string;
     };
 
+export interface AgentRuntimeCapability {
+  canRunAgent: boolean;
+  unavailableMessage: string | null;
+}
+
 export interface AgentRuntime {
   canRunAgent: boolean;
+  getCapability(): Promise<AgentRuntimeCapability>;
   startRun(request: AgentRunRequest): Promise<string>;
   stopRun(runId: string): Promise<void>;
   getRunStatus(runId: string): Promise<AgentRuntimeRunStatus>;
@@ -44,6 +50,11 @@ export interface AgentRuntime {
 
 export const webAgentRuntime: AgentRuntime = {
   canRunAgent: false,
+  getCapability: () =>
+    Promise.resolve({
+      canRunAgent: false,
+      unavailableMessage: "Local agent execution is unavailable on web.",
+    }),
   startRun: () =>
     Promise.reject(new Error("Local agent execution is unavailable on web")),
   stopRun: () => Promise.resolve(),

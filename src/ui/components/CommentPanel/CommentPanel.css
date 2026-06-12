@@ -192,6 +192,16 @@
   color: var(--accent);
 }
 
+.comment-panel__agent-capability {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--c-orange) 35%, var(--border));
+  background: color-mix(in srgb, var(--surface) 86%, var(--c-orange) 14%);
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
 .comment-panel__close {
   background: none;
   border: none;

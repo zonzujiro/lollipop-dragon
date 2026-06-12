@@ -241,6 +241,8 @@ outside this first desktop planning scope.
   review prompt.
 - Agent starts are guarded to one active run per tab and three active runs
   app-wide.
+- Desktop reads agent availability before showing run actions, so missing
+  `DRAGON_AGENT_COMMAND` falls back to prompt copying with a setup message.
 
 ## Open Questions
 

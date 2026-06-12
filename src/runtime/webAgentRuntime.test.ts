@@ -5,6 +5,10 @@ describe("web agent runtime capabilities", () => {
   it("reports that local agent execution is unavailable on web", async () => {
     expect(canRunAgent).toBe(false);
     expect(agentRuntime.canRunAgent).toBe(false);
+    await expect(agentRuntime.getCapability()).resolves.toEqual({
+      canRunAgent: false,
+      unavailableMessage: "Local agent execution is unavailable on web.",
+    });
 
     await expect(
       agentRuntime.startRun({

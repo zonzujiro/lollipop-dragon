@@ -6,6 +6,7 @@ import type {
 
 export type {
   AgentRuntime,
+  AgentRuntimeCapability,
   AgentRunRequest,
   AgentRuntimeRunStatus,
 } from "./agent";
@@ -30,6 +31,10 @@ export const terminalRuntime = activeRuntime.terminalRuntime;
 
 export const canRunAgent = agentRuntime.canRunAgent;
 export const canShowTerminal = terminalRuntime.canShowTerminal;
+
+export function getAgentRuntimeCapability() {
+  return agentRuntime.getCapability();
+}
 
 export function openFile() {
   return workspaceRuntime.openFile();

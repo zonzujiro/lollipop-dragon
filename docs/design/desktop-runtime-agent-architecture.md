@@ -273,6 +273,9 @@ Native runner implementation note: desktop agent runs now call Tauri
 and stores only the returned runtime run id in app state. This keeps tmux, Codex
 CLI, and other runner choices behind the native runtime boundary instead of
 hard-coding one backend into the UI/store contract.
+The comment panel checks the native availability command before presenting
+run-agent actions, so an unconfigured command falls back to prompt copying with
+an inline setup message.
 
 Run-control implementation note: the comment panel now shows the active run for
 the current tab and exposes a stop action while the run is queued, running, or
