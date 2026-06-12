@@ -254,6 +254,66 @@ describe("CommentPanel — agent prompt", () => {
     expect(useAppStore.getState().toast).toBe("Agent review prompt copied");
   });
 
+  it("copies a folder address-comments prompt from scanned file comments", async () => {
+    const user = userEvent.setup();
+    const writeText = vi
+      .spyOn(navigator.clipboard, "writeText")
+      .mockResolvedValue(undefined);
+
+    setTestState({
+      fileTree: [
+        {
+          kind: "file",
+          name: "spec.md",
+          path: "docs/spec.md",
+        },
+      ],
+      allFileComments: {
+        "docs/spec.md": {
+          filePath: "docs/spec.md",
+          fileName: "spec.md",
+          comments: [
+            makeCommentBase({
+              id: "fix-root",
+              type: "fix",
+              text: "Fix the intro",
+            }),
+          ],
+        },
+        "docs/notes.md": {
+          filePath: "docs/notes.md",
+          fileName: "notes.md",
+          comments: [
+            makeCommentBase({
+              id: "note-root",
+              type: "note",
+              text: "Check this claim",
+            }),
+          ],
+        },
+      },
+    });
+
+    render(<CommentPanel />);
+    await user.click(
+      screen.getByRole("button", { name: "Copy review prompt" }),
+    );
+
+    expect(writeText).toHaveBeenCalledOnce();
+    expect(writeText.mock.calls[0]?.[0]).toContain(
+      "Work only in the listed markdown files",
+    );
+    expect(writeText.mock.calls[0]?.[0]).toContain("- docs/notes.md");
+    expect(writeText.mock.calls[0]?.[0]).toContain(
+      "  - note-root (note): Check this claim",
+    );
+    expect(writeText.mock.calls[0]?.[0]).toContain("- docs/spec.md");
+    expect(writeText.mock.calls[0]?.[0]).toContain(
+      "  - fix-root (fix): Fix the intro",
+    );
+    expect(useAppStore.getState().toast).toBe("Agent review prompt copied");
+  });
+
   it("shows a copy prompt button when question threads exist", () => {
     setTestState({
       comments: [

@@ -168,7 +168,8 @@ Workspace tab removal refuses to close tabs with queued, running, or
 attention-needed agent runs, then cleans finished run metadata when the owning
 tab is closed.
 The comment panel can start desktop runtime runs for active-file unresolved
-comments and threaded questions, while web builds keep copy-prompt fallbacks.
+comments, bounded folder-level unresolved comments, and active-file threaded
+questions, while web builds keep copy-prompt fallbacks.
 Agent start actions refuse to create a second active run for the same tab and
 cap v1 to three active runs app-wide.
 Desktop UI reads the runtime agent capability asynchronously, so an unconfigured

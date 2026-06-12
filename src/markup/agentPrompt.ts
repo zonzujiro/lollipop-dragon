@@ -9,6 +9,15 @@ interface AddressCommentsPromptInput {
   comments: AddressCommentsPromptComment[];
 }
 
+interface FolderAddressCommentsPromptTarget {
+  filePath: string;
+  comments: AddressCommentsPromptComment[];
+}
+
+interface FolderAddressCommentsPromptInput {
+  targets: FolderAddressCommentsPromptTarget[];
+}
+
 export function buildAgentReplyPrompt(): string {
   return `Review this markdown file and answer MarkReview threaded questions inline.
 
@@ -43,6 +52,32 @@ Scope:
 - Address only these unresolved comment ids:
 ${commentList}
 - Apply the requested edits directly in the markdown.
+- Remove each addressed MarkReview comment once its requested change is applied.
+- Do not answer threaded question comments in this run.
+- Do not edit unrelated files or unrelated comments.`;
+}
+
+export function buildFolderAddressCommentsAgentPrompt(
+  input: FolderAddressCommentsPromptInput,
+): string {
+  const targetList = input.targets
+    .map((target) => {
+      const commentList = target.comments
+        .map(
+          (comment) => `  - ${comment.id} (${comment.type}): ${comment.text}`,
+        )
+        .join("\n");
+      return `- ${target.filePath}\n${commentList}`;
+    })
+    .join("\n");
+
+  return `Review this markdown folder and address the listed MarkReview comments.
+
+Scope:
+- Work only in the listed markdown files.
+- Address only these unresolved comment ids:
+${targetList}
+- Apply the requested edits directly in the markdown files.
 - Remove each addressed MarkReview comment once its requested change is applied.
 - Do not answer threaded question comments in this run.
 - Do not edit unrelated files or unrelated comments.`;
