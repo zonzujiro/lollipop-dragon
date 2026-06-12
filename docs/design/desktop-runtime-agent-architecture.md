@@ -310,6 +310,11 @@ implements read, write, and directory-tree operations for native path targets.
 Open-file and open-folder UI still use the web runtime until native dialog
 commands are added and the desktop shell switches to the desktop runtime module.
 
+Native dialog command note: the Tauri shell now registers native open-file and
+open-folder commands through `tauri-plugin-dialog`. The frontend bridge converts
+their results into native path targets, while the visible host open flow remains
+on browser handles until tab state is widened to store native sessions.
+
 ## Risks
 
 - Runtime abstraction may be too broad if introduced before the first desktop

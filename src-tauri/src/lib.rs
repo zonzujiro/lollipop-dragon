@@ -1,6 +1,7 @@
 use serde::Serialize;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use tauri_plugin_dialog::DialogExt;
 
 const IGNORED_NAMES: [&str; 3] = ["node_modules", ".git", ".markreview"];
 const MARKDOWN_EXTENSIONS: [&str; 2] = ["md", "markdown"];
@@ -16,6 +17,24 @@ enum NativeFileTreeNode {
         path: String,
         children: Vec<NativeFileTreeNode>,
     },
+}
+
+#[derive(Serialize)]
+struct NativePathTarget {
+    path: String,
+    name: String,
+}
+
+fn path_target_from_path(path: PathBuf) -> NativePathTarget {
+    let name = path
+        .file_name()
+        .map(|file_name| file_name.to_string_lossy().to_string())
+        .unwrap_or_else(|| path.to_string_lossy().to_string());
+
+    NativePathTarget {
+        path: path.to_string_lossy().to_string(),
+        name,
+    }
 }
 
 fn is_ignored(name: &str) -> bool {
@@ -90,6 +109,28 @@ fn dragon_agent_runtime_available() -> bool {
 }
 
 #[tauri::command]
+fn dragon_open_text_file(app: tauri::AppHandle) -> Result<Option<NativePathTarget>, String> {
+    let selected = app
+        .dialog()
+        .file()
+        .add_filter("Markdown", &["md", "markdown"])
+        .blocking_pick_file();
+
+    Ok(selected
+        .and_then(|file_path| file_path.as_path().map(|path| path.to_path_buf()))
+        .map(path_target_from_path))
+}
+
+#[tauri::command]
+fn dragon_open_directory(app: tauri::AppHandle) -> Result<Option<NativePathTarget>, String> {
+    let selected = app.dialog().file().blocking_pick_folder();
+
+    Ok(selected
+        .and_then(|file_path| file_path.as_path().map(|path| path.to_path_buf()))
+        .map(path_target_from_path))
+}
+
+#[tauri::command]
 fn dragon_read_text_file(path: String) -> Result<String, String> {
     fs::read_to_string(path).map_err(|error| error.to_string())
 }
@@ -110,6 +151,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             dragon_runtime_ping,
             dragon_agent_runtime_available,
+            dragon_open_text_file,
+            dragon_open_directory,
             dragon_read_text_file,
             dragon_write_text_file,
             dragon_read_directory_tree
