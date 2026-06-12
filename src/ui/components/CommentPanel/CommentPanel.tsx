@@ -141,6 +141,9 @@ export function CommentPanel({ peerMode = false }: Props) {
   const editPeerComment = useAppStore((state) => state.editPeerComment);
   const deletePeerComment = useAppStore((state) => state.deletePeerComment);
   const selectPeerFile = useAppStore((state) => state.selectPeerFile);
+  const startQuestionThreadAgentRun = useAppStore(
+    (state) => state.startQuestionThreadAgentRun,
+  );
   const sharedContent = useAppStore((state) => state.sharedContent);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
 
@@ -319,6 +322,23 @@ export function CommentPanel({ peerMode = false }: Props) {
     }
   }
 
+  const questionThreadAgentAction = getQuestionThreadAgentAction({
+    canRunAgent,
+    canStartQuestionThreadRun: true,
+  });
+
+  async function handleQuestionThreadAgentAction() {
+    if (questionThreadAgentAction.kind === "copy_prompt") {
+      await handleCopyAgentPrompt();
+      return;
+    }
+
+    const result = await startQuestionThreadAgentRun();
+    if (result.status === "unavailable") {
+      showToast(result.message);
+    }
+  }
+
   useEffect(() => {
     const activePanelCommentId = peerMode
       ? activeCommentId
@@ -340,10 +360,6 @@ export function CommentPanel({ peerMode = false }: Props) {
       : sourceComments.length;
   const showTypeFilters = !isResolved && activeTypes.length > 1;
   const showStatusFilters = !peerMode && resolvedComments.length > 0;
-  const questionThreadAgentAction = getQuestionThreadAgentAction({
-    canRunAgent,
-    canStartQuestionThreadRun: false,
-  });
 
   return (
     <aside className="comment-panel" aria-label="Comments">
@@ -360,7 +376,7 @@ export function CommentPanel({ peerMode = false }: Props) {
               <button
                 className="comment-panel__secondary-action"
                 onClick={() => {
-                  void handleCopyAgentPrompt();
+                  void handleQuestionThreadAgentAction();
                 }}
                 title={questionThreadAgentAction.title}
               >
