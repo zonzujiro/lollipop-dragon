@@ -13,12 +13,12 @@ export type WorkspaceFileTarget = FileTarget;
 export type WorkspaceDirectoryTarget = DirectoryTarget;
 
 export interface OpenedWorkspaceFile {
-  handle: FileSystemFileHandle;
+  handle: WorkspaceFileTarget;
   name: string;
 }
 
 export interface OpenedWorkspaceDirectory {
-  handle: FileSystemDirectoryHandle;
+  handle: WorkspaceDirectoryTarget;
   name: string;
 }
 

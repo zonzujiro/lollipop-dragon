@@ -235,8 +235,9 @@ The desktop work should not remove or degrade the website:
 - The web runtime keeps copy-prompt handoff.
 - Peer mode remains browser-accessible.
 - Shared UI uses capability checks for desktop-only controls.
-- Desktop-specific setup, runner, and terminal code should not be imported by
-  the website bundle.
+- Normal Vite builds resolve the active runtime to `runtime.web`; Tauri
+  dev/build commands run Vite in `desktop` mode, where `vite.config.ts` resolves
+  the active runtime to `runtime.desktop`.
 
 ## Migration Strategy
 
@@ -258,6 +259,11 @@ Initial implementation note: the first foundation slice introduces
 runtime that delegates to the existing browser filesystem implementation. This
 does not add desktop execution yet; it creates the boundary the desktop runtime
 can implement later.
+
+Current implementation note: the Tauri shell now runs Vite in `desktop` mode,
+which selects the desktop runtime facade. Desktop open-file and open-folder
+actions use native Tauri dialogs and return native path targets, while normal web
+builds continue to use the browser file API runtime.
 
 Agent workflow implementation note: `src/modules/agent-workflow/` now owns
 serializable run metadata and a controller action for active-file threaded

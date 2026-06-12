@@ -50,6 +50,15 @@ const HISTORY_KEY = "markreview-history";
 const HISTORY_LIMIT = 20;
 const HISTORY_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
+async function saveBrowserHandle(
+  key: string,
+  handle: FileTarget | DirectoryTarget,
+): Promise<void> {
+  if (isBrowserFileHandle(handle) || isBrowserDirectoryHandle(handle)) {
+    await saveHandle(key, handle);
+  }
+}
+
 function isHistoryEntry(value: unknown): value is HistoryEntry {
   if (typeof value !== "object" || value === null) {
     return false;
@@ -750,7 +759,7 @@ export function createWorkspaceControllerActions<
         tabs: [...state.tabs, tab],
         activeTabId: tab.id,
       }));
-      await saveHandle(`tab:${tab.id}:file`, result.handle);
+      await saveBrowserHandle(`tab:${tab.id}:file`, result.handle);
     },
 
     openDirectoryInNewTab: async () => {
@@ -781,7 +790,7 @@ export function createWorkspaceControllerActions<
         activeTabId: tab.id,
       }));
 
-      await saveHandle(`tab:${tab.id}:directory`, result.handle);
+      await saveBrowserHandle(`tab:${tab.id}:directory`, result.handle);
       const tree = await buildFileTree(result.handle);
       set((state) => ({
         tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
@@ -807,7 +816,7 @@ export function createWorkspaceControllerActions<
             return;
           }
 
-          await saveHandle(`tab:${tabId}:directory`, result.handle);
+          await saveBrowserHandle(`tab:${tabId}:directory`, result.handle);
           const tree = await buildFileTree(result.handle);
           const restoredFile = await restoreActiveFileFromTree({
             tree,
@@ -865,7 +874,7 @@ export function createWorkspaceControllerActions<
           return;
         }
 
-        await saveHandle(`tab:${tabId}:file`, result.handle);
+        await saveBrowserHandle(`tab:${tabId}:file`, result.handle);
         const rawContent = await readFile(result.handle);
         set((state) => ({
           tabs: buildUpdatedTabs(state.tabs, tabId, () => ({
