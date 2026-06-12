@@ -1,6 +1,10 @@
 import { beforeEach, describe, it, expect, vi } from "vitest";
 import { useAppStore } from "../../../store";
-import { setTestState, resetTestStore, makeShare } from "../../../testing/testHelpers";
+import {
+  setTestState,
+  resetTestStore,
+  makeShare,
+} from "../../../testing/testHelpers";
 import type { HistoryEntry } from "../../../types/history";
 import { getActiveTab } from "../selectors";
 import { resetHandleStore } from "../storage";
@@ -115,6 +119,58 @@ describe("store.removeTab — history archival", () => {
     useAppStore.getState().removeTab(tabId);
 
     expect(useAppStore.getState().history).toHaveLength(0);
+  });
+
+  it("does not close a tab with an active agent run", () => {
+    setTestState({ fileName: "agent.md" });
+    const tabId = getActiveTab(useAppStore.getState())!.id;
+    const run = useAppStore.getState().createAgentRun({
+      tabId,
+      taskKind: "answer_questions",
+      targetPaths: ["agent.md"],
+      runnerKind: "terminal",
+    });
+    useAppStore.getState().updateAgentRunStatus({
+      runId: run.id,
+      status: "running",
+      terminalAttachmentId: "native-run-1",
+    });
+
+    useAppStore.getState().removeTab(tabId);
+
+    expect(useAppStore.getState().tabs.some((tab) => tab.id === tabId)).toBe(
+      true,
+    );
+    expect(useAppStore.getState().history).toHaveLength(0);
+    expect(useAppStore.getState().agentRuns[run.id]?.status).toBe("running");
+    expect(useAppStore.getState().toast).toBe(
+      "Stop the active agent run before closing this tab.",
+    );
+  });
+
+  it("removes finished agent run metadata when closing its tab", () => {
+    setTestState({ fileName: "agent.md" });
+    const tabId = getActiveTab(useAppStore.getState())!.id;
+    const run = useAppStore.getState().createAgentRun({
+      tabId,
+      taskKind: "answer_questions",
+      targetPaths: ["agent.md"],
+      runnerKind: "terminal",
+    });
+    useAppStore.getState().updateAgentRunStatus({
+      runId: run.id,
+      status: "completed",
+    });
+
+    useAppStore.getState().removeTab(tabId);
+
+    expect(useAppStore.getState().tabs.some((tab) => tab.id === tabId)).toBe(
+      false,
+    );
+    expect(useAppStore.getState().agentRuns[run.id]).toBeUndefined();
+    expect(
+      useAppStore.getState().activeAgentRunIdByTabId[tabId],
+    ).toBeUndefined();
   });
 });
 

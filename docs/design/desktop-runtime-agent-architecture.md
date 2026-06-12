@@ -224,8 +224,9 @@ Rules:
 - No automatic run is started when a tab opens.
 - A run is bound to the tab that started it.
 - Switching tabs does not stop the run.
-- Closing a tab with an active run prompts the user to stop, detach, or cancel
-  the close.
+- Closing a tab with a queued/running/attention run is blocked until the run is
+  stopped or finishes. A richer stop/detach/cancel decision can follow once
+  detachable terminal sessions exist.
 - A small app-wide active-run limit should prevent accidental over-parallelism.
 
 ## Website Preservation
@@ -288,6 +289,11 @@ can show progress without depending on terminal text as the lifecycle protocol.
 The comment panel polls this status only when the active runtime can execute
 agents, then reconciles the tab-scoped serializable run state to `completed` or
 `failed`.
+
+Tab-close implementation note: the workspace close action now checks the
+tab-scoped active run map before removing a tab. Tabs with queued, running, or
+attention-needed runs remain open and show a toast asking the user to stop the
+run first. Finished run metadata is removed when the owning tab is closed.
 
 Agent workflow implementation note: `src/modules/agent-workflow/` now owns
 serializable run metadata and a controller action for active-file threaded
