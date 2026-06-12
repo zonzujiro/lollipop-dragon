@@ -294,6 +294,12 @@ agent and terminal adapters behind the same runtime interfaces used by the web
 runtime. Those adapters intentionally report unavailable execution until native
 runner and terminal commands exist.
 
+Workspace target abstraction note: workspace runtime file operations now accept
+browser handles or native path targets. The web runtime continues to delegate
+browser handles to the existing File System Access API implementation and rejects
+native targets, which lets desktop filesystem adapters land without widening
+browser-only call sites first.
+
 ## Risks
 
 - Runtime abstraction may be too broad if introduced before the first desktop

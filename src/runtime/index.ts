@@ -1,13 +1,25 @@
 import { webAgentRuntime } from "./agent";
 import { webTerminalRuntime } from "./terminal";
 import { webWorkspaceRuntime } from "./webWorkspaceRuntime";
+import type {
+  WorkspaceDirectoryTarget,
+  WorkspaceFileTarget,
+} from "./workspace";
 
 export type { AgentRuntime, AgentRunRequest } from "./agent";
 export type { TerminalAttachment, TerminalRuntime } from "./terminal";
 export type {
+  NativeWorkspaceDirectoryTarget,
+  NativeWorkspaceFileTarget,
   OpenedWorkspaceDirectory,
   OpenedWorkspaceFile,
+  WorkspaceDirectoryTarget,
+  WorkspaceFileTarget,
   WorkspaceRuntime,
+} from "./workspace";
+export {
+  isNativeWorkspaceDirectoryTarget,
+  isNativeWorkspaceFileTarget,
 } from "./workspace";
 
 export const workspaceRuntime = webWorkspaceRuntime;
@@ -25,17 +37,17 @@ export function openDirectory() {
   return workspaceRuntime.openDirectory();
 }
 
-export function readFile(handle: FileSystemFileHandle) {
-  return workspaceRuntime.readFile(handle);
+export function readFile(target: WorkspaceFileTarget) {
+  return workspaceRuntime.readFile(target);
 }
 
-export function writeFile(handle: FileSystemFileHandle, content: string) {
-  return workspaceRuntime.writeFile(handle, content);
+export function writeFile(target: WorkspaceFileTarget, content: string) {
+  return workspaceRuntime.writeFile(target, content);
 }
 
 export function buildFileTree(
-  handle: FileSystemDirectoryHandle,
+  target: WorkspaceDirectoryTarget,
   basePath?: string,
 ) {
-  return workspaceRuntime.buildFileTree(handle, basePath);
+  return workspaceRuntime.buildFileTree(target, basePath);
 }
