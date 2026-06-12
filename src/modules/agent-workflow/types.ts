@@ -88,7 +88,32 @@ export type AgentRunStopResult =
       message: string;
     };
 
+export type AgentRunSyncStatusUnavailableReason =
+  | "no_active_tab"
+  | "no_active_run"
+  | "no_runtime_run"
+  | "terminal_run"
+  | "runtime_status_failed";
+
+export type AgentRunSyncStatusResult =
+  | {
+      status: "synced";
+      runId: string;
+      runStatus: AgentRunStatus;
+    }
+  | {
+      status: "unchanged";
+      reason: AgentRunSyncStatusUnavailableReason;
+      message: string;
+    }
+  | {
+      status: "unavailable";
+      reason: AgentRunSyncStatusUnavailableReason;
+      message: string;
+    };
+
 export interface AgentWorkflowControllerActions {
   startQuestionThreadAgentRun: () => Promise<AgentRunStartResult>;
   stopActiveAgentRun: () => Promise<AgentRunStopResult>;
+  syncActiveAgentRunStatus: () => Promise<AgentRunSyncStatusResult>;
 }

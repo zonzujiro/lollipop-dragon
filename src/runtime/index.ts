@@ -4,7 +4,11 @@ import type {
   WorkspaceFileTarget,
 } from "./workspace";
 
-export type { AgentRuntime, AgentRunRequest } from "./agent";
+export type {
+  AgentRuntime,
+  AgentRunRequest,
+  AgentRuntimeRunStatus,
+} from "./agent";
 export type { TerminalAttachment, TerminalRuntime } from "./terminal";
 export type {
   NativeWorkspaceDirectoryTarget,

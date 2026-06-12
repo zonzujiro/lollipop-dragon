@@ -103,6 +103,7 @@ describe("question thread agent run controller", () => {
         return Promise.resolve("terminal-session-1");
       },
       stopRun: () => Promise.resolve(),
+      getRunStatus: () => Promise.resolve({ status: "running" }),
     };
     const showToastMessages: string[] = [];
     const actions = createAgentWorkflowControllerActions({
@@ -168,6 +169,7 @@ describe("question thread agent run controller", () => {
         stoppedRuntimeRunIds.push(runId);
         return Promise.resolve();
       },
+      getRunStatus: () => Promise.resolve({ status: "running" }),
     };
     const showToastMessages: string[] = [];
     const actions = createAgentWorkflowControllerActions({
@@ -203,5 +205,107 @@ describe("question thread agent run controller", () => {
     expect(stoppedRuntimeRunIds).toEqual(["native-run-1"]);
     expect(useAppStore.getState().agentRuns[run.id]?.status).toBe("stopped");
     expect(showToastMessages).toEqual(["Agent run stopped"]);
+  });
+
+  it("syncs a completed native runtime run into the active tab run", async () => {
+    const checkedRuntimeRunIds: string[] = [];
+    const runtime: AgentRuntime = {
+      canRunAgent: true,
+      startRun: () => Promise.resolve("terminal-session-1"),
+      stopRun: () => Promise.resolve(),
+      getRunStatus: (runId) => {
+        checkedRuntimeRunIds.push(runId);
+        return Promise.resolve({
+          status: "completed",
+          exitCode: 0,
+        });
+      },
+    };
+    const showToastMessages: string[] = [];
+    const actions = createAgentWorkflowControllerActions({
+      get: useAppStore.getState,
+      getActiveTab: (get) => getActiveTab(get()),
+      showToast: (message) => {
+        showToastMessages.push(message);
+      },
+      runtime,
+    });
+
+    setTestState({
+      fileName: "spec.md",
+    });
+    const run = useAppStore.getState().createAgentRun({
+      tabId: "test-tab",
+      taskKind: "answer_questions",
+      targetPaths: ["spec.md"],
+      runnerKind: "terminal",
+    });
+    useAppStore.getState().updateAgentRunStatus({
+      runId: run.id,
+      status: "running",
+      terminalAttachmentId: "native-run-1",
+    });
+
+    const result = await actions.syncActiveAgentRunStatus();
+
+    expect(result).toEqual({
+      status: "synced",
+      runId: run.id,
+      runStatus: "completed",
+    });
+    expect(checkedRuntimeRunIds).toEqual(["native-run-1"]);
+    expect(useAppStore.getState().agentRuns[run.id]?.status).toBe("completed");
+    expect(showToastMessages).toEqual(["Agent run completed"]);
+  });
+
+  it("syncs a failed native runtime run into the active tab run", async () => {
+    const runtime: AgentRuntime = {
+      canRunAgent: true,
+      startRun: () => Promise.resolve("terminal-session-1"),
+      stopRun: () => Promise.resolve(),
+      getRunStatus: () =>
+        Promise.resolve({
+          status: "failed",
+          exitCode: 7,
+          message: "Agent exited with code 7",
+        }),
+    };
+    const showToastMessages: string[] = [];
+    const actions = createAgentWorkflowControllerActions({
+      get: useAppStore.getState,
+      getActiveTab: (get) => getActiveTab(get()),
+      showToast: (message) => {
+        showToastMessages.push(message);
+      },
+      runtime,
+    });
+
+    setTestState({
+      fileName: "spec.md",
+    });
+    const run = useAppStore.getState().createAgentRun({
+      tabId: "test-tab",
+      taskKind: "answer_questions",
+      targetPaths: ["spec.md"],
+      runnerKind: "terminal",
+    });
+    useAppStore.getState().updateAgentRunStatus({
+      runId: run.id,
+      status: "running",
+      terminalAttachmentId: "native-run-1",
+    });
+
+    const result = await actions.syncActiveAgentRunStatus();
+
+    expect(result).toEqual({
+      status: "synced",
+      runId: run.id,
+      runStatus: "failed",
+    });
+    expect(useAppStore.getState().agentRuns[run.id]).toMatchObject({
+      status: "failed",
+      errorMessage: "Agent exited with code 7",
+    });
+    expect(showToastMessages).toEqual(["Agent run failed"]);
   });
 });

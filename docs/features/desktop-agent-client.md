@@ -222,16 +222,27 @@ The website should remain honest about what it can do:
 The website may later gain an upgrade path such as "open in desktop", but that is
 outside this first desktop planning scope.
 
+## Current Implementation Notes
+
+- The shared app now has runtime capability facades for web and desktop builds.
+- Normal website builds keep browser file APIs and prompt-copy handoff.
+- Tauri desktop builds can open native file and folder targets.
+- Desktop agent runs start through `DRAGON_AGENT_COMMAND`, receive the generated
+  review prompt through stdin, and keep process handles outside Zustand.
+- Agent run state is tab-scoped and serializable. The comment panel can stop an
+  active run and polls native run status so completed or failed processes are
+  reflected in the UI.
+
 ## Open Questions
 
-- Which desktop shell should host the first implementation: Tauri, Electrobun, or
-  another runtime?
-- Which runner should be built first: terminal/tmux runner, Codex app-server
-  runner, or both behind one interface?
 - What is the exact global concurrency limit for active runs?
 - How should desktop handle agent authentication and first-run setup?
 - What is the minimum Windows backend for terminal/session support if `tmux` is
   not available?
+- How much native file/session persistence should desktop restore across app
+  restarts?
+- Which structured runner should follow the first configurable terminal-command
+  runner?
 
 ## References
 
