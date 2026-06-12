@@ -148,6 +148,12 @@ Desktop runtime composition lives in `src/runtime/desktop.ts`. The public
 `src/runtime/` facade imports `runtime.active`; website builds resolve that to
 `runtime.web`, while desktop builds resolve it to `runtime.desktop`.
 
+Desktop agent execution is routed through Tauri commands. The native side reads
+`DRAGON_AGENT_COMMAND`, starts that command in a shell, writes the generated
+review prompt to stdin, and tracks the child process by runtime run id. Runner
+processes remain outside Zustand; the store keeps only serializable run
+metadata.
+
 Workspace runtime file operations accept runtime targets. Browser targets are
 the current `FileSystem*Handle` values, while native targets are path-based
 objects reserved for desktop adapters. The web runtime rejects native targets

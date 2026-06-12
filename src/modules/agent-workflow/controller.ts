@@ -3,6 +3,10 @@ import { buildAgentReplyPrompt, buildCommentThreadGroups } from "../../markup";
 import { agentRuntime } from "../../runtime";
 import type { AgentRuntime, AgentRunRequest } from "../../runtime";
 import type { Comment } from "../../types/criticmarkup";
+import {
+  isNativeDirectoryTarget,
+  isNativeFileTarget,
+} from "../../types/fileTree";
 import type { TabState } from "../../types/tab";
 import type {
   AgentRunStartUnavailableReason,
@@ -30,6 +34,7 @@ interface QuestionThreadRunContext {
   tabId: string;
   targetPath: string;
   questionCommentIds: string[];
+  workspaceRootPath: string | null;
 }
 
 export function getQuestionThreadCommentIds(comments: Comment[]): string[] {
@@ -40,6 +45,29 @@ export function getQuestionThreadCommentIds(comments: Comment[]): string[] {
 
 function getAgentTargetPath(tab: TabState): string | null {
   return tab.activeFilePath ?? tab.fileName;
+}
+
+function getParentPath(path: string): string | null {
+  const slashIndex = path.lastIndexOf("/");
+  const backslashIndex = path.lastIndexOf("\\");
+  const separatorIndex = Math.max(slashIndex, backslashIndex);
+  if (separatorIndex <= 0) {
+    return null;
+  }
+
+  return path.slice(0, separatorIndex);
+}
+
+function getAgentWorkspaceRootPath(tab: TabState): string | null {
+  if (tab.directoryHandle && isNativeDirectoryTarget(tab.directoryHandle)) {
+    return tab.directoryHandle.path;
+  }
+
+  if (tab.fileHandle && isNativeFileTarget(tab.fileHandle)) {
+    return getParentPath(tab.fileHandle.path);
+  }
+
+  return null;
 }
 
 export function buildQuestionThreadAgentRunRequest(
@@ -55,6 +83,7 @@ export function buildQuestionThreadAgentRunRequest(
     targetPaths: [context.targetPath],
     selectedCommentIds: [...context.questionCommentIds],
     runnerKind: "terminal",
+    workspaceRootPath: context.workspaceRootPath,
     prompt: `${buildAgentReplyPrompt()}
 
 Scope:
@@ -120,6 +149,7 @@ export function createAgentWorkflowControllerActions<
         tabId: tab.id,
         targetPath,
         questionCommentIds,
+        workspaceRootPath: getAgentWorkspaceRootPath(tab),
       });
       const run = deps.get().createAgentRun({
         tabId: request.tabId,

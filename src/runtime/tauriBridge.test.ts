@@ -8,6 +8,8 @@ import {
   pingTauriRuntime,
   readTauriDirectoryTree,
   readTauriTextFile,
+  startTauriAgentRun,
+  stopTauriAgentRun,
   writeTauriTextFile,
 } from "./tauriBridge";
 
@@ -68,6 +70,64 @@ describe("tauri bridge", () => {
     await expect(getTauriAgentRuntimeAvailable()).rejects.toThrow(
       "Unexpected Tauri agent capability response",
     );
+  });
+
+  it("starts and stops native agent runs through Tauri commands", async () => {
+    const calls: {
+      command: string;
+      args: Record<string, unknown> | undefined;
+    }[] = [];
+    window.__TAURI__ = {
+      core: {
+        invoke: (command, args) => {
+          calls.push({ command, args });
+          return Promise.resolve("native-run-1");
+        },
+      },
+    };
+    const request = {
+      tabId: "tab-1",
+      taskKind: "answer_questions",
+      targetPaths: ["docs/spec.md"],
+      selectedCommentIds: ["mr-question-1"],
+      prompt: "Answer questions",
+      runnerKind: "terminal",
+      workspaceRootPath: "/tmp/project",
+    };
+
+    await expect(startTauriAgentRun(request)).resolves.toBe("native-run-1");
+    await stopTauriAgentRun("native-run-1");
+
+    expect(calls).toEqual([
+      {
+        command: "dragon_start_agent_run",
+        args: { request },
+      },
+      {
+        command: "dragon_stop_agent_run",
+        args: { runId: "native-run-1" },
+      },
+    ]);
+  });
+
+  it("rejects malformed native agent run responses", async () => {
+    window.__TAURI__ = {
+      core: {
+        invoke: () => Promise.resolve(null),
+      },
+    };
+
+    await expect(
+      startTauriAgentRun({
+        tabId: "tab-1",
+        taskKind: "answer_questions",
+        targetPaths: ["docs/spec.md"],
+        selectedCommentIds: [],
+        prompt: "Answer questions",
+        runnerKind: "terminal",
+        workspaceRootPath: null,
+      }),
+    ).rejects.toThrow("Unexpected native agent run response");
   });
 
   it("reads and writes native text files through Tauri commands", async () => {

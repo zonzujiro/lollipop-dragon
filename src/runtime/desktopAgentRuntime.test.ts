@@ -31,19 +31,27 @@ describe("desktop agent runtime", () => {
     await expect(getDesktopAgentCapability()).resolves.toBe(false);
   });
 
-  it("does not report runnable agent support until a runner is configured", async () => {
+  it("starts and stops runs through the native agent commands", async () => {
+    const calls: {
+      command: string;
+      args: Record<string, unknown> | undefined;
+    }[] = [];
     window.__TAURI__ = {
       core: {
-        invoke: (command) => {
+        invoke: (command, args) => {
+          calls.push({ command, args });
           if (command === "dragon_runtime_ping") {
             return Promise.resolve("ok");
           }
-          return Promise.resolve(false);
+          if (command === "dragon_start_agent_run") {
+            return Promise.resolve("native-run-1");
+          }
+          return Promise.resolve(null);
         },
       },
     };
 
-    expect(desktopAgentRuntime.canRunAgent).toBe(false);
+    expect(desktopAgentRuntime.canRunAgent).toBe(true);
     await expect(
       desktopAgentRuntime.startRun({
         tabId: "tab-1",
@@ -52,7 +60,40 @@ describe("desktop agent runtime", () => {
         selectedCommentIds: [],
         prompt: "Answer questions",
         runnerKind: "terminal",
+        workspaceRootPath: "/tmp/project",
       }),
-    ).rejects.toThrow("Desktop agent execution is not configured");
+    ).resolves.toBe("native-run-1");
+    await desktopAgentRuntime.stopRun("native-run-1");
+
+    expect(calls).toEqual([
+      {
+        command: "dragon_runtime_ping",
+        args: undefined,
+      },
+      {
+        command: "dragon_start_agent_run",
+        args: {
+          request: {
+            tabId: "tab-1",
+            taskKind: "answer_questions",
+            targetPaths: ["docs/spec.md"],
+            selectedCommentIds: [],
+            prompt: "Answer questions",
+            runnerKind: "terminal",
+            workspaceRootPath: "/tmp/project",
+          },
+        },
+      },
+      {
+        command: "dragon_runtime_ping",
+        args: undefined,
+      },
+      {
+        command: "dragon_stop_agent_run",
+        args: {
+          runId: "native-run-1",
+        },
+      },
+    ]);
   });
 });

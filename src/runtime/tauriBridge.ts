@@ -1,3 +1,4 @@
+import type { AgentRunRequest } from "./agent";
 import type {
   NativeWorkspaceDirectoryTarget,
   NativeWorkspaceFileTarget,
@@ -10,7 +11,9 @@ export type TauriCommand =
   | "dragon_open_directory"
   | "dragon_read_text_file"
   | "dragon_write_text_file"
-  | "dragon_read_directory_tree";
+  | "dragon_read_directory_tree"
+  | "dragon_start_agent_run"
+  | "dragon_stop_agent_run";
 
 export interface TauriNativeFileNode {
   kind: "file";
@@ -215,4 +218,25 @@ export async function readTauriDirectoryTree(
     args: { path: target.path },
   });
   return parseNativeTree(result);
+}
+
+export async function startTauriAgentRun(
+  request: AgentRunRequest,
+): Promise<string> {
+  const result = await invokeTauriCommand({
+    command: "dragon_start_agent_run",
+    args: { request },
+  });
+  if (typeof result === "string") {
+    return result;
+  }
+
+  throw new Error("Unexpected native agent run response");
+}
+
+export function stopTauriAgentRun(runId: string): Promise<unknown> {
+  return invokeTauriCommand({
+    command: "dragon_stop_agent_run",
+    args: { runId },
+  });
 }

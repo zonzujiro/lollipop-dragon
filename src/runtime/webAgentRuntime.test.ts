@@ -14,6 +14,7 @@ describe("web agent runtime capabilities", () => {
         selectedCommentIds: [],
         prompt: "Address comments",
         runnerKind: null,
+        workspaceRootPath: null,
       }),
     ).rejects.toThrow("Local agent execution is unavailable on web");
   });
