@@ -3,6 +3,7 @@ import {
   assertDesktopRuntimeAvailable,
   desktopAgentRuntime,
   getDesktopAgentCapability,
+  getDesktopAgentCapabilityStatus,
 } from "./desktopAgentRuntime";
 
 beforeEach(() => {
@@ -29,6 +30,11 @@ describe("desktop agent runtime", () => {
     };
 
     await expect(getDesktopAgentCapability()).resolves.toBe(false);
+    await expect(getDesktopAgentCapabilityStatus()).resolves.toEqual({
+      canRunAgent: false,
+      unavailableMessage:
+        "Configure DRAGON_AGENT_COMMAND before starting local agent runs.",
+    });
   });
 
   it("starts, stops, and reads runs through the native agent commands", async () => {

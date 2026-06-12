@@ -162,6 +162,8 @@ describe("address comments agent run controller", () => {
     const requests: AgentRunRequest[] = [];
     const runtime: AgentRuntime = {
       canRunAgent: true,
+      getCapability: () =>
+        Promise.resolve({ canRunAgent: true, unavailableMessage: null }),
       startRun: (request) => {
         requests.push(request);
         return Promise.resolve("terminal-session-1");
@@ -226,6 +228,8 @@ describe("address comments agent run controller", () => {
     const requests: AgentRunRequest[] = [];
     const runtime: AgentRuntime = {
       canRunAgent: true,
+      getCapability: () =>
+        Promise.resolve({ canRunAgent: true, unavailableMessage: null }),
       startRun: (request) => {
         requests.push(request);
         return Promise.resolve("terminal-session-1");
@@ -279,6 +283,8 @@ describe("address comments agent run controller", () => {
     const requests: AgentRunRequest[] = [];
     const runtime: AgentRuntime = {
       canRunAgent: true,
+      getCapability: () =>
+        Promise.resolve({ canRunAgent: true, unavailableMessage: null }),
       startRun: (request) => {
         requests.push(request);
         return Promise.resolve("terminal-session-1");
@@ -331,6 +337,8 @@ describe("address comments agent run controller", () => {
   it("returns unavailable when no actionable comments exist", async () => {
     const runtime: AgentRuntime = {
       canRunAgent: true,
+      getCapability: () =>
+        Promise.resolve({ canRunAgent: true, unavailableMessage: null }),
       startRun: () => Promise.resolve("terminal-session-1"),
       stopRun: () => Promise.resolve(),
       getRunStatus: () => Promise.resolve({ status: "running", output: "" }),
@@ -395,6 +403,8 @@ describe("question thread agent run controller", () => {
     const requests: AgentRunRequest[] = [];
     const runtime: AgentRuntime = {
       canRunAgent: true,
+      getCapability: () =>
+        Promise.resolve({ canRunAgent: true, unavailableMessage: null }),
       startRun: (request) => {
         requests.push(request);
         return Promise.resolve("terminal-session-1");
@@ -461,6 +471,8 @@ describe("question thread agent run controller", () => {
     const stoppedRuntimeRunIds: string[] = [];
     const runtime: AgentRuntime = {
       canRunAgent: true,
+      getCapability: () =>
+        Promise.resolve({ canRunAgent: true, unavailableMessage: null }),
       startRun: () => Promise.resolve("terminal-session-1"),
       stopRun: (runId) => {
         stoppedRuntimeRunIds.push(runId);
@@ -508,6 +520,8 @@ describe("question thread agent run controller", () => {
     const checkedRuntimeRunIds: string[] = [];
     const runtime: AgentRuntime = {
       canRunAgent: true,
+      getCapability: () =>
+        Promise.resolve({ canRunAgent: true, unavailableMessage: null }),
       startRun: () => Promise.resolve("terminal-session-1"),
       stopRun: () => Promise.resolve(),
       getRunStatus: (runId) => {
@@ -560,6 +574,8 @@ describe("question thread agent run controller", () => {
   it("syncs a failed native runtime run into the active tab run", async () => {
     const runtime: AgentRuntime = {
       canRunAgent: true,
+      getCapability: () =>
+        Promise.resolve({ canRunAgent: true, unavailableMessage: null }),
       startRun: () => Promise.resolve("terminal-session-1"),
       stopRun: () => Promise.resolve(),
       getRunStatus: () =>

@@ -169,6 +169,8 @@ The comment panel can start desktop runtime runs for active-file unresolved
 comments and threaded questions, while web builds keep copy-prompt fallbacks.
 Agent start actions refuse to create a second active run for the same tab and
 cap v1 to three active runs app-wide.
+Desktop UI reads the runtime agent capability asynchronously, so an unconfigured
+`DRAGON_AGENT_COMMAND` falls back to prompt copying with an inline setup message.
 
 Workspace runtime file operations accept runtime targets. Browser targets are
 the current `FileSystem*Handle` values, while native targets are path-based

@@ -10,7 +10,8 @@ import {
   getAddressableCommentTargets,
 } from "../../../modules/agent-workflow";
 import type { AgentRunStatus } from "../../../modules/agent-workflow";
-import { canRunAgent } from "../../../runtime";
+import { canRunAgent, getAgentRuntimeCapability } from "../../../runtime";
+import type { AgentRuntimeCapability } from "../../../runtime";
 import { useAppStore } from "../../../store";
 import { useActiveTab } from "../../../store/selectors";
 import { COMMENT_TYPE_COLOR } from "../../../types/criticmarkup";
@@ -58,6 +59,12 @@ const AGENT_RUN_STATUS_LABEL: Record<AgentRunStatus, string> = {
 const EMPTY_COMMENTS: Comment[] = [];
 const EMPTY_FILE_TREE: TabState["fileTree"] = [];
 const EMPTY_ALL_FILE_COMMENTS: TabState["allFileComments"] = {};
+const INITIAL_AGENT_CAPABILITY: AgentRuntimeCapability = {
+  canRunAgent: false,
+  unavailableMessage: canRunAgent
+    ? null
+    : "Local agent execution is unavailable on web.",
+};
 
 function scrollToBlock(blockIndex: number | undefined) {
   if (blockIndex === undefined) {
@@ -183,6 +190,9 @@ export function CommentPanel({ peerMode = false }: Props) {
   );
   const sharedContent = useAppStore((state) => state.sharedContent);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
+  const [agentCapability, setAgentCapability] = useState(
+    INITIAL_AGENT_CAPABILITY,
+  );
 
   const isFolderMode = fileTree.length > 0 && !peerMode;
   const isPeerMultiFile =
@@ -384,17 +394,23 @@ export function CommentPanel({ peerMode = false }: Props) {
   }
 
   const addressCommentsAgentAction = getAddressCommentsAgentAction({
-    canRunAgent,
+    canRunAgent: agentCapability.canRunAgent,
     canStartAddressCommentsRun: hasAddressableComments,
   });
   const questionThreadAgentAction = getQuestionThreadAgentAction({
-    canRunAgent,
+    canRunAgent: agentCapability.canRunAgent,
     canStartQuestionThreadRun: hasQuestionThreads,
   });
   const canStopAgentRun = Boolean(
     activeAgentRun && ACTIVE_AGENT_RUN_STATUSES.has(activeAgentRun.status),
   );
   const showAgentRunStatus = !peerMode && activeAgentRun;
+  const showAgentCapabilityWarning = Boolean(
+    !peerMode &&
+    canRunAgent &&
+    !agentCapability.canRunAgent &&
+    agentCapability.unavailableMessage,
+  );
 
   async function handleQuestionThreadAgentAction() {
     if (questionThreadAgentAction.kind === "copy_prompt") {
@@ -430,7 +446,7 @@ export function CommentPanel({ peerMode = false }: Props) {
   useEffect(() => {
     if (
       peerMode ||
-      !canRunAgent ||
+      !agentCapability.canRunAgent ||
       !activeAgentRun?.terminalAttachmentId ||
       !ACTIVE_AGENT_RUN_STATUSES.has(activeAgentRun.status)
     ) {
@@ -450,9 +466,42 @@ export function CommentPanel({ peerMode = false }: Props) {
     activeAgentRun?.id,
     activeAgentRun?.status,
     activeAgentRun?.terminalAttachmentId,
+    agentCapability.canRunAgent,
     peerMode,
     syncActiveAgentRunStatus,
   ]);
+
+  useEffect(() => {
+    if (peerMode) {
+      return;
+    }
+
+    let cancelled = false;
+    getAgentRuntimeCapability()
+      .then((capability) => {
+        if (
+          !cancelled &&
+          (capability.canRunAgent !== INITIAL_AGENT_CAPABILITY.canRunAgent ||
+            capability.unavailableMessage !==
+              INITIAL_AGENT_CAPABILITY.unavailableMessage)
+        ) {
+          setAgentCapability(capability);
+        }
+      })
+      .catch((error) => {
+        console.error("[CommentPanel] failed to read agent capability:", error);
+        if (!cancelled) {
+          setAgentCapability({
+            canRunAgent: false,
+            unavailableMessage: "Agent runtime availability check failed.",
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [peerMode]);
 
   useEffect(() => {
     const activePanelCommentId = peerMode
@@ -561,6 +610,12 @@ export function CommentPanel({ peerMode = false }: Props) {
               Dismiss
             </button>
           )}
+        </div>
+      )}
+
+      {showAgentCapabilityWarning && (
+        <div className="comment-panel__agent-capability" role="status">
+          {agentCapability.unavailableMessage}
         </div>
       )}
 
