@@ -15,7 +15,7 @@ describe("getQuestionThreadAgentAction", () => {
     });
   });
 
-  it("uses copy-prompt mode until question-thread runs are wired", () => {
+  it("uses copy-prompt mode when question-thread runs are unavailable", () => {
     expect(
       getQuestionThreadAgentAction({
         canRunAgent: true,
