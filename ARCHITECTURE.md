@@ -138,6 +138,11 @@ the native container for future filesystem, watcher, terminal, and agent runtime
 adapters. The website runtime remains the default `src/runtime/` export until a
 desktop-specific runtime entrypoint is added.
 
+The bridge from the frontend to native commands lives in
+`src/runtime/tauriBridge.ts`. It uses Tauri v2's global `window.__TAURI__.core`
+API, which is enabled only by the desktop shell config. Web execution therefore
+continues to reject desktop command calls instead of importing native APIs.
+
 ### `workspace`
 
 Owns host-side file session lifecycle:

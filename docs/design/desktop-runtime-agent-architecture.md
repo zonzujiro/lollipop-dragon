@@ -284,6 +284,11 @@ native shell. It loads the existing Vite app in a native window and adds
 APIs or add native agent execution; it creates the desktop container those
 runtime adapters will plug into.
 
+Tauri command bridge note: the desktop shell enables Tauri's global API and
+registers initial `dragon_runtime_ping` and `dragon_agent_runtime_available`
+commands. `src/runtime/tauriBridge.ts` is the frontend boundary for invoking
+those commands while still rejecting cleanly in the website runtime.
+
 ## Risks
 
 - Runtime abstraction may be too broad if introduced before the first desktop
