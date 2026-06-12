@@ -65,6 +65,7 @@ interface AgentRuntime {
   canRunAgent: boolean;
   startRun(request: AgentRunRequest): Promise<AgentRunId>;
   stopRun(runId: AgentRunId): Promise<void>;
+  getRunStatus(runId: AgentRunId): Promise<AgentRunStatus>;
 }
 
 interface TerminalRuntime {
@@ -276,6 +277,14 @@ Run-control implementation note: the comment panel now shows the active run for
 the current tab and exposes a stop action while the run is queued, running, or
 needs attention. Stopping calls the runtime before the serializable run status is
 updated to `stopped`.
+
+Run-status implementation note: desktop agent runs now expose
+`dragon_get_agent_run_status` through the Tauri bridge. The native command polls
+the tracked child process with `try_wait`, removes completed children from the
+native process map, and returns `running`, `completed`, `failed`, or `not_found`
+to the shared runtime boundary. The comment panel polls this status only when
+the active runtime can execute agents, then reconciles the tab-scoped
+serializable run state to `completed` or `failed`.
 
 Agent workflow implementation note: `src/modules/agent-workflow/` now owns
 serializable run metadata and a controller action for active-file threaded

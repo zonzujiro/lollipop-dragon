@@ -31,7 +31,7 @@ describe("desktop agent runtime", () => {
     await expect(getDesktopAgentCapability()).resolves.toBe(false);
   });
 
-  it("starts and stops runs through the native agent commands", async () => {
+  it("starts, stops, and reads runs through the native agent commands", async () => {
     const calls: {
       command: string;
       args: Record<string, unknown> | undefined;
@@ -45,6 +45,9 @@ describe("desktop agent runtime", () => {
           }
           if (command === "dragon_start_agent_run") {
             return Promise.resolve("native-run-1");
+          }
+          if (command === "dragon_get_agent_run_status") {
+            return Promise.resolve({ status: "completed", exitCode: 0 });
           }
           return Promise.resolve(null);
         },
@@ -64,6 +67,12 @@ describe("desktop agent runtime", () => {
       }),
     ).resolves.toBe("native-run-1");
     await desktopAgentRuntime.stopRun("native-run-1");
+    await expect(
+      desktopAgentRuntime.getRunStatus("native-run-1"),
+    ).resolves.toEqual({
+      status: "completed",
+      exitCode: 0,
+    });
 
     expect(calls).toEqual([
       {
@@ -90,6 +99,16 @@ describe("desktop agent runtime", () => {
       },
       {
         command: "dragon_stop_agent_run",
+        args: {
+          runId: "native-run-1",
+        },
+      },
+      {
+        command: "dragon_runtime_ping",
+        args: undefined,
+      },
+      {
+        command: "dragon_get_agent_run_status",
         args: {
           runId: "native-run-1",
         },

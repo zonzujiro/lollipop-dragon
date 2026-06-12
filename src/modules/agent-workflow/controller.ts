@@ -1,7 +1,11 @@
 import type { StoreApi } from "zustand";
 import { buildAgentReplyPrompt, buildCommentThreadGroups } from "../../markup";
 import { agentRuntime } from "../../runtime";
-import type { AgentRuntime, AgentRunRequest } from "../../runtime";
+import type {
+  AgentRuntime,
+  AgentRunRequest,
+  AgentRuntimeRunStatus,
+} from "../../runtime";
 import type { Comment } from "../../types/criticmarkup";
 import {
   isNativeDirectoryTarget,
@@ -11,6 +15,9 @@ import type { TabState } from "../../types/tab";
 import type {
   AgentRunStartUnavailableReason,
   AgentRunStartResult,
+  AgentRunStatus,
+  AgentRunSyncStatusResult,
+  AgentRunSyncStatusUnavailableReason,
   AgentRunStopUnavailableReason,
   AgentRunStopResult,
   AgentWorkflowActions,
@@ -38,6 +45,12 @@ interface QuestionThreadRunContext {
   questionCommentIds: string[];
   workspaceRootPath: string | null;
 }
+
+const SYNCABLE_AGENT_RUN_STATUSES = new Set<AgentRunStatus>([
+  "queued",
+  "running",
+  "needs_attention",
+]);
 
 export function getQuestionThreadCommentIds(comments: Comment[]): string[] {
   return buildCommentThreadGroups(comments)
@@ -116,6 +129,38 @@ function unavailableStopResult(input: {
     reason: input.reason,
     message: input.message,
   };
+}
+
+function unchangedSyncResult(input: {
+  reason: AgentRunSyncStatusUnavailableReason;
+  message: string;
+}): AgentRunSyncStatusResult {
+  return {
+    status: "unchanged",
+    reason: input.reason,
+    message: input.message,
+  };
+}
+
+function unavailableSyncResult(input: {
+  reason: AgentRunSyncStatusUnavailableReason;
+  message: string;
+}): AgentRunSyncStatusResult {
+  return {
+    status: "unavailable",
+    reason: input.reason,
+    message: input.message,
+  };
+}
+
+function failedRuntimeStatusMessage(status: AgentRuntimeRunStatus): string {
+  if (status.status === "failed") {
+    return status.message;
+  }
+  if (status.status === "not_found") {
+    return status.message;
+  }
+  return "Agent run failed";
 }
 
 export function createAgentWorkflowControllerActions<
@@ -245,6 +290,88 @@ export function createAgentWorkflowControllerActions<
         deps.showToast("Agent run failed to stop");
         return unavailableStopResult({
           reason: "runtime_stop_failed",
+          message,
+        });
+      }
+    },
+
+    syncActiveAgentRunStatus: async () => {
+      const tab = deps.getActiveTab(deps.get);
+      if (!tab) {
+        return unchangedSyncResult({
+          reason: "no_active_tab",
+          message: "Open a file or folder before syncing an agent run.",
+        });
+      }
+
+      const runId = deps.get().activeAgentRunIdByTabId[tab.id];
+      const run = runId ? deps.get().agentRuns[runId] : null;
+      if (!run) {
+        return unchangedSyncResult({
+          reason: "no_active_run",
+          message: "No active agent run is attached to this tab.",
+        });
+      }
+
+      if (!run.terminalAttachmentId) {
+        return unchangedSyncResult({
+          reason: "no_runtime_run",
+          message: "The active agent run has no native runtime id.",
+        });
+      }
+
+      if (!SYNCABLE_AGENT_RUN_STATUSES.has(run.status)) {
+        return unchangedSyncResult({
+          reason: "terminal_run",
+          message: "The active agent run is already finished.",
+        });
+      }
+
+      try {
+        const runtimeStatus = await runtime.getRunStatus(
+          run.terminalAttachmentId,
+        );
+        if (runtimeStatus.status === "running") {
+          return {
+            status: "synced",
+            runId: run.id,
+            runStatus: "running",
+          };
+        }
+
+        if (runtimeStatus.status === "completed") {
+          deps.get().updateAgentRunStatus({
+            runId: run.id,
+            status: "completed",
+          });
+          deps.showToast("Agent run completed");
+          return {
+            status: "synced",
+            runId: run.id,
+            runStatus: "completed",
+          };
+        }
+
+        const message = failedRuntimeStatusMessage(runtimeStatus);
+        deps.get().updateAgentRunStatus({
+          runId: run.id,
+          status: "failed",
+          errorMessage: message,
+        });
+        deps.showToast("Agent run failed");
+        return {
+          status: "synced",
+          runId: run.id,
+          runStatus: "failed",
+        };
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Agent run status failed to sync";
+        console.error("[agent-workflow] failed to sync agent run:", error);
+        return unavailableSyncResult({
+          reason: "runtime_status_failed",
           message,
         });
       }

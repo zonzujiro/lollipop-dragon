@@ -1,6 +1,7 @@
 import type { AgentRuntime } from "./agent";
 import {
   getTauriAgentRuntimeAvailable,
+  getTauriAgentRunStatus,
   hasTauriBridge,
   pingTauriRuntime,
   startTauriAgentRun,
@@ -29,5 +30,9 @@ export const desktopAgentRuntime: AgentRuntime = {
   stopRun: async (runId) => {
     await assertDesktopRuntimeAvailable();
     await stopTauriAgentRun(runId);
+  },
+  getRunStatus: async (runId) => {
+    await assertDesktopRuntimeAvailable();
+    return getTauriAgentRunStatus(runId);
   },
 };

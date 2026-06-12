@@ -160,6 +160,9 @@ export function CommentPanel({ peerMode = false }: Props) {
     (state) => state.startQuestionThreadAgentRun,
   );
   const stopActiveAgentRun = useAppStore((state) => state.stopActiveAgentRun);
+  const syncActiveAgentRunStatus = useAppStore(
+    (state) => state.syncActiveAgentRunStatus,
+  );
   const clearAgentRun = useAppStore((state) => state.clearAgentRun);
   const activeAgentRun = useAppStore((state) =>
     tab?.id ? getActiveAgentRunForTab(state, tab.id) : null,
@@ -369,6 +372,33 @@ export function CommentPanel({ peerMode = false }: Props) {
       showToast(result.message);
     }
   }
+
+  useEffect(() => {
+    if (
+      peerMode ||
+      !canRunAgent ||
+      !activeAgentRun?.terminalAttachmentId ||
+      !ACTIVE_AGENT_RUN_STATUSES.has(activeAgentRun.status)
+    ) {
+      return;
+    }
+
+    function syncStatus() {
+      syncActiveAgentRunStatus().catch((error) => {
+        console.error("[CommentPanel] failed to sync agent run:", error);
+      });
+    }
+
+    syncStatus();
+    const intervalId = window.setInterval(syncStatus, 2000);
+    return () => window.clearInterval(intervalId);
+  }, [
+    activeAgentRun?.id,
+    activeAgentRun?.status,
+    activeAgentRun?.terminalAttachmentId,
+    peerMode,
+    syncActiveAgentRunStatus,
+  ]);
 
   useEffect(() => {
     const activePanelCommentId = peerMode

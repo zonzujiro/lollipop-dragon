@@ -43,6 +43,14 @@ struct AgentRunRequestPayload {
     workspace_root_path: Option<String>,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentRunStatusPayload {
+    status: String,
+    exit_code: Option<i32>,
+    message: Option<String>,
+}
+
 fn path_target_from_path(path: PathBuf) -> NativePathTarget {
     let name = path
         .file_name()
@@ -247,6 +255,48 @@ fn dragon_stop_agent_run(run_id: String) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn dragon_get_agent_run_status(run_id: String) -> Result<AgentRunStatusPayload, String> {
+    let runs = active_agent_runs();
+    let mut locked_runs = runs.lock().map_err(|error| error.to_string())?;
+    let wait_status = if let Some(child) = locked_runs.get_mut(&run_id) {
+        child.try_wait().map_err(|error| error.to_string())?
+    } else {
+        return Ok(AgentRunStatusPayload {
+            status: "not_found".to_string(),
+            exit_code: None,
+            message: Some("Agent run is no longer available".to_string()),
+        });
+    };
+
+    let Some(exit_status) = wait_status else {
+        return Ok(AgentRunStatusPayload {
+            status: "running".to_string(),
+            exit_code: None,
+            message: None,
+        });
+    };
+
+    locked_runs.remove(&run_id);
+    if exit_status.success() {
+        return Ok(AgentRunStatusPayload {
+            status: "completed".to_string(),
+            exit_code: exit_status.code(),
+            message: None,
+        });
+    }
+
+    let exit_code = exit_status.code();
+    let message = exit_code
+        .map(|code| format!("Agent exited with code {code}"))
+        .unwrap_or_else(|| "Agent exited without an exit code".to_string());
+    Ok(AgentRunStatusPayload {
+        status: "failed".to_string(),
+        exit_code,
+        message: Some(message),
+    })
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -259,7 +309,8 @@ pub fn run() {
             dragon_write_text_file,
             dragon_read_directory_tree,
             dragon_start_agent_run,
-            dragon_stop_agent_run
+            dragon_stop_agent_run,
+            dragon_get_agent_run_status
         ])
         .run(tauri::generate_context!())
         .expect("error while running Lollipop Dragon");

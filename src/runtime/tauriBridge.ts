@@ -1,4 +1,4 @@
-import type { AgentRunRequest } from "./agent";
+import type { AgentRunRequest, AgentRuntimeRunStatus } from "./agent";
 import type {
   NativeWorkspaceDirectoryTarget,
   NativeWorkspaceFileTarget,
@@ -13,7 +13,8 @@ export type TauriCommand =
   | "dragon_write_text_file"
   | "dragon_read_directory_tree"
   | "dragon_start_agent_run"
-  | "dragon_stop_agent_run";
+  | "dragon_stop_agent_run"
+  | "dragon_get_agent_run_status";
 
 export interface TauriNativeFileNode {
   kind: "file";
@@ -101,6 +102,56 @@ function readStringField(
   }
 
   throw new Error(`Unexpected native file tree ${fieldName} field`);
+}
+
+function readOptionalNumberField(
+  record: Record<string, unknown>,
+  fieldName: string,
+): number | null {
+  const value = record[fieldName];
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === "number") {
+    return value;
+  }
+
+  throw new Error(`Unexpected native agent run ${fieldName} field`);
+}
+
+function parseNativeAgentRunStatus(value: unknown): AgentRuntimeRunStatus {
+  if (!isRecord(value)) {
+    throw new Error("Unexpected native agent run status response");
+  }
+
+  const status = readStringField(value, "status");
+  if (status === "running") {
+    return { status };
+  }
+
+  if (status === "completed") {
+    return {
+      status,
+      exitCode: readOptionalNumberField(value, "exitCode"),
+    };
+  }
+
+  if (status === "failed") {
+    return {
+      status,
+      exitCode: readOptionalNumberField(value, "exitCode"),
+      message: readStringField(value, "message"),
+    };
+  }
+
+  if (status === "not_found") {
+    return {
+      status,
+      message: readStringField(value, "message"),
+    };
+  }
+
+  throw new Error("Unexpected native agent run status");
 }
 
 function parseNativeTreeNode(value: unknown): TauriNativeTreeNode {
@@ -239,4 +290,14 @@ export function stopTauriAgentRun(runId: string): Promise<unknown> {
     command: "dragon_stop_agent_run",
     args: { runId },
   });
+}
+
+export async function getTauriAgentRunStatus(
+  runId: string,
+): Promise<AgentRuntimeRunStatus> {
+  const result = await invokeTauriCommand({
+    command: "dragon_get_agent_run_status",
+    args: { runId },
+  });
+  return parseNativeAgentRunStatus(result);
 }

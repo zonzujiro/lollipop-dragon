@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   getTauriAgentRuntimeAvailable,
+  getTauriAgentRunStatus,
   hasTauriBridge,
   invokeTauriCommand,
   openTauriDirectory,
@@ -72,7 +73,7 @@ describe("tauri bridge", () => {
     );
   });
 
-  it("starts and stops native agent runs through Tauri commands", async () => {
+  it("starts, stops, and reads native agent runs through Tauri commands", async () => {
     const calls: {
       command: string;
       args: Record<string, unknown> | undefined;
@@ -81,6 +82,9 @@ describe("tauri bridge", () => {
       core: {
         invoke: (command, args) => {
           calls.push({ command, args });
+          if (command === "dragon_get_agent_run_status") {
+            return Promise.resolve({ status: "running" });
+          }
           return Promise.resolve("native-run-1");
         },
       },
@@ -97,6 +101,9 @@ describe("tauri bridge", () => {
 
     await expect(startTauriAgentRun(request)).resolves.toBe("native-run-1");
     await stopTauriAgentRun("native-run-1");
+    await expect(getTauriAgentRunStatus("native-run-1")).resolves.toEqual({
+      status: "running",
+    });
 
     expect(calls).toEqual([
       {
@@ -105,6 +112,10 @@ describe("tauri bridge", () => {
       },
       {
         command: "dragon_stop_agent_run",
+        args: { runId: "native-run-1" },
+      },
+      {
+        command: "dragon_get_agent_run_status",
         args: { runId: "native-run-1" },
       },
     ]);
@@ -128,6 +139,18 @@ describe("tauri bridge", () => {
         workspaceRootPath: null,
       }),
     ).rejects.toThrow("Unexpected native agent run response");
+  });
+
+  it("rejects malformed native agent run status responses", async () => {
+    window.__TAURI__ = {
+      core: {
+        invoke: () => Promise.resolve({ status: "completed", exitCode: "0" }),
+      },
+    };
+
+    await expect(getTauriAgentRunStatus("native-run-1")).rejects.toThrow(
+      "Unexpected native agent run exitCode field",
+    );
   });
 
   it("reads and writes native text files through Tauri commands", async () => {
