@@ -143,6 +143,10 @@ The bridge from the frontend to native commands lives in
 API, which is enabled only by the desktop shell config. Web execution therefore
 continues to reject desktop command calls instead of importing native APIs.
 
+Desktop runtime composition lives in `src/runtime/desktop.ts`. It is not the
+default website runtime export; it gives the desktop shell a separate module to
+adopt once native filesystem and agent adapters are ready.
+
 ### `workspace`
 
 Owns host-side file session lifecycle:
