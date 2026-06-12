@@ -300,6 +300,11 @@ browser handles to the existing File System Access API implementation and reject
 native targets, which lets desktop filesystem adapters land without widening
 browser-only call sites first.
 
+Native filesystem command note: the Tauri shell now registers commands for
+reading and writing UTF-8 text files plus reading a markdown-only directory tree.
+The frontend bridge validates those command responses before future desktop
+workspace adapters consume them.
+
 ## Risks
 
 - Runtime abstraction may be too broad if introduced before the first desktop

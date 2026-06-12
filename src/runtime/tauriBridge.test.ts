@@ -4,6 +4,9 @@ import {
   hasTauriBridge,
   invokeTauriCommand,
   pingTauriRuntime,
+  readTauriDirectoryTree,
+  readTauriTextFile,
+  writeTauriTextFile,
 } from "./tauriBridge";
 
 beforeEach(() => {
@@ -63,5 +66,107 @@ describe("tauri bridge", () => {
     await expect(getTauriAgentRuntimeAvailable()).rejects.toThrow(
       "Unexpected Tauri agent capability response",
     );
+  });
+
+  it("reads and writes native text files through Tauri commands", async () => {
+    const calls: {
+      command: string;
+      args: Record<string, unknown> | undefined;
+    }[] = [];
+    window.__TAURI__ = {
+      core: {
+        invoke: (command, args) => {
+          calls.push({ command, args });
+          if (command === "dragon_read_text_file") {
+            return Promise.resolve("# Notes");
+          }
+          return Promise.resolve(null);
+        },
+      },
+    };
+    const target = {
+      kind: "native_file",
+      path: "/tmp/notes.md",
+      name: "notes.md",
+    };
+
+    await expect(readTauriTextFile(target)).resolves.toBe("# Notes");
+    await writeTauriTextFile(target, "# Updated");
+
+    expect(calls).toEqual([
+      {
+        command: "dragon_read_text_file",
+        args: { path: "/tmp/notes.md" },
+      },
+      {
+        command: "dragon_write_text_file",
+        args: { path: "/tmp/notes.md", content: "# Updated" },
+      },
+    ]);
+  });
+
+  it("reads native directory trees through Tauri commands", async () => {
+    window.__TAURI__ = {
+      core: {
+        invoke: () =>
+          Promise.resolve([
+            {
+              kind: "directory",
+              name: "docs",
+              path: "docs",
+              children: [
+                {
+                  kind: "file",
+                  name: "intro.md",
+                  path: "docs/intro.md",
+                },
+              ],
+            },
+          ]),
+      },
+    };
+
+    await expect(
+      readTauriDirectoryTree({
+        kind: "native_directory",
+        path: "/tmp/project",
+        name: "project",
+      }),
+    ).resolves.toEqual([
+      {
+        kind: "directory",
+        name: "docs",
+        path: "docs",
+        children: [
+          {
+            kind: "file",
+            name: "intro.md",
+            path: "docs/intro.md",
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("rejects malformed native directory tree responses", async () => {
+    window.__TAURI__ = {
+      core: {
+        invoke: () =>
+          Promise.resolve([
+            {
+              kind: "file",
+              name: "intro.md",
+            },
+          ]),
+      },
+    };
+
+    await expect(
+      readTauriDirectoryTree({
+        kind: "native_directory",
+        path: "/tmp/project",
+        name: "project",
+      }),
+    ).rejects.toThrow("Unexpected native file tree path field");
   });
 });

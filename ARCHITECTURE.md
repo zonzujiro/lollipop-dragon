@@ -152,6 +152,10 @@ the current `FileSystem*Handle` values, while native targets are path-based
 objects reserved for desktop adapters. The web runtime rejects native targets
 explicitly.
 
+The desktop shell registers native filesystem commands for reading text files,
+writing text files, and building markdown-only directory trees. Frontend access
+to those commands stays behind `src/runtime/tauriBridge.ts` response validation.
+
 ### `workspace`
 
 Owns host-side file session lifecycle:
