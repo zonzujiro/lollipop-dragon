@@ -1,5 +1,9 @@
+import { webAgentRuntime } from "./agent";
+import { webTerminalRuntime } from "./terminal";
 import { webWorkspaceRuntime } from "./webWorkspaceRuntime";
 
+export type { AgentRuntime, AgentRunRequest } from "./agent";
+export type { TerminalAttachment, TerminalRuntime } from "./terminal";
 export type {
   OpenedWorkspaceDirectory,
   OpenedWorkspaceFile,
@@ -7,6 +11,11 @@ export type {
 } from "./workspace";
 
 export const workspaceRuntime = webWorkspaceRuntime;
+export const agentRuntime = webAgentRuntime;
+export const terminalRuntime = webTerminalRuntime;
+
+export const canRunAgent = agentRuntime.canRunAgent;
+export const canShowTerminal = terminalRuntime.canShowTerminal;
 
 export function openFile() {
   return workspaceRuntime.openFile();

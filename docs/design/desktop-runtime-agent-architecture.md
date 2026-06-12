@@ -259,6 +259,12 @@ runtime that delegates to the existing browser filesystem implementation. This
 does not add desktop execution yet; it creates the boundary the desktop runtime
 can implement later.
 
+Second implementation note: the next foundation slice adds serializable
+`agent-workflow` run metadata plus web runtime agent and terminal capabilities
+that explicitly report local execution as unavailable. This keeps website
+behavior unchanged while giving desktop runtime work a stable state and
+capability boundary.
+
 ## Risks
 
 - Runtime abstraction may be too broad if introduced before the first desktop
