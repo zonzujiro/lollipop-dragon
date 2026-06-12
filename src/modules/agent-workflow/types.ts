@@ -53,3 +53,25 @@ export interface AgentWorkflowActions {
   clearAgentRun: (runId: string) => void;
   clearTabAgentRun: (tabId: string) => void;
 }
+
+export type AgentRunStartUnavailableReason =
+  | "agent_unavailable"
+  | "no_active_tab"
+  | "no_active_file"
+  | "no_question_threads";
+
+export type AgentRunStartResult =
+  | {
+      status: "started";
+      run: AgentRun;
+      runtimeRunId: string;
+    }
+  | {
+      status: "unavailable";
+      reason: AgentRunStartUnavailableReason;
+      message: string;
+    };
+
+export interface AgentWorkflowControllerActions {
+  startQuestionThreadAgentRun: () => Promise<AgentRunStartResult>;
+}
