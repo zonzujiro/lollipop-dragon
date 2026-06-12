@@ -3,6 +3,8 @@ import {
   getTauriAgentRuntimeAvailable,
   hasTauriBridge,
   invokeTauriCommand,
+  openTauriDirectory,
+  openTauriTextFile,
   pingTauriRuntime,
   readTauriDirectoryTree,
   readTauriTextFile,
@@ -103,6 +105,65 @@ describe("tauri bridge", () => {
         args: { path: "/tmp/notes.md", content: "# Updated" },
       },
     ]);
+  });
+
+  it("opens native file and directory targets through Tauri commands", async () => {
+    const calls: string[] = [];
+    window.__TAURI__ = {
+      core: {
+        invoke: (command) => {
+          calls.push(command);
+          if (command === "dragon_open_text_file") {
+            return Promise.resolve({
+              path: "/tmp/project/notes.md",
+              name: "notes.md",
+            });
+          }
+          return Promise.resolve({
+            path: "/tmp/project",
+            name: "project",
+          });
+        },
+      },
+    };
+
+    await expect(openTauriTextFile()).resolves.toEqual({
+      kind: "native_file",
+      path: "/tmp/project/notes.md",
+      name: "notes.md",
+    });
+    await expect(openTauriDirectory()).resolves.toEqual({
+      kind: "native_directory",
+      path: "/tmp/project",
+      name: "project",
+    });
+    expect(calls).toEqual(["dragon_open_text_file", "dragon_open_directory"]);
+  });
+
+  it("returns null when native open dialogs are cancelled", async () => {
+    window.__TAURI__ = {
+      core: {
+        invoke: () => Promise.resolve(null),
+      },
+    };
+
+    await expect(openTauriTextFile()).resolves.toBeNull();
+    await expect(openTauriDirectory()).resolves.toBeNull();
+  });
+
+  it("rejects malformed native open dialog responses", async () => {
+    window.__TAURI__ = {
+      core: {
+        invoke: () =>
+          Promise.resolve({
+            path: "/tmp/project/notes.md",
+          }),
+      },
+    };
+
+    await expect(openTauriTextFile()).rejects.toThrow(
+      "Unexpected native file tree name field",
+    );
   });
 
   it("reads native directory trees through Tauri commands", async () => {

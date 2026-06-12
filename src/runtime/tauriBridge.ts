@@ -6,6 +6,8 @@ import type {
 export type TauriCommand =
   | "dragon_runtime_ping"
   | "dragon_agent_runtime_available"
+  | "dragon_open_text_file"
+  | "dragon_open_directory"
   | "dragon_read_text_file"
   | "dragon_write_text_file"
   | "dragon_read_directory_tree";
@@ -26,6 +28,11 @@ export interface TauriNativeDirectoryNode {
 export type TauriNativeTreeNode =
   | TauriNativeFileNode
   | TauriNativeDirectoryNode;
+
+interface NativePathTargetPayload {
+  path: string;
+  name: string;
+}
 
 interface TauriCoreApi {
   invoke: (command: string, args?: Record<string, unknown>) => Promise<unknown>;
@@ -128,6 +135,52 @@ function parseNativeTree(value: unknown): TauriNativeTreeNode[] {
   }
 
   return value.map(parseNativeTreeNode);
+}
+
+function parseNativePathTarget(value: unknown): NativePathTargetPayload | null {
+  if (value === null) {
+    return null;
+  }
+  if (!isRecord(value)) {
+    throw new Error("Unexpected native path target response");
+  }
+
+  return {
+    path: readStringField(value, "path"),
+    name: readStringField(value, "name"),
+  };
+}
+
+export async function openTauriTextFile(): Promise<NativeWorkspaceFileTarget | null> {
+  const result = await invokeTauriCommand({
+    command: "dragon_open_text_file",
+  });
+  const target = parseNativePathTarget(result);
+  if (!target) {
+    return null;
+  }
+
+  return {
+    kind: "native_file",
+    path: target.path,
+    name: target.name,
+  };
+}
+
+export async function openTauriDirectory(): Promise<NativeWorkspaceDirectoryTarget | null> {
+  const result = await invokeTauriCommand({
+    command: "dragon_open_directory",
+  });
+  const target = parseNativePathTarget(result);
+  if (!target) {
+    return null;
+  }
+
+  return {
+    kind: "native_directory",
+    path: target.path,
+    name: target.name,
+  };
 }
 
 export async function readTauriTextFile(

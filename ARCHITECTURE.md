@@ -158,6 +158,10 @@ to those commands stays behind `src/runtime/tauriBridge.ts` response validation.
 `src/runtime/desktopWorkspaceRuntime.ts` adapts those commands to the shared
 `WorkspaceRuntime` interface for native path targets.
 
+Native open-file and open-folder dialogs are also exposed through Tauri bridge
+commands. They return path targets and are kept separate from the default web
+open flow until host tab state can store native workspace sessions.
+
 ### `workspace`
 
 Owns host-side file session lifecycle:
