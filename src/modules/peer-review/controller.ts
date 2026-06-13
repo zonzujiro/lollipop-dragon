@@ -1,9 +1,6 @@
 import type { StoreApi } from "zustand";
 import { base64urlToKey, docIdFromKey } from "../../services/crypto";
-import {
-  relayCommentAdd,
-  startRelayForDoc,
-} from "../relay";
+import { relayCommentAdd, startRelayForDoc } from "../relay";
 import type { RelayState } from "../relay";
 import { ShareStorage } from "../sharing";
 import { WORKER_URL } from "../../config";
@@ -89,9 +86,7 @@ export async function syncUnsubmittedPeerComments<
     "myPeerComments" | "submittedPeerCommentIds"
   > &
     Pick<RelayState, "documentUpdateAvailable">,
->(
-  get: () => StoreState,
-): Promise<void> {
+>(get: () => StoreState): Promise<void> {
   if (get().documentUpdateAvailable) {
     return;
   }
@@ -120,8 +115,8 @@ export function createPeerReviewControllerActions<
   get: GetState<StoreState>,
 ): Pick<PeerReviewActions, "loadSharedContent" | "syncPeerComments"> {
   return {
-    loadSharedContent: async () => {
-      await loadPeerSharedContent(get, set);
+    loadSharedContent: async (options) => {
+      await loadPeerSharedContent(get, set, options);
     },
     syncPeerComments: async () => {
       await syncUnsubmittedPeerComments(get);

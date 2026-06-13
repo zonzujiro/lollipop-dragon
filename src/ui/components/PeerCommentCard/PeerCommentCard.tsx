@@ -1,16 +1,16 @@
 import "./PeerCommentCard.css";
 import { useAppStore } from "../../../store";
 import { COMMENT_TYPE_COLOR } from "../../../types/criticmarkup";
-import type { CommentType } from "../../../types/criticmarkup";
 import type { PeerComment } from "../../../types/share";
+import { isCommentType } from "../../../markup/commentProtocol";
 
 function fileBaseName(path: string): string {
   return path.split("/").pop() ?? path;
 }
 
 function commentTypeColor(type: string): string {
-  if (type in COMMENT_TYPE_COLOR) {
-    return COMMENT_TYPE_COLOR[type as CommentType];
+  if (isCommentType(type)) {
+    return COMMENT_TYPE_COLOR[type];
   }
   return "inherit";
 }
@@ -44,10 +44,10 @@ export function PeerCommentCard({ docId, comment, currentPath }: Props) {
         }
       }}
       onMouseEnter={() => {
-        if (canMerge && comment.commentType in COMMENT_TYPE_COLOR) {
+        if (canMerge && isCommentType(comment.commentType)) {
           setHighlight({
             blockIndex: comment.blockRef.blockIndex,
-            commentType: comment.commentType as CommentType,
+            commentType: comment.commentType,
           });
         }
       }}

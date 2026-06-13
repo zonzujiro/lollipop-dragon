@@ -29,6 +29,18 @@ interface CommentRow {
   expiresAt: number;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function parseSocketFrame(message: string): Record<string, unknown> {
+  const parsed: unknown = JSON.parse(message);
+  if (!isRecord(parsed)) {
+    throw new Error("Expected relay socket frame to be an object");
+  }
+  return parsed;
+}
+
 class FakeSqlCursor implements SqlStorageCursor {
   constructor(private readonly rows: Array<Record<string, unknown>>) {}
 
@@ -275,7 +287,7 @@ class FakeWebSocket extends EventTarget implements WebSocket {
     FakeWebSocket.instances.push(this);
   }
 
-  close(_code?: number, _reason?: string): void {
+  close(): void {
     this.readyState = FakeWebSocket.CLOSED;
     const closeEvent = new CloseEvent("close");
     if (this.onclose) {
@@ -290,7 +302,7 @@ class FakeWebSocket extends EventTarget implements WebSocket {
     }
     this.sentMessages.push(data);
     if (this.frameTap) {
-      this.frameTap(JSON.parse(data));
+      this.frameTap(parseSocketFrame(data));
     }
   }
 
@@ -307,7 +319,7 @@ class FakeWebSocket extends EventTarget implements WebSocket {
   }
 
   sentFrames(): Array<Record<string, unknown>> {
-    return this.sentMessages.map((message) => JSON.parse(message));
+    return this.sentMessages.map(parseSocketFrame);
   }
 
   dispatchOpen(): void {

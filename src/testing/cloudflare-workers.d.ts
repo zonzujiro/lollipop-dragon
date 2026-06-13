@@ -18,7 +18,7 @@ interface DurableObjectState {
   getWebSockets(): WebSocket[];
 }
 
-interface DurableObject {}
+type DurableObject = object;
 
 interface KVNamespace {
   get(key: string): Promise<string | null>;

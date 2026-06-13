@@ -30,7 +30,7 @@ declare global {
 
 interface WatcherOptions {
   handle: FileSystemHandle | null;
-  onRefresh: () => void;
+  onRefresh: () => void | Promise<void>;
   pollIntervalMs: number;
   recursive?: boolean;
   relevantTypes: string[];

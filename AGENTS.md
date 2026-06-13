@@ -8,8 +8,8 @@ If a change may remove backward-compatibility logic, pause and ask for confirmat
 
 ## Environment
 
-- Run project commands through WSL, not the Windows shell. Use the repo's Linux toolchain for `node`, `yarn`, `git`, and test commands.
-- Preferred pattern: `wsl zsh -lic 'cd /home/zonzujiro/projects/lollipop-dragon && yarn test'`
+- Run project commands through WSL, not the Windows shell. Use the repo's Linux toolchain for `node`, `npm`, `git`, and test commands.
+- Preferred pattern: `wsl zsh -lic 'cd /home/zonzujiro/projects/lollipop-dragon && fnm use && npm test'`
 
 ## TypeScript
 

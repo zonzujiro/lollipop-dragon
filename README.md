@@ -30,32 +30,33 @@ the foundation for future native filesystem and agent runtime adapters.
 ## Getting started
 
 ```bash
-yarn install
-yarn dev
+npm install
+npm run dev
 ```
 
 To enable peer sharing locally:
 
 ```bash
-VITE_WORKER_URL=https://your-worker.dev yarn dev
+VITE_WORKER_URL=https://your-worker.dev npm run dev
 ```
 
 `VITE_WORKER_URL` may include a trailing slash. The app normalizes it before building `/share` and `/relay` URLs.
 
 ## Scripts
 
-| Command              | Description                                  |
-| -------------------- | -------------------------------------------- |
-| `yarn dev`           | Start the Vite dev server                    |
-| `yarn desktop:dev`   | Start the Tauri desktop shell in development |
-| `yarn desktop:build` | Build the Tauri desktop app                  |
-| `yarn build`         | Type-check and build for production          |
-| `yarn preview`       | Preview the production build locally         |
-| `yarn test`          | Run all tests once                           |
-| `yarn test:watch`    | Run tests in watch mode                      |
-| `yarn test:coverage` | Run tests with coverage                      |
-| `yarn lint`          | Run ESLint                                   |
-| `yarn deploy:worker` | Deploy the Cloudflare Worker                 |
+| Command                 | Description                                  |
+| ----------------------- | -------------------------------------------- |
+| `npm run dev`           | Start the Vite dev server                    |
+| `npm run desktop:dev`   | Start the Tauri desktop shell in development |
+| `npm run desktop:build` | Build the Tauri desktop app                  |
+| `npm run build`         | Build the production web app                 |
+| `npm run typecheck`     | Run the TypeScript checker                   |
+| `npm run preview`       | Preview the production build locally         |
+| `npm test`              | Run all tests once                           |
+| `npm run test:watch`    | Run tests in watch mode                      |
+| `npm run test:coverage` | Run tests with coverage                      |
+| `npm run lint`          | Run ESLint                                   |
+| `npm run deploy:worker` | Deploy the Cloudflare Worker                 |
 
 ## Project structure
 

@@ -5,16 +5,6 @@ const { mockUpdateContent, mockRelaySend } = vi.hoisted(() => ({
   mockRelaySend: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("../../../modules/relay", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../../modules/relay")>();
-  return {
-    ...actual,
-    getRelay: () => ({
-      send: mockRelaySend,
-    }),
-  };
-});
-
 vi.mock("../../../config", () => ({
   WORKER_URL: "https://mock-worker.test",
 }));
@@ -30,6 +20,7 @@ vi.mock("../storage", async (importOriginal) => {
 });
 
 import { generateKey } from "../../../services/crypto";
+import * as relayModule from "../../relay";
 import { useAppStore } from "../../../store";
 import { getActiveTab } from "../../workspace/helpers";
 import { syncActiveShares, updateShare } from "../sync";
@@ -43,6 +34,16 @@ beforeEach(() => {
   resetTestStore();
   mockUpdateContent.mockClear();
   mockRelaySend.mockClear();
+  vi.spyOn(relayModule, "getRelay").mockReturnValue({
+    send: mockRelaySend,
+    subscribe: vi.fn(),
+    unsubscribe: vi.fn(),
+    sendCommentAdd: vi.fn(),
+    sendCommentResolve: vi.fn(),
+    close: vi.fn(),
+    hasActiveSubscriptions: vi.fn().mockReturnValue(false),
+    isSubscribed: vi.fn().mockReturnValue(false),
+  });
 });
 
 describe("shareSync", () => {

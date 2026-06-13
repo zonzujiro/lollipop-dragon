@@ -3,12 +3,13 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "packageManager": "yarn@4.12.0",
+  "packageManager": "npm@11.9.0",
   "scripts": {
     "dev": "vite",
     "desktop:build": "npx --yes @tauri-apps/cli@2.11.2 build",
     "desktop:dev": "npx --yes @tauri-apps/cli@2.11.2 dev",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
@@ -76,10 +77,5 @@
   },
   "lint-staged": {
     "*.{ts,tsx,css,json,md}": "prettier --write"
-  },
-  "dependenciesMeta": {
-    "devcert": {
-      "unplugged": true
-    }
   }
 }
