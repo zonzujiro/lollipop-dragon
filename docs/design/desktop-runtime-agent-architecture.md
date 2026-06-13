@@ -2,9 +2,11 @@
 
 ## Status
 
-Implementation in progress. The shared runtime boundary, Tauri shell, native
-file/folder targets, configurable desktop agent runner, tab-scoped run state, and
-bounded comment-driven folder runs have landed incrementally.
+Desktop agent foundation implemented. The shared runtime boundary, Tauri shell,
+native file/folder targets, configurable desktop agent runner, tab-scoped run
+state, and bounded comment-driven agent actions have landed incrementally.
+Remaining work depends on explicit backend decisions for terminal attachment,
+first-run auth, session persistence, and future structured runners.
 
 ## Summary
 
@@ -38,7 +40,7 @@ The feature modules should keep owning product behavior:
 - `host-review` owns host comments and review state.
 - `sharing` owns host sharing and incoming peer comment flows.
 - `peer-review` owns browser peer mode.
-- A future `agent-workflow` module should own review-run state and actions.
+- `agent-workflow` owns host-mode review-run state and actions.
 
 ## Capability Interfaces
 
@@ -255,7 +257,7 @@ Suggested implementation phases:
 4. Add desktop runtime shell and native filesystem adapter.
 5. Add a first desktop runner behind `AgentRuntime`.
 6. Add bounded folder-level comment actions on top of the same run model.
-7. Add optional terminal attachment for supported runners.
+7. Decide and add optional terminal attachment for supported runners.
 8. Add broader workspace agent actions after comment-driven folder runs are
    proven.
 
