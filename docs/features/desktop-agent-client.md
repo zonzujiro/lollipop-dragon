@@ -2,9 +2,11 @@
 
 ## Status
 
-Implementation in progress. The website remains available, and the desktop
-foundation now covers native file/folder targets plus UI-started agent runs for
-comment review tasks.
+Desktop agent foundation implemented. The website remains available, and the
+desktop path now covers native file/folder targets plus UI-started agent runs for
+comment review tasks. Remaining work is limited to explicit backend/product
+decisions such as terminal attachment, first-run auth, and future structured
+runners.
 
 ## Problem
 
@@ -264,7 +266,7 @@ outside this first desktop planning scope.
 - Native file and folder targets are persisted by path, so desktop tabs can
   restore live access after reload without browser handle storage.
 
-## Open Questions
+## Remaining Backend Decisions
 
 - How should desktop handle agent authentication and first-run setup?
 - What is the minimum Windows backend for terminal/session support if `tmux` is
