@@ -244,10 +244,11 @@ fn dragon_agent_runtime_available() -> bool {
 }
 
 #[tauri::command]
-fn dragon_open_text_file(app: tauri::AppHandle) -> Result<Option<NativePathTarget>, String> {
-    let selected = app
+fn dragon_open_text_file(window: tauri::Window) -> Result<Option<NativePathTarget>, String> {
+    let selected = window
         .dialog()
         .file()
+        .set_parent(&window)
         .add_filter("Markdown", &["md", "markdown"])
         .blocking_pick_file();
 
@@ -257,8 +258,12 @@ fn dragon_open_text_file(app: tauri::AppHandle) -> Result<Option<NativePathTarge
 }
 
 #[tauri::command]
-fn dragon_open_directory(app: tauri::AppHandle) -> Result<Option<NativePathTarget>, String> {
-    let selected = app.dialog().file().blocking_pick_folder();
+fn dragon_open_directory(window: tauri::Window) -> Result<Option<NativePathTarget>, String> {
+    let selected = window
+        .dialog()
+        .file()
+        .set_parent(&window)
+        .blocking_pick_folder();
 
     Ok(selected
         .and_then(|file_path| file_path.as_path().map(|path| path.to_path_buf()))
