@@ -404,6 +404,7 @@ fn dragon_get_agent_run_status(run_id: String) -> Result<AgentRunStatusPayload, 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             dragon_runtime_ping,
             dragon_agent_runtime_available,
