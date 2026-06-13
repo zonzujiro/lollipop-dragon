@@ -5,7 +5,9 @@ import { beforeEach, describe, it, expect, vi } from "vitest";
 const mockDownloadFile = vi.fn();
 
 vi.mock("./downloadActiveFile", () => ({
-  downloadActiveFile: () => mockDownloadFile(),
+  downloadActiveFile: () => {
+    mockDownloadFile();
+  },
 }));
 
 import { Header } from "./index";
@@ -86,6 +88,8 @@ describe("Header — Save file button", () => {
       },
     );
     render(<Header peerMode />);
-    expect(screen.getByRole("button", { name: /Submit comments/i })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /Submit comments/i }),
+    ).toBeDisabled();
   });
 });

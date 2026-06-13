@@ -3,22 +3,22 @@
 ## Prerequisites
 
 - Node.js 18+
-- Yarn 4 (`corepack enable && corepack prepare yarn@4.12.0`)
+- npm 11+
 - Chrome or Edge (for testing host mode — requires File System Access API over HTTPS/localhost)
 - Rust and Tauri v2 platform prerequisites for desktop shell development
 
 ## Setup
 
 ```bash
-yarn install
-yarn dev          # starts dev server at http://localhost:5173
-yarn desktop:dev  # starts the Tauri desktop shell
+npm install
+npm run dev          # starts dev server at http://localhost:5173
+npm run desktop:dev  # starts the Tauri desktop shell
 ```
 
 To enable sharing features locally:
 
 ```bash
-VITE_WORKER_URL=https://your-worker.dev yarn dev
+VITE_WORKER_URL=https://your-worker.dev npm run dev
 ```
 
 `VITE_WORKER_URL` may include a trailing slash. The app normalizes it before building `/share` and `/relay` URLs.
@@ -26,7 +26,7 @@ VITE_WORKER_URL=https://your-worker.dev yarn dev
 ## Development workflow
 
 1. Create a branch from `main` with a descriptive prefix: `feat/`, `fix/`, `refactor/`, `docs/`
-2. Make changes, ensure tests pass (`yarn test`) and types check (`npx tsc --noEmit`)
+2. Make changes, ensure tests pass (`npm test`) and types check (`npm run typecheck`)
 3. Commit with a concise message: `feat: add slide counter to presentation mode`
 4. Push and open a PR against `main`
 
@@ -96,9 +96,9 @@ When adding new state, decide whether it belongs on `TabState` (host-only) or `A
 ## Testing
 
 ```bash
-yarn test              # run all tests once
-yarn test:watch        # watch mode
-yarn test:coverage     # with coverage report
+npm test                    # run all tests once
+npm run test:watch          # watch mode
+npm run test:coverage       # with coverage report
 ```
 
 ### Coverage thresholds

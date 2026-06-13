@@ -6,15 +6,26 @@ vi.mock("../../../config", () => ({
   WORKER_URL: "https://mock-worker.test",
 }));
 
-vi.mock("../../sharing", () => ({
-  ShareStorage: vi.fn().mockImplementation(() => ({
-    fetchLastModified: mockFetchLastModified,
-  })),
-}));
+vi.mock("../../sharing", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../sharing")>();
+  return {
+    ...actual,
+    ShareStorage: vi.fn().mockImplementation(() => ({
+      fetchLastModified: mockFetchLastModified,
+    })),
+  };
+});
 
-import { applyPeerDocumentUpdate, performReconnectCatchUp } from "../controller";
+import {
+  applyPeerDocumentUpdate,
+  performReconnectCatchUp,
+} from "../controller";
 import { useAppStore } from "../../../store";
-import { makePeerComment, resetTestStore, setTestState } from "../../../testing/testHelpers";
+import {
+  makePeerComment,
+  resetTestStore,
+  setTestState,
+} from "../../../testing/testHelpers";
 
 beforeEach(() => {
   resetTestStore();
