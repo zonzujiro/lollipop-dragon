@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getAddressCommentsAgentAction,
+  getPeerCommentsAgentAction,
   getQuestionThreadAgentAction,
 } from "./agentActions";
 
@@ -74,6 +75,43 @@ describe("getQuestionThreadAgentAction", () => {
       kind: "run_agent",
       label: "Ask agent",
       title: "Ask the local agent to answer threaded questions",
+    });
+  });
+});
+
+describe("getPeerCommentsAgentAction", () => {
+  it("uses copy-prompt mode when local agent execution is unavailable", () => {
+    expect(
+      getPeerCommentsAgentAction({
+        canRunAgent: false,
+        canStartPeerCommentsRun: true,
+      }),
+    ).toEqual({
+      kind: "copy_prompt",
+      label: "Copy agent prompt",
+      title: "Copy instructions for reviewing pending peer comments",
+    });
+  });
+
+  it("uses copy-prompt mode when peer comment runs are unavailable", () => {
+    expect(
+      getPeerCommentsAgentAction({
+        canRunAgent: true,
+        canStartPeerCommentsRun: false,
+      }).kind,
+    ).toBe("copy_prompt");
+  });
+
+  it("uses run-agent mode when both capabilities are available", () => {
+    expect(
+      getPeerCommentsAgentAction({
+        canRunAgent: true,
+        canStartPeerCommentsRun: true,
+      }),
+    ).toEqual({
+      kind: "run_agent",
+      label: "Ask agent",
+      title: "Ask the local agent to review pending peer comments",
     });
   });
 });

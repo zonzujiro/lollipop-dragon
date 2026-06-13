@@ -1,5 +1,6 @@
 export type QuestionThreadAgentActionKind = "copy_prompt" | "run_agent";
 export type AddressCommentsAgentActionKind = "copy_prompt" | "run_agent";
+export type PeerCommentsAgentActionKind = "copy_prompt" | "run_agent";
 
 export interface QuestionThreadAgentAction {
   kind: QuestionThreadAgentActionKind;
@@ -13,6 +14,12 @@ export interface AddressCommentsAgentAction {
   title: string;
 }
 
+export interface PeerCommentsAgentAction {
+  kind: PeerCommentsAgentActionKind;
+  label: string;
+  title: string;
+}
+
 export interface AgentActionCapabilities {
   canRunAgent: boolean;
   canStartQuestionThreadRun: boolean;
@@ -21,6 +28,11 @@ export interface AgentActionCapabilities {
 export interface AddressCommentsAgentActionCapabilities {
   canRunAgent: boolean;
   canStartAddressCommentsRun: boolean;
+}
+
+export interface PeerCommentsAgentActionCapabilities {
+  canRunAgent: boolean;
+  canStartPeerCommentsRun: boolean;
 }
 
 export function getAddressCommentsAgentAction(
@@ -56,5 +68,23 @@ export function getQuestionThreadAgentAction(
     kind: "copy_prompt",
     label: "Copy agent prompt",
     title: "Copy instructions for answering threaded questions",
+  };
+}
+
+export function getPeerCommentsAgentAction(
+  capabilities: PeerCommentsAgentActionCapabilities,
+): PeerCommentsAgentAction {
+  if (capabilities.canRunAgent && capabilities.canStartPeerCommentsRun) {
+    return {
+      kind: "run_agent",
+      label: "Ask agent",
+      title: "Ask the local agent to review pending peer comments",
+    };
+  }
+
+  return {
+    kind: "copy_prompt",
+    label: "Copy agent prompt",
+    title: "Copy instructions for reviewing pending peer comments",
   };
 }

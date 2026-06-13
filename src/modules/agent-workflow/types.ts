@@ -64,6 +64,7 @@ export type AgentRunStartUnavailableReason =
   | "no_active_tab"
   | "no_active_file"
   | "no_addressable_comments"
+  | "no_peer_comments"
   | "no_question_threads"
   | "tab_agent_run_active";
 
@@ -122,6 +123,7 @@ export type AgentRunSyncStatusResult =
 export interface AgentWorkflowControllerActions {
   startAddressCommentsAgentRun: () => Promise<AgentRunStartResult>;
   startQuestionThreadAgentRun: () => Promise<AgentRunStartResult>;
+  startPeerCommentsAgentRun: (docId: string) => Promise<AgentRunStartResult>;
   stopActiveAgentRun: () => Promise<AgentRunStopResult>;
   syncActiveAgentRunStatus: () => Promise<AgentRunSyncStatusResult>;
 }

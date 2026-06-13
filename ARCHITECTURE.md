@@ -170,6 +170,9 @@ tab is closed.
 The comment panel can start desktop runtime runs for active-file unresolved
 comments, bounded folder-level unresolved comments, and active-file threaded
 questions, while web builds keep copy-prompt fallbacks.
+The host shared-panel pending-comment review list follows the same pattern for
+selected peer comments: desktop starts a `review_peer_comments` run, and website
+builds copy the generated prompt.
 Agent start actions refuse to create a second active run for the same tab and
 cap v1 to three active runs app-wide.
 Desktop UI reads the runtime agent capability asynchronously, so an unconfigured

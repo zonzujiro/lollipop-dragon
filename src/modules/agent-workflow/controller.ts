@@ -4,6 +4,7 @@ import {
   buildAgentReplyPrompt,
   buildCommentThreadGroups,
   buildFolderAddressCommentsAgentPrompt,
+  buildPendingPeerCommentsAgentPrompt,
 } from "../../markup";
 import { agentRuntime } from "../../runtime";
 import type {
@@ -18,6 +19,7 @@ import {
 } from "../../types/fileTree";
 import type { FileCommentEntry } from "../../types/tab";
 import type { TabState } from "../../types/tab";
+import type { PeerComment } from "../../types/share";
 import type {
   AgentRunStartUnavailableReason,
   AgentRunStartResult,
@@ -76,6 +78,26 @@ interface FolderAddressCommentsRunContext {
   workspaceRootPath: string | null;
 }
 
+interface PeerCommentTarget {
+  id: string;
+  peerName: string;
+  commentType: string;
+  text: string;
+  blockIndex: number;
+  contentPreview: string;
+}
+
+interface PendingPeerCommentTarget {
+  filePath: string;
+  comments: PeerCommentTarget[];
+}
+
+interface PendingPeerCommentsRunContext {
+  tabId: string;
+  targets: PendingPeerCommentTarget[];
+  workspaceRootPath: string | null;
+}
+
 const SYNCABLE_AGENT_RUN_STATUSES = new Set<AgentRunStatus>([
   "queued",
   "running",
@@ -84,6 +106,8 @@ const SYNCABLE_AGENT_RUN_STATUSES = new Set<AgentRunStatus>([
 const MAX_ACTIVE_AGENT_RUNS = 3;
 const MAX_FOLDER_AGENT_TARGET_FILES = 5;
 const MAX_FOLDER_AGENT_COMMENTS = 25;
+const MAX_PEER_AGENT_TARGET_FILES = 5;
+const MAX_PEER_AGENT_COMMENTS = 25;
 const ADDRESSABLE_COMMENT_TYPES = new Set<Comment["type"]>([
   "fix",
   "rewrite",
@@ -155,6 +179,66 @@ export function getFolderAddressableCommentTargets(
       comments,
     });
     selectedCommentCount += comments.length;
+  }
+
+  return targets;
+}
+
+export function getPendingPeerCommentTargets(
+  comments: PeerComment[],
+): PendingPeerCommentTarget[] {
+  const byPath: Record<string, PeerComment[]> = {};
+  for (const comment of comments) {
+    if (!byPath[comment.path]) {
+      byPath[comment.path] = [];
+    }
+    byPath[comment.path].push(comment);
+  }
+
+  const targets: PendingPeerCommentTarget[] = [];
+  let selectedCommentCount = 0;
+  const sortedPaths = Object.keys(byPath).sort((pathA, pathB) =>
+    pathA.localeCompare(pathB),
+  );
+
+  for (const filePath of sortedPaths) {
+    if (targets.length >= MAX_PEER_AGENT_TARGET_FILES) {
+      break;
+    }
+    if (selectedCommentCount >= MAX_PEER_AGENT_COMMENTS) {
+      break;
+    }
+
+    const remainingCommentCount =
+      MAX_PEER_AGENT_COMMENTS - selectedCommentCount;
+    const pathComments = byPath[filePath] ?? [];
+    const commentsForPath = pathComments
+      .slice()
+      .sort((commentA, commentB) => {
+        if (commentA.blockRef.blockIndex !== commentB.blockRef.blockIndex) {
+          return commentA.blockRef.blockIndex - commentB.blockRef.blockIndex;
+        }
+        return commentA.id.localeCompare(commentB.id);
+      })
+      .slice(0, remainingCommentCount)
+      .map((comment) => ({
+        id: comment.id,
+        peerName: comment.peerName,
+        commentType: comment.commentType,
+        text: comment.text,
+        blockIndex: comment.blockRef.blockIndex,
+        contentPreview: comment.blockRef.contentPreview,
+      }));
+
+    if (commentsForPath.length === 0) {
+      continue;
+    }
+
+    targets.push({
+      filePath,
+      comments: commentsForPath,
+    });
+    selectedCommentCount += commentsForPath.length;
   }
 
   return targets;
@@ -241,6 +325,24 @@ export function buildFolderAddressCommentsAgentRunRequest(
     runnerKind: "terminal",
     workspaceRootPath: context.workspaceRootPath,
     prompt: buildFolderAddressCommentsAgentPrompt({
+      targets: context.targets,
+    }),
+  };
+}
+
+export function buildPendingPeerCommentsAgentRunRequest(
+  context: PendingPeerCommentsRunContext,
+): AgentRunRequest {
+  return {
+    tabId: context.tabId,
+    taskKind: "review_peer_comments",
+    targetPaths: context.targets.map((target) => target.filePath),
+    selectedCommentIds: context.targets.flatMap((target) =>
+      target.comments.map((comment) => `${target.filePath}#${comment.id}`),
+    ),
+    runnerKind: "terminal",
+    workspaceRootPath: context.workspaceRootPath,
+    prompt: buildPendingPeerCommentsAgentPrompt({
       targets: context.targets,
     }),
   };
@@ -515,6 +617,45 @@ export function createAgentWorkflowControllerActions<
           targetPath: activeTab.targetPath,
           questionCommentIds,
           workspaceRootPath: getAgentWorkspaceRootPath(activeTab.tab),
+        }),
+      );
+    },
+
+    startPeerCommentsAgentRun: async (docId) => {
+      if (!runtime.canRunAgent) {
+        return unavailableResult({
+          reason: "agent_unavailable",
+          message: "Local agent execution is unavailable in this runtime.",
+        });
+      }
+
+      const tab = deps.getActiveTab(deps.get);
+      if (!tab) {
+        return unavailableResult({
+          reason: "no_active_tab",
+          message: "Open a file or folder before starting an agent run.",
+        });
+      }
+
+      const guardResult = getRunStartGuardResult(deps.get(), tab.id);
+      if (guardResult) {
+        return guardResult;
+      }
+
+      const pendingComments = tab.pendingComments[docId] ?? [];
+      const pendingTargets = getPendingPeerCommentTargets(pendingComments);
+      if (pendingTargets.length === 0) {
+        return unavailableResult({
+          reason: "no_peer_comments",
+          message: "No pending peer comments are available for this share.",
+        });
+      }
+
+      return startRuntimeAgentRun(
+        buildPendingPeerCommentsAgentRunRequest({
+          tabId: tab.id,
+          targets: pendingTargets,
+          workspaceRootPath: getAgentWorkspaceRootPath(tab),
         }),
       );
     },

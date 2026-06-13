@@ -253,6 +253,10 @@ outside this first desktop planning scope.
 - Folder tabs with scanned actionable comments use the same address-comments
   action. Desktop starts a run with a sorted, bounded set of file/comment targets
   from the active tab; website builds copy the same folder-scoped prompt.
+- Pending peer comment review has an agent action in the host shared-panel
+  review list. Desktop starts a `review_peer_comments` run for the selected
+  share's pending comments; website builds copy the same prompt for manual
+  agent handoff.
 - Agent starts are guarded to one active run per tab and three active runs
   app-wide.
 - Desktop reads agent availability before showing run actions, so missing
