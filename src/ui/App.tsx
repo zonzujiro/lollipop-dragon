@@ -27,6 +27,8 @@ import {
 } from "../types/tab";
 import { WORKER_URL } from "../config";
 import { stopRelay } from "../modules/relay";
+import { workspaceRuntime } from "../runtime";
+import { shouldShowBrowserUnsupported } from "./browserSupport";
 import {
   useThemeSync,
   useHashRouter,
@@ -302,8 +304,8 @@ function App() {
     return null;
   }
 
-  // ── Host mode requires File System Access API (Chrome/Edge over HTTPS) ──
-  if (typeof window.showOpenFilePicker !== "function") {
+  // ── Web host mode requires File System Access API (Chrome/Edge over HTTPS) ──
+  if (shouldShowBrowserUnsupported(workspaceRuntime, window)) {
     return (
       <div className="app-unsupported">
         <h1>Browser not supported</h1>

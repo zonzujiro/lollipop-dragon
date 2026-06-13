@@ -103,6 +103,8 @@ Acceptance criteria:
 
 - Desktop can open and edit local markdown files and folders.
 - Desktop uses native path-based file access.
+- Desktop does not render the website-only File System Access API unsupported
+  screen when the browser API is unavailable.
 - Website continues using its browser filesystem implementation.
 
 As a desktop user, I want to click a Dragon UI action to ask an agent to address

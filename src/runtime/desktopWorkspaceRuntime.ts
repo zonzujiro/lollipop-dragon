@@ -42,6 +42,7 @@ function nativeTreeNodeToFileTreeNode(
 }
 
 export const desktopWorkspaceRuntime: WorkspaceRuntime = {
+  requiresBrowserFileSystemAccess: false,
   openFile: async () => {
     const target = await openTauriTextFile();
     if (!target) {

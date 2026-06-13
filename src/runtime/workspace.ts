@@ -23,6 +23,7 @@ export interface OpenedWorkspaceDirectory {
 }
 
 export interface WorkspaceRuntime {
+  requiresBrowserFileSystemAccess: boolean;
   openFile(): Promise<OpenedWorkspaceFile | null>;
   openDirectory(): Promise<OpenedWorkspaceDirectory | null>;
   readFile(target: WorkspaceFileTarget): Promise<string>;

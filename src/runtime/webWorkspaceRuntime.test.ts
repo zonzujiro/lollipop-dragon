@@ -51,6 +51,10 @@ beforeEach(() => {
 });
 
 describe("workspaceRuntime", () => {
+  it("requires the browser File System Access API", () => {
+    expect(workspaceRuntime.requiresBrowserFileSystemAccess).toBe(true);
+  });
+
   it("delegates file operations to the web filesystem implementation", async () => {
     const fileHandle = createFileHandle("notes.md");
     vi.mocked(openFile).mockResolvedValue({
