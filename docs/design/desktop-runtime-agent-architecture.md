@@ -305,13 +305,14 @@ run first. Finished run metadata is removed when the owning tab is closed.
 
 Agent workflow implementation note: `src/modules/agent-workflow/` now owns
 serializable run metadata and controller actions for active-file unresolved
-comments, folder-level unresolved comments, and active-file threaded questions.
-Active-file actions build an `AgentRunRequest` with one tab, one target path,
-selected comment ids, and a generated prompt. Folder address-comments actions
-use the same tab-scoped run model with a sorted, bounded set of up to five files
-and twenty-five actionable comments from the active folder tab. The web runtime
-still reports `canRunAgent: false`, so the website keeps copy-prompt paths until
-a desktop runtime provides an executable `AgentRuntime`.
+comments, folder-level unresolved comments, active-file threaded questions, and
+pending peer comments selected from a host share. Active-file actions build an
+`AgentRunRequest` with one tab, one target path, selected comment ids, and a
+generated prompt. Folder address-comments and pending-peer-comment actions use
+the same tab-scoped run model with a sorted, bounded set of up to five files and
+twenty-five relevant comments from the active tab. The web runtime still reports
+`canRunAgent: false`, so the website keeps copy-prompt paths until a desktop
+runtime provides an executable `AgentRuntime`.
 The generated prompt is also stored on the serializable run record so the active
 run panel can copy the exact prompt that was sent to the runtime.
 

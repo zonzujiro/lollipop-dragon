@@ -3,6 +3,7 @@ import { useAppStore } from "../../../store";
 import { getActiveTab } from "../../../store/selectors";
 import {
   makeComment,
+  makePeerComment,
   resetTestStore,
   setTestState,
 } from "../../../testing/testHelpers";
@@ -10,10 +11,12 @@ import type { AgentRuntime, AgentRunRequest } from "../../../runtime";
 import {
   buildAddressCommentsAgentRunRequest,
   buildFolderAddressCommentsAgentRunRequest,
+  buildPendingPeerCommentsAgentRunRequest,
   buildQuestionThreadAgentRunRequest,
   createAgentWorkflowControllerActions,
   getAddressableCommentTargets,
   getFolderAddressableCommentTargets,
+  getPendingPeerCommentTargets,
   getQuestionThreadCommentIds,
 } from "../controller";
 
@@ -243,6 +246,82 @@ describe("question thread agent run context", () => {
     expect(request.prompt).toContain("- mr-question-1");
     expect(request.prompt).toContain("- mr-question-2");
     expect(request.prompt).toContain("Do not edit unrelated files");
+  });
+});
+
+describe("pending peer comments agent run context", () => {
+  it("groups and bounds pending peer comments by path", () => {
+    const comments = Array.from({ length: 6 }, (_unusedValue, index) => {
+      const fileIndex = index + 1;
+      return makePeerComment({
+        id: `peer-${fileIndex}`,
+        peerName: "Alice",
+        path: `docs/file-${fileIndex}.md`,
+        blockRef: {
+          blockIndex: fileIndex,
+          contentPreview: `Preview ${fileIndex}`,
+        },
+        commentType: "note",
+        text: `Check file ${fileIndex}`,
+      });
+    });
+
+    const targets = getPendingPeerCommentTargets(comments);
+
+    expect(targets).toHaveLength(5);
+    expect(targets.map((target) => target.filePath)).toEqual([
+      "docs/file-1.md",
+      "docs/file-2.md",
+      "docs/file-3.md",
+      "docs/file-4.md",
+      "docs/file-5.md",
+    ]);
+    expect(targets[0]?.comments).toEqual([
+      {
+        id: "peer-1",
+        peerName: "Alice",
+        commentType: "note",
+        text: "Check file 1",
+        blockIndex: 1,
+        contentPreview: "Preview 1",
+      },
+    ]);
+  });
+
+  it("builds a pending peer comments request", () => {
+    const request = buildPendingPeerCommentsAgentRunRequest({
+      tabId: "tab-1",
+      workspaceRootPath: "/tmp/project",
+      targets: [
+        {
+          filePath: "docs/spec.md",
+          comments: [
+            {
+              id: "peer-1",
+              peerName: "Alice",
+              commentType: "fix",
+              text: "Fix the intro",
+              blockIndex: 0,
+              contentPreview: "Intro paragraph",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(request).toMatchObject({
+      tabId: "tab-1",
+      taskKind: "review_peer_comments",
+      targetPaths: ["docs/spec.md"],
+      selectedCommentIds: ["docs/spec.md#peer-1"],
+      runnerKind: "terminal",
+      workspaceRootPath: "/tmp/project",
+    });
+    expect(request.prompt).toContain("Review these pending peer comments");
+    expect(request.prompt).toContain("- docs/spec.md");
+    expect(request.prompt).toContain(
+      "  - peer-1 (fix) from Alice at block 1: Fix the intro",
+    );
   });
 });
 
@@ -524,6 +603,106 @@ describe("address comments agent run controller", () => {
     });
     expect(requests[0]?.prompt).toContain("- docs/spec.md");
     expect(requests[0]?.prompt).toContain("  - fix-root (fix): Fix the intro");
+  });
+});
+
+describe("pending peer comments agent run controller", () => {
+  it("creates a run and starts the injected runtime", async () => {
+    const requests: AgentRunRequest[] = [];
+    const runtime: AgentRuntime = {
+      canRunAgent: true,
+      getCapability: () =>
+        Promise.resolve({ canRunAgent: true, unavailableMessage: null }),
+      startRun: (request) => {
+        requests.push(request);
+        return Promise.resolve("terminal-session-1");
+      },
+      stopRun: () => Promise.resolve(),
+      getRunStatus: () => Promise.resolve({ status: "running", output: "" }),
+    };
+    const actions = createAgentWorkflowControllerActions({
+      get: useAppStore.getState,
+      getActiveTab: (get) => getActiveTab(get()),
+      showToast: () => {},
+      runtime,
+    });
+
+    setTestState({
+      directoryHandle: {
+        kind: "native_directory",
+        path: "/tmp/project",
+        name: "project",
+      },
+      pendingComments: {
+        "doc-1": [
+          makePeerComment({
+            id: "peer-1",
+            peerName: "Alice",
+            path: "docs/spec.md",
+            blockRef: {
+              blockIndex: 0,
+              contentPreview: "Intro paragraph",
+            },
+            commentType: "fix",
+            text: "Fix the intro",
+          }),
+        ],
+      },
+    });
+
+    const result = await actions.startPeerCommentsAgentRun("doc-1");
+
+    expect(result.status).toBe("started");
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({
+      tabId: "test-tab",
+      taskKind: "review_peer_comments",
+      targetPaths: ["docs/spec.md"],
+      selectedCommentIds: ["docs/spec.md#peer-1"],
+      workspaceRootPath: "/tmp/project",
+    });
+    const state = useAppStore.getState();
+    const runId = state.activeAgentRunIdByTabId["test-tab"];
+    const run = runId ? state.agentRuns[runId] : null;
+    expect(run).toMatchObject({
+      tabId: "test-tab",
+      status: "running",
+      taskKind: "review_peer_comments",
+      targetPaths: ["docs/spec.md"],
+      selectedCommentIds: ["docs/spec.md#peer-1"],
+      prompt: requests[0]?.prompt,
+      runnerKind: "terminal",
+      terminalAttachmentId: "terminal-session-1",
+    });
+  });
+
+  it("returns unavailable when no pending peer comments exist", async () => {
+    const runtime: AgentRuntime = {
+      canRunAgent: true,
+      getCapability: () =>
+        Promise.resolve({ canRunAgent: true, unavailableMessage: null }),
+      startRun: () => Promise.resolve("terminal-session-1"),
+      stopRun: () => Promise.resolve(),
+      getRunStatus: () => Promise.resolve({ status: "running", output: "" }),
+    };
+    const actions = createAgentWorkflowControllerActions({
+      get: useAppStore.getState,
+      getActiveTab: (get) => getActiveTab(get()),
+      showToast: () => {},
+      runtime,
+    });
+
+    setTestState({
+      pendingComments: {},
+    });
+
+    const result = await actions.startPeerCommentsAgentRun("doc-1");
+
+    expect(result).toEqual({
+      status: "unavailable",
+      reason: "no_peer_comments",
+      message: "No pending peer comments are available for this share.",
+    });
   });
 });
 

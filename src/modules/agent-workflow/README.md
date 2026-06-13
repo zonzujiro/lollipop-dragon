@@ -13,6 +13,7 @@ narrow agent run request.
 - run lifecycle status metadata
 - active-file address-comments and question-thread run request construction
 - bounded folder-level address-comments run request construction
+- pending peer-comment run request construction for a selected host share
 
 ## Does not own
 
@@ -35,6 +36,8 @@ narrow agent run request.
 - Executable actions are scoped to the active tab.
 - Folder-level executable actions use a bounded set of scanned comments from the
   active folder tab.
+- Pending peer-comment executable actions use a bounded set of comments from the
+  selected share on the active host tab.
 
 ## Public API
 
@@ -48,3 +51,5 @@ narrow agent run request.
   tab.
 - `buildQuestionThreadAgentRunRequest` builds the narrow request passed to the
   runtime for answering active-file question threads.
+- `buildPendingPeerCommentsAgentRunRequest` builds the bounded request passed to
+  the runtime for reviewing pending peer comments from a selected host share.
