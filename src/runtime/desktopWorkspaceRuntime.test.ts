@@ -55,6 +55,10 @@ beforeEach(() => {
 });
 
 describe("desktopWorkspaceRuntime", () => {
+  it("does not require the browser File System Access API", () => {
+    expect(desktopWorkspaceRuntime.requiresBrowserFileSystemAccess).toBe(false);
+  });
+
   it("delegates native file and directory opens to Tauri dialogs", async () => {
     const fileTarget: NativeWorkspaceFileTarget = {
       kind: "native_file",

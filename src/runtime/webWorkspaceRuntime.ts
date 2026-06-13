@@ -38,6 +38,7 @@ function requireBrowserDirectoryHandle(
 }
 
 export const webWorkspaceRuntime: WorkspaceRuntime = {
+  requiresBrowserFileSystemAccess: true,
   openFile,
   openDirectory,
   readFile: async (target) => readFile(requireBrowserFileHandle(target)),

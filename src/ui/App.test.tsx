@@ -12,6 +12,7 @@ vi.mock("../config", () => ({
 }));
 
 import App from "./App";
+import { shouldShowBrowserUnsupported } from "./browserSupport";
 import { useAppStore } from "../store";
 import { setTestState, resetTestStore } from "../testing/testHelpers";
 import type { FileTreeNode } from "../types/fileTree";
@@ -92,6 +93,26 @@ beforeEach(() => {
   document.documentElement.classList.remove("dark");
   resetStore();
   vi.restoreAllMocks();
+});
+
+describe("App — host browser support gate", () => {
+  it("blocks web host mode when browser file access is required but unavailable", () => {
+    expect(
+      shouldShowBrowserUnsupported(
+        { requiresBrowserFileSystemAccess: true },
+        {},
+      ),
+    ).toBe(true);
+  });
+
+  it("does not block desktop host mode when browser file access is unavailable", () => {
+    expect(
+      shouldShowBrowserUnsupported(
+        { requiresBrowserFileSystemAccess: false },
+        {},
+      ),
+    ).toBe(false);
+  });
 });
 
 describe("App — no file open", () => {
@@ -232,7 +253,9 @@ describe("App — folder open", () => {
     expect(
       screen.getByText(/Choose a Markdown file from the sidebar/),
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "my-docs" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "my-docs" }),
+    ).toBeInTheDocument();
     expect(screen.queryByTestId("markdown-renderer")).not.toBeInTheDocument();
   });
 
