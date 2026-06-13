@@ -103,6 +103,8 @@ Acceptance criteria:
 
 - Desktop can open and edit local markdown files and folders.
 - Desktop uses native path-based file access.
+- Desktop registers the native dialog runtime plugin before invoking file or
+  folder picker commands.
 - Desktop does not render the website-only File System Access API unsupported
   screen when the browser API is unavailable.
 - Website continues using its browser filesystem implementation.
