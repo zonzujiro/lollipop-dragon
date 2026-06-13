@@ -2,7 +2,9 @@
 
 ## Status
 
-Proposed planning document. No implementation is included in this change.
+Implementation in progress. The website remains available, and the desktop
+foundation now covers native file/folder targets plus UI-started agent runs for
+comment review tasks.
 
 ## Problem
 
@@ -193,8 +195,10 @@ Folder action:
 
 - active tab only
 - selected folder or workspace only
-- bounded list of files containing relevant comments
-- explicit confirmation before start
+- bounded list of files containing actionable comments
+- maximum five files and twenty-five comments per run in the first
+  implementation
+- no context from other open tabs
 
 The generated prompt should state the target path, task, included comments, and
 out-of-scope files.
@@ -204,11 +208,14 @@ out-of-scope files.
 Initial actions should be narrow:
 
 - Address unresolved comments in the active file.
+- Address unresolved comments across a bounded set of scanned files in the
+  active folder tab.
 - Answer threaded `question:` comments in the active file.
 - Review pending peer comments after they have been merged or selected by the
   host.
 
-Broader folder/workspace actions can follow after the run model is proven.
+Broader workspace actions that are not directly tied to existing comments can
+follow after the run model is proven.
 
 ## Website Behavior
 
@@ -243,6 +250,9 @@ outside this first desktop planning scope.
 - Active-file unresolved comments now have a comment-panel action: desktop
   starts an address-comments run, while the website copies the same scoped
   review prompt.
+- Folder tabs with scanned actionable comments use the same address-comments
+  action. Desktop starts a run with a sorted, bounded set of file/comment targets
+  from the active tab; website builds copy the same folder-scoped prompt.
 - Agent starts are guarded to one active run per tab and three active runs
   app-wide.
 - Desktop reads agent availability before showing run actions, so missing

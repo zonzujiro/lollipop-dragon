@@ -2,7 +2,9 @@
 
 ## Status
 
-Proposed planning document. No implementation is included in this change.
+Implementation in progress. The shared runtime boundary, Tauri shell, native
+file/folder targets, configurable desktop agent runner, tab-scoped run state, and
+bounded comment-driven folder runs have landed incrementally.
 
 ## Summary
 
@@ -203,7 +205,8 @@ Each run receives an explicit context package at creation time. The default
 context should be narrow:
 
 - one tab
-- one active file
+- one active file, or a bounded set of files from the active folder tab for the
+  folder address-comments action
 - selected or unresolved comments
 - explicit target path
 - explicit instruction not to edit unrelated files
@@ -251,8 +254,10 @@ Suggested implementation phases:
    processes.
 4. Add desktop runtime shell and native filesystem adapter.
 5. Add a first desktop runner behind `AgentRuntime`.
-6. Add optional terminal attachment for supported runners.
-7. Add broader folder/workspace agent actions after active-file runs are proven.
+6. Add bounded folder-level comment actions on top of the same run model.
+7. Add optional terminal attachment for supported runners.
+8. Add broader workspace agent actions after comment-driven folder runs are
+   proven.
 
 Each phase should keep the website runnable.
 
@@ -300,10 +305,13 @@ run first. Finished run metadata is removed when the owning tab is closed.
 
 Agent workflow implementation note: `src/modules/agent-workflow/` now owns
 serializable run metadata and controller actions for active-file unresolved
-comments and threaded questions. Each action builds an `AgentRunRequest` with
-one tab, one target path, selected comment ids, and a generated prompt. The web
-runtime still reports `canRunAgent: false`, so the website keeps copy-prompt
-paths until a desktop runtime provides an executable `AgentRuntime`.
+comments, folder-level unresolved comments, and active-file threaded questions.
+Active-file actions build an `AgentRunRequest` with one tab, one target path,
+selected comment ids, and a generated prompt. Folder address-comments actions
+use the same tab-scoped run model with a sorted, bounded set of up to five files
+and twenty-five actionable comments from the active folder tab. The web runtime
+still reports `canRunAgent: false`, so the website keeps copy-prompt paths until
+a desktop runtime provides an executable `AgentRuntime`.
 The generated prompt is also stored on the serializable run record so the active
 run panel can copy the exact prompt that was sent to the runtime.
 

@@ -4,10 +4,12 @@ import {
   buildAddressCommentsAgentPrompt,
   buildAgentReplyPrompt,
   buildCommentThreadGroups,
+  buildFolderAddressCommentsAgentPrompt,
 } from "../../../markup";
 import {
   getActiveAgentRunForTab,
   getAddressableCommentTargets,
+  getFolderAddressableCommentTargets,
 } from "../../../modules/agent-workflow";
 import type { AgentRunStatus } from "../../../modules/agent-workflow";
 import { canRunAgent, getAgentRuntimeCapability } from "../../../runtime";
@@ -317,7 +319,15 @@ export function CommentPanel({ peerMode = false }: Props) {
     }
     return getAddressableCommentTargets(comments);
   }, [comments, isFolderMode, peerMode]);
-  const hasAddressableComments = addressableCommentTargets.length > 0;
+  const folderAddressableCommentTargets = useMemo(() => {
+    if (peerMode || !isFolderMode) {
+      return [];
+    }
+    return getFolderAddressableCommentTargets(crossFileComments);
+  }, [crossFileComments, isFolderMode, peerMode]);
+  const hasAddressableComments = isFolderMode
+    ? folderAddressableCommentTargets.length > 0
+    : addressableCommentTargets.length > 0;
 
   const isResolved = !peerMode && commentFilter === "resolved";
 
@@ -404,13 +414,16 @@ export function CommentPanel({ peerMode = false }: Props) {
   async function handleCopyAddressCommentsPrompt() {
     const targetPath =
       activeFilePath ?? tab?.fileName ?? "the active markdown file";
-    try {
-      await navigator.clipboard.writeText(
-        buildAddressCommentsAgentPrompt({
+    const prompt = isFolderMode
+      ? buildFolderAddressCommentsAgentPrompt({
+          targets: folderAddressableCommentTargets,
+        })
+      : buildAddressCommentsAgentPrompt({
           targetPath,
           comments: addressableCommentTargets,
-        }),
-      );
+        });
+    try {
+      await navigator.clipboard.writeText(prompt);
       showToast("Agent review prompt copied");
     } catch (error) {
       console.error("[CommentPanel] failed to copy agent prompt:", error);

@@ -3,6 +3,7 @@ import {
   buildAddressCommentsAgentPrompt,
   buildAgentReplyPrompt,
   buildCommentThreadGroups,
+  buildFolderAddressCommentsAgentPrompt,
 } from "../../markup";
 import { agentRuntime } from "../../runtime";
 import type {
@@ -15,6 +16,7 @@ import {
   isNativeDirectoryTarget,
   isNativeFileTarget,
 } from "../../types/fileTree";
+import type { FileCommentEntry } from "../../types/tab";
 import type { TabState } from "../../types/tab";
 import type {
   AgentRunStartUnavailableReason,
@@ -63,12 +65,25 @@ interface AddressCommentsRunContext {
   workspaceRootPath: string | null;
 }
 
+interface FolderAddressableCommentTarget {
+  filePath: string;
+  comments: AddressableCommentTarget[];
+}
+
+interface FolderAddressCommentsRunContext {
+  tabId: string;
+  targets: FolderAddressableCommentTarget[];
+  workspaceRootPath: string | null;
+}
+
 const SYNCABLE_AGENT_RUN_STATUSES = new Set<AgentRunStatus>([
   "queued",
   "running",
   "needs_attention",
 ]);
 const MAX_ACTIVE_AGENT_RUNS = 3;
+const MAX_FOLDER_AGENT_TARGET_FILES = 5;
+const MAX_FOLDER_AGENT_COMMENTS = 25;
 const ADDRESSABLE_COMMENT_TYPES = new Set<Comment["type"]>([
   "fix",
   "rewrite",
@@ -105,6 +120,44 @@ export function getAddressableCommentTargets(
       type: comment.type,
       text: commentPromptText(comment),
     }));
+}
+
+export function getFolderAddressableCommentTargets(
+  entries: FileCommentEntry[],
+): FolderAddressableCommentTarget[] {
+  const targets: FolderAddressableCommentTarget[] = [];
+  let selectedCommentCount = 0;
+
+  const sortedEntries = [...entries].sort((entryA, entryB) =>
+    entryA.filePath.localeCompare(entryB.filePath),
+  );
+
+  for (const entry of sortedEntries) {
+    if (targets.length >= MAX_FOLDER_AGENT_TARGET_FILES) {
+      break;
+    }
+    if (selectedCommentCount >= MAX_FOLDER_AGENT_COMMENTS) {
+      break;
+    }
+
+    const remainingCommentCount =
+      MAX_FOLDER_AGENT_COMMENTS - selectedCommentCount;
+    const comments = getAddressableCommentTargets(entry.comments).slice(
+      0,
+      remainingCommentCount,
+    );
+    if (comments.length === 0) {
+      continue;
+    }
+
+    targets.push({
+      filePath: entry.filePath,
+      comments,
+    });
+    selectedCommentCount += comments.length;
+  }
+
+  return targets;
 }
 
 function getAgentTargetPath(tab: TabState): string | null {
@@ -173,6 +226,28 @@ export function buildAddressCommentsAgentRunRequest(
       comments: context.comments,
     }),
   };
+}
+
+export function buildFolderAddressCommentsAgentRunRequest(
+  context: FolderAddressCommentsRunContext,
+): AgentRunRequest {
+  return {
+    tabId: context.tabId,
+    taskKind: "address_comments",
+    targetPaths: context.targets.map((target) => target.filePath),
+    selectedCommentIds: context.targets.flatMap((target) =>
+      target.comments.map((comment) => `${target.filePath}#${comment.id}`),
+    ),
+    runnerKind: "terminal",
+    workspaceRootPath: context.workspaceRootPath,
+    prompt: buildFolderAddressCommentsAgentPrompt({
+      targets: context.targets,
+    }),
+  };
+}
+
+function isFolderAgentRunTab(tab: TabState): boolean {
+  return tab.fileTree.length > 0;
 }
 
 function unavailableResult(input: {
@@ -341,25 +416,48 @@ export function createAgentWorkflowControllerActions<
         });
       }
 
-      const activeTab = getRunnableActiveTab();
-      if (!activeTab) {
-        const tab = deps.getActiveTab(deps.get);
+      const tab = deps.getActiveTab(deps.get);
+      if (!tab) {
         return unavailableResult({
-          reason: tab ? "no_active_file" : "no_active_tab",
-          message: tab
-            ? "Select a markdown file before starting an agent run."
-            : "Open a file or folder before starting an agent run.",
+          reason: "no_active_tab",
+          message: "Open a file or folder before starting an agent run.",
         });
       }
 
-      const guardResult = getRunStartGuardResult(deps.get(), activeTab.tab.id);
+      const guardResult = getRunStartGuardResult(deps.get(), tab.id);
       if (guardResult) {
         return guardResult;
       }
 
-      const addressableComments = getAddressableCommentTargets(
-        activeTab.tab.comments,
-      );
+      if (isFolderAgentRunTab(tab)) {
+        const folderTargets = getFolderAddressableCommentTargets(
+          Object.values(tab.allFileComments),
+        );
+        if (folderTargets.length === 0) {
+          return unavailableResult({
+            reason: "no_addressable_comments",
+            message: "No unresolved actionable comments are available.",
+          });
+        }
+
+        return startRuntimeAgentRun(
+          buildFolderAddressCommentsAgentRunRequest({
+            tabId: tab.id,
+            targets: folderTargets,
+            workspaceRootPath: getAgentWorkspaceRootPath(tab),
+          }),
+        );
+      }
+
+      const targetPath = getAgentTargetPath(tab);
+      if (!targetPath) {
+        return unavailableResult({
+          reason: "no_active_file",
+          message: "Select a markdown file before starting an agent run.",
+        });
+      }
+
+      const addressableComments = getAddressableCommentTargets(tab.comments);
       if (addressableComments.length === 0) {
         return unavailableResult({
           reason: "no_addressable_comments",
@@ -369,10 +467,10 @@ export function createAgentWorkflowControllerActions<
 
       return startRuntimeAgentRun(
         buildAddressCommentsAgentRunRequest({
-          tabId: activeTab.tab.id,
-          targetPath: activeTab.targetPath,
+          tabId: tab.id,
+          targetPath,
           comments: addressableComments,
-          workspaceRootPath: getAgentWorkspaceRootPath(activeTab.tab),
+          workspaceRootPath: getAgentWorkspaceRootPath(tab),
         }),
       );
     },

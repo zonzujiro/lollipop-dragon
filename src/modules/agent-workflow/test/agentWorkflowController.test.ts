@@ -9,9 +9,11 @@ import {
 import type { AgentRuntime, AgentRunRequest } from "../../../runtime";
 import {
   buildAddressCommentsAgentRunRequest,
+  buildFolderAddressCommentsAgentRunRequest,
   buildQuestionThreadAgentRunRequest,
   createAgentWorkflowControllerActions,
   getAddressableCommentTargets,
+  getFolderAddressableCommentTargets,
   getQuestionThreadCommentIds,
 } from "../controller";
 
@@ -102,6 +104,93 @@ describe("address comments agent run context", () => {
     expect(request.prompt).toContain(
       "Do not answer threaded question comments",
     );
+  });
+
+  it("selects a bounded set of folder comment targets", () => {
+    const entries = Array.from({ length: 6 }, (_, index) => {
+      const fileIndex = index + 1;
+      return {
+        filePath: `docs/file-${fileIndex}.md`,
+        fileName: `file-${fileIndex}.md`,
+        comments: [
+          makeComment({
+            id: `fix-${fileIndex}`,
+            type: "fix",
+            text: `Fix file ${fileIndex}`,
+          }),
+          makeComment({
+            id: `question-${fileIndex}`,
+            type: "question",
+            text: `Question ${fileIndex}`,
+            thread: {
+              commentId: `mr-question-${fileIndex}`,
+              threadId: `mr-question-${fileIndex}`,
+            },
+          }),
+        ],
+      };
+    });
+
+    const targets = getFolderAddressableCommentTargets(entries);
+
+    expect(targets).toHaveLength(5);
+    expect(targets.map((target) => target.filePath)).toEqual([
+      "docs/file-1.md",
+      "docs/file-2.md",
+      "docs/file-3.md",
+      "docs/file-4.md",
+      "docs/file-5.md",
+    ]);
+    expect(targets[0]?.comments).toEqual([
+      {
+        id: "fix-1",
+        type: "fix",
+        text: "Fix file 1",
+      },
+    ]);
+  });
+
+  it("builds a bounded folder request for addressing comments", () => {
+    const request = buildFolderAddressCommentsAgentRunRequest({
+      tabId: "tab-1",
+      workspaceRootPath: "/tmp/project",
+      targets: [
+        {
+          filePath: "docs/a.md",
+          comments: [
+            {
+              id: "fix-a",
+              type: "fix",
+              text: "Fix A",
+            },
+          ],
+        },
+        {
+          filePath: "docs/b.md",
+          comments: [
+            {
+              id: "note-b",
+              type: "note",
+              text: "Check B",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(request).toMatchObject({
+      tabId: "tab-1",
+      taskKind: "address_comments",
+      targetPaths: ["docs/a.md", "docs/b.md"],
+      selectedCommentIds: ["docs/a.md#fix-a", "docs/b.md#note-b"],
+      runnerKind: "terminal",
+      workspaceRootPath: "/tmp/project",
+    });
+    expect(request.prompt).toContain("Work only in the listed markdown files");
+    expect(request.prompt).toContain("- docs/a.md");
+    expect(request.prompt).toContain("  - fix-a (fix): Fix A");
+    expect(request.prompt).toContain("- docs/b.md");
+    expect(request.prompt).toContain("  - note-b (note): Check B");
   });
 });
 
@@ -372,6 +461,69 @@ describe("address comments agent run controller", () => {
       message: "No unresolved actionable comments are available.",
     });
     expect(useAppStore.getState().agentRuns).toEqual({});
+  });
+
+  it("creates a folder run from scanned file comments", async () => {
+    const requests: AgentRunRequest[] = [];
+    const runtime: AgentRuntime = {
+      canRunAgent: true,
+      getCapability: () =>
+        Promise.resolve({ canRunAgent: true, unavailableMessage: null }),
+      startRun: (request) => {
+        requests.push(request);
+        return Promise.resolve("terminal-session-1");
+      },
+      stopRun: () => Promise.resolve(),
+      getRunStatus: () => Promise.resolve({ status: "running", output: "" }),
+    };
+    const actions = createAgentWorkflowControllerActions({
+      get: useAppStore.getState,
+      getActiveTab: (get) => getActiveTab(get()),
+      showToast: () => {},
+      runtime,
+    });
+
+    setTestState({
+      directoryHandle: {
+        kind: "native_directory",
+        path: "/tmp/project",
+        name: "project",
+      },
+      fileTree: [
+        {
+          kind: "file",
+          name: "spec.md",
+          path: "docs/spec.md",
+        },
+      ],
+      allFileComments: {
+        "docs/spec.md": {
+          filePath: "docs/spec.md",
+          fileName: "spec.md",
+          comments: [
+            makeComment({
+              id: "fix-root",
+              type: "fix",
+              text: "Fix the intro",
+            }),
+          ],
+        },
+      },
+    });
+
+    const result = await actions.startAddressCommentsAgentRun();
+
+    expect(result.status).toBe("started");
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({
+      tabId: "test-tab",
+      taskKind: "address_comments",
+      targetPaths: ["docs/spec.md"],
+      selectedCommentIds: ["docs/spec.md#fix-root"],
+      workspaceRootPath: "/tmp/project",
+    });
+    expect(requests[0]?.prompt).toContain("- docs/spec.md");
+    expect(requests[0]?.prompt).toContain("  - fix-root (fix): Fix the intro");
   });
 });
 

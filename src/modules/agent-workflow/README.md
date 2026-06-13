@@ -12,6 +12,7 @@ narrow agent run request.
 - active run per tab mapping
 - run lifecycle status metadata
 - active-file address-comments and question-thread run request construction
+- bounded folder-level address-comments run request construction
 
 ## Does not own
 
@@ -20,7 +21,7 @@ narrow agent run request.
 - sockets
 - agent CLI configuration
 - peer-mode review state
-- broad folder/workspace agent prompting
+- broad workspace agent prompting that is not tied to existing comments
 
 ## Invariants
 
@@ -31,7 +32,9 @@ narrow agent run request.
   time in v1.
 - Web runtime support can expose the same metadata while reporting that local
   execution is unavailable.
-- Executable actions are scoped to the active tab's active file.
+- Executable actions are scoped to the active tab.
+- Folder-level executable actions use a bounded set of scanned comments from the
+  active folder tab.
 
 ## Public API
 
@@ -40,5 +43,8 @@ narrow agent run request.
   actions backed by the active `AgentRuntime`.
 - `buildAddressCommentsAgentRunRequest` builds the narrow request passed to the
   runtime for addressing active-file unresolved comments.
+- `buildFolderAddressCommentsAgentRunRequest` builds the bounded request passed
+  to the runtime for addressing unresolved comments across the active folder
+  tab.
 - `buildQuestionThreadAgentRunRequest` builds the narrow request passed to the
   runtime for answering active-file question threads.
