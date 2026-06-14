@@ -4,8 +4,9 @@
 
 Desktop agent foundation implemented. The website remains available, and the
 desktop path now covers native file/folder targets, UI-started agent runs for
-comment review tasks, and optional interactive PTY attachment. Remaining work is
-limited to explicit product decisions such as future structured runners.
+comment review tasks, and optional interactive PTY attachment. The configurable
+terminal-command runner is the v1 runner hierarchy; structured runners are
+deferred until real usage proves the protocol Dragon needs.
 
 ## Problem
 
@@ -294,10 +295,10 @@ outside this first desktop planning scope.
 - Native file and folder targets are persisted by path, so desktop tabs can
   restore live access after reload without browser handle storage.
 
-## Remaining Product Decisions
+## Deferred Product Decisions
 
-- Which structured runner should follow the first configurable terminal-command
-  runner?
+- Which structured runner, if any, should follow the configurable
+  terminal-command runner after v1 usage proves the needed protocol?
 
 ## References
 
