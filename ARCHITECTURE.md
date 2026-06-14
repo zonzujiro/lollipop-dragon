@@ -136,11 +136,10 @@ not in Zustand.
 ### Desktop Shell
 
 The Tauri shell under `src-tauri/` loads the same React app as the website. It is
-the native container for desktop filesystem, terminal, and agent runtime
-adapters, with watcher work still future. Normal Vite builds use the web
-runtime. Tauri dev/build commands run Vite in `desktop` mode, where
-`vite.config.ts` aliases the active runtime module to the desktop runtime
-implementation.
+the native container for desktop filesystem, watcher, terminal, and agent
+runtime adapters. Normal Vite builds use the web runtime. Tauri dev/build
+commands run Vite in `desktop` mode, where `vite.config.ts` aliases the active
+runtime module to the desktop runtime implementation.
 
 The bridge from the frontend to native commands lives in
 `src/runtime/tauriBridge.ts`. It uses Tauri v2's global `window.__TAURI__.core`
@@ -192,6 +191,10 @@ writing text files, and building markdown-only directory trees. Frontend access
 to those commands stays behind `src/runtime/tauriBridge.ts` response validation.
 `src/runtime/desktopWorkspaceRuntime.ts` adapts those commands to the shared
 `WorkspaceRuntime` interface for native path targets.
+The desktop shell also registers native path-watch commands backed by Rust
+`notify`. `src/runtime/desktopWatcherRuntime.ts` starts and stops native watches
+for native path targets and lets the existing watcher hook refresh files or
+folders when the native runtime reports a pending change.
 
 Native open-file and open-folder dialogs are also exposed through Tauri bridge
 commands. The desktop workspace runtime uses those dialogs for host open flows

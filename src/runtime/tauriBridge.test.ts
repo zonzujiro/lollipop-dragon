@@ -16,8 +16,11 @@ import {
   saveTauriAgentConfig,
   sendTauriAgentRunData,
   sendTauriAgentRunInput,
+  startTauriPathWatch,
   startTauriAgentRun,
+  stopTauriPathWatch,
   stopTauriAgentRun,
+  takeTauriPathWatchEvents,
   testTauriAgentCommand,
   writeTauriTextFile,
 } from "./tauriBridge";
@@ -406,6 +409,51 @@ describe("tauri bridge", () => {
             path: "docs/intro.md",
           },
         ],
+      },
+    ]);
+  });
+
+  it("starts, reads, and stops native path watches through Tauri commands", async () => {
+    const calls: {
+      command: string;
+      args: Record<string, unknown> | undefined;
+    }[] = [];
+    window.__TAURI__ = {
+      core: {
+        invoke: (command, args) => {
+          calls.push({ command, args });
+          if (command === "dragon_start_path_watch") {
+            return Promise.resolve("watch-1");
+          }
+          if (command === "dragon_take_path_watch_events") {
+            return Promise.resolve(true);
+          }
+          return Promise.resolve(null);
+        },
+      },
+    };
+
+    await expect(
+      startTauriPathWatch({
+        path: "/tmp/project",
+        recursive: true,
+      }),
+    ).resolves.toBe("watch-1");
+    await expect(takeTauriPathWatchEvents("watch-1")).resolves.toBe(true);
+    await stopTauriPathWatch("watch-1");
+
+    expect(calls).toEqual([
+      {
+        command: "dragon_start_path_watch",
+        args: { path: "/tmp/project", recursive: true },
+      },
+      {
+        command: "dragon_take_path_watch_events",
+        args: { watchId: "watch-1" },
+      },
+      {
+        command: "dragon_stop_path_watch",
+        args: { watchId: "watch-1" },
       },
     ]);
   });

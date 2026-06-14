@@ -24,6 +24,9 @@ export type TauriCommand =
   | "dragon_read_text_file"
   | "dragon_write_text_file"
   | "dragon_read_directory_tree"
+  | "dragon_start_path_watch"
+  | "dragon_take_path_watch_events"
+  | "dragon_stop_path_watch"
   | "dragon_start_agent_run"
   | "dragon_stop_agent_run"
   | "dragon_get_agent_run_status"
@@ -411,6 +414,42 @@ export async function readTauriDirectoryTree(
     args: { path: target.path },
   });
   return parseNativeTree(result);
+}
+
+export async function startTauriPathWatch(input: {
+  path: string;
+  recursive: boolean;
+}): Promise<string> {
+  const result = await invokeTauriCommand({
+    command: "dragon_start_path_watch",
+    args: input,
+  });
+  if (typeof result === "string") {
+    return result;
+  }
+
+  throw new Error("Unexpected native path watch response");
+}
+
+export async function takeTauriPathWatchEvents(
+  watchId: string,
+): Promise<boolean> {
+  const result = await invokeTauriCommand({
+    command: "dragon_take_path_watch_events",
+    args: { watchId },
+  });
+  if (typeof result === "boolean") {
+    return result;
+  }
+
+  throw new Error("Unexpected native path watch event response");
+}
+
+export function stopTauriPathWatch(watchId: string): Promise<unknown> {
+  return invokeTauriCommand({
+    command: "dragon_stop_path_watch",
+    args: { watchId },
+  });
 }
 
 export async function startTauriAgentRun(

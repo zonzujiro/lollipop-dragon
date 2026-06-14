@@ -1,3 +1,4 @@
+use notify::{Config as NotifyConfig, RecommendedWatcher, RecursiveMode, Watcher};
 use portable_pty::{native_pty_system, CommandBuilder, ExitStatus, MasterPty, PtySize};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -6,7 +7,7 @@ use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread::{self, JoinHandle};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -34,6 +35,8 @@ const KNOWN_AGENT_CLIS: [KnownAgentCli; 2] = [
 
 static AGENT_RUN_COUNTER: AtomicU64 = AtomicU64::new(1);
 static AGENT_RUNS: OnceLock<Mutex<HashMap<String, AgentRunProcess>>> = OnceLock::new();
+static PATH_WATCH_COUNTER: AtomicU64 = AtomicU64::new(1);
+static PATH_WATCHES: OnceLock<Mutex<HashMap<String, PathWatch>>> = OnceLock::new();
 
 #[derive(Serialize)]
 #[serde(tag = "kind")]
@@ -116,6 +119,11 @@ struct AgentRunProcess {
     output_threads: Vec<JoinHandle<()>>,
 }
 
+struct PathWatch {
+    _watcher: RecommendedWatcher,
+    pending_change: Arc<AtomicBool>,
+}
+
 fn path_target_from_path(path: PathBuf) -> NativePathTarget {
     let name = path
         .file_name()
@@ -130,6 +138,10 @@ fn path_target_from_path(path: PathBuf) -> NativePathTarget {
 
 fn active_agent_runs() -> &'static Mutex<HashMap<String, AgentRunProcess>> {
     AGENT_RUNS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn active_path_watches() -> &'static Mutex<HashMap<String, PathWatch>> {
+    PATH_WATCHES.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
 fn agent_config_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -267,6 +279,16 @@ fn create_agent_run_id() -> String {
         .unwrap_or(0);
 
     format!("agent-{timestamp}-{counter}")
+}
+
+fn create_path_watch_id() -> String {
+    let counter = PATH_WATCH_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis())
+        .unwrap_or(0);
+
+    format!("watch-{timestamp}-{counter}")
 }
 
 fn shell_command(command: &str) -> Command {
@@ -592,6 +614,70 @@ fn dragon_read_directory_tree(path: String) -> Result<Vec<NativeFileTreeNode>, S
 }
 
 #[tauri::command]
+fn dragon_start_path_watch(path: String, recursive: bool) -> Result<String, String> {
+    let watch_path = PathBuf::from(path);
+    if !watch_path.exists() {
+        return Err("Path to watch does not exist".to_string());
+    }
+
+    let watch_id = create_path_watch_id();
+    let pending_change = Arc::new(AtomicBool::new(false));
+    let watcher_pending_change = Arc::clone(&pending_change);
+    let mut watcher = RecommendedWatcher::new(
+        move |result: notify::Result<notify::Event>| match result {
+            Ok(_event) => {
+                watcher_pending_change.store(true, Ordering::Relaxed);
+            }
+            Err(error) => {
+                eprintln!("[path watch] watch failed: {error}");
+                watcher_pending_change.store(true, Ordering::Relaxed);
+            }
+        },
+        NotifyConfig::default(),
+    )
+    .map_err(|error| error.to_string())?;
+
+    let recursive_mode = if recursive {
+        RecursiveMode::Recursive
+    } else {
+        RecursiveMode::NonRecursive
+    };
+    watcher
+        .watch(&watch_path, recursive_mode)
+        .map_err(|error| error.to_string())?;
+
+    let watches = active_path_watches();
+    let mut locked_watches = watches.lock().map_err(|error| error.to_string())?;
+    locked_watches.insert(
+        watch_id.clone(),
+        PathWatch {
+            _watcher: watcher,
+            pending_change,
+        },
+    );
+
+    Ok(watch_id)
+}
+
+#[tauri::command]
+fn dragon_take_path_watch_events(watch_id: String) -> Result<bool, String> {
+    let watches = active_path_watches();
+    let locked_watches = watches.lock().map_err(|error| error.to_string())?;
+    let watch = locked_watches
+        .get(&watch_id)
+        .ok_or_else(|| "Path watch is no longer available".to_string())?;
+    Ok(watch.pending_change.swap(false, Ordering::Relaxed))
+}
+
+#[tauri::command]
+fn dragon_stop_path_watch(watch_id: String) -> Result<(), String> {
+    let watches = active_path_watches();
+    let mut locked_watches = watches.lock().map_err(|error| error.to_string())?;
+    locked_watches.remove(&watch_id);
+    Ok(())
+}
+
+#[tauri::command]
 fn dragon_start_agent_run(
     app: tauri::AppHandle,
     request: AgentRunRequestPayload,
@@ -794,6 +880,9 @@ pub fn run() {
             dragon_read_text_file,
             dragon_write_text_file,
             dragon_read_directory_tree,
+            dragon_start_path_watch,
+            dragon_take_path_watch_events,
+            dragon_stop_path_watch,
             dragon_start_agent_run,
             dragon_stop_agent_run,
             dragon_send_agent_run_input,
