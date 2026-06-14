@@ -6,7 +6,7 @@ Desktop agent foundation implemented. The shared runtime boundary, Tauri shell,
 native file/folder targets, configurable desktop agent runner, tab-scoped run
 state, and bounded comment-driven agent actions have landed incrementally.
 Remaining work depends on explicit backend decisions for terminal attachment,
-first-run auth, session persistence, and future structured runners.
+session persistence, and future structured runners.
 
 ## Summary
 
@@ -276,13 +276,14 @@ builds continue to use the browser file API runtime.
 
 Native runner implementation note: desktop agent runs now call Tauri
 `dragon_start_agent_run`. The command is intentionally configurable through
-`DRAGON_AGENT_COMMAND`; Dragon sends the generated prompt to the process stdin
-and stores only the returned runtime run id in app state. This keeps tmux, Codex
-CLI, and other runner choices behind the native runtime boundary instead of
-hard-coding one backend into the UI/store contract.
-The comment panel checks the native availability command before presenting
-run-agent actions, so an unconfigured command falls back to prompt copying with
-an inline setup message.
+native app config, with `DRAGON_AGENT_COMMAND` retained as a dogfooding fallback.
+Dragon sends the generated prompt to the process stdin and stores only the
+returned runtime run id in app state. This keeps tmux, Codex CLI, and other
+runner choices behind the native runtime boundary instead of hard-coding one
+backend into the UI/store contract.
+The Agent setup surface detects known CLIs, saves a command through native
+config, tests it with `--version`, and opens inline when a desktop run action is
+used before configuration.
 
 Run-control implementation note: the comment panel now shows the active run for
 the current tab and exposes a stop action while the run is queued, running, or

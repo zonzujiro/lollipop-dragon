@@ -1,0 +1,204 @@
+.agent-settings {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.agent-settings__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(15 23 42 / 0.35);
+}
+
+.agent-settings__panel {
+  position: relative;
+  z-index: 1;
+  width: min(34rem, 100%);
+  max-height: min(42rem, calc(100vh - 3rem));
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.agent-settings__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.agent-settings__header h2 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.agent-settings__header p {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.agent-settings__close {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background: var(--surface-alt);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.agent-settings__close:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.agent-settings__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.agent-settings__field label,
+.agent-settings__section-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.agent-settings__field input {
+  min-height: 2.25rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.agent-settings__field input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.agent-settings__detections {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.agent-settings__detection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background: var(--surface-alt);
+}
+
+.agent-settings__detection-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.agent-settings__detection-copy strong {
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.agent-settings__detection-copy span,
+.agent-settings__status {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.agent-settings__detection-copy code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.agent-settings__error,
+.agent-settings__test {
+  padding: 0.6rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.agent-settings__error,
+.agent-settings__test--failed {
+  border: 1px solid color-mix(in srgb, var(--c-red) 35%, var(--border));
+  background: color-mix(in srgb, var(--surface) 88%, var(--c-red) 12%);
+  color: var(--text);
+}
+
+.agent-settings__test--ok {
+  border: 1px solid color-mix(in srgb, var(--c-green) 35%, var(--border));
+  background: color-mix(in srgb, var(--surface) 88%, var(--c-green) 12%);
+  color: var(--text);
+}
+
+.agent-settings__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.agent-settings__primary,
+.agent-settings__secondary {
+  min-height: 2rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.agent-settings__primary {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.agent-settings__secondary {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+}
+
+.agent-settings__primary:hover,
+.agent-settings__secondary:hover {
+  filter: brightness(0.98);
+}
+
+.agent-settings__primary:disabled,
+.agent-settings__secondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}

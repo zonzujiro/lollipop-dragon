@@ -1,4 +1,11 @@
-import type { AgentRunRequest, AgentRuntimeRunStatus } from "./agent";
+import type {
+  AgentCliDetection,
+  AgentCommandTestResult,
+  AgentConfig,
+  AgentConfigSource,
+  AgentRunRequest,
+  AgentRuntimeRunStatus,
+} from "./agent";
 import type {
   NativeWorkspaceDirectoryTarget,
   NativeWorkspaceFileTarget,
@@ -7,6 +14,11 @@ import type {
 export type TauriCommand =
   | "dragon_runtime_ping"
   | "dragon_agent_runtime_available"
+  | "dragon_get_agent_config"
+  | "dragon_save_agent_config"
+  | "dragon_clear_agent_config"
+  | "dragon_detect_agent_clis"
+  | "dragon_test_agent_command"
   | "dragon_open_text_file"
   | "dragon_open_directory"
   | "dragon_read_text_file"
@@ -88,6 +100,43 @@ export async function getTauriAgentRuntimeAvailable(): Promise<boolean> {
   throw new Error("Unexpected Tauri agent capability response");
 }
 
+export async function getTauriAgentConfig(): Promise<AgentConfig> {
+  const result = await invokeTauriCommand({
+    command: "dragon_get_agent_config",
+  });
+  return parseNativeAgentConfig(result);
+}
+
+export function saveTauriAgentConfig(command: string): Promise<unknown> {
+  return invokeTauriCommand({
+    command: "dragon_save_agent_config",
+    args: { command },
+  });
+}
+
+export function clearTauriAgentConfig(): Promise<unknown> {
+  return invokeTauriCommand({
+    command: "dragon_clear_agent_config",
+  });
+}
+
+export async function detectTauriAgentClis(): Promise<AgentCliDetection[]> {
+  const result = await invokeTauriCommand({
+    command: "dragon_detect_agent_clis",
+  });
+  return parseNativeAgentCliDetections(result);
+}
+
+export async function testTauriAgentCommand(
+  command: string,
+): Promise<AgentCommandTestResult> {
+  const result = await invokeTauriCommand({
+    command: "dragon_test_agent_command",
+    args: { command },
+  });
+  return parseNativeAgentCommandTest(result);
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -102,6 +151,92 @@ function readStringField(
   }
 
   throw new Error(`Unexpected native file tree ${fieldName} field`);
+}
+
+function readOptionalStringField(
+  record: Record<string, unknown>,
+  fieldName: string,
+): string | null {
+  const value = record[fieldName];
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+
+  throw new Error(`Unexpected native ${fieldName} field`);
+}
+
+function readBooleanField(
+  record: Record<string, unknown>,
+  fieldName: string,
+): boolean {
+  const value = record[fieldName];
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  throw new Error(`Unexpected native ${fieldName} field`);
+}
+
+function parseAgentConfigSource(
+  value: string | null,
+): AgentConfigSource | null {
+  if (value === null) {
+    return null;
+  }
+  if (value === "config" || value === "environment") {
+    return value;
+  }
+
+  throw new Error("Unexpected native agent config source");
+}
+
+function parseNativeAgentConfig(value: unknown): AgentConfig {
+  if (!isRecord(value)) {
+    throw new Error("Unexpected native agent config response");
+  }
+
+  return {
+    command: readOptionalStringField(value, "command"),
+    source: parseAgentConfigSource(readOptionalStringField(value, "source")),
+  };
+}
+
+function parseNativeAgentCliDetection(value: unknown): AgentCliDetection {
+  if (!isRecord(value)) {
+    throw new Error("Unexpected native agent CLI detection response");
+  }
+
+  return {
+    id: readStringField(value, "id"),
+    label: readStringField(value, "label"),
+    command: readStringField(value, "command"),
+    path: readOptionalStringField(value, "path"),
+    available: readBooleanField(value, "available"),
+    version: readOptionalStringField(value, "version"),
+  };
+}
+
+function parseNativeAgentCliDetections(value: unknown): AgentCliDetection[] {
+  if (!Array.isArray(value)) {
+    throw new Error("Unexpected native agent CLI detections response");
+  }
+
+  return value.map(parseNativeAgentCliDetection);
+}
+
+function parseNativeAgentCommandTest(value: unknown): AgentCommandTestResult {
+  if (!isRecord(value)) {
+    throw new Error("Unexpected native agent command test response");
+  }
+
+  return {
+    ok: readBooleanField(value, "ok"),
+    message: readStringField(value, "message"),
+    output: readStringField(value, "output"),
+  };
 }
 
 function readOptionalNumberField(

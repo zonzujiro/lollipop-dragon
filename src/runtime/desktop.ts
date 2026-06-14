@@ -10,9 +10,14 @@ export const desktopRuntime = {
 
 export {
   assertDesktopRuntimeAvailable,
+  clearDesktopAgentConfig,
+  detectDesktopAgentClis,
   desktopAgentRuntime,
   getDesktopAgentCapability,
   getDesktopAgentCapabilityStatus,
+  getDesktopAgentConfig,
+  saveDesktopAgentConfig,
+  testDesktopAgentCommand,
 } from "./desktopAgentRuntime";
 export { desktopTerminalRuntime } from "./desktopTerminalRuntime";
 export { desktopWorkspaceRuntime } from "./desktopWorkspaceRuntime";

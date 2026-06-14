@@ -5,8 +5,8 @@
 Desktop agent foundation implemented. The website remains available, and the
 desktop path now covers native file/folder targets plus UI-started agent runs for
 comment review tasks. Remaining work is limited to explicit backend/product
-decisions such as terminal attachment, first-run auth, and future structured
-runners.
+decisions such as terminal attachment, session persistence, and future
+structured runners.
 
 ## Problem
 
@@ -244,8 +244,10 @@ outside this first desktop planning scope.
 - The shared app now has runtime capability facades for web and desktop builds.
 - Normal website builds keep browser file APIs and prompt-copy handoff.
 - Tauri desktop builds can open native file and folder targets.
-- Desktop agent runs start through `DRAGON_AGENT_COMMAND`, receive the generated
-  review prompt through stdin, and keep process handles outside Zustand.
+- Desktop agent runs start through the saved desktop agent command, with
+  `DRAGON_AGENT_COMMAND` retained as an environment fallback. Runs receive the
+  generated review prompt through stdin, and keep process handles outside
+  Zustand.
 - Agent run state is tab-scoped and serializable. The comment panel can stop an
   active run and polls native run status so completed or failed processes are
   reflected in the UI.
@@ -269,14 +271,15 @@ outside this first desktop planning scope.
   agent handoff.
 - Agent starts are guarded to one active run per tab and three active runs
   app-wide.
-- Desktop reads agent availability before showing run actions, so missing
-  `DRAGON_AGENT_COMMAND` falls back to prompt copying with a setup message.
+- Desktop reads agent availability before showing run actions. The Agent setup
+  surface can detect known CLIs, save a command in native app config, test it
+  with `--version`, and open inline when the user clicks an agent action before
+  configuring a command.
 - Native file and folder targets are persisted by path, so desktop tabs can
   restore live access after reload without browser handle storage.
 
 ## Remaining Backend Decisions
 
-- How should desktop handle agent authentication and first-run setup?
 - What is the minimum Windows backend for terminal/session support if `tmux` is
   not available?
 - How much agent terminal/session persistence should desktop restore across app

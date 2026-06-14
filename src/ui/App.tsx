@@ -13,6 +13,7 @@ import { SharedPanel } from "./components/SharedPanel";
 import { PresentationMode } from "./components/PresentationMode";
 import { UndoToast } from "./components/UndoToast";
 import { Toast } from "./components/Toast";
+import { AgentSettingsDialog } from "./components/AgentSettingsDialog";
 import { PeerNamePrompt } from "./components/PeerNamePrompt";
 import { buildVirtualTree } from "../types/fileTree";
 import { findLiveFileInTree, toFileTreeNodes } from "../types/fileTree";
@@ -156,6 +157,7 @@ function App() {
   const refreshFileTree = useAppStore((s) => s.refreshFileTree);
   const switchTab = useAppStore((s) => s.switchTab);
   const reopenTab = useAppStore((s) => s.reopenTab);
+  const agentSettingsOpen = useAppStore((s) => s.agentSettingsOpen);
 
   // Peer mode
   const isPeerMode = useAppStore((s) => s.isPeerMode);
@@ -337,7 +339,13 @@ function App() {
 
   // ── No tabs open → show FilePicker ──
   if (tabs.length === 0) {
-    return <FilePicker />;
+    return (
+      <>
+        <FilePicker />
+        <Toast />
+        {agentSettingsOpen && <AgentSettingsDialog />}
+      </>
+    );
   }
 
   // ── Presentation mode (fullscreen slideshow) ──
@@ -412,6 +420,7 @@ function App() {
       )}
       <UndoToast />
       <Toast />
+      {agentSettingsOpen && <AgentSettingsDialog />}
       {focusMode && (
         <button
           onClick={toggleFocusMode}

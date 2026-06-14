@@ -40,6 +40,28 @@ export interface AgentRuntimeCapability {
   unavailableMessage: string | null;
 }
 
+export type AgentConfigSource = "config" | "environment";
+
+export interface AgentConfig {
+  command: string | null;
+  source: AgentConfigSource | null;
+}
+
+export interface AgentCliDetection {
+  id: string;
+  label: string;
+  command: string;
+  path: string | null;
+  available: boolean;
+  version: string | null;
+}
+
+export interface AgentCommandTestResult {
+  ok: boolean;
+  message: string;
+  output: string;
+}
+
 export interface AgentRuntime {
   canRunAgent: boolean;
   getCapability(): Promise<AgentRuntimeCapability>;

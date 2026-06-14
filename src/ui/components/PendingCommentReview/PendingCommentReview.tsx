@@ -39,6 +39,8 @@ export function PendingCommentReview({ docId }: Props) {
     (state) => state.clearPendingComments,
   );
   const showToast = useAppStore((state) => state.showToast);
+  const openAgentSettings = useAppStore((state) => state.openAgentSettings);
+  const agentSettingsOpen = useAppStore((state) => state.agentSettingsOpen);
   const startPeerCommentsAgentRun = useAppStore(
     (state) => state.startPeerCommentsAgentRun,
   );
@@ -60,8 +62,9 @@ export function PendingCommentReview({ docId }: Props) {
   const canStopAgentRun = Boolean(
     activeAgentRun && ACTIVE_AGENT_RUN_STATUSES.has(activeAgentRun.status),
   );
+  const shouldPromptAgentSetup = canRunAgent && !agentCapability.canRunAgent;
   const peerCommentsAgentAction = getPeerCommentsAgentAction({
-    canRunAgent: agentCapability.canRunAgent,
+    canRunAgent: agentCapability.canRunAgent || shouldPromptAgentSetup,
     canStartPeerCommentsRun: comments.length > 0 && !canStopAgentRun,
   });
 
@@ -96,6 +99,10 @@ export function PendingCommentReview({ docId }: Props) {
 
     const result = await startPeerCommentsAgentRun(docId);
     if (result.status === "unavailable") {
+      if (canRunAgent && result.reason === "agent_unavailable") {
+        openAgentSettings();
+        return;
+      }
       showToast(result.message);
     }
   }
@@ -124,7 +131,7 @@ export function PendingCommentReview({ docId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [agentSettingsOpen]);
 
   if (comments.length === 0) {
     return <p className="pending-review__empty">No pending comments.</p>;
