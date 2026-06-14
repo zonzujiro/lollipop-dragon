@@ -1,6 +1,8 @@
 import type { StoreApi } from "zustand";
 import type {
   AgentRun,
+  AgentRunTaskKind,
+  AgentRunnerKind,
   AgentRunStatus,
   AgentWorkflowActions,
   AgentWorkflowState,
@@ -18,6 +20,156 @@ export function createAgentWorkflowState(): AgentWorkflowState {
   return {
     agentRuns: {},
     activeAgentRunIdByTabId: {},
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function isAgentRunStatus(value: unknown): value is AgentRunStatus {
+  return (
+    value === "queued" ||
+    value === "running" ||
+    value === "needs_attention" ||
+    value === "completed" ||
+    value === "failed" ||
+    value === "stopped"
+  );
+}
+
+function isAgentRunTaskKind(value: unknown): value is AgentRunTaskKind {
+  return (
+    value === "address_comments" ||
+    value === "answer_questions" ||
+    value === "review_peer_comments"
+  );
+}
+
+function isAgentRunnerKind(value: unknown): value is AgentRunnerKind {
+  return value === "terminal" || value === "codex_app_server";
+}
+
+function nullableString(value: unknown): string | null | undefined {
+  if (value === null) {
+    return null;
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  return undefined;
+}
+
+function hydrateAgentRun(value: unknown): AgentRun | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const id = value["id"];
+  const tabId = value["tabId"];
+  const status = value["status"];
+  const taskKind = value["taskKind"];
+  const targetPaths = value["targetPaths"];
+  const selectedCommentIds = value["selectedCommentIds"];
+  const prompt = value["prompt"];
+  const createdAt = value["createdAt"];
+  const completedAt = nullableString(value["completedAt"]);
+  const runnerKind = nullableString(value["runnerKind"]);
+  const terminalAttachmentId = nullableString(value["terminalAttachmentId"]);
+  const errorMessage = nullableString(value["errorMessage"]);
+  const output = value["output"];
+
+  if (
+    typeof id !== "string" ||
+    typeof tabId !== "string" ||
+    !isAgentRunStatus(status) ||
+    !isAgentRunTaskKind(taskKind) ||
+    !isStringArray(targetPaths) ||
+    !isStringArray(selectedCommentIds) ||
+    typeof prompt !== "string" ||
+    typeof createdAt !== "string" ||
+    completedAt === undefined ||
+    runnerKind === undefined ||
+    terminalAttachmentId === undefined ||
+    errorMessage === undefined ||
+    typeof output !== "string"
+  ) {
+    return null;
+  }
+
+  if (runnerKind !== null && !isAgentRunnerKind(runnerKind)) {
+    return null;
+  }
+
+  return {
+    id,
+    tabId,
+    status,
+    taskKind,
+    targetPaths,
+    selectedCommentIds,
+    prompt,
+    createdAt,
+    completedAt,
+    runnerKind,
+    terminalAttachmentId,
+    errorMessage,
+    output,
+  };
+}
+
+function hydrateAgentRuns(value: unknown): Record<string, AgentRun> {
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  const runs: Record<string, AgentRun> = {};
+  for (const runValue of Object.values(value)) {
+    const run = hydrateAgentRun(runValue);
+    if (run) {
+      runs[run.id] = run;
+    }
+  }
+  return runs;
+}
+
+function hydrateActiveRunMap(
+  value: unknown,
+  agentRuns: Record<string, AgentRun>,
+): Record<string, string> {
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  const activeByTabId: Record<string, string> = {};
+  for (const [tabId, runId] of Object.entries(value)) {
+    if (typeof runId !== "string") {
+      continue;
+    }
+    const run = agentRuns[runId];
+    if (run?.tabId === tabId) {
+      activeByTabId[tabId] = runId;
+    }
+  }
+  return activeByTabId;
+}
+
+export function hydrateAgentWorkflowState(value: unknown): AgentWorkflowState {
+  if (!isRecord(value)) {
+    return createAgentWorkflowState();
+  }
+
+  const agentRuns = hydrateAgentRuns(value["agentRuns"]);
+  return {
+    agentRuns,
+    activeAgentRunIdByTabId: hydrateActiveRunMap(
+      value["activeAgentRunIdByTabId"],
+      agentRuns,
+    ),
   };
 }
 
