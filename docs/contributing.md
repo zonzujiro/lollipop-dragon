@@ -12,8 +12,21 @@
 ```bash
 npm install
 npm run dev          # starts dev server at http://localhost:5173
-npm run desktop:dev  # starts the Tauri desktop shell
 ```
+
+Desktop development must run on the native target OS. For Windows desktop work,
+use the Windows checkout and Windows toolchain:
+
+```powershell
+cd C:\Users\ivan\Projects\lollipop-dragon
+npm install
+npm run desktop:dev
+```
+
+For the WSL checkout at `/home/zonzujiro/projects/lollipop-dragon`, run web,
+test, typecheck, and lint commands through WSL. Do not use WSL desktop runs as
+Windows UX validation; `npm run desktop:dev` from WSL runs the Linux Tauri app
+through WSLg.
 
 To enable sharing features locally:
 
