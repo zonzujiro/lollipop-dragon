@@ -247,6 +247,8 @@ outside this first desktop planning scope.
 - The shared app now has runtime capability facades for web and desktop builds.
 - Normal website builds keep browser file APIs and prompt-copy handoff.
 - Tauri desktop builds can open native file and folder targets.
+- Tauri desktop builds watch native file and folder targets through Rust
+  `notify`, while the website keeps browser observer/polling behavior.
 - Desktop agent runs start through the saved desktop agent command, with
   `DRAGON_AGENT_COMMAND` retained as an environment fallback. Runs execute in a
   native PTY through Rust `portable-pty`, receive the generated review prompt

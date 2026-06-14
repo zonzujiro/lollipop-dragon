@@ -4,6 +4,7 @@ import {
   isBrowserDirectoryHandle,
   isBrowserFileHandle,
 } from "../../types/fileTree";
+import { watcherRuntime } from "../../runtime";
 
 interface FileSystemObserverRecord {
   type: string;
@@ -82,35 +83,74 @@ export function useFileSystemWatcher({
       }, pollIntervalMs);
     }
 
+    function cleanupPolling() {
+      cancelled = true;
+      if (pollTimer) {
+        clearTimeout(pollTimer);
+      }
+    }
+
+    if (watcherRuntime.canWatchTarget(handle)) {
+      let subscription: { stop(): Promise<void> } | null = null;
+      watcherRuntime
+        .watchTarget({
+          target: handle,
+          recursive,
+          onChange: onRefresh,
+          onError: (error) => {
+            console.error("[FileSystemWatcher] native watch failed:", error);
+          },
+        })
+        .then((nextSubscription) => {
+          if (cancelled) {
+            void nextSubscription.stop().catch((error: unknown) => {
+              console.error(
+                "[FileSystemWatcher] native watch cleanup failed:",
+                error,
+              );
+            });
+            return;
+          }
+
+          subscription = nextSubscription;
+        })
+        .catch((error: unknown) => {
+          if (cancelled) {
+            return;
+          }
+
+          console.warn(
+            "[FileSystemWatcher] native watch setup failed, falling back to polling:",
+            error,
+          );
+          schedulePoll();
+        });
+
+      return () => {
+        cleanupPolling();
+        void subscription?.stop().catch((error: unknown) => {
+          console.error(
+            "[FileSystemWatcher] native watch cleanup failed:",
+            error,
+          );
+        });
+      };
+    }
+
     if (!supportsFileObserver()) {
       schedulePoll();
-      return () => {
-        cancelled = true;
-        if (pollTimer) {
-          clearTimeout(pollTimer);
-        }
-      };
+      return cleanupPolling;
     }
 
     if (!isBrowserFileHandle(handle) && !isBrowserDirectoryHandle(handle)) {
       schedulePoll();
-      return () => {
-        cancelled = true;
-        if (pollTimer) {
-          clearTimeout(pollTimer);
-        }
-      };
+      return cleanupPolling;
     }
 
     const FSObserver = window.FileSystemObserver;
     if (!FSObserver) {
       schedulePoll();
-      return () => {
-        cancelled = true;
-        if (pollTimer) {
-          clearTimeout(pollTimer);
-        }
-      };
+      return cleanupPolling;
     }
 
     const typeSet = new Set([...relevantTypes, "unknown"]);
@@ -152,11 +192,8 @@ export function useFileSystemWatcher({
     }
 
     return () => {
-      cancelled = true;
+      cleanupPolling();
       observer?.disconnect();
-      if (pollTimer) {
-        clearTimeout(pollTimer);
-      }
     };
   }, [handle, onRefresh, pollIntervalMs, recursive, relevantTypes]);
 }

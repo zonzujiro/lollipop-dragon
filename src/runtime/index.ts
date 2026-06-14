@@ -23,6 +23,11 @@ export {
 } from "./desktopAgentRuntime";
 export type { TerminalAttachment, TerminalRuntime } from "./terminal";
 export type {
+  WatcherRuntime,
+  WatcherSubscription,
+  WatchTargetOptions,
+} from "./watcher";
+export type {
   NativeWorkspaceDirectoryTarget,
   NativeWorkspaceFileTarget,
   OpenedWorkspaceDirectory,
@@ -39,6 +44,7 @@ export {
 export const workspaceRuntime = activeRuntime.workspaceRuntime;
 export const agentRuntime = activeRuntime.agentRuntime;
 export const terminalRuntime = activeRuntime.terminalRuntime;
+export const watcherRuntime = activeRuntime.watcherRuntime;
 
 export const canRunAgent = agentRuntime.canRunAgent;
 export const canShowTerminal = terminalRuntime.canShowTerminal;

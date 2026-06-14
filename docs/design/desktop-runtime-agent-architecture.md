@@ -273,6 +273,11 @@ Current implementation note: the Tauri shell now runs Vite in `desktop` mode,
 which selects the desktop runtime facade. Desktop open-file and open-folder
 actions use native Tauri dialogs and return native path targets, while normal web
 builds continue to use the browser file API runtime.
+The desktop runtime also provides a watcher adapter for native path targets. The
+Rust side uses `notify` to watch the selected file or folder and exposes a small
+pending-change flag through Tauri commands; the existing React watcher hook
+consumes that flag and refreshes the active file or folder without storing native
+watcher objects in Zustand.
 
 Native runner implementation note: desktop agent runs now call Tauri
 `dragon_start_agent_run`. The command is intentionally configurable through
