@@ -12,7 +12,12 @@ import {
   getFolderAddressableCommentTargets,
 } from "../../../modules/agent-workflow";
 import type { AgentRunStatus } from "../../../modules/agent-workflow";
-import { canRunAgent, getAgentRuntimeCapability } from "../../../runtime";
+import {
+  canRunAgent,
+  canShowTerminal,
+  getAgentRuntimeCapability,
+  sendTerminalInput,
+} from "../../../runtime";
 import type { AgentRuntimeCapability } from "../../../runtime";
 import { useAppStore } from "../../../store";
 import { useActiveTab } from "../../../store/selectors";
@@ -220,6 +225,7 @@ export function CommentPanel({ peerMode = false }: Props) {
   const sharedContent = useAppStore((state) => state.sharedContent);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const [agentRunTerminalOpen, setAgentRunTerminalOpen] = useState(false);
+  const [agentRunTerminalInput, setAgentRunTerminalInput] = useState("");
   const [agentCapability, setAgentCapability] = useState(
     INITIAL_AGENT_CAPABILITY,
   );
@@ -448,6 +454,11 @@ export function CommentPanel({ peerMode = false }: Props) {
   );
   const showAgentRunStatus = !peerMode && activeAgentRun;
   const activeAgentRunId = activeAgentRun?.id ?? null;
+  const canSendAgentRunInput = Boolean(
+    canShowTerminal &&
+    activeAgentRun?.terminalAttachmentId &&
+    ACTIVE_AGENT_RUN_STATUSES.has(activeAgentRun.status),
+  );
   const activeAgentRunScope = activeAgentRun
     ? `${AGENT_RUN_TASK_LABEL[activeAgentRun.taskKind]} · ${formatAgentRunTargets(
         activeAgentRun.targetPaths,
@@ -519,6 +530,24 @@ export function CommentPanel({ peerMode = false }: Props) {
     setAgentRunTerminalOpen((current) => !current);
   }
 
+  async function handleSendAgentRunInput() {
+    if (!activeAgentRun?.terminalAttachmentId) {
+      return;
+    }
+    const input = agentRunTerminalInput.trim();
+    if (!input) {
+      return;
+    }
+
+    try {
+      await sendTerminalInput(activeAgentRun.terminalAttachmentId, input);
+      setAgentRunTerminalInput("");
+    } catch (error) {
+      console.error("[CommentPanel] failed to send terminal input:", error);
+      showToast("Couldn't send terminal input");
+    }
+  }
+
   useEffect(() => {
     if (
       peerMode ||
@@ -549,6 +578,7 @@ export function CommentPanel({ peerMode = false }: Props) {
 
   useEffect(() => {
     setAgentRunTerminalOpen(false);
+    setAgentRunTerminalInput("");
   }, [activeAgentRunId]);
 
   useEffect(() => {
@@ -685,6 +715,31 @@ export function CommentPanel({ peerMode = false }: Props) {
                 <pre className="comment-panel__agent-run-output">
                   {activeAgentRun.output || "Waiting for output..."}
                 </pre>
+                {canSendAgentRunInput && (
+                  <form
+                    className="comment-panel__agent-run-terminal-input"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void handleSendAgentRunInput();
+                    }}
+                  >
+                    <input
+                      value={agentRunTerminalInput}
+                      onChange={(event) =>
+                        setAgentRunTerminalInput(event.target.value)
+                      }
+                      aria-label="Terminal input"
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                    <button
+                      type="submit"
+                      disabled={!agentRunTerminalInput.trim()}
+                    >
+                      Send
+                    </button>
+                  </form>
+                )}
               </div>
             )}
           </div>

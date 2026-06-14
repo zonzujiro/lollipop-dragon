@@ -47,6 +47,10 @@ export function getAgentRuntimeCapability() {
   return agentRuntime.getCapability();
 }
 
+export function sendTerminalInput(runId: string, input: string) {
+  return terminalRuntime.sendInput(runId, input);
+}
+
 export function openFile() {
   return workspaceRuntime.openFile();
 }

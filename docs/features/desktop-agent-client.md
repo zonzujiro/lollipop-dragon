@@ -133,6 +133,8 @@ Acceptance criteria:
   supports it.
 - The first implementation may expose a read-only terminal output panel backed
   by the native runner's captured PTY output.
+- The first interactive implementation may start with line-based terminal input
+  before full terminal emulation, resize, or key-by-key control.
 - The terminal is not the primary product surface by default.
 - Hiding the terminal does not stop the run.
 - Closing a tab with an active run requires an explicit user decision.
@@ -259,6 +261,8 @@ outside this first desktop planning scope.
 - Native runner PTY output is captured into a bounded output tail. The active run
   panel exposes that tail through a collapsible terminal output view for
   same-window observability.
+- While a desktop PTY run is active, the terminal output view includes a compact
+  input row that sends line-based input back into the native PTY session.
 - Serializable agent run metadata is persisted with the app store. After a
   reload, Dragon restores the tab-scoped run record and continues polling the
   native runtime id when one exists. If the desktop process restarted and the
@@ -287,8 +291,8 @@ outside this first desktop planning scope.
 
 ## Remaining Product Decisions
 
-- What is the smallest useful interactive terminal attachment surface on top of
-  the native PTY runner?
+- What full terminal-emulator behavior, if any, should follow line-based input
+  for resize, key-by-key control, and manual takeover?
 - Which structured runner should follow the first configurable terminal-command
   runner?
 
