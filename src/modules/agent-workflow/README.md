@@ -10,6 +10,7 @@ narrow agent run request.
 
 - agent run records
 - active run per tab mapping
+- bounded finished run history per tab
 - run lifecycle status metadata
 - active-file address-comments and question-thread run request construction
 - bounded folder-level address-comments run request construction
@@ -29,6 +30,8 @@ narrow agent run request.
 - Agent runs are host-mode concepts.
 - Runtime-owned objects stay outside Zustand.
 - A tab has at most one active run in the current model.
+- Finished runs stay as serializable tab history until dismissed or pruned by the
+  per-tab history cap.
 - The app allows at most three queued, running, or attention-needed runs at a
   time in v1.
 - Web runtime support can expose the same metadata while reporting that local

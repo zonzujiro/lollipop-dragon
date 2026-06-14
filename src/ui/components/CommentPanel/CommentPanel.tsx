@@ -9,9 +9,10 @@ import {
 import {
   getActiveAgentRunForTab,
   getAddressableCommentTargets,
+  getFinishedAgentRunHistoryForTab,
   getFolderAddressableCommentTargets,
 } from "../../../modules/agent-workflow";
-import type { AgentRunStatus } from "../../../modules/agent-workflow";
+import type { AgentRun, AgentRunStatus } from "../../../modules/agent-workflow";
 import {
   canRunAgent,
   canShowTerminal,
@@ -73,6 +74,7 @@ const AGENT_RUN_TASK_LABEL = {
 const EMPTY_COMMENTS: Comment[] = [];
 const EMPTY_FILE_TREE: TabState["fileTree"] = [];
 const EMPTY_ALL_FILE_COMMENTS: TabState["allFileComments"] = {};
+const EMPTY_AGENT_RUNS: AgentRun[] = [];
 const INITIAL_AGENT_CAPABILITY: AgentRuntimeCapability = {
   canRunAgent: false,
   unavailableMessage: canRunAgent
@@ -123,6 +125,12 @@ function formatAgentRunCommentCount(commentCount: number): string {
     return "1 comment";
   }
   return `${commentCount} comments`;
+}
+
+function formatAgentRunScope(run: AgentRun): string {
+  return `${AGENT_RUN_TASK_LABEL[run.taskKind]} · ${formatAgentRunTargets(
+    run.targetPaths,
+  )} · ${formatAgentRunCommentCount(run.selectedCommentIds.length)}`;
 }
 
 interface CrossFileEntry<C extends { type: CommentType }> {
@@ -223,6 +231,10 @@ export function CommentPanel({ peerMode = false }: Props) {
   const clearAgentRun = useAppStore((state) => state.clearAgentRun);
   const activeAgentRun = useAppStore((state) =>
     tab?.id ? getActiveAgentRunForTab(state, tab.id) : null,
+  );
+  const agentRuns = useAppStore((state) => state.agentRuns);
+  const activeAgentRunIdByTabId = useAppStore(
+    (state) => state.activeAgentRunIdByTabId,
   );
   const sharedContent = useAppStore((state) => state.sharedContent);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
@@ -455,6 +467,21 @@ export function CommentPanel({ peerMode = false }: Props) {
   );
   const showAgentRunStatus = !peerMode && activeAgentRun;
   const activeAgentRunId = activeAgentRun?.id ?? null;
+  const agentRunHistory = useMemo(
+    () =>
+      tab?.id
+        ? getFinishedAgentRunHistoryForTab(
+            { agentRuns, activeAgentRunIdByTabId },
+            tab.id,
+          )
+        : EMPTY_AGENT_RUNS,
+    [activeAgentRunIdByTabId, agentRuns, tab?.id],
+  );
+  const visibleAgentRunHistory = useMemo(
+    () => agentRunHistory.filter((run) => run.id !== activeAgentRunId),
+    [activeAgentRunId, agentRunHistory],
+  );
+  const showAgentRunHistory = !peerMode && visibleAgentRunHistory.length > 0;
   const canAttachActiveTerminal = Boolean(
     canShowTerminal && activeAgentRun?.terminalAttachmentId,
   );
@@ -522,6 +549,34 @@ export function CommentPanel({ peerMode = false }: Props) {
     } catch (error) {
       console.error("[CommentPanel] failed to copy run prompt:", error);
       showToast("Couldn't copy agent prompt");
+    }
+  }
+
+  async function handleCopyAgentRunPrompt(run: AgentRun) {
+    if (!run.prompt) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(run.prompt);
+      showToast("Agent run prompt copied");
+    } catch (error) {
+      console.error("[CommentPanel] failed to copy run prompt:", error);
+      showToast("Couldn't copy agent prompt");
+    }
+  }
+
+  async function handleCopyAgentRunOutput(run: AgentRun) {
+    if (!run.output) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(run.output);
+      showToast("Agent run output copied");
+    } catch (error) {
+      console.error("[CommentPanel] failed to copy run output:", error);
+      showToast("Couldn't copy agent output");
     }
   }
 
@@ -741,6 +796,16 @@ export function CommentPanel({ peerMode = false }: Props) {
                 Copy prompt
               </button>
             )}
+            {activeAgentRun.output && (
+              <button
+                className="comment-panel__agent-run-action"
+                onClick={() => {
+                  void handleCopyAgentRunOutput(activeAgentRun);
+                }}
+              >
+                Copy output
+              </button>
+            )}
             {canStopAgentRun ? (
               <button
                 className="comment-panel__agent-run-action"
@@ -759,6 +824,62 @@ export function CommentPanel({ peerMode = false }: Props) {
               </button>
             )}
           </div>
+        </div>
+      )}
+
+      {showAgentRunHistory && (
+        <div
+          className="comment-panel__agent-history"
+          aria-label="Recent agent runs"
+        >
+          <div className="comment-panel__agent-history-title">
+            Recent agent runs
+          </div>
+          {visibleAgentRunHistory.map((run) => (
+            <div key={run.id} className="comment-panel__agent-history-item">
+              <div className="comment-panel__agent-history-copy">
+                <span className="comment-panel__agent-history-label">
+                  {AGENT_RUN_STATUS_LABEL[run.status]}
+                </span>
+                <span className="comment-panel__agent-history-scope">
+                  {formatAgentRunScope(run)}
+                </span>
+                {run.errorMessage && (
+                  <span className="comment-panel__agent-history-error">
+                    {run.errorMessage}
+                  </span>
+                )}
+              </div>
+              <div className="comment-panel__agent-history-actions">
+                {run.prompt && (
+                  <button
+                    className="comment-panel__agent-run-action"
+                    onClick={() => {
+                      void handleCopyAgentRunPrompt(run);
+                    }}
+                  >
+                    Copy prompt
+                  </button>
+                )}
+                {run.output && (
+                  <button
+                    className="comment-panel__agent-run-action"
+                    onClick={() => {
+                      void handleCopyAgentRunOutput(run);
+                    }}
+                  >
+                    Copy output
+                  </button>
+                )}
+                <button
+                  className="comment-panel__agent-run-action"
+                  onClick={() => clearAgentRun(run.id)}
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

@@ -320,6 +320,9 @@ continue polling the native runtime id. Full desktop process restarts do not
 claim to resurrect OS child processes; if the native runtime id is no longer
 known, the next status sync marks the restored run failed with the native
 `not_found` message.
+Finished runs remain in a bounded per-tab history so users can inspect recent
+completed, failed, or stopped runs, copy the prompt/output snapshot, and dismiss
+records without keeping native PTY objects alive.
 
 Tab-close implementation note: the workspace close action now checks the
 tab-scoped active run map before removing a tab. Tabs with queued, running, or

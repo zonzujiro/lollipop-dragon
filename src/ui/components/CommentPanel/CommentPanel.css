@@ -190,6 +190,72 @@
   color: var(--accent);
 }
 
+.comment-panel__agent-history {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--surface);
+}
+
+.comment-panel__agent-history-title {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.comment-panel__agent-history-item {
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--border-light);
+}
+
+.comment-panel__agent-history-title + .comment-panel__agent-history-item {
+  padding-top: 0;
+  border-top: none;
+}
+
+.comment-panel__agent-history-copy {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.comment-panel__agent-history-label {
+  color: var(--text);
+  font-size: 0.73rem;
+  font-weight: 650;
+}
+
+.comment-panel__agent-history-scope,
+.comment-panel__agent-history-error {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.72rem;
+}
+
+.comment-panel__agent-history-scope {
+  color: var(--text-muted);
+}
+
+.comment-panel__agent-history-error {
+  color: var(--c-red);
+}
+
+.comment-panel__agent-history-actions {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
 .comment-panel__agent-capability {
   display: flex;
   align-items: center;

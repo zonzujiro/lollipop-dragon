@@ -15,6 +15,7 @@ const TERMINAL_STATUSES = new Set<AgentRunStatus>([
   "failed",
   "stopped",
 ]);
+const MAX_AGENT_RUNS_PER_TAB = 6;
 
 export function createAgentWorkflowState(): AgentWorkflowState {
   return {
@@ -28,7 +29,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
+  return (
+    Array.isArray(value) && value.every((item) => typeof item === "string")
+  );
 }
 
 function isAgentRunStatus(value: unknown): value is AgentRunStatus {
@@ -208,6 +211,40 @@ function createRun(input: {
   };
 }
 
+function compareRunsNewestFirst(runA: AgentRun, runB: AgentRun): number {
+  const createdAtComparison = runB.createdAt.localeCompare(runA.createdAt);
+  if (createdAtComparison !== 0) {
+    return createdAtComparison;
+  }
+  return runB.id.localeCompare(runA.id);
+}
+
+function pruneTabRunHistory(
+  runs: Record<string, AgentRun>,
+  tabId: string,
+): Record<string, AgentRun> {
+  const tabRuns = Object.values(runs)
+    .filter((run) => run.tabId === tabId)
+    .sort(compareRunsNewestFirst);
+  if (tabRuns.length <= MAX_AGENT_RUNS_PER_TAB) {
+    return runs;
+  }
+
+  const keepRunIds = new Set(
+    tabRuns.slice(0, MAX_AGENT_RUNS_PER_TAB).map((run) => run.id),
+  );
+  const nextRuns = { ...runs };
+  for (const run of tabRuns.slice(MAX_AGENT_RUNS_PER_TAB)) {
+    delete nextRuns[run.id];
+  }
+
+  return Object.fromEntries(
+    Object.entries(nextRuns).filter(
+      ([runId, run]) => run.tabId !== tabId || keepRunIds.has(runId),
+    ),
+  );
+}
+
 export function createAgentWorkflowActions<
   StoreState extends AgentWorkflowState,
 >(set: SetState<StoreState>): AgentWorkflowActions {
@@ -228,12 +265,16 @@ export function createAgentWorkflowActions<
         const previousRunId = state.activeAgentRunIdByTabId[run.tabId];
         const nextRuns = { ...state.agentRuns };
         if (previousRunId) {
-          delete nextRuns[previousRunId];
+          const previousRun = nextRuns[previousRunId];
+          if (previousRun && !isTerminalAgentRunStatus(previousRun.status)) {
+            delete nextRuns[previousRunId];
+          }
         }
         nextRuns[run.id] = run;
+        const prunedRuns = pruneTabRunHistory(nextRuns, run.tabId);
 
         return {
-          agentRuns: nextRuns,
+          agentRuns: prunedRuns,
           activeAgentRunIdByTabId: {
             ...state.activeAgentRunIdByTabId,
             [run.tabId]: run.id,
