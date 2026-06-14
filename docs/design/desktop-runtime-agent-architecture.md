@@ -5,8 +5,9 @@
 Desktop agent foundation implemented. The shared runtime boundary, Tauri shell,
 native file/folder targets, configurable desktop agent runner, tab-scoped run
 state, and bounded comment-driven agent actions have landed incrementally.
-Remaining work depends on explicit product decisions for future structured
-runners.
+The configurable terminal-command runner is the v1 runner hierarchy. Structured
+runners are deferred until real usage proves whether Dragon needs a Codex
+app-server protocol, a generic JSON/event protocol, or no second runner.
 
 ## Summary
 
