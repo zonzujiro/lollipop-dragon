@@ -131,6 +131,8 @@ Acceptance criteria:
 
 - The desktop runtime can expose the raw session for a run when the backend
   supports it.
+- The first implementation may expose a read-only terminal output panel backed
+  by the native runner's captured stdout/stderr.
 - The terminal is not the primary product surface by default.
 - Hiding the terminal does not stop the run.
 - Closing a tab with an active run requires an explicit user decision.
@@ -254,8 +256,9 @@ outside this first desktop planning scope.
   can copy that exact prompt for inspection or manual recovery.
 - The active run panel shows the run task, target path summary, and selected
   comment count.
-- Native runner stdout and stderr are captured into a bounded output tail shown
-  on the active run panel for same-window observability.
+- Native runner stdout and stderr are captured into a bounded output tail. The
+  active run panel exposes that tail through a collapsible terminal output view
+  for same-window observability.
 - Serializable agent run metadata is persisted with the app store. After a
   reload, Dragon restores the tab-scoped run record and continues polling the
   native runtime id when one exists. If the desktop process restarted and the
@@ -284,8 +287,8 @@ outside this first desktop planning scope.
 
 ## Remaining Backend Decisions
 
-- What is the minimum Windows backend for terminal/session support if `tmux` is
-  not available?
+- What is the minimum Windows backend for interactive PTY/session support if
+  `tmux` is not available?
 - Which structured runner should follow the first configurable terminal-command
   runner?
 
