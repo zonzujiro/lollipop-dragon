@@ -406,14 +406,9 @@ describe("CommentPanel — agent prompt", () => {
     expect(
       screen.queryByRole("button", { name: "Copy agent prompt" }),
     ).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Show terminal" }));
     expect(
-      screen.getByRole("log", { name: "Agent terminal output" }),
-    ).toHaveTextContent("native-run-1");
-    expect(screen.getByText(/Working on questions/)).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Hide terminal" }));
+      screen.queryByRole("button", { name: "Show terminal" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/Working on questions/)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Copy prompt" }));

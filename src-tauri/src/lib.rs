@@ -110,7 +110,7 @@ struct KnownAgentCli {
 
 struct AgentRunProcess {
     child: Box<dyn portable_pty::Child + Send + Sync>,
-    _master: Box<dyn MasterPty + Send>,
+    master: Box<dyn MasterPty + Send>,
     writer: Box<dyn Write + Send>,
     output: Arc<Mutex<String>>,
     output_threads: Vec<JoinHandle<()>>,
@@ -643,7 +643,7 @@ fn dragon_start_agent_run(
         run_id.clone(),
         AgentRunProcess {
             child,
-            _master: pty_pair.master,
+            master: pty_pair.master,
             writer,
             output,
             output_threads,
@@ -680,6 +680,15 @@ fn dragon_send_agent_run_input(run_id: String, input: String) -> Result<(), Stri
         return Ok(());
     }
 
+    dragon_send_agent_run_data(run_id, format!("{trimmed_input}\r\n"))
+}
+
+#[tauri::command]
+fn dragon_send_agent_run_data(run_id: String, data: String) -> Result<(), String> {
+    if data.is_empty() {
+        return Ok(());
+    }
+
     let runs = active_agent_runs();
     let mut locked_runs = runs.lock().map_err(|error| error.to_string())?;
     let process = locked_runs
@@ -687,13 +696,31 @@ fn dragon_send_agent_run_input(run_id: String, input: String) -> Result<(), Stri
         .ok_or_else(|| "Agent run is no longer available".to_string())?;
     process
         .writer
-        .write_all(trimmed_input.as_bytes())
-        .map_err(|error| error.to_string())?;
-    process
-        .writer
-        .write_all(b"\r\n")
+        .write_all(data.as_bytes())
         .map_err(|error| error.to_string())?;
     process.writer.flush().map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn dragon_resize_agent_run_terminal(run_id: String, cols: u16, rows: u16) -> Result<(), String> {
+    if cols == 0 || rows == 0 {
+        return Err("Terminal size must be greater than zero".to_string());
+    }
+
+    let runs = active_agent_runs();
+    let locked_runs = runs.lock().map_err(|error| error.to_string())?;
+    let process = locked_runs
+        .get(&run_id)
+        .ok_or_else(|| "Agent run is no longer available".to_string())?;
+    process
+        .master
+        .resize(PtySize {
+            rows,
+            cols,
+            pixel_width: 0,
+            pixel_height: 0,
+        })
+        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -770,6 +797,8 @@ pub fn run() {
             dragon_start_agent_run,
             dragon_stop_agent_run,
             dragon_send_agent_run_input,
+            dragon_send_agent_run_data,
+            dragon_resize_agent_run_terminal,
             dragon_get_agent_run_status
         ])
         .run(tauri::generate_context!())

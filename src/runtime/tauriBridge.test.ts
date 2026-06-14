@@ -12,7 +12,9 @@ import {
   pingTauriRuntime,
   readTauriDirectoryTree,
   readTauriTextFile,
+  resizeTauriAgentRunTerminal,
   saveTauriAgentConfig,
+  sendTauriAgentRunData,
   sendTauriAgentRunInput,
   startTauriAgentRun,
   stopTauriAgentRun,
@@ -164,7 +166,7 @@ describe("tauri bridge", () => {
     );
   });
 
-  it("starts, stops, sends input, and reads native agent runs through Tauri commands", async () => {
+  it("starts, stops, sends terminal data, resizes, and reads native agent runs through Tauri commands", async () => {
     const calls: {
       command: string;
       args: Record<string, unknown> | undefined;
@@ -193,6 +195,12 @@ describe("tauri bridge", () => {
     await expect(startTauriAgentRun(request)).resolves.toBe("native-run-1");
     await stopTauriAgentRun("native-run-1");
     await sendTauriAgentRunInput("native-run-1", "continue");
+    await sendTauriAgentRunData("native-run-1", "\u0003");
+    await resizeTauriAgentRunTerminal({
+      runId: "native-run-1",
+      cols: 88,
+      rows: 24,
+    });
     await expect(getTauriAgentRunStatus("native-run-1")).resolves.toEqual({
       status: "running",
       output: "Working\n",
@@ -210,6 +218,14 @@ describe("tauri bridge", () => {
       {
         command: "dragon_send_agent_run_input",
         args: { runId: "native-run-1", input: "continue" },
+      },
+      {
+        command: "dragon_send_agent_run_data",
+        args: { runId: "native-run-1", data: "\u0003" },
+      },
+      {
+        command: "dragon_resize_agent_run_terminal",
+        args: { runId: "native-run-1", cols: 88, rows: 24 },
       },
       {
         command: "dragon_get_agent_run_status",

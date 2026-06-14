@@ -3,9 +3,9 @@
 ## Status
 
 Desktop agent foundation implemented. The website remains available, and the
-desktop path now covers native file/folder targets plus UI-started agent runs for
-comment review tasks. Remaining work is limited to explicit product decisions
-such as interactive terminal attachment and future structured runners.
+desktop path now covers native file/folder targets, UI-started agent runs for
+comment review tasks, and optional interactive PTY attachment. Remaining work is
+limited to explicit product decisions such as future structured runners.
 
 ## Problem
 
@@ -131,10 +131,10 @@ Acceptance criteria:
 
 - The desktop runtime can expose the raw session for a run when the backend
   supports it.
-- The first implementation may expose a read-only terminal output panel backed
-  by the native runner's captured PTY output.
-- The first interactive implementation may start with line-based terminal input
-  before full terminal emulation, resize, or key-by-key control.
+- The desktop terminal panel is backed by the native runner's captured PTY
+  output.
+- The desktop terminal panel supports key-by-key input and resize events through
+  the terminal runtime boundary.
 - The terminal is not the primary product surface by default.
 - Hiding the terminal does not stop the run.
 - Closing a tab with an active run requires an explicit user decision.
@@ -259,10 +259,10 @@ outside this first desktop planning scope.
 - The active run panel shows the run task, target path summary, and selected
   comment count.
 - Native runner PTY output is captured into a bounded output tail. The active run
-  panel exposes that tail through a collapsible terminal output view for
-  same-window observability.
-- While a desktop PTY run is active, the terminal output view includes a compact
-  input row that sends line-based input back into the native PTY session.
+  panel exposes that tail through a collapsible xterm attachment for same-window
+  observability.
+- While a desktop PTY run is active, the terminal attachment sends key-by-key
+  input and resize events back into the native PTY session.
 - Serializable agent run metadata is persisted with the app store. After a
   reload, Dragon restores the tab-scoped run record and continues polling the
   native runtime id when one exists. If the desktop process restarted and the
@@ -291,8 +291,6 @@ outside this first desktop planning scope.
 
 ## Remaining Product Decisions
 
-- What full terminal-emulator behavior, if any, should follow line-based input
-  for resize, key-by-key control, and manual takeover?
 - Which structured runner should follow the first configurable terminal-command
   runner?
 

@@ -5,8 +5,8 @@
 Desktop agent foundation implemented. The shared runtime boundary, Tauri shell,
 native file/folder targets, configurable desktop agent runner, tab-scoped run
 state, and bounded comment-driven agent actions have landed incrementally.
-Remaining work depends on explicit product decisions for interactive terminal
-attachment and future structured runners.
+Remaining work depends on explicit product decisions for future structured
+runners.
 
 ## Summary
 
@@ -257,7 +257,7 @@ Suggested implementation phases:
 4. Add desktop runtime shell and native filesystem adapter.
 5. Add a first desktop PTY runner behind `AgentRuntime`.
 6. Add bounded folder-level comment actions on top of the same run model.
-7. Decide and add optional terminal attachment for supported runners.
+7. Add optional xterm attachment for supported PTY runners.
 8. Add broader workspace agent actions after comment-driven folder runs are
    proven.
 
@@ -303,12 +303,11 @@ agents, then reconciles the tab-scoped serializable run state to `completed` or
 `failed`.
 
 Terminal-output implementation note: the first visible terminal surface is a
-collapsible output view in the active run panel. It uses the native runner's
+collapsible xterm attachment in the active run panel. It uses the native runner's
 bounded PTY output tail and intentionally does not store terminal objects in
-Zustand. The first interactive attachment layer is line-based: the panel can send
-submitted text to the active native PTY run through the terminal runtime
-boundary. Full terminal emulation, resize events, and key-by-key manual takeover
-remain separate product decisions behind that same boundary.
+Zustand. The attachment sends raw key-by-key data and resize events to the active
+native PTY run through the terminal runtime boundary, so manual takeover stays
+optional and contained behind the same runtime interface.
 
 Run-persistence implementation note: serializable agent run metadata is now part
 of the persisted app store. Frontend reloads restore the active run mapping and

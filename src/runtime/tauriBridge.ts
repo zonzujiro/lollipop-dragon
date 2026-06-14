@@ -27,7 +27,9 @@ export type TauriCommand =
   | "dragon_start_agent_run"
   | "dragon_stop_agent_run"
   | "dragon_get_agent_run_status"
-  | "dragon_send_agent_run_input";
+  | "dragon_send_agent_run_input"
+  | "dragon_send_agent_run_data"
+  | "dragon_resize_agent_run_terminal";
 
 export interface TauriNativeFileNode {
   kind: "file";
@@ -439,6 +441,27 @@ export async function sendTauriAgentRunInput(
   await invokeTauriCommand({
     command: "dragon_send_agent_run_input",
     args: { runId, input },
+  });
+}
+
+export async function sendTauriAgentRunData(
+  runId: string,
+  data: string,
+): Promise<void> {
+  await invokeTauriCommand({
+    command: "dragon_send_agent_run_data",
+    args: { runId, data },
+  });
+}
+
+export async function resizeTauriAgentRunTerminal(input: {
+  runId: string;
+  cols: number;
+  rows: number;
+}): Promise<void> {
+  await invokeTauriCommand({
+    command: "dragon_resize_agent_run_terminal",
+    args: input,
   });
 }
 

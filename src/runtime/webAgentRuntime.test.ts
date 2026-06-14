@@ -30,5 +30,11 @@ describe("web agent runtime capabilities", () => {
     await expect(terminalRuntime.attach("run-1")).rejects.toThrow(
       "Terminal sessions are unavailable on web",
     );
+    await expect(terminalRuntime.sendData("run-1", "x")).rejects.toThrow(
+      "Terminal sessions are unavailable on web",
+    );
+    await expect(
+      terminalRuntime.resize("run-1", { cols: 80, rows: 24 }),
+    ).rejects.toThrow("Terminal sessions are unavailable on web");
   });
 });

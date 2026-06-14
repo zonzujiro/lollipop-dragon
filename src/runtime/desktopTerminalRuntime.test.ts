@@ -14,7 +14,7 @@ describe("desktop terminal runtime", () => {
     );
   });
 
-  it("attaches and sends input through native terminal commands", async () => {
+  it("attaches, sends data, and resizes through native terminal commands", async () => {
     const calls: {
       command: string;
       args: Record<string, unknown> | undefined;
@@ -36,6 +36,8 @@ describe("desktop terminal runtime", () => {
       runId: "run-1",
     });
     await desktopTerminalRuntime.sendInput("run-1", "continue");
+    await desktopTerminalRuntime.sendData("run-1", "\u0003");
+    await desktopTerminalRuntime.resize("run-1", { cols: 90, rows: 28 });
 
     expect(calls).toEqual([
       {
@@ -51,6 +53,29 @@ describe("desktop terminal runtime", () => {
         args: {
           runId: "run-1",
           input: "continue",
+        },
+      },
+      {
+        command: "dragon_runtime_ping",
+        args: undefined,
+      },
+      {
+        command: "dragon_send_agent_run_data",
+        args: {
+          runId: "run-1",
+          data: "\u0003",
+        },
+      },
+      {
+        command: "dragon_runtime_ping",
+        args: undefined,
+      },
+      {
+        command: "dragon_resize_agent_run_terminal",
+        args: {
+          runId: "run-1",
+          cols: 90,
+          rows: 28,
         },
       },
     ]);
