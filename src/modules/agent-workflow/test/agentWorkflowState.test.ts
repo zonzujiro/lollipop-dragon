@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAppStore } from "../../../store";
 import { resetTestStore } from "../../../testing/testHelpers";
-import { getActiveAgentRunForTab, hasActiveAgentRunForTab } from "../selectors";
+import {
+  getActiveAgentRunForTab,
+  getFinishedAgentRunHistoryForTab,
+  hasActiveAgentRunForTab,
+} from "../selectors";
 import { hydrateAgentWorkflowState } from "../state";
 
 beforeEach(() => {
@@ -104,6 +108,40 @@ describe("agent workflow state", () => {
     expect(state.agentRuns[firstRun.id]).toBeUndefined();
     expect(state.agentRuns[secondRun.id]).toEqual(secondRun);
     expect(state.activeAgentRunIdByTabId["tab-1"]).toBe(secondRun.id);
+  });
+
+  it("keeps finished prior runs as tab history", () => {
+    const firstRun = useAppStore.getState().createAgentRun({
+      tabId: "tab-1",
+      taskKind: "address_comments",
+      targetPaths: ["docs/first.md"],
+      prompt: "Fix first",
+    });
+    useAppStore.getState().updateAgentRunStatus({
+      runId: firstRun.id,
+      status: "completed",
+      output: "Done",
+    });
+
+    vi.setSystemTime(new Date("2026-06-12T18:02:00.000Z"));
+    const secondRun = useAppStore.getState().createAgentRun({
+      tabId: "tab-1",
+      taskKind: "answer_questions",
+      targetPaths: ["docs/second.md"],
+      prompt: "Answer second",
+    });
+
+    const state = useAppStore.getState();
+    expect(state.agentRuns[firstRun.id]).toMatchObject({
+      id: firstRun.id,
+      status: "completed",
+      output: "Done",
+    });
+    expect(state.agentRuns[secondRun.id]).toEqual(secondRun);
+    expect(state.activeAgentRunIdByTabId["tab-1"]).toBe(secondRun.id);
+    expect(getFinishedAgentRunHistoryForTab(state, "tab-1")).toEqual([
+      state.agentRuns[firstRun.id],
+    ]);
   });
 
   it("clears the active run for a tab", () => {

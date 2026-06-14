@@ -125,6 +125,7 @@ Owns serializable host-mode agent review run metadata:
 
 - run records
 - active run per tab mapping
+- bounded finished run history per tab
 - run lifecycle status
 - generated prompt snapshots for inspection/copying
 - target and comment scope metadata shown in the active run panel
@@ -167,6 +168,8 @@ active runtime run id is attached and shows the latest bounded output tail.
 When terminal attachment is available, the panel can open an xterm-backed PTY
 view that forwards key-by-key input and resize events through the terminal
 runtime boundary.
+Finished runs remain as recent per-tab history with prompt/output copy actions
+until the user dismisses them or the history cap prunes older records.
 Workspace tab removal refuses to close tabs with queued, running, or
 attention-needed agent runs, then cleans finished run metadata when the owning
 tab is closed.

@@ -258,6 +258,9 @@ outside this first desktop planning scope.
   reflected in the UI.
 - Agent run state keeps the generated prompt snapshot, and the active run panel
   can copy that exact prompt for inspection or manual recovery.
+- Finished agent runs remain as bounded per-tab history. The comment panel shows
+  recent completed, failed, and stopped runs with prompt/output copy actions and
+  an explicit dismiss action.
 - The active run panel shows the run task, target path summary, and selected
   comment count.
 - Native runner PTY output is captured into a bounded output tail. The active run

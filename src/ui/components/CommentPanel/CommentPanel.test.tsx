@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, it, expect, vi } from "vitest";
 import { CommentPanel } from "./index";
@@ -421,6 +421,72 @@ describe("CommentPanel — agent prompt", () => {
 
     expect(useAppStore.getState().agentRuns[run.id]?.status).toBe("stopped");
     expect(useAppStore.getState().toast).toBe("Agent run stopped");
+  });
+
+  it("shows recent finished agent runs for the current tab", async () => {
+    const user = userEvent.setup();
+    const writeText = vi
+      .spyOn(navigator.clipboard, "writeText")
+      .mockResolvedValue(undefined);
+
+    setTestState({
+      comments: [
+        makeCommentBase({
+          id: "fix-root",
+          type: "fix",
+          text: "Fix the intro",
+        }),
+      ],
+    });
+    const finishedRun = useAppStore.getState().createAgentRun({
+      tabId: "test-tab",
+      taskKind: "address_comments",
+      targetPaths: ["spec.md"],
+      selectedCommentIds: ["fix-root"],
+      prompt: "Fix spec.md comments",
+      runnerKind: "terminal",
+    });
+    useAppStore.getState().updateAgentRunStatus({
+      runId: finishedRun.id,
+      status: "completed",
+      output: "Fixed comments\n",
+    });
+    const activeRun = useAppStore.getState().createAgentRun({
+      tabId: "test-tab",
+      taskKind: "answer_questions",
+      targetPaths: ["spec.md"],
+      selectedCommentIds: ["mr-question-1"],
+      prompt: "Answer spec.md questions",
+      runnerKind: "terminal",
+    });
+    useAppStore.getState().updateAgentRunStatus({
+      runId: activeRun.id,
+      status: "running",
+      terminalAttachmentId: "native-run-1",
+    });
+
+    render(<CommentPanel />);
+
+    const history = screen.getByLabelText("Recent agent runs");
+    expect(within(history).getByText("Completed")).toBeInTheDocument();
+    expect(within(history).getByText(/Address comments/)).toBeInTheDocument();
+
+    await user.click(
+      within(history).getByRole("button", { name: "Copy prompt" }),
+    );
+    expect(writeText).toHaveBeenCalledWith("Fix spec.md comments");
+    expect(useAppStore.getState().toast).toBe("Agent run prompt copied");
+
+    await user.click(
+      within(history).getByRole("button", { name: "Copy output" }),
+    );
+    expect(writeText).toHaveBeenCalledWith("Fixed comments\n");
+    expect(useAppStore.getState().toast).toBe("Agent run output copied");
+
+    await user.click(within(history).getByRole("button", { name: "Dismiss" }));
+
+    expect(useAppStore.getState().agentRuns[finishedRun.id]).toBeUndefined();
+    expect(useAppStore.getState().agentRuns[activeRun.id]).toBeDefined();
   });
 });
 
