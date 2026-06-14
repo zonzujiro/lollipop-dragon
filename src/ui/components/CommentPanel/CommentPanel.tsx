@@ -219,6 +219,7 @@ export function CommentPanel({ peerMode = false }: Props) {
   );
   const sharedContent = useAppStore((state) => state.sharedContent);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
+  const [agentRunTerminalOpen, setAgentRunTerminalOpen] = useState(false);
   const [agentCapability, setAgentCapability] = useState(
     INITIAL_AGENT_CAPABILITY,
   );
@@ -446,6 +447,7 @@ export function CommentPanel({ peerMode = false }: Props) {
     activeAgentRun && ACTIVE_AGENT_RUN_STATUSES.has(activeAgentRun.status),
   );
   const showAgentRunStatus = !peerMode && activeAgentRun;
+  const activeAgentRunId = activeAgentRun?.id ?? null;
   const activeAgentRunScope = activeAgentRun
     ? `${AGENT_RUN_TASK_LABEL[activeAgentRun.taskKind]} · ${formatAgentRunTargets(
         activeAgentRun.targetPaths,
@@ -513,6 +515,10 @@ export function CommentPanel({ peerMode = false }: Props) {
     }
   }
 
+  function toggleAgentRunTerminal() {
+    setAgentRunTerminalOpen((current) => !current);
+  }
+
   useEffect(() => {
     if (
       peerMode ||
@@ -540,6 +546,10 @@ export function CommentPanel({ peerMode = false }: Props) {
     peerMode,
     syncActiveAgentRunStatus,
   ]);
+
+  useEffect(() => {
+    setAgentRunTerminalOpen(false);
+  }, [activeAgentRunId]);
 
   useEffect(() => {
     if (peerMode) {
@@ -662,13 +672,29 @@ export function CommentPanel({ peerMode = false }: Props) {
                 {activeAgentRun.errorMessage}
               </span>
             )}
-            {activeAgentRun.output && (
-              <pre className="comment-panel__agent-run-output">
-                {activeAgentRun.output}
-              </pre>
+            {agentRunTerminalOpen && (
+              <div
+                className="comment-panel__agent-run-terminal"
+                role="log"
+                aria-label="Agent terminal output"
+              >
+                <div className="comment-panel__agent-run-terminal-bar">
+                  <span>Terminal output</span>
+                  <span>{activeAgentRun.terminalAttachmentId ?? "local"}</span>
+                </div>
+                <pre className="comment-panel__agent-run-output">
+                  {activeAgentRun.output || "Waiting for output..."}
+                </pre>
+              </div>
             )}
           </div>
           <div className="comment-panel__agent-run-actions">
+            <button
+              className="comment-panel__agent-run-action"
+              onClick={toggleAgentRunTerminal}
+            >
+              {agentRunTerminalOpen ? "Hide terminal" : "Show terminal"}
+            </button>
             {activeAgentRun.prompt && (
               <button
                 className="comment-panel__agent-run-action"

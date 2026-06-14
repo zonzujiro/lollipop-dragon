@@ -96,7 +96,7 @@ Constraints:
 
 - Host mode still depends on browser file APIs.
 - Local agent execution is unavailable.
-- Terminal/session display is unavailable.
+- Local terminal/session display is unavailable.
 
 ### Desktop Runtime
 
@@ -300,6 +300,12 @@ can show progress without depending on terminal text as the lifecycle protocol.
 The comment panel polls this status only when the active runtime can execute
 agents, then reconciles the tab-scoped serializable run state to `completed` or
 `failed`.
+
+Terminal-output implementation note: the first visible terminal surface is a
+read-only, collapsible output view in the active run panel. It uses the native
+runner's bounded stdout/stderr tail and intentionally does not expose a PTY or
+store terminal objects in Zustand. Interactive session attachment remains a
+separate backend decision behind the terminal runtime boundary.
 
 Run-persistence implementation note: serializable agent run metadata is now part
 of the persisted app store. Frontend reloads restore the active run mapping and
