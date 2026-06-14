@@ -5,8 +5,7 @@
 Desktop agent foundation implemented. The website remains available, and the
 desktop path now covers native file/folder targets plus UI-started agent runs for
 comment review tasks. Remaining work is limited to explicit backend/product
-decisions such as terminal attachment, session persistence, and future
-structured runners.
+decisions such as terminal attachment and future structured runners.
 
 ## Problem
 
@@ -257,6 +256,11 @@ outside this first desktop planning scope.
   comment count.
 - Native runner stdout and stderr are captured into a bounded output tail shown
   on the active run panel for same-window observability.
+- Serializable agent run metadata is persisted with the app store. After a
+  reload, Dragon restores the tab-scoped run record and continues polling the
+  native runtime id when one exists. If the desktop process restarted and the
+  native run no longer exists, the next status sync marks the run failed instead
+  of silently losing the state.
 - Closing a tab with a queued, running, or attention-needed run is blocked until
   the user stops the run or it finishes.
 - Active-file unresolved comments now have a comment-panel action: desktop
@@ -282,8 +286,6 @@ outside this first desktop planning scope.
 
 - What is the minimum Windows backend for terminal/session support if `tmux` is
   not available?
-- How much agent terminal/session persistence should desktop restore across app
-  restarts?
 - Which structured runner should follow the first configurable terminal-command
   runner?
 

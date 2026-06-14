@@ -4,6 +4,7 @@ import {
   createAgentWorkflowActions,
   createAgentWorkflowControllerActions,
   createAgentWorkflowState,
+  hydrateAgentWorkflowState,
 } from "../modules/agent-workflow";
 import type {
   AgentWorkflowActions,
@@ -352,6 +353,8 @@ export const useAppStore = create<AppState>()(
         peerName: s.peerName,
         myPeerComments: s.myPeerComments,
         submittedPeerCommentIds: s.submittedPeerCommentIds,
+        agentRuns: s.agentRuns,
+        activeAgentRunIdByTabId: s.activeAgentRunIdByTabId,
       }),
       merge: (persisted, current) => {
         if (typeof persisted !== "object" || persisted === null) {
@@ -370,12 +373,12 @@ export const useAppStore = create<AppState>()(
           : current.tabs;
         const relayDefaults = createRelayState();
         const peerReviewDefaults = createPeerReviewState();
-        const agentWorkflowDefaults = createAgentWorkflowState();
+        const agentWorkflowState = hydrateAgentWorkflowState(p);
         return {
           ...current,
           ...p,
           tabs,
-          ...agentWorkflowDefaults,
+          ...agentWorkflowState,
           ...peerReviewDefaults,
           submittedPeerCommentIds: Array.isArray(p.submittedPeerCommentIds)
             ? p.submittedPeerCommentIds

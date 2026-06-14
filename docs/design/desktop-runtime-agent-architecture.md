@@ -6,7 +6,7 @@ Desktop agent foundation implemented. The shared runtime boundary, Tauri shell,
 native file/folder targets, configurable desktop agent runner, tab-scoped run
 state, and bounded comment-driven agent actions have landed incrementally.
 Remaining work depends on explicit backend decisions for terminal attachment,
-session persistence, and future structured runners.
+and future structured runners.
 
 ## Summary
 
@@ -300,6 +300,13 @@ can show progress without depending on terminal text as the lifecycle protocol.
 The comment panel polls this status only when the active runtime can execute
 agents, then reconciles the tab-scoped serializable run state to `completed` or
 `failed`.
+
+Run-persistence implementation note: serializable agent run metadata is now part
+of the persisted app store. Frontend reloads restore the active run mapping and
+continue polling the native runtime id. Full desktop process restarts do not
+claim to resurrect OS child processes; if the native runtime id is no longer
+known, the next status sync marks the restored run failed with the native
+`not_found` message.
 
 Tab-close implementation note: the workspace close action now checks the
 tab-scoped active run map before removing a tab. Tabs with queued, running, or

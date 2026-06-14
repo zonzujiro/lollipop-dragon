@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAppStore } from "../../../store";
 import { resetTestStore } from "../../../testing/testHelpers";
 import { getActiveAgentRunForTab, hasActiveAgentRunForTab } from "../selectors";
+import { hydrateAgentWorkflowState } from "../state";
 
 beforeEach(() => {
   resetTestStore();
@@ -12,6 +13,24 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
 });
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function getPersistedStoreState(): Record<string, unknown> {
+  const raw = localStorage.getItem("markreview-store");
+  if (!raw) {
+    throw new Error("Expected markreview-store to be persisted");
+  }
+
+  const parsed: unknown = JSON.parse(raw);
+  if (!isRecord(parsed) || !isRecord(parsed["state"])) {
+    throw new Error("Expected persisted store state object");
+  }
+
+  return parsed["state"];
+}
 
 describe("agent workflow state", () => {
   it("creates a queued run scoped to one tab", () => {
@@ -99,5 +118,121 @@ describe("agent workflow state", () => {
     const state = useAppStore.getState();
     expect(state.agentRuns[run.id]).toBeUndefined();
     expect(state.activeAgentRunIdByTabId["tab-1"]).toBeUndefined();
+  });
+
+  it("persists serializable run metadata", () => {
+    localStorage.removeItem("markreview-store");
+    const run = useAppStore.getState().createAgentRun({
+      tabId: "tab-1",
+      taskKind: "address_comments",
+      targetPaths: ["docs/spec.md"],
+      selectedCommentIds: ["comment-1"],
+      prompt: "Fix comments",
+      runnerKind: "terminal",
+    });
+    useAppStore.getState().updateAgentRunStatus({
+      runId: run.id,
+      status: "running",
+      terminalAttachmentId: "native-run-1",
+      output: "Started\n",
+    });
+
+    const persistedState = getPersistedStoreState();
+    const agentRuns = persistedState["agentRuns"];
+    const activeByTabId = persistedState["activeAgentRunIdByTabId"];
+    if (!isRecord(agentRuns) || !isRecord(activeByTabId)) {
+      throw new Error("Expected persisted agent workflow records");
+    }
+
+    expect(agentRuns[run.id]).toMatchObject({
+      id: run.id,
+      tabId: "tab-1",
+      status: "running",
+      terminalAttachmentId: "native-run-1",
+      output: "Started\n",
+    });
+    expect(activeByTabId["tab-1"]).toBe(run.id);
+  });
+
+  it("hydrates persisted run metadata and active tab mapping", () => {
+    const hydrated = hydrateAgentWorkflowState({
+      agentRuns: {
+        "run-1": {
+          id: "run-1",
+          tabId: "tab-1",
+          status: "running",
+          taskKind: "address_comments",
+          targetPaths: ["docs/spec.md"],
+          selectedCommentIds: ["comment-1"],
+          prompt: "Fix comments",
+          createdAt: "2026-06-12T18:00:00.000Z",
+          completedAt: null,
+          runnerKind: "terminal",
+          terminalAttachmentId: "native-run-1",
+          errorMessage: null,
+          output: "Started\n",
+        },
+      },
+      activeAgentRunIdByTabId: {
+        "tab-1": "run-1",
+      },
+    });
+
+    expect(hydrated.agentRuns["run-1"]).toMatchObject({
+      id: "run-1",
+      tabId: "tab-1",
+      status: "running",
+      terminalAttachmentId: "native-run-1",
+      output: "Started\n",
+    });
+    expect(hydrated.activeAgentRunIdByTabId["tab-1"]).toBe("run-1");
+  });
+
+  it("drops malformed persisted runs and stale active tab mappings", () => {
+    const hydrated = hydrateAgentWorkflowState({
+      agentRuns: {
+        "run-1": {
+          id: "run-1",
+          tabId: "tab-1",
+          status: "running",
+          taskKind: "address_comments",
+          targetPaths: ["docs/spec.md"],
+          selectedCommentIds: [],
+          prompt: "Fix comments",
+          createdAt: "2026-06-12T18:00:00.000Z",
+          completedAt: null,
+          runnerKind: "terminal",
+          terminalAttachmentId: "native-run-1",
+          errorMessage: null,
+          output: "",
+        },
+        "run-2": {
+          id: "run-2",
+          tabId: "tab-2",
+          status: "not-a-real-status",
+          taskKind: "address_comments",
+          targetPaths: ["docs/spec.md"],
+          selectedCommentIds: [],
+          prompt: "Fix comments",
+          createdAt: "2026-06-12T18:00:00.000Z",
+          completedAt: null,
+          runnerKind: "terminal",
+          terminalAttachmentId: "native-run-2",
+          errorMessage: null,
+          output: "",
+        },
+      },
+      activeAgentRunIdByTabId: {
+        "tab-1": "run-1",
+        "tab-2": "run-2",
+        "tab-3": "missing-run",
+        "wrong-tab": "run-1",
+      },
+    });
+
+    expect(Object.keys(hydrated.agentRuns)).toEqual(["run-1"]);
+    expect(hydrated.activeAgentRunIdByTabId).toEqual({
+      "tab-1": "run-1",
+    });
   });
 });
