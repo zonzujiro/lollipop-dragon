@@ -1,10 +1,9 @@
 import { useEffect } from "react";
-
-// FileSystemObserver is experimental; Edge exposes it but crashes on use
-const supportsFileObserver =
-  typeof window !== "undefined" &&
-  "FileSystemObserver" in window &&
-  !/\bEdg\//.test(navigator.userAgent);
+import type { DirectoryTarget, FileTarget } from "../../types/fileTree";
+import {
+  isBrowserDirectoryHandle,
+  isBrowserFileHandle,
+} from "../../types/fileTree";
 
 interface FileSystemObserverRecord {
   type: string;
@@ -28,8 +27,17 @@ declare global {
   }
 }
 
+function supportsFileObserver(): boolean {
+  // FileSystemObserver is experimental; Edge exposes it but crashes on use.
+  return (
+    typeof window !== "undefined" &&
+    "FileSystemObserver" in window &&
+    !/\bEdg\//.test(navigator.userAgent)
+  );
+}
+
 interface WatcherOptions {
-  handle: FileSystemHandle | null;
+  handle: FileTarget | DirectoryTarget | null;
   onRefresh: () => void | Promise<void>;
   pollIntervalMs: number;
   recursive?: boolean;
@@ -59,17 +67,32 @@ export function useFileSystemWatcher({
       if (cancelled || pollTimer) {
         return;
       }
-      pollTimer = setTimeout(async () => {
+      pollTimer = setTimeout(() => {
         pollTimer = null;
         if (cancelled) {
           return;
         }
-        await onRefresh();
-        schedulePoll();
+        void Promise.resolve(onRefresh())
+          .catch((error: unknown) => {
+            console.error("[FileSystemObserver] refresh failed:", error);
+          })
+          .finally(() => {
+            schedulePoll();
+          });
       }, pollIntervalMs);
     }
 
-    if (!supportsFileObserver) {
+    if (!supportsFileObserver()) {
+      schedulePoll();
+      return () => {
+        cancelled = true;
+        if (pollTimer) {
+          clearTimeout(pollTimer);
+        }
+      };
+    }
+
+    if (!isBrowserFileHandle(handle) && !isBrowserDirectoryHandle(handle)) {
       schedulePoll();
       return () => {
         cancelled = true;
@@ -98,7 +121,9 @@ export function useFileSystemWatcher({
         const hasErrored = records.some((r) => r.type === "errored");
 
         if (hasRelevant) {
-          onRefresh();
+          void Promise.resolve(onRefresh()).catch((error: unknown) => {
+            console.error("[FileSystemObserver] refresh failed:", error);
+          });
         }
         if (hasErrored) {
           console.warn(

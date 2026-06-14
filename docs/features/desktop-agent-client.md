@@ -105,6 +105,10 @@ Acceptance criteria:
 - Desktop uses native path-based file access.
 - Desktop registers the native dialog runtime plugin before invoking file or
   folder picker commands.
+- Desktop native file and folder dialogs are parented to the active Tauri
+  window so picker failures do not terminate the app process silently.
+- Desktop open-file and open-folder failures are logged and shown to the user as
+  toast feedback instead of disappearing as unhandled UI promises.
 - Desktop does not render the website-only File System Access API unsupported
   screen when the browser API is unavailable.
 - Website continues using its browser filesystem implementation.

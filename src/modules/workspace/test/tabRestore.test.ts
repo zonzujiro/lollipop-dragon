@@ -8,6 +8,7 @@ vi.mock("../storage", async (importOriginal) => {
     getHandle: vi.fn(),
     removeHandle: vi.fn(),
     buildFileTree: vi.fn(),
+    openFile: vi.fn(),
     openDirectory: vi.fn(),
     readFile: vi.fn(),
   };
@@ -25,6 +26,7 @@ import { getActiveTab } from "../selectors";
 import {
   buildFileTree,
   getHandle,
+  openFile,
   openDirectory,
   readFile,
   saveHandle,
@@ -33,6 +35,46 @@ import {
 beforeEach(() => {
   resetTestStore();
   vi.clearAllMocks();
+});
+
+describe("store.openFileInNewTab", () => {
+  it("shows a toast when the native open file flow fails", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    vi.mocked(openFile).mockRejectedValue(new Error("dialog failed"));
+
+    await useAppStore.getState().openFileInNewTab();
+
+    expect(consoleError).toHaveBeenCalledWith(
+      "[openFileInNewTab] failed to open file:",
+      expect.any(Error),
+    );
+    expect(useAppStore.getState().tabs).toEqual([]);
+    expect(useAppStore.getState().toast).toBe(
+      "File could not be opened. Check the terminal logs.",
+    );
+  });
+});
+
+describe("store.openDirectoryInNewTab", () => {
+  it("shows a toast when the native open folder flow fails", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    vi.mocked(openDirectory).mockRejectedValue(new Error("dialog failed"));
+
+    await useAppStore.getState().openDirectoryInNewTab();
+
+    expect(consoleError).toHaveBeenCalledWith(
+      "[openDirectoryInNewTab] failed to open folder:",
+      expect.any(Error),
+    );
+    expect(useAppStore.getState().tabs).toEqual([]);
+    expect(useAppStore.getState().toast).toBe(
+      "Folder could not be opened. Check the terminal logs.",
+    );
+  });
 });
 
 function isRecord(value: unknown): value is Record<string, unknown> {

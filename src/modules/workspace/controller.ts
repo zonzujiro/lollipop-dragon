@@ -787,74 +787,87 @@ export function createWorkspaceControllerActions<
     },
 
     openFileInNewTab: async () => {
-      const result = await openFile();
-      if (!result) {
-        return;
+      try {
+        const result = await openFile();
+        if (!result) {
+          return;
+        }
+
+        const existingTab = await findTabByHandle(
+          get().tabs,
+          result.handle,
+          "file",
+        );
+        if (existingTab) {
+          set({ activeTabId: existingTab.id });
+          return;
+        }
+
+        const rawContent = await readFile(result.handle);
+        const tab = createDefaultTab({
+          label: result.name,
+          fileHandle: result.handle,
+          fileName: result.name,
+          rawContent,
+        });
+
+        set((state) => ({
+          tabs: [...state.tabs, tab],
+          activeTabId: tab.id,
+        }));
+        await saveBrowserHandle(`tab:${tab.id}:file`, result.handle);
+      } catch (error) {
+        console.error("[openFileInNewTab] failed to open file:", error);
+        showToast("File could not be opened. Check the terminal logs.");
       }
-
-      const existingTab = await findTabByHandle(
-        get().tabs,
-        result.handle,
-        "file",
-      );
-      if (existingTab) {
-        set({ activeTabId: existingTab.id });
-        return;
-      }
-
-      const rawContent = await readFile(result.handle);
-      const tab = createDefaultTab({
-        label: result.name,
-        fileHandle: result.handle,
-        fileName: result.name,
-        rawContent,
-      });
-
-      set((state) => ({
-        tabs: [...state.tabs, tab],
-        activeTabId: tab.id,
-      }));
-      await saveBrowserHandle(`tab:${tab.id}:file`, result.handle);
     },
 
     openDirectoryInNewTab: async () => {
-      const result = await openDirectory();
-      if (!result) {
-        return;
-      }
+      try {
+        const result = await openDirectory();
+        if (!result) {
+          return;
+        }
 
-      const existingTab = await findTabByHandle(
-        get().tabs,
-        result.handle,
-        "directory",
-      );
-      if (existingTab) {
-        set({ activeTabId: existingTab.id });
-        return;
-      }
+        const existingTab = await findTabByHandle(
+          get().tabs,
+          result.handle,
+          "directory",
+        );
+        if (existingTab) {
+          set({ activeTabId: existingTab.id });
+          return;
+        }
 
-      const tab = createDefaultTab({
-        label: result.name,
-        directoryHandle: result.handle,
-        directoryName: result.name,
-        sidebarOpen: true,
-      });
+        const tab = createDefaultTab({
+          label: result.name,
+          directoryHandle: result.handle,
+          directoryName: result.name,
+          sidebarOpen: true,
+        });
 
-      set((state) => ({
-        tabs: [...state.tabs, tab],
-        activeTabId: tab.id,
-      }));
+        set((state) => ({
+          tabs: [...state.tabs, tab],
+          activeTabId: tab.id,
+        }));
 
-      await saveBrowserHandle(`tab:${tab.id}:directory`, result.handle);
-      const tree = await buildFileTree(result.handle);
-      set((state) => ({
-        tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
-          fileTree: tree,
-        })),
-      }));
+        await saveBrowserHandle(`tab:${tab.id}:directory`, result.handle);
+        const tree = await buildFileTree(result.handle);
+        set((state) => ({
+          tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
+            fileTree: tree,
+          })),
+        }));
 
-      if (get().activeTabId === tab.id) {
-        await scanAllFileComments();
+        if (get().activeTabId === tab.id) {
+          await scanAllFileComments();
+        }
+      } catch (error) {
+        console.error(
+          "[openDirectoryInNewTab] failed to open folder:",
+          error,
+        );
+        showToast("Folder could not be opened. Check the terminal logs.");
       }
     },
 
