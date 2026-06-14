@@ -51,6 +51,17 @@ export function sendTerminalInput(runId: string, input: string) {
   return terminalRuntime.sendInput(runId, input);
 }
 
+export function sendTerminalData(runId: string, data: string) {
+  return terminalRuntime.sendData(runId, data);
+}
+
+export function resizeTerminal(
+  runId: string,
+  dimensions: { cols: number; rows: number },
+) {
+  return terminalRuntime.resize(runId, dimensions);
+}
+
 export function openFile() {
   return workspaceRuntime.openFile();
 }

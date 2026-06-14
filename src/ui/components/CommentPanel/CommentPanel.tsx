@@ -1,5 +1,5 @@
 import "./CommentPanel.css";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   buildAddressCommentsAgentPrompt,
   buildAgentReplyPrompt,
@@ -16,7 +16,8 @@ import {
   canRunAgent,
   canShowTerminal,
   getAgentRuntimeCapability,
-  sendTerminalInput,
+  resizeTerminal,
+  sendTerminalData,
 } from "../../../runtime";
 import type { AgentRuntimeCapability } from "../../../runtime";
 import { useAppStore } from "../../../store";
@@ -29,6 +30,7 @@ import {
   getAddressCommentsAgentAction,
   getQuestionThreadAgentAction,
 } from "../../agentActions";
+import { AgentTerminal } from "../AgentTerminal";
 
 const ALL_TYPES: CommentType[] = [
   "fix",
@@ -225,7 +227,6 @@ export function CommentPanel({ peerMode = false }: Props) {
   const sharedContent = useAppStore((state) => state.sharedContent);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const [agentRunTerminalOpen, setAgentRunTerminalOpen] = useState(false);
-  const [agentRunTerminalInput, setAgentRunTerminalInput] = useState("");
   const [agentCapability, setAgentCapability] = useState(
     INITIAL_AGENT_CAPABILITY,
   );
@@ -454,10 +455,8 @@ export function CommentPanel({ peerMode = false }: Props) {
   );
   const showAgentRunStatus = !peerMode && activeAgentRun;
   const activeAgentRunId = activeAgentRun?.id ?? null;
-  const canSendAgentRunInput = Boolean(
-    canShowTerminal &&
-    activeAgentRun?.terminalAttachmentId &&
-    ACTIVE_AGENT_RUN_STATUSES.has(activeAgentRun.status),
+  const canAttachActiveTerminal = Boolean(
+    canShowTerminal && activeAgentRun?.terminalAttachmentId,
   );
   const activeAgentRunScope = activeAgentRun
     ? `${AGENT_RUN_TASK_LABEL[activeAgentRun.taskKind]} · ${formatAgentRunTargets(
@@ -530,23 +529,36 @@ export function CommentPanel({ peerMode = false }: Props) {
     setAgentRunTerminalOpen((current) => !current);
   }
 
-  async function handleSendAgentRunInput() {
-    if (!activeAgentRun?.terminalAttachmentId) {
-      return;
-    }
-    const input = agentRunTerminalInput.trim();
-    if (!input) {
-      return;
-    }
+  const handleTerminalData = useCallback(
+    async (data: string) => {
+      if (!activeAgentRun?.terminalAttachmentId) {
+        return;
+      }
 
-    try {
-      await sendTerminalInput(activeAgentRun.terminalAttachmentId, input);
-      setAgentRunTerminalInput("");
-    } catch (error) {
-      console.error("[CommentPanel] failed to send terminal input:", error);
-      showToast("Couldn't send terminal input");
-    }
-  }
+      try {
+        await sendTerminalData(activeAgentRun.terminalAttachmentId, data);
+      } catch (error) {
+        console.error("[CommentPanel] failed to send terminal data:", error);
+        showToast("Couldn't send terminal input");
+      }
+    },
+    [activeAgentRun?.terminalAttachmentId, showToast],
+  );
+
+  const handleTerminalResize = useCallback(
+    async (dimensions: { cols: number; rows: number }) => {
+      if (!activeAgentRun?.terminalAttachmentId) {
+        return;
+      }
+
+      try {
+        await resizeTerminal(activeAgentRun.terminalAttachmentId, dimensions);
+      } catch (error) {
+        console.error("[CommentPanel] failed to resize terminal:", error);
+      }
+    },
+    [activeAgentRun?.terminalAttachmentId],
+  );
 
   useEffect(() => {
     if (
@@ -578,7 +590,6 @@ export function CommentPanel({ peerMode = false }: Props) {
 
   useEffect(() => {
     setAgentRunTerminalOpen(false);
-    setAgentRunTerminalInput("");
   }, [activeAgentRunId]);
 
   useEffect(() => {
@@ -702,54 +713,24 @@ export function CommentPanel({ peerMode = false }: Props) {
                 {activeAgentRun.errorMessage}
               </span>
             )}
-            {agentRunTerminalOpen && (
-              <div
-                className="comment-panel__agent-run-terminal"
-                role="log"
-                aria-label="Agent terminal output"
-              >
-                <div className="comment-panel__agent-run-terminal-bar">
-                  <span>Terminal output</span>
-                  <span>{activeAgentRun.terminalAttachmentId ?? "local"}</span>
-                </div>
-                <pre className="comment-panel__agent-run-output">
-                  {activeAgentRun.output || "Waiting for output..."}
-                </pre>
-                {canSendAgentRunInput && (
-                  <form
-                    className="comment-panel__agent-run-terminal-input"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      void handleSendAgentRunInput();
-                    }}
-                  >
-                    <input
-                      value={agentRunTerminalInput}
-                      onChange={(event) =>
-                        setAgentRunTerminalInput(event.target.value)
-                      }
-                      aria-label="Terminal input"
-                      autoComplete="off"
-                      spellCheck={false}
-                    />
-                    <button
-                      type="submit"
-                      disabled={!agentRunTerminalInput.trim()}
-                    >
-                      Send
-                    </button>
-                  </form>
-                )}
-              </div>
+            {agentRunTerminalOpen && canAttachActiveTerminal && (
+              <AgentTerminal
+                runId={activeAgentRun.terminalAttachmentId}
+                output={activeAgentRun.output}
+                onData={handleTerminalData}
+                onResize={handleTerminalResize}
+              />
             )}
           </div>
           <div className="comment-panel__agent-run-actions">
-            <button
-              className="comment-panel__agent-run-action"
-              onClick={toggleAgentRunTerminal}
-            >
-              {agentRunTerminalOpen ? "Hide terminal" : "Show terminal"}
-            </button>
+            {canAttachActiveTerminal && (
+              <button
+                className="comment-panel__agent-run-action"
+                onClick={toggleAgentRunTerminal}
+              >
+                {agentRunTerminalOpen ? "Hide terminal" : "Show terminal"}
+              </button>
+            )}
             {activeAgentRun.prompt && (
               <button
                 className="comment-panel__agent-run-action"

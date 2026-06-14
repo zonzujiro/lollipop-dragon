@@ -136,10 +136,11 @@ not in Zustand.
 ### Desktop Shell
 
 The Tauri shell under `src-tauri/` loads the same React app as the website. It is
-the native container for future filesystem, watcher, terminal, and agent runtime
-adapters. Normal Vite builds use the web runtime. Tauri dev/build commands run
-Vite in `desktop` mode, where `vite.config.ts` aliases the active runtime module
-to the desktop runtime implementation.
+the native container for desktop filesystem, terminal, and agent runtime
+adapters, with watcher work still future. Normal Vite builds use the web
+runtime. Tauri dev/build commands run Vite in `desktop` mode, where
+`vite.config.ts` aliases the active runtime module to the desktop runtime
+implementation.
 
 The bridge from the frontend to native commands lives in
 `src/runtime/tauriBridge.ts`. It uses Tauri v2's global `window.__TAURI__.core`
@@ -164,6 +165,9 @@ agent-start actions while the tab has a queued/running/attention run and exposes
 a stop control that routes through the runtime before marking the run stopped.
 In desktop runtime mode, the same panel polls the native run status while an
 active runtime run id is attached and shows the latest bounded output tail.
+When terminal attachment is available, the panel can open an xterm-backed PTY
+view that forwards key-by-key input and resize events through the terminal
+runtime boundary.
 Workspace tab removal refuses to close tabs with queued, running, or
 attention-needed agent runs, then cleans finished run metadata when the owning
 tab is closed.
