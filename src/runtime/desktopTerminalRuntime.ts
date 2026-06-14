@@ -1,10 +1,18 @@
 import type { TerminalRuntime } from "./terminal";
 import { assertDesktopRuntimeAvailable } from "./desktopAgentRuntime";
+import { sendTauriAgentRunInput } from "./tauriBridge";
 
 export const desktopTerminalRuntime: TerminalRuntime = {
-  canShowTerminal: false,
-  attach: async () => {
+  canShowTerminal: true,
+  attach: async (runId) => {
     await assertDesktopRuntimeAvailable();
-    throw new Error("Desktop terminal attachment is not implemented");
+    return {
+      id: runId,
+      runId,
+    };
+  },
+  sendInput: async (runId, input) => {
+    await assertDesktopRuntimeAvailable();
+    await sendTauriAgentRunInput(runId, input);
   },
 };

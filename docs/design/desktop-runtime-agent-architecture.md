@@ -303,10 +303,12 @@ agents, then reconciles the tab-scoped serializable run state to `completed` or
 `failed`.
 
 Terminal-output implementation note: the first visible terminal surface is a
-read-only, collapsible output view in the active run panel. It uses the native
-runner's bounded PTY output tail and intentionally does not store terminal
-objects in Zustand. Interactive session attachment remains a separate product
-decision behind the terminal runtime boundary.
+collapsible output view in the active run panel. It uses the native runner's
+bounded PTY output tail and intentionally does not store terminal objects in
+Zustand. The first interactive attachment layer is line-based: the panel can send
+submitted text to the active native PTY run through the terminal runtime
+boundary. Full terminal emulation, resize events, and key-by-key manual takeover
+remain separate product decisions behind that same boundary.
 
 Run-persistence implementation note: serializable agent run metadata is now part
 of the persisted app store. Frontend reloads restore the active run mapping and

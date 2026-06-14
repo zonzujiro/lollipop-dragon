@@ -111,6 +111,7 @@ struct KnownAgentCli {
 struct AgentRunProcess {
     child: Box<dyn portable_pty::Child + Send + Sync>,
     _master: Box<dyn MasterPty + Send>,
+    writer: Box<dyn Write + Send>,
     output: Arc<Mutex<String>>,
     output_threads: Vec<JoinHandle<()>>,
 }
@@ -643,6 +644,7 @@ fn dragon_start_agent_run(
         AgentRunProcess {
             child,
             _master: pty_pair.master,
+            writer,
             output,
             output_threads,
         },
@@ -669,6 +671,29 @@ fn dragon_stop_agent_run(run_id: String) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+#[tauri::command]
+fn dragon_send_agent_run_input(run_id: String, input: String) -> Result<(), String> {
+    let trimmed_input = input.trim_end_matches(['\r', '\n']);
+    if trimmed_input.is_empty() {
+        return Ok(());
+    }
+
+    let runs = active_agent_runs();
+    let mut locked_runs = runs.lock().map_err(|error| error.to_string())?;
+    let process = locked_runs
+        .get_mut(&run_id)
+        .ok_or_else(|| "Agent run is no longer available".to_string())?;
+    process
+        .writer
+        .write_all(trimmed_input.as_bytes())
+        .map_err(|error| error.to_string())?;
+    process
+        .writer
+        .write_all(b"\r\n")
+        .map_err(|error| error.to_string())?;
+    process.writer.flush().map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -744,6 +769,7 @@ pub fn run() {
             dragon_read_directory_tree,
             dragon_start_agent_run,
             dragon_stop_agent_run,
+            dragon_send_agent_run_input,
             dragon_get_agent_run_status
         ])
         .run(tauri::generate_context!())

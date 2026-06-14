@@ -206,6 +206,47 @@
   white-space: pre-wrap;
 }
 
+.comment-panel__agent-run-terminal-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.35rem;
+  padding: 0.4rem;
+  border-top: 1px solid var(--border-light);
+  background: var(--surface-alt);
+}
+
+.comment-panel__agent-run-terminal-input input {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  padding: 0.25rem 0.35rem;
+}
+
+.comment-panel__agent-run-terminal-input button {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 650;
+  padding: 0.2rem 0.45rem;
+}
+
+.comment-panel__agent-run-terminal-input button:not(:disabled):hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.comment-panel__agent-run-terminal-input button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .comment-panel__agent-run-actions {
   flex-shrink: 0;
   display: flex;
