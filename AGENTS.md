@@ -8,8 +8,13 @@ If a change may remove backward-compatibility logic, pause and ask for confirmat
 
 ## Environment
 
-- Run project commands through WSL, not the Windows shell. Use the repo's Linux toolchain for `node`, `npm`, `git`, and test commands.
-- Preferred pattern: `wsl zsh -lic 'cd /home/zonzujiro/projects/lollipop-dragon && fnm use && npm test'`
+- Detect the checkout/runtime before choosing commands.
+- For the WSL checkout (`/home/zonzujiro/projects/lollipop-dragon`, or the Windows UNC view `\\wsl.localhost\Ubuntu-22.04\home\zonzujiro\projects\lollipop-dragon`), run project commands through WSL and use the repo's Linux toolchain for `node`, `npm`, `git`, and tests.
+- Preferred WSL pattern: `wsl zsh -lic 'cd /home/zonzujiro/projects/lollipop-dragon && fnm use && npm test'`
+- Do not treat `npm run desktop:dev` from WSL as Windows desktop UX validation. It runs a Linux Tauri/WebKitGTK app through WSLg and is diagnostic only.
+- For Windows desktop development and Windows desktop builds, use the native Windows checkout at `C:\Users\ivan\Projects\lollipop-dragon` with Windows `node`, `npm`, `cargo`, and `git`.
+- Preferred Windows desktop pattern: `cd C:\Users\ivan\Projects\lollipop-dragon; npm run desktop:dev`
+- Avoid using WSL tooling against `/mnt/c/...` as the default workflow.
 
 ## TypeScript
 
