@@ -5,8 +5,8 @@
 Desktop agent foundation implemented. The shared runtime boundary, Tauri shell,
 native file/folder targets, configurable desktop agent runner, tab-scoped run
 state, and bounded comment-driven agent actions have landed incrementally.
-Remaining work depends on explicit backend decisions for terminal attachment,
-and future structured runners.
+Remaining work depends on explicit product decisions for interactive terminal
+attachment and future structured runners.
 
 ## Summary
 
@@ -255,7 +255,7 @@ Suggested implementation phases:
 3. Add serializable `AgentRun` metadata and UI capability checks without starting
    processes.
 4. Add desktop runtime shell and native filesystem adapter.
-5. Add a first desktop runner behind `AgentRuntime`.
+5. Add a first desktop PTY runner behind `AgentRuntime`.
 6. Add bounded folder-level comment actions on top of the same run model.
 7. Decide and add optional terminal attachment for supported runners.
 8. Add broader workspace agent actions after comment-driven folder runs are
@@ -277,10 +277,11 @@ builds continue to use the browser file API runtime.
 Native runner implementation note: desktop agent runs now call Tauri
 `dragon_start_agent_run`. The command is intentionally configurable through
 native app config, with `DRAGON_AGENT_COMMAND` retained as a dogfooding fallback.
-Dragon sends the generated prompt to the process stdin and stores only the
-returned runtime run id in app state. This keeps tmux, Codex CLI, and other
-runner choices behind the native runtime boundary instead of hard-coding one
-backend into the UI/store contract.
+Dragon starts the command inside a native PTY through Rust `portable-pty`, sends
+the generated prompt through the PTY input stream, and stores only the returned
+runtime run id in app state. This keeps tmux, Codex CLI, and other runner choices
+behind the native runtime boundary instead of hard-coding one backend into the
+UI/store contract.
 The Agent setup surface detects known CLIs, saves a command through native
 config, tests it with `--version`, and opens inline when a desktop run action is
 used before configuration.
@@ -292,9 +293,9 @@ updated to `stopped`.
 
 Run-status implementation note: desktop agent runs now expose
 `dragon_get_agent_run_status` through the Tauri bridge. The native command polls
-the tracked child process with `try_wait`, removes completed children from the
-native process map, and returns `running`, `completed`, `failed`, or `not_found`
-to the shared runtime boundary. Native stdout and stderr are captured into a
+the tracked PTY child process with `try_wait`, removes completed children from
+the native process map, and returns `running`, `completed`, `failed`, or
+`not_found` to the shared runtime boundary. Native PTY output is captured into a
 bounded output tail and returned with each status response, so the comment panel
 can show progress without depending on terminal text as the lifecycle protocol.
 The comment panel polls this status only when the active runtime can execute
@@ -303,9 +304,9 @@ agents, then reconciles the tab-scoped serializable run state to `completed` or
 
 Terminal-output implementation note: the first visible terminal surface is a
 read-only, collapsible output view in the active run panel. It uses the native
-runner's bounded stdout/stderr tail and intentionally does not expose a PTY or
-store terminal objects in Zustand. Interactive session attachment remains a
-separate backend decision behind the terminal runtime boundary.
+runner's bounded PTY output tail and intentionally does not store terminal
+objects in Zustand. Interactive session attachment remains a separate product
+decision behind the terminal runtime boundary.
 
 Run-persistence implementation note: serializable agent run metadata is now part
 of the persisted app store. Frontend reloads restore the active run mapping and
