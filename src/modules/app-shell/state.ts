@@ -8,6 +8,7 @@ export function createAppShellState(): AppShellState {
     theme: "light",
     focusMode: false,
     presentationMode: false,
+    agentSettingsOpen: false,
     toast: null,
   };
 }
@@ -16,7 +17,13 @@ export function createAppShellActions<StoreState extends AppShellState>(
   set: SetState<StoreState>,
 ): Pick<
   AppShellActions,
-  "setTheme" | "toggleFocusMode" | "exitPresentationMode" | "showToast" | "dismissToast"
+  | "setTheme"
+  | "toggleFocusMode"
+  | "exitPresentationMode"
+  | "openAgentSettings"
+  | "closeAgentSettings"
+  | "showToast"
+  | "dismissToast"
 > {
   return {
     setTheme: (theme) => {
@@ -27,6 +34,12 @@ export function createAppShellActions<StoreState extends AppShellState>(
     },
     exitPresentationMode: () => {
       set({ presentationMode: false });
+    },
+    openAgentSettings: () => {
+      set({ agentSettingsOpen: true });
+    },
+    closeAgentSettings: () => {
+      set({ agentSettingsOpen: false });
     },
     showToast: (message) => {
       set({ toast: message });

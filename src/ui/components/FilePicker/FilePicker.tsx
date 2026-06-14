@@ -1,6 +1,7 @@
 import "../../styles/landing.css";
 import { useEffect, useState } from "react";
 import { useAppStore } from "../../../store";
+import { canRunAgent } from "../../../runtime";
 
 /* ═══════════════════════════════════════════════════════════════════
    bauhaus palette
@@ -672,6 +673,7 @@ function GeoCookingDragon() {
 export function FilePicker() {
   const openFile = useAppStore((s) => s.openFileInNewTab);
   const openDirectory = useAppStore((s) => s.openDirectoryInNewTab);
+  const openAgentSettings = useAppStore((s) => s.openAgentSettings);
 
   return (
     <div className="landing">
@@ -758,6 +760,14 @@ export function FilePicker() {
             >
               open folder
             </button>
+            {canRunAgent && (
+              <button
+                onClick={openAgentSettings}
+                className="bh-btn bh-btn--secondary"
+              >
+                agent setup
+              </button>
+            )}
           </div>
         </div>
       </section>

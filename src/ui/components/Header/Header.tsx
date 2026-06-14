@@ -12,6 +12,7 @@ import { WORKER_URL } from "../../../config";
 import { syncActiveShares } from "../../../modules/sharing";
 import { downloadActiveFile } from "./downloadActiveFile";
 import { tabRequiresRestoreAccess } from "../../../types/tab";
+import { canRunAgent } from "../../../runtime";
 
 function FocusIcon() {
   return (
@@ -258,6 +259,29 @@ function PresentIcon() {
   );
 }
 
+function AgentIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="4" y="6" width="16" height="12" rx="2" />
+      <path d="M8 10h.01" />
+      <path d="M16 10h.01" />
+      <path d="M9 14h6" />
+      <path d="M12 2v4" />
+    </svg>
+  );
+}
+
 interface Props {
   peerMode?: boolean;
   onShareFile?: () => void;
@@ -280,6 +304,7 @@ export function Header({
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const toggleCommentPanel = useAppStore((s) => s.toggleCommentPanel);
   const toggleSharedPanel = useAppStore((s) => s.toggleSharedPanel);
+  const openAgentSettings = useAppStore((s) => s.openAgentSettings);
   const syncPeerComments = useAppStore((s) => s.syncPeerComments);
   const documentUpdateAvailable = useAppStore(selectDocumentUpdateAvailable);
 
@@ -441,6 +466,18 @@ export function Header({
           )}
 
           <div className="app-header__group app-header__group--view">
+            {!peerMode && canRunAgent && (
+              <button
+                onClick={openAgentSettings}
+                aria-label="Configure desktop agent"
+                title="Configure desktop agent"
+                className="app-header__btn app-header__btn--text"
+              >
+                <AgentIcon />
+                <span className="app-header__btn-label">Agent</span>
+              </button>
+            )}
+
             <TableOfContents peerMode={peerMode} />
 
             <button

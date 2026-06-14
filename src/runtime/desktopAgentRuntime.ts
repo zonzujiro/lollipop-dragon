@@ -1,11 +1,16 @@
 import type { AgentRuntime, AgentRuntimeCapability } from "./agent";
 import {
+  clearTauriAgentConfig,
+  detectTauriAgentClis,
+  getTauriAgentConfig,
   getTauriAgentRuntimeAvailable,
   getTauriAgentRunStatus,
   hasTauriBridge,
   pingTauriRuntime,
+  saveTauriAgentConfig,
   startTauriAgentRun,
   stopTauriAgentRun,
+  testTauriAgentCommand,
 } from "./tauriBridge";
 
 export async function assertDesktopRuntimeAvailable(): Promise<void> {
@@ -35,7 +40,7 @@ export async function getDesktopAgentCapabilityStatus(): Promise<AgentRuntimeCap
     return {
       canRunAgent: false,
       unavailableMessage:
-        "Configure DRAGON_AGENT_COMMAND before starting local agent runs.",
+        "Configure a desktop agent command before starting local agent runs.",
     };
   } catch (error) {
     const unavailableMessage =
@@ -65,3 +70,28 @@ export const desktopAgentRuntime: AgentRuntime = {
     return getTauriAgentRunStatus(runId);
   },
 };
+
+export async function getDesktopAgentConfig() {
+  await assertDesktopRuntimeAvailable();
+  return getTauriAgentConfig();
+}
+
+export async function saveDesktopAgentConfig(command: string): Promise<void> {
+  await assertDesktopRuntimeAvailable();
+  await saveTauriAgentConfig(command);
+}
+
+export async function clearDesktopAgentConfig(): Promise<void> {
+  await assertDesktopRuntimeAvailable();
+  await clearTauriAgentConfig();
+}
+
+export async function detectDesktopAgentClis() {
+  await assertDesktopRuntimeAvailable();
+  return detectTauriAgentClis();
+}
+
+export async function testDesktopAgentCommand(command: string) {
+  await assertDesktopRuntimeAvailable();
+  return testTauriAgentCommand(command);
+}

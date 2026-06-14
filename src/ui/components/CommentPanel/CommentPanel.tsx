@@ -187,6 +187,8 @@ export function CommentPanel({ peerMode = false }: Props) {
   const setCommentFilter = useAppStore((state) => state.setCommentFilter);
   const toggleCommentPanel = useAppStore((state) => state.toggleCommentPanel);
   const showToast = useAppStore((state) => state.showToast);
+  const openAgentSettings = useAppStore((state) => state.openAgentSettings);
+  const agentSettingsOpen = useAppStore((state) => state.agentSettingsOpen);
   const myPeerComments = useAppStore((state) => state.myPeerComments);
   const peerActiveFilePath = useAppStore((state) => state.peerActiveFilePath);
   const activeFilePath = peerMode
@@ -328,6 +330,7 @@ export function CommentPanel({ peerMode = false }: Props) {
   const hasAddressableComments = isFolderMode
     ? folderAddressableCommentTargets.length > 0
     : addressableCommentTargets.length > 0;
+  const shouldPromptAgentSetup = canRunAgent && !agentCapability.canRunAgent;
 
   const isResolved = !peerMode && commentFilter === "resolved";
 
@@ -432,11 +435,11 @@ export function CommentPanel({ peerMode = false }: Props) {
   }
 
   const addressCommentsAgentAction = getAddressCommentsAgentAction({
-    canRunAgent: agentCapability.canRunAgent,
+    canRunAgent: agentCapability.canRunAgent || shouldPromptAgentSetup,
     canStartAddressCommentsRun: hasAddressableComments,
   });
   const questionThreadAgentAction = getQuestionThreadAgentAction({
-    canRunAgent: agentCapability.canRunAgent,
+    canRunAgent: agentCapability.canRunAgent || shouldPromptAgentSetup,
     canStartQuestionThreadRun: hasQuestionThreads,
   });
   const canStopAgentRun = Boolean(
@@ -465,6 +468,10 @@ export function CommentPanel({ peerMode = false }: Props) {
 
     const result = await startQuestionThreadAgentRun();
     if (result.status === "unavailable") {
+      if (canRunAgent && result.reason === "agent_unavailable") {
+        openAgentSettings();
+        return;
+      }
       showToast(result.message);
     }
   }
@@ -477,6 +484,10 @@ export function CommentPanel({ peerMode = false }: Props) {
 
     const result = await startAddressCommentsAgentRun();
     if (result.status === "unavailable") {
+      if (canRunAgent && result.reason === "agent_unavailable") {
+        openAgentSettings();
+        return;
+      }
       showToast(result.message);
     }
   }
@@ -560,7 +571,7 @@ export function CommentPanel({ peerMode = false }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [peerMode]);
+  }, [agentSettingsOpen, peerMode]);
 
   useEffect(() => {
     const activePanelCommentId = peerMode
@@ -691,7 +702,13 @@ export function CommentPanel({ peerMode = false }: Props) {
 
       {showAgentCapabilityWarning && (
         <div className="comment-panel__agent-capability" role="status">
-          {agentCapability.unavailableMessage}
+          <span>{agentCapability.unavailableMessage}</span>
+          <button
+            className="comment-panel__agent-capability-action"
+            onClick={openAgentSettings}
+          >
+            Set up
+          </button>
         </div>
       )}
 

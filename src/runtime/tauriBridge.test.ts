@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   getTauriAgentRuntimeAvailable,
+  clearTauriAgentConfig,
+  detectTauriAgentClis,
   getTauriAgentRunStatus,
+  getTauriAgentConfig,
   hasTauriBridge,
   invokeTauriCommand,
   openTauriDirectory,
@@ -9,8 +12,10 @@ import {
   pingTauriRuntime,
   readTauriDirectoryTree,
   readTauriTextFile,
+  saveTauriAgentConfig,
   startTauriAgentRun,
   stopTauriAgentRun,
+  testTauriAgentCommand,
   writeTauriTextFile,
 } from "./tauriBridge";
 
@@ -59,6 +64,91 @@ describe("tauri bridge", () => {
     };
 
     await expect(getTauriAgentRuntimeAvailable()).resolves.toBe(false);
+  });
+
+  it("reads, saves, clears, detects, and tests desktop agent setup", async () => {
+    const calls: {
+      command: string;
+      args: Record<string, unknown> | undefined;
+    }[] = [];
+    window.__TAURI__ = {
+      core: {
+        invoke: (command, args) => {
+          calls.push({ command, args });
+          if (command === "dragon_get_agent_config") {
+            return Promise.resolve({
+              command: "codex",
+              source: "config",
+            });
+          }
+          if (command === "dragon_detect_agent_clis") {
+            return Promise.resolve([
+              {
+                id: "codex",
+                label: "Codex",
+                command: "codex",
+                path: "C:\\Tools\\codex.exe",
+                available: true,
+                version: "codex 1.0.0",
+              },
+            ]);
+          }
+          if (command === "dragon_test_agent_command") {
+            return Promise.resolve({
+              ok: true,
+              message: "Command responded to --version",
+              output: "codex 1.0.0",
+            });
+          }
+          return Promise.resolve(null);
+        },
+      },
+    };
+
+    await expect(getTauriAgentConfig()).resolves.toEqual({
+      command: "codex",
+      source: "config",
+    });
+    await saveTauriAgentConfig("codex");
+    await clearTauriAgentConfig();
+    await expect(detectTauriAgentClis()).resolves.toEqual([
+      {
+        id: "codex",
+        label: "Codex",
+        command: "codex",
+        path: "C:\\Tools\\codex.exe",
+        available: true,
+        version: "codex 1.0.0",
+      },
+    ]);
+    await expect(testTauriAgentCommand("codex")).resolves.toEqual({
+      ok: true,
+      message: "Command responded to --version",
+      output: "codex 1.0.0",
+    });
+
+    expect(calls).toEqual([
+      {
+        command: "dragon_get_agent_config",
+        args: undefined,
+      },
+      {
+        command: "dragon_save_agent_config",
+        args: { command: "codex" },
+      },
+      {
+        command: "dragon_clear_agent_config",
+        args: undefined,
+      },
+      {
+        command: "dragon_detect_agent_clis",
+        args: undefined,
+      },
+      {
+        command: "dragon_test_agent_command",
+        args: { command: "codex" },
+      },
+    ]);
   });
 
   it("rejects unexpected command response shapes", async () => {

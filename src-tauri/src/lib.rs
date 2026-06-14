@@ -9,12 +9,27 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread::{self, JoinHandle};
 use std::time::{SystemTime, UNIX_EPOCH};
+use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
 
 const IGNORED_NAMES: [&str; 3] = ["node_modules", ".git", ".markreview"];
 const MARKDOWN_EXTENSIONS: [&str; 2] = ["md", "markdown"];
 const AGENT_COMMAND_ENV: &str = "DRAGON_AGENT_COMMAND";
 const AGENT_OUTPUT_LIMIT: usize = 20_000;
+const AGENT_CONFIG_FILE: &str = "agent-config.json";
+const AGENT_TEST_OUTPUT_LIMIT: usize = 8_000;
+const KNOWN_AGENT_CLIS: [KnownAgentCli; 2] = [
+    KnownAgentCli {
+        id: "codex",
+        label: "Codex",
+        executable: "codex",
+    },
+    KnownAgentCli {
+        id: "claude",
+        label: "Claude",
+        executable: "claude",
+    },
+];
 
 static AGENT_RUN_COUNTER: AtomicU64 = AtomicU64::new(1);
 static AGENT_RUNS: OnceLock<Mutex<HashMap<String, AgentRunProcess>>> = OnceLock::new();
@@ -54,6 +69,44 @@ struct AgentRunStatusPayload {
     output: String,
 }
 
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentConfigFile {
+    command: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentConfigPayload {
+    command: Option<String>,
+    source: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentCliDetectionPayload {
+    id: String,
+    label: String,
+    command: String,
+    path: Option<String>,
+    available: bool,
+    version: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentCommandTestPayload {
+    ok: bool,
+    message: String,
+    output: String,
+}
+
+struct KnownAgentCli {
+    id: &'static str,
+    label: &'static str,
+    executable: &'static str,
+}
+
 struct AgentRunProcess {
     child: Child,
     output: Arc<Mutex<String>>,
@@ -74,6 +127,73 @@ fn path_target_from_path(path: PathBuf) -> NativePathTarget {
 
 fn active_agent_runs() -> &'static Mutex<HashMap<String, AgentRunProcess>> {
     AGENT_RUNS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn agent_config_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let config_dir = app
+        .path()
+        .app_config_dir()
+        .map_err(|error| error.to_string())?;
+    Ok(config_dir.join(AGENT_CONFIG_FILE))
+}
+
+fn read_saved_agent_command(app: &tauri::AppHandle) -> Result<Option<String>, String> {
+    let config_path = agent_config_path(app)?;
+    if !config_path.exists() {
+        return Ok(None);
+    }
+
+    let raw_config = fs::read_to_string(config_path).map_err(|error| error.to_string())?;
+    let config: AgentConfigFile =
+        serde_json::from_str(&raw_config).map_err(|error| error.to_string())?;
+    let command = config.command.trim().to_string();
+    if command.is_empty() {
+        return Ok(None);
+    }
+
+    Ok(Some(command))
+}
+
+fn save_agent_command(app: &tauri::AppHandle, command: String) -> Result<(), String> {
+    let trimmed_command = command.trim().to_string();
+    if trimmed_command.is_empty() {
+        return Err("Agent command cannot be empty".to_string());
+    }
+
+    let config_path = agent_config_path(app)?;
+    let config_dir = config_path
+        .parent()
+        .ok_or_else(|| "Agent config directory is unavailable".to_string())?;
+    fs::create_dir_all(config_dir).map_err(|error| error.to_string())?;
+    let raw_config = serde_json::to_string_pretty(&AgentConfigFile {
+        command: trimmed_command,
+    })
+    .map_err(|error| error.to_string())?;
+    fs::write(config_path, raw_config).map_err(|error| error.to_string())
+}
+
+fn clear_saved_agent_command(app: &tauri::AppHandle) -> Result<(), String> {
+    let config_path = agent_config_path(app)?;
+    if config_path.exists() {
+        fs::remove_file(config_path).map_err(|error| error.to_string())?;
+    }
+    Ok(())
+}
+
+fn configured_agent_command(app: &tauri::AppHandle) -> Result<(String, String), String> {
+    if let Some(command) = read_saved_agent_command(app)? {
+        return Ok((command, "config".to_string()));
+    }
+
+    let command = env::var(AGENT_COMMAND_ENV)
+        .map_err(|_| format!("{AGENT_COMMAND_ENV} is not configured"))?
+        .trim()
+        .to_string();
+    if command.is_empty() {
+        return Err(format!("{AGENT_COMMAND_ENV} is empty"));
+    }
+
+    Ok((command, "environment".to_string()))
 }
 
 fn append_agent_output(output: &Arc<Mutex<String>>, chunk: &str) {
@@ -136,18 +256,6 @@ fn join_agent_output_threads(process: AgentRunProcess) -> String {
     read_agent_output(&process.output)
 }
 
-fn configured_agent_command() -> Result<String, String> {
-    let command = env::var(AGENT_COMMAND_ENV)
-        .map_err(|_| format!("{AGENT_COMMAND_ENV} is not configured"))?
-        .trim()
-        .to_string();
-    if command.is_empty() {
-        return Err(format!("{AGENT_COMMAND_ENV} is empty"));
-    }
-
-    Ok(command)
-}
-
 fn create_agent_run_id() -> String {
     let counter = AGENT_RUN_COUNTER.fetch_add(1, Ordering::Relaxed);
     let timestamp = SystemTime::now()
@@ -170,6 +278,108 @@ fn shell_command(command: &str) -> Command {
     process
 }
 
+fn executable_candidates(executable: &str) -> Vec<String> {
+    if !cfg!(target_os = "windows") {
+        return vec![executable.to_string()];
+    }
+
+    let executable_path = Path::new(executable);
+    if executable_path.extension().is_some() {
+        return vec![executable.to_string()];
+    }
+
+    let path_ext = env::var("PATHEXT").unwrap_or_else(|_| ".COM;.EXE;.BAT;.CMD".to_string());
+    let mut candidates = vec![executable.to_string()];
+    for extension in path_ext.split(';') {
+        let trimmed_extension = extension.trim();
+        if trimmed_extension.is_empty() {
+            continue;
+        }
+        candidates.push(format!("{executable}{trimmed_extension}"));
+    }
+    candidates
+}
+
+fn command_search_paths() -> Vec<PathBuf> {
+    let mut paths: Vec<PathBuf> = env::var_os("PATH")
+        .map(|raw_path| env::split_paths(&raw_path).collect())
+        .unwrap_or_default();
+
+    if cfg!(target_os = "macos") {
+        paths.push(PathBuf::from("/opt/homebrew/bin"));
+        paths.push(PathBuf::from("/usr/local/bin"));
+    }
+
+    paths
+}
+
+fn find_executable(executable: &str) -> Option<PathBuf> {
+    let executable_path = Path::new(executable);
+    if executable_path.is_absolute() && executable_path.is_file() {
+        return Some(executable_path.to_path_buf());
+    }
+
+    for directory_path in command_search_paths() {
+        for candidate in executable_candidates(executable) {
+            let candidate_path = directory_path.join(candidate);
+            if candidate_path.is_file() {
+                return Some(candidate_path);
+            }
+        }
+    }
+
+    None
+}
+
+fn truncate_output(output: String, limit: usize) -> String {
+    if output.len() <= limit {
+        return output;
+    }
+
+    let keep_from = output.len() - limit;
+    let trimmed = output
+        .char_indices()
+        .find(|(index, _character)| *index >= keep_from)
+        .map(|(index, _character)| index)
+        .unwrap_or(keep_from);
+    output[trimmed..].to_string()
+}
+
+fn probe_command(command: &str) -> AgentCommandTestPayload {
+    let test_command = format!("{command} --version");
+    let output = shell_command(&test_command).output();
+    match output {
+        Ok(result) => {
+            let stdout = String::from_utf8_lossy(&result.stdout);
+            let stderr = String::from_utf8_lossy(&result.stderr);
+            let combined_output =
+                truncate_output(format!("{stdout}{stderr}"), AGENT_TEST_OUTPUT_LIMIT);
+            if result.status.success() {
+                return AgentCommandTestPayload {
+                    ok: true,
+                    message: "Command responded to --version".to_string(),
+                    output: combined_output,
+                };
+            }
+
+            AgentCommandTestPayload {
+                ok: false,
+                message: result
+                    .status
+                    .code()
+                    .map(|code| format!("Command exited with code {code}"))
+                    .unwrap_or_else(|| "Command exited without an exit code".to_string()),
+                output: combined_output,
+            }
+        }
+        Err(error) => AgentCommandTestPayload {
+            ok: false,
+            message: error.to_string(),
+            output: String::new(),
+        },
+    }
+}
+
 fn is_ignored(name: &str) -> bool {
     name.starts_with('.') || IGNORED_NAMES.contains(&name)
 }
@@ -177,9 +387,7 @@ fn is_ignored(name: &str) -> bool {
 fn is_markdown_file(path: &Path) -> bool {
     path.extension()
         .and_then(|extension| extension.to_str())
-        .map(|extension| {
-            MARKDOWN_EXTENSIONS.contains(&extension.to_lowercase().as_str())
-        })
+        .map(|extension| MARKDOWN_EXTENSIONS.contains(&extension.to_lowercase().as_str()))
         .unwrap_or(false)
 }
 
@@ -239,8 +447,78 @@ fn dragon_runtime_ping() -> &'static str {
 }
 
 #[tauri::command]
-fn dragon_agent_runtime_available() -> bool {
-    configured_agent_command().is_ok()
+fn dragon_agent_runtime_available(app: tauri::AppHandle) -> bool {
+    configured_agent_command(&app).is_ok()
+}
+
+#[tauri::command]
+fn dragon_get_agent_config(app: tauri::AppHandle) -> Result<AgentConfigPayload, String> {
+    match read_saved_agent_command(&app)? {
+        Some(command) => Ok(AgentConfigPayload {
+            command: Some(command),
+            source: Some("config".to_string()),
+        }),
+        None => match env::var(AGENT_COMMAND_ENV) {
+            Ok(command) if !command.trim().is_empty() => Ok(AgentConfigPayload {
+                command: Some(command.trim().to_string()),
+                source: Some("environment".to_string()),
+            }),
+            _ => Ok(AgentConfigPayload {
+                command: None,
+                source: None,
+            }),
+        },
+    }
+}
+
+#[tauri::command]
+fn dragon_save_agent_config(app: tauri::AppHandle, command: String) -> Result<(), String> {
+    save_agent_command(&app, command)
+}
+
+#[tauri::command]
+fn dragon_clear_agent_config(app: tauri::AppHandle) -> Result<(), String> {
+    clear_saved_agent_command(&app)
+}
+
+#[tauri::command]
+fn dragon_detect_agent_clis() -> Vec<AgentCliDetectionPayload> {
+    KNOWN_AGENT_CLIS
+        .iter()
+        .map(|known_cli| {
+            let path = find_executable(known_cli.executable);
+            let available = path.is_some();
+            let version = path
+                .as_ref()
+                .and_then(|_path| {
+                    let probe_result = probe_command(known_cli.executable);
+                    if probe_result.ok {
+                        return Some(probe_result.output.trim().to_string());
+                    }
+                    None
+                })
+                .filter(|output| !output.is_empty());
+
+            AgentCliDetectionPayload {
+                id: known_cli.id.to_string(),
+                label: known_cli.label.to_string(),
+                command: known_cli.executable.to_string(),
+                path: path.map(|path| path.to_string_lossy().to_string()),
+                available,
+                version,
+            }
+        })
+        .collect()
+}
+
+#[tauri::command]
+fn dragon_test_agent_command(command: String) -> Result<AgentCommandTestPayload, String> {
+    let trimmed_command = command.trim().to_string();
+    if trimmed_command.is_empty() {
+        return Err("Agent command cannot be empty".to_string());
+    }
+
+    Ok(probe_command(&trimmed_command))
 }
 
 #[tauri::command]
@@ -286,8 +564,11 @@ fn dragon_read_directory_tree(path: String) -> Result<Vec<NativeFileTreeNode>, S
 }
 
 #[tauri::command]
-fn dragon_start_agent_run(request: AgentRunRequestPayload) -> Result<String, String> {
-    let command = configured_agent_command()?;
+fn dragon_start_agent_run(
+    app: tauri::AppHandle,
+    request: AgentRunRequestPayload,
+) -> Result<String, String> {
+    let (command, _source) = configured_agent_command(&app)?;
     let run_id = create_agent_run_id();
     let mut process = shell_command(&command);
     process.stdin(Stdio::piped());
@@ -413,6 +694,11 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             dragon_runtime_ping,
             dragon_agent_runtime_available,
+            dragon_get_agent_config,
+            dragon_save_agent_config,
+            dragon_clear_agent_config,
+            dragon_detect_agent_clis,
+            dragon_test_agent_command,
             dragon_open_text_file,
             dragon_open_directory,
             dragon_read_text_file,

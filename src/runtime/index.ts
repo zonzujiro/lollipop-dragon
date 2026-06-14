@@ -5,11 +5,22 @@ import type {
 } from "./workspace";
 
 export type {
+  AgentCliDetection,
+  AgentCommandTestResult,
+  AgentConfig,
+  AgentConfigSource,
   AgentRuntime,
   AgentRuntimeCapability,
   AgentRunRequest,
   AgentRuntimeRunStatus,
 } from "./agent";
+export {
+  clearDesktopAgentConfig,
+  detectDesktopAgentClis,
+  getDesktopAgentConfig,
+  saveDesktopAgentConfig,
+  testDesktopAgentCommand,
+} from "./desktopAgentRuntime";
 export type { TerminalAttachment, TerminalRuntime } from "./terminal";
 export type {
   NativeWorkspaceDirectoryTarget,

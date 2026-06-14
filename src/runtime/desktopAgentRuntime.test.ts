@@ -33,7 +33,7 @@ describe("desktop agent runtime", () => {
     await expect(getDesktopAgentCapabilityStatus()).resolves.toEqual({
       canRunAgent: false,
       unavailableMessage:
-        "Configure DRAGON_AGENT_COMMAND before starting local agent runs.",
+        "Configure a desktop agent command before starting local agent runs.",
     });
   });
 
