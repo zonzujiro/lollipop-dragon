@@ -1,10 +1,11 @@
+use portable_pty::{native_pty_system, CommandBuilder, ExitStatus, MasterPty, PtySize};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
+use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread::{self, JoinHandle};
@@ -108,7 +109,8 @@ struct KnownAgentCli {
 }
 
 struct AgentRunProcess {
-    child: Child,
+    child: Box<dyn portable_pty::Child + Send + Sync>,
+    _master: Box<dyn MasterPty + Send>,
     output: Arc<Mutex<String>>,
     output_threads: Vec<JoinHandle<()>>,
 }
@@ -276,6 +278,31 @@ fn shell_command(command: &str) -> Command {
     let mut process = Command::new("sh");
     process.arg("-lc").arg(command);
     process
+}
+
+fn shell_pty_command(command: &str) -> CommandBuilder {
+    if cfg!(target_os = "windows") {
+        let mut process = CommandBuilder::new("cmd");
+        process.arg("/C");
+        process.arg(command);
+        return process;
+    }
+
+    let mut process = CommandBuilder::new("sh");
+    process.arg("-lc");
+    process.arg(command);
+    process
+}
+
+fn pty_exit_code(status: &ExitStatus) -> Option<i32> {
+    i32::try_from(status.exit_code()).ok()
+}
+
+fn pty_exit_message(status: &ExitStatus) -> String {
+    status
+        .signal()
+        .map(|signal| format!("Agent terminated by {signal}"))
+        .unwrap_or_else(|| format!("Agent exited with code {}", status.exit_code()))
 }
 
 fn executable_candidates(executable: &str) -> Vec<String> {
@@ -570,32 +597,44 @@ fn dragon_start_agent_run(
 ) -> Result<String, String> {
     let (command, _source) = configured_agent_command(&app)?;
     let run_id = create_agent_run_id();
-    let mut process = shell_command(&command);
-    process.stdin(Stdio::piped());
-    process.stdout(Stdio::piped());
-    process.stderr(Stdio::piped());
+    let pty_system = native_pty_system();
+    let pty_pair = pty_system
+        .openpty(PtySize {
+            rows: 30,
+            cols: 120,
+            pixel_width: 0,
+            pixel_height: 0,
+        })
+        .map_err(|error| error.to_string())?;
+    let mut process = shell_pty_command(&command);
 
     if let Some(workspace_root_path) = request.workspace_root_path {
         if !workspace_root_path.trim().is_empty() {
-            process.current_dir(workspace_root_path);
+            process.cwd(workspace_root_path);
         }
     }
 
-    let mut child = process.spawn().map_err(|error| error.to_string())?;
+    let child = pty_pair
+        .slave
+        .spawn_command(process)
+        .map_err(|error| error.to_string())?;
     let output = Arc::new(Mutex::new(String::new()));
-    let mut output_threads = Vec::new();
-    if let Some(stdout) = child.stdout.take() {
-        output_threads.push(spawn_agent_output_reader(stdout, Arc::clone(&output)));
-    }
-    if let Some(stderr) = child.stderr.take() {
-        output_threads.push(spawn_agent_output_reader(stderr, Arc::clone(&output)));
-    }
-    if let Some(mut stdin) = child.stdin.take() {
-        stdin
-            .write_all(request.prompt.as_bytes())
-            .map_err(|error| error.to_string())?;
-        stdin.write_all(b"\n").map_err(|error| error.to_string())?;
-    }
+    let reader = pty_pair
+        .master
+        .try_clone_reader()
+        .map_err(|error| error.to_string())?;
+    let output_threads = vec![spawn_agent_output_reader(reader, Arc::clone(&output))];
+    let mut writer = pty_pair
+        .master
+        .take_writer()
+        .map_err(|error| error.to_string())?;
+    writer
+        .write_all(request.prompt.as_bytes())
+        .map_err(|error| error.to_string())?;
+    writer
+        .write_all(b"\r\n")
+        .map_err(|error| error.to_string())?;
+    writer.flush().map_err(|error| error.to_string())?;
 
     let runs = active_agent_runs();
     let mut locked_runs = runs.lock().map_err(|error| error.to_string())?;
@@ -603,6 +642,7 @@ fn dragon_start_agent_run(
         run_id.clone(),
         AgentRunProcess {
             child,
+            _master: pty_pair.master,
             output,
             output_threads,
         },
@@ -669,16 +709,14 @@ fn dragon_get_agent_run_status(run_id: String) -> Result<AgentRunStatusPayload, 
     if exit_status.success() {
         return Ok(AgentRunStatusPayload {
             status: "completed".to_string(),
-            exit_code: exit_status.code(),
+            exit_code: pty_exit_code(&exit_status),
             message: None,
             output,
         });
     }
 
-    let exit_code = exit_status.code();
-    let message = exit_code
-        .map(|code| format!("Agent exited with code {code}"))
-        .unwrap_or_else(|| "Agent exited without an exit code".to_string());
+    let exit_code = pty_exit_code(&exit_status);
+    let message = pty_exit_message(&exit_status);
     Ok(AgentRunStatusPayload {
         status: "failed".to_string(),
         exit_code,

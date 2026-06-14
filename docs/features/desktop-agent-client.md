@@ -4,8 +4,8 @@
 
 Desktop agent foundation implemented. The website remains available, and the
 desktop path now covers native file/folder targets plus UI-started agent runs for
-comment review tasks. Remaining work is limited to explicit backend/product
-decisions such as terminal attachment and future structured runners.
+comment review tasks. Remaining work is limited to explicit product decisions
+such as interactive terminal attachment and future structured runners.
 
 ## Problem
 
@@ -62,7 +62,7 @@ Runtime implementations
   - Desktop runtime
       - native file and folder APIs
       - native file watching
-      - agent runs
+      - PTY-backed agent runs
       - optional terminal/session panel
 ```
 
@@ -132,7 +132,7 @@ Acceptance criteria:
 - The desktop runtime can expose the raw session for a run when the backend
   supports it.
 - The first implementation may expose a read-only terminal output panel backed
-  by the native runner's captured stdout/stderr.
+  by the native runner's captured PTY output.
 - The terminal is not the primary product surface by default.
 - Hiding the terminal does not stop the run.
 - Closing a tab with an active run requires an explicit user decision.
@@ -246,9 +246,9 @@ outside this first desktop planning scope.
 - Normal website builds keep browser file APIs and prompt-copy handoff.
 - Tauri desktop builds can open native file and folder targets.
 - Desktop agent runs start through the saved desktop agent command, with
-  `DRAGON_AGENT_COMMAND` retained as an environment fallback. Runs receive the
-  generated review prompt through stdin, and keep process handles outside
-  Zustand.
+  `DRAGON_AGENT_COMMAND` retained as an environment fallback. Runs execute in a
+  native PTY through Rust `portable-pty`, receive the generated review prompt
+  through the PTY input stream, and keep process handles outside Zustand.
 - Agent run state is tab-scoped and serializable. The comment panel can stop an
   active run and polls native run status so completed or failed processes are
   reflected in the UI.
@@ -256,9 +256,9 @@ outside this first desktop planning scope.
   can copy that exact prompt for inspection or manual recovery.
 - The active run panel shows the run task, target path summary, and selected
   comment count.
-- Native runner stdout and stderr are captured into a bounded output tail. The
-  active run panel exposes that tail through a collapsible terminal output view
-  for same-window observability.
+- Native runner PTY output is captured into a bounded output tail. The active run
+  panel exposes that tail through a collapsible terminal output view for
+  same-window observability.
 - Serializable agent run metadata is persisted with the app store. After a
   reload, Dragon restores the tab-scoped run record and continues polling the
   native runtime id when one exists. If the desktop process restarted and the
@@ -285,10 +285,10 @@ outside this first desktop planning scope.
 - Native file and folder targets are persisted by path, so desktop tabs can
   restore live access after reload without browser handle storage.
 
-## Remaining Backend Decisions
+## Remaining Product Decisions
 
-- What is the minimum Windows backend for interactive PTY/session support if
-  `tmux` is not available?
+- What is the smallest useful interactive terminal attachment surface on top of
+  the native PTY runner?
 - Which structured runner should follow the first configurable terminal-command
   runner?
 
