@@ -1,17 +1,18 @@
 import "./CommentMargin.css";
 import { useEffect, useRef, useMemo, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import {
   buildCommentThreadGroups,
   type CommentThreadGroup,
 } from "../../../markup";
 import { useAppStore } from "../../../store";
-import { useActiveTab } from "../../../store/selectors";
+import { getActiveTab, useActiveTabField } from "../../../store/selectors";
 import { selectDocumentUpdateAvailable } from "../../../modules/relay";
 import { selectPeerDraftCommentOpen } from "../../../modules/peer-review";
 import { CommentThreadCard } from "../CommentThreadCard";
 import { peerColor, initials } from "../../../utils/peerDisplay";
 import { COMMENT_TYPE_COLOR } from "../../../types/criticmarkup";
-import type { CommentType } from "../../../types/criticmarkup";
+import type { Comment, CommentType } from "../../../types/criticmarkup";
 import type { PeerComment } from "../../../types/share";
 
 const COMMENT_TYPES: CommentType[] = [
@@ -23,6 +24,9 @@ const COMMENT_TYPES: CommentType[] = [
   "question",
   "remove",
 ];
+
+const EMPTY_COMMENTS: Comment[] = [];
+const EMPTY_PEER_COMMENTS: PeerComment[] = [];
 
 interface AddCommentFormProps {
   top: number;
@@ -134,15 +138,33 @@ export function CommentMargin({
     index: number;
     top: number;
   } | null>(null);
-  const tab = useActiveTab();
-  const allComments = tab?.comments ?? [];
-  const commentFilter = tab?.commentFilter ?? "all";
-  const activeId = tab?.activeCommentId ?? null;
+  const allComments = useActiveTabField("comments") ?? EMPTY_COMMENTS;
+  const commentFilter = useActiveTabField("commentFilter") ?? "all";
+  const activeId = useActiveTabField("activeCommentId") ?? null;
   const setActiveId = useAppStore((s) => s.setActiveCommentId);
-  const pendingComments = tab?.pendingComments ?? {};
-  const activeDocId = tab?.activeDocId ?? null;
-  const activeFilePath = tab?.activeFilePath ?? null;
-  const fileName = tab?.fileName ?? null;
+  const hostPendingPeerComments = useAppStore(
+    useShallow((state) => {
+      const tab = getActiveTab(state);
+      if (!tab?.activeDocId) {
+        return EMPTY_PEER_COMMENTS;
+      }
+      const pendingComments =
+        tab.pendingComments[tab.activeDocId] ?? EMPTY_PEER_COMMENTS;
+      if (pendingComments.length === 0) {
+        return EMPTY_PEER_COMMENTS;
+      }
+      const currentPath = tab.activeFilePath ?? tab.fileName ?? "";
+      if (!currentPath) {
+        return pendingComments;
+      }
+      const visibleComments = pendingComments.filter(
+        (comment) => comment.path === currentPath,
+      );
+      return visibleComments.length > 0
+        ? visibleComments
+        : EMPTY_PEER_COMMENTS;
+    }),
+  );
   const documentUpdateAvailable = useAppStore(selectDocumentUpdateAvailable);
   const peerDraftCommentOpen = useAppStore(selectPeerDraftCommentOpen);
   const setPeerDraftCommentOpen = useAppStore(
@@ -192,16 +214,11 @@ export function CommentMargin({
       return byBlock;
     }
     // Host sees pending peer comments
-    if (!activeDocId) {
+    if (hostPendingPeerComments.length === 0) {
       return new Map<number, PeerComment[]>();
     }
-    const all = pendingComments[activeDocId] ?? [];
-    const currentPath = activeFilePath ?? fileName ?? "";
-    const forFile = currentPath
-      ? all.filter((comment) => comment.path === currentPath)
-      : all;
     const byBlock = new Map<number, PeerComment[]>();
-    for (const comment of forFile) {
+    for (const comment of hostPendingPeerComments) {
       const idx = comment.blockRef.blockIndex;
       const arr = byBlock.get(idx) ?? [];
       arr.push(comment);
@@ -212,10 +229,7 @@ export function CommentMargin({
     peerMode,
     myPeerComments,
     peerActiveFilePath,
-    pendingComments,
-    activeDocId,
-    activeFilePath,
-    fileName,
+    hostPendingPeerComments,
   ]);
 
   // Close card when clicking outside
