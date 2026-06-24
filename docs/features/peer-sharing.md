@@ -215,6 +215,11 @@ The host has a "Shared" panel showing all active shares:
 5. Link is copied to clipboard. Toast: "Link copied. Share it with your reviewers."
 6. Host sends link via Slack/Telegram/email.
 
+Share creation must keep the post-upload UI responsive even for large rendered
+documents. After the Worker accepts the encrypted blob, saving share metadata
+must not force the current Markdown document or comment margin to rerender just
+because the active tab's `shares`, `shareKeys`, or `activeDocId` changed.
+
 ### 8.2 Peer Reviews and Comments
 
 1. Peer opens link in browser. App prompts for their display name.

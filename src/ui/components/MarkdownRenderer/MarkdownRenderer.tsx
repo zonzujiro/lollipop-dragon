@@ -1,6 +1,7 @@
 import "./MarkdownRenderer.css";
 import {
   type ComponentPropsWithoutRef,
+  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -12,7 +13,7 @@ import remarkGfm from "remark-gfm";
 import { MermaidBlock } from "../MermaidBlock";
 import { CommentMargin } from "../CommentMargin";
 import { useAppStore } from "../../../store";
-import { useActiveTab } from "../../../store/selectors";
+import { useActiveTabField } from "../../../store/selectors";
 import {
   assignBlockIndices,
   isCommentType,
@@ -26,6 +27,7 @@ import {
   getRestoreAccessActionLabel,
   shouldRenderRestoreBanner,
 } from "../../../types/tab";
+import type { TabState } from "../../../types/tab";
 
 // Rehype plugin: adds data-block-index to each top-level element node.
 // This lets CommentMargin align dots with rendered blocks.
@@ -123,23 +125,79 @@ function MetadataPanel({ fields }: { fields: MarkdownMetadataField[] }) {
   );
 }
 
-export function MarkdownRenderer() {
-  const tab = useActiveTab();
-  const isPeerMode = useAppStore((s) => s.isPeerMode);
+type RestoreTabState = Pick<
+  TabState,
+  "directoryName" | "fileName" | "restoreError"
+>;
 
-  // In peer mode, read from global peer state; in host mode, from active tab
-  const rawContent = useAppStore((s) =>
-    s.isPeerMode ? s.peerRawContent : (tab?.rawContent ?? ""),
+interface MarkdownRendererContentProps {
+  activeFilePath: string | null;
+  fileName: string | null;
+  hostTabId: string | null;
+  isPeerMode: boolean;
+  pendingScrollTarget: TabState["pendingScrollTarget"];
+  rawContent: string;
+  restoreTabState: RestoreTabState;
+  writeAllowed: boolean;
+}
+
+function HostMarkdownRendererView() {
+  const rawContent = useActiveTabField("rawContent") ?? "";
+  const hostTabId = useActiveTabField("id") ?? null;
+  const fileName = useActiveTabField("fileName") ?? null;
+  const directoryName = useActiveTabField("directoryName") ?? null;
+  const activeFilePath = useActiveTabField("activeFilePath") ?? null;
+  const pendingScrollTarget = useActiveTabField("pendingScrollTarget") ?? null;
+  const writeAllowed = useActiveTabField("writeAllowed") ?? false;
+  const restoreError = useActiveTabField("restoreError") ?? null;
+
+  return (
+    <MarkdownRendererContent
+      activeFilePath={activeFilePath}
+      fileName={fileName}
+      hostTabId={hostTabId}
+      isPeerMode={false}
+      pendingScrollTarget={pendingScrollTarget}
+      rawContent={rawContent}
+      restoreTabState={{ directoryName, fileName, restoreError }}
+      writeAllowed={writeAllowed}
+    />
   );
-  const peerFileName = useAppStore((s) => s.peerFileName);
-  const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
-  const fileName = isPeerMode ? peerFileName : (tab?.fileName ?? null);
-  const activeFilePath = isPeerMode
-    ? peerActiveFilePath
-    : (tab?.activeFilePath ?? null);
-  const pendingScrollTarget = tab?.pendingScrollTarget ?? null;
-  const writeAllowed = tab?.writeAllowed ?? false;
-  const restoreError = tab?.restoreError ?? null;
+}
+
+function PeerMarkdownRendererView() {
+  const rawContent = useAppStore((s) => s.peerRawContent);
+  const fileName = useAppStore((s) => s.peerFileName);
+  const activeFilePath = useAppStore((s) => s.peerActiveFilePath);
+
+  return (
+    <MarkdownRendererContent
+      activeFilePath={activeFilePath}
+      fileName={fileName}
+      hostTabId={null}
+      isPeerMode
+      pendingScrollTarget={null}
+      rawContent={rawContent}
+      restoreTabState={{
+        directoryName: null,
+        fileName: null,
+        restoreError: null,
+      }}
+      writeAllowed
+    />
+  );
+}
+
+function MarkdownRendererContent({
+  activeFilePath,
+  fileName,
+  hostTabId,
+  isPeerMode,
+  pendingScrollTarget,
+  rawContent,
+  restoreTabState,
+  writeAllowed,
+}: MarkdownRendererContentProps) {
 
   const setComments = useAppStore((s) => s.setComments);
   const addCommentAction = useAppStore((s) => s.addComment);
@@ -155,7 +213,8 @@ export function MarkdownRenderer() {
     index: number;
     top: number;
   } | null>(null);
-  const showRestoreBanner = !isPeerMode && shouldRenderRestoreBanner(tab);
+  const showRestoreBanner =
+    !isPeerMode && shouldRenderRestoreBanner(restoreTabState);
 
   const canComment = writeAllowed || isPeerMode;
   const shouldTrackHover = canComment;
@@ -192,7 +251,7 @@ export function MarkdownRenderer() {
       if (!isCommentType(type)) {
         return;
       }
-      addCommentAction(blockIndex, type, text);
+      void addCommentAction(blockIndex, type, text);
     },
     [addCommentAction],
   );
@@ -203,7 +262,7 @@ export function MarkdownRenderer() {
         return;
       }
       const path = activeFilePath ?? fileName ?? "";
-      postPeerCommentAction(blockIndex, type, text, path);
+      void postPeerCommentAction(blockIndex, type, text, path);
     },
     [postPeerCommentAction, activeFilePath, fileName],
   );
@@ -294,14 +353,18 @@ export function MarkdownRenderer() {
 
   return (
     <div className="markdown-scroll-area">
-      {showRestoreBanner && tab ? (
+      {showRestoreBanner && hostTabId ? (
         <div className="restore-access-banner" role="status">
-          <span className="restore-access-banner__text">{restoreError}</span>
+          <span className="restore-access-banner__text">
+            {restoreTabState.restoreError}
+          </span>
           <button
             className="restore-access-banner__btn"
-            onClick={() => reopenTab(tab.id)}
+            onClick={() => {
+              void reopenTab(hostTabId);
+            }}
           >
-            {getRestoreAccessActionLabel(tab)}
+            {getRestoreAccessActionLabel(restoreTabState)}
           </button>
         </div>
       ) : null}
@@ -337,3 +400,8 @@ export function MarkdownRenderer() {
     </div>
   );
 }
+
+export const MarkdownRenderer = memo(function MarkdownRenderer() {
+  const isPeerMode = useAppStore((s) => s.isPeerMode);
+  return isPeerMode ? <PeerMarkdownRendererView /> : <HostMarkdownRendererView />;
+});
