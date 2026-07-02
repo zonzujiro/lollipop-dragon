@@ -102,6 +102,8 @@ MarkReview extends the plain comment protocol for threaded review questions.
 - Agents reply with a separate inline `answer:` CriticMarkup comment near the same text block.
 - The reply reuses the root `thread` value and sets `replyTo` to the root question `id`.
 - The reply can also include `author` so the UI can show `Codex`, `Cursor`, or a generic `Agent` label.
+- The Comments panel keeps replies collapsed under the root question and marks the root as `answered` once an `answer:` reply exists.
+- Deleting a thread-root `question:` comment deletes the linked `answer:` replies in the same thread so replies never remain as orphan comments.
 
 Example root:
 
@@ -135,6 +137,7 @@ No server required. The editor runs as a client-side application in Chrome/Edge 
 
 - Folder opening and file tree navigation with nested directory support
 - Rich markdown rendering: tables, syntax-highlighted code blocks, Mermaid diagrams, KaTeX math, footnotes, task lists, admonitions
+- Header table-of-contents navigation for markdown headings, with the popover opening above the document surface rather than being clipped by header toolbar overflow
 - CriticMarkup parsing — annotations are hidden from the rendered view and displayed as margin comments
 - Block-level commenting UI — hover to reveal comment button, select type, write comment, and CriticMarkup is inserted into the file
 - Comment panel (right sidebar) showing all comments in document order with filtering by type and status. In folder mode, comments are grouped by file — file headers display the full relative path (not just the filename) to distinguish files with identical names in different directories

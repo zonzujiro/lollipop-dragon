@@ -127,6 +127,110 @@ describe("store.deleteComment", () => {
     expect(tab?.rawContent).toBe("HelloWorld");
     expect(tab?.undoState?.rawContent).toBe(rawContent);
   });
+
+  it("removes a whole question thread when deleting the root question", async () => {
+    const { handle, mockWritable } = makeHandle();
+    const questionRaw =
+      '{>>question: Why? [markreview id="mr-question-1" thread="mr-question-1"]<<}';
+    const answerRaw =
+      '{>>answer: Because. [markreview id="mr-answer-1" thread="mr-question-1" replyTo="mr-question-1" author="Codex"]<<}';
+    const rawContent = `Before ${questionRaw} middle ${answerRaw} after`;
+    const questionStart = rawContent.indexOf(questionRaw);
+    const answerStart = rawContent.indexOf(answerRaw);
+    const question = makeComment({
+      id: "question-root",
+      type: "question",
+      text: "Why?",
+      raw: questionRaw,
+      rawStart: questionStart,
+      rawEnd: questionStart + questionRaw.length,
+      thread: {
+        commentId: "mr-question-1",
+        threadId: "mr-question-1",
+      },
+    });
+    const answer = makeComment({
+      id: "answer-reply",
+      type: "answer",
+      text: "Because.",
+      raw: answerRaw,
+      rawStart: answerStart,
+      rawEnd: answerStart + answerRaw.length,
+      thread: {
+        commentId: "mr-answer-1",
+        threadId: "mr-question-1",
+        replyTo: "mr-question-1",
+        authorLabel: "Codex",
+      },
+    });
+    setTestState({
+      fileHandle: handle,
+      rawContent,
+      comments: [question, answer],
+    });
+
+    await useAppStore.getState().deleteComment("question-root");
+
+    const expectedContent = rawContent
+      .replace(questionRaw, "")
+      .replace(answerRaw, "");
+    expect(mockWritable.write).toHaveBeenCalledWith(expectedContent);
+    const tab = getActiveTab(useAppStore.getState());
+    expect(tab?.rawContent).toBe(expectedContent);
+    expect(tab?.rawContent).not.toContain("answer:");
+    expect(tab?.undoState?.rawContent).toBe(rawContent);
+  });
+
+  it("removes only the selected answer when deleting a thread reply", async () => {
+    const { handle, mockWritable } = makeHandle();
+    const questionRaw =
+      '{>>question: Why? [markreview id="mr-question-1" thread="mr-question-1"]<<}';
+    const answerRaw =
+      '{>>answer: Because. [markreview id="mr-answer-1" thread="mr-question-1" replyTo="mr-question-1" author="Codex"]<<}';
+    const rawContent = `Before ${questionRaw} middle ${answerRaw} after`;
+    const questionStart = rawContent.indexOf(questionRaw);
+    const answerStart = rawContent.indexOf(answerRaw);
+    setTestState({
+      fileHandle: handle,
+      rawContent,
+      comments: [
+        makeComment({
+          id: "question-root",
+          type: "question",
+          text: "Why?",
+          raw: questionRaw,
+          rawStart: questionStart,
+          rawEnd: questionStart + questionRaw.length,
+          thread: {
+            commentId: "mr-question-1",
+            threadId: "mr-question-1",
+          },
+        }),
+        makeComment({
+          id: "answer-reply",
+          type: "answer",
+          text: "Because.",
+          raw: answerRaw,
+          rawStart: answerStart,
+          rawEnd: answerStart + answerRaw.length,
+          thread: {
+            commentId: "mr-answer-1",
+            threadId: "mr-question-1",
+            replyTo: "mr-question-1",
+            authorLabel: "Codex",
+          },
+        }),
+      ],
+    });
+
+    await useAppStore.getState().deleteComment("answer-reply");
+
+    const expectedContent = rawContent.replace(answerRaw, "");
+    expect(mockWritable.write).toHaveBeenCalledWith(expectedContent);
+    const tab = getActiveTab(useAppStore.getState());
+    expect(tab?.rawContent).toContain("question:");
+    expect(tab?.rawContent).not.toContain("answer:");
+  });
 });
 
 describe("store.undo", () => {

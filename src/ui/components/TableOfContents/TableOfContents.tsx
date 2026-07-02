@@ -1,5 +1,5 @@
 import "./TableOfContents.css";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "../../../store";
 import { useActiveTab } from "../../../store/selectors";
 import { parseCriticMarkup, parseMarkdownFrontmatter } from "../../../markup";
@@ -40,9 +40,16 @@ interface Props {
   peerMode?: boolean;
 }
 
+interface MenuPosition {
+  top: number;
+  right: number;
+}
+
 export function TableOfContents({ peerMode = false }: Props) {
   const [isOpen, setIsOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   const tab = useActiveTab();
   const peerRawContent = useAppStore((s) => s.peerRawContent);
@@ -60,22 +67,45 @@ export function TableOfContents({ peerMode = false }: Props) {
 
   const disabled = headings.length === 0;
 
+  const updateMenuPosition = useCallback(() => {
+    const button = buttonRef.current;
+    if (!button) {
+      return;
+    }
+    const rect = button.getBoundingClientRect();
+    setMenuPosition({
+      top: rect.bottom + 4,
+      right: Math.max(8, window.innerWidth - rect.right),
+    });
+  }, []);
+
   // Close on click outside
   useEffect(() => {
     if (!isOpen) {
       return;
     }
     function handleClick(e: MouseEvent) {
+      const targetNode = e.target;
       if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node)
+        targetNode instanceof Node &&
+        dropdownRef.current?.contains(targetNode)
       ) {
+        return;
+      }
+      if (targetNode instanceof Node) {
         setIsOpen(false);
       }
     }
+    updateMenuPosition();
     document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [isOpen]);
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
+    };
+  }, [isOpen, updateMenuPosition]);
 
   function handleHeadingClick(blockIndex: number) {
     scrollToBlock(blockIndex);
@@ -85,17 +115,26 @@ export function TableOfContents({ peerMode = false }: Props) {
   return (
     <div className="toc" ref={dropdownRef}>
       <button
+        ref={buttonRef}
         className="app-header__btn app-header__btn--icon"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          if (!isOpen) {
+            updateMenuPosition();
+          }
+          setIsOpen(!isOpen);
+        }}
         disabled={disabled}
         aria-label="Table of contents"
-        title="Table of contents"
+        title={disabled ? "No headings in this document" : "Table of contents"}
       >
         <OutlineIcon />
       </button>
 
       {isOpen && (
-        <div className="toc__menu">
+        <div
+          className="toc__menu"
+          style={{ position: "fixed", ...(menuPosition ?? {}) }}
+        >
           <div className="toc__header">Contents</div>
           <ul className="toc__list">
             {headings.map((heading, i) => (

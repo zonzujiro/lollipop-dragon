@@ -30,6 +30,18 @@ describe("TableOfContents", () => {
     expect(screen.getByText("Section")).toBeInTheDocument();
   });
 
+  it("positions the popover outside header overflow clipping", () => {
+    setTestState({ rawContent: "# Title\n\nText." });
+    const { container } = render(<TableOfContents />);
+    fireEvent.click(screen.getByRole("button", { name: "Table of contents" }));
+    const menu = container.querySelector(".toc__menu");
+    expect(menu).toBeInTheDocument();
+    if (!(menu instanceof Element)) {
+      throw new Error("Expected table-of-contents menu to render");
+    }
+    expect(window.getComputedStyle(menu).position).toBe("fixed");
+  });
+
   it("closes popover after clicking a heading", () => {
     setTestState({ rawContent: "# Title\n\nText." });
     render(<TableOfContents />);

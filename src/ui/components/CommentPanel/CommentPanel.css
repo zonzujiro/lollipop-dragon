@@ -59,23 +59,6 @@
   background-color: color-mix(in srgb, var(--c-red) 10%, transparent);
 }
 
-.comment-panel__secondary-action {
-  margin-left: auto;
-  background: var(--surface);
-  border: 1px solid var(--border-light);
-  border-radius: 999px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 0.18rem 0.55rem;
-}
-
-.comment-panel__secondary-action:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
 .comment-panel__danger-trigger {
   background: var(--surface);
   border: 1px solid var(--border-light);
@@ -441,6 +424,19 @@
   font-size: 0.7rem;
   color: var(--text-muted);
   font-family: var(--font-mono);
+}
+
+.comment-panel__status {
+  flex-shrink: 0;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--accent);
+  font-size: 0.64rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.16rem 0.4rem;
+  text-transform: uppercase;
 }
 
 /* ── Cross-file comment panel ──────────────────────────────── */
