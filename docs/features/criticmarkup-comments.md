@@ -100,10 +100,11 @@ MarkReview extends the plain comment protocol for threaded review questions.
 - A `question:` comment can be a thread root.
 - MarkReview writes hidden `[markreview ...]` metadata into app-created `question:` comments so a raw markdown file still carries stable thread identifiers.
 - Agents reply with a separate inline `answer:` CriticMarkup comment near the same text block.
+- Users can also reply directly from the thread card; MarkReview writes the same linked `answer:` CriticMarkup reply with `author="You"`.
 - The reply reuses the root `thread` value and sets `replyTo` to the root question `id`.
 - The reply can also include `author` so the UI can show `Codex`, `Cursor`, or a generic `Agent` label.
 - The Comments panel keeps replies collapsed under the root question and marks the root as `answered` once an `answer:` reply exists.
-- Agent-authored replies render as read-only comments in the UI. Users can delete them, but cannot edit their text or type.
+- Agent-authored replies render as read-only comments in the UI. User-authored replies can be edited or deleted.
 - Deleting a thread-root `question:` comment deletes the linked `answer:` replies in the same thread so replies never remain as orphan comments.
 
 Example root:
@@ -210,7 +211,7 @@ Typeform-inspired: the content is the interface. Light mode default with dark mo
 
 - Time from opening a folder to leaving the first comment: under 10 seconds
 - The LLM addresses standard CriticMarkup comments correctly without additional prompting beyond "read and address the comments in this file"
-- Threaded `question:` comments can be handed off with `Copy agent prompt`, and the resulting `answer:` replies render as linked inline threads
+- Threaded `question:` comments can be answered by the user in the thread card or handed off with `Copy agent prompt`, and the resulting `answer:` replies render as linked inline threads
 - A full review-comment-revise cycle completes in under 5 minutes
 - The reading experience is rated as comfortable and clean for documents over 3,000 words
 - Zero data leaves the user's machine

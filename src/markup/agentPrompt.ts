@@ -41,6 +41,7 @@ export function buildAgentReplyPrompt(): string {
 
 Rules:
 - Leave each original question comment unchanged.
+- Read the entire existing thread for each question, including human and agent answers already present.
 - Reply with a separate inline CriticMarkup comment near the same text block.
 - Use the \`answer:\` prefix in every reply.
 - Keep the question's existing \`thread\` value.

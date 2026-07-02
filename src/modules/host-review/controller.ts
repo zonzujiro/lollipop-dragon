@@ -6,6 +6,7 @@ import {
   assignBlockIndices,
   buildCommentThreadGroups,
   insertComment as insertCommentService,
+  insertThreadReply,
   parseMarkdownFrontmatter,
   parseCriticMarkup,
   shiftCommentRawOffsets,
@@ -192,6 +193,7 @@ export function createHostReviewControllerActions<
   | "deleteAllComments"
   | "editComment"
   | "addComment"
+  | "replyToCommentThread"
   | "undo"
 > {
   const {
@@ -387,6 +389,41 @@ export function createHostReviewControllerActions<
         buildUpdatedActiveTabs,
         fileHandle: tab.fileHandle,
         newRawContent: nextRawContent,
+      });
+    },
+
+    replyToCommentThread: async (rootCommentId, text) => {
+      const tab = getActiveTab(get);
+      if (!tab?.fileHandle) {
+        return;
+      }
+
+      const selectedThread = buildCommentThreadGroups(tab.comments).find(
+        (thread) => thread.root.id === rootCommentId,
+      );
+      if (
+        !selectedThread ||
+        selectedThread.root.type !== "question" ||
+        !selectedThread.root.thread ||
+        selectedThread.root.thread.replyTo
+      ) {
+        console.error("[replyToCommentThread] thread root not found", {
+          rootCommentId,
+        });
+        return;
+      }
+
+      await writeAndUpdate({
+        set,
+        buildUpdatedActiveTabs,
+        fileHandle: tab.fileHandle,
+        newRawContent: insertThreadReply({
+          rawContent: tab.rawContent,
+          root: selectedThread.root,
+          replies: selectedThread.replies,
+          text,
+          authorLabel: "You",
+        }),
       });
     },
 

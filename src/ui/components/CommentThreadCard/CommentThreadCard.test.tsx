@@ -157,4 +157,45 @@ describe("CommentThreadCard", () => {
 
     expect(screen.getByText("Delete this thread?")).toBeInTheDocument();
   });
+
+  it("submits a user answer from the thread composer", async () => {
+    const user = userEvent.setup();
+    const onReply = vi.fn();
+
+    render(
+      <CommentThreadCard
+        thread={makeQuestionThread().thread}
+        top={0}
+        onClose={vi.fn()}
+        onReply={onReply}
+      />,
+    );
+
+    const input = screen.getByLabelText("Answer text");
+    await user.type(input, "This is my answer.");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(onReply).toHaveBeenCalledWith("root-comment", "This is my answer.");
+    expect(input).toHaveValue("");
+  });
+
+  it("keeps send disabled until the answer has text", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <CommentThreadCard
+        thread={makeQuestionThread().thread}
+        top={0}
+        onClose={vi.fn()}
+        onReply={vi.fn()}
+      />,
+    );
+
+    const sendButton = screen.getByRole("button", { name: "Send" });
+    expect(sendButton).toBeDisabled();
+
+    await user.type(screen.getByLabelText("Answer text"), "ok");
+
+    expect(sendButton).toBeEnabled();
+  });
 });

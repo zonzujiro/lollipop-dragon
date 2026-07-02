@@ -238,6 +238,7 @@ interface Props {
   onClose: () => void;
   onEdit?: (id: string, type: CommentType, text: string) => void;
   onDelete?: (id: string) => void;
+  onReply?: (rootCommentId: string, text: string) => void;
 }
 
 export function CommentThreadCard({
@@ -247,10 +248,25 @@ export function CommentThreadCard({
   onClose,
   onEdit,
   onDelete,
+  onReply,
 }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
   const comments = [thread.root, ...thread.replies];
+  const canReplyToThread =
+    thread.root.type === "question" && !!thread.root.thread && !!onReply;
+
+  function handleReplySubmit(event: React.FormEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    const trimmedText = replyText.trim();
+    if (!trimmedText || !onReply) {
+      return;
+    }
+    onReply(thread.root.id, trimmedText);
+    setReplyText("");
+  }
 
   return (
     <div
@@ -306,6 +322,28 @@ export function CommentThreadCard({
           />
         ))}
       </div>
+      {canReplyToThread && (
+        <form
+          className="comment-thread-card__reply-form"
+          onSubmit={handleReplySubmit}
+        >
+          <textarea
+            className="comment-thread-card__reply-input"
+            aria-label="Answer text"
+            placeholder="Write an answer..."
+            rows={2}
+            value={replyText}
+            onChange={(event) => setReplyText(event.target.value)}
+          />
+          <button
+            type="submit"
+            className="comment-thread-card__reply-send"
+            disabled={!replyText.trim()}
+          >
+            Send
+          </button>
+        </form>
+      )}
     </div>
   );
 }

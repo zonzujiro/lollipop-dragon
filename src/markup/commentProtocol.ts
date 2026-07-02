@@ -56,9 +56,10 @@ function parseMetadataAttributes(
   return attributes;
 }
 
-export function parseThreadMetadata(
-  text: string,
-): { text: string; thread?: CommentThreadMetadata } {
+export function parseThreadMetadata(text: string): {
+  text: string;
+  thread?: CommentThreadMetadata;
+} {
   const metadataMatch = METADATA_RE.exec(text);
   if (!metadataMatch) {
     return { text };
@@ -126,7 +127,9 @@ export function serializeCommentBody(input: {
   thread?: CommentThreadMetadata;
 }): string {
   const prefix = input.type === "note" ? "" : `${input.type}: `;
-  const metadata = input.thread ? ` ${serializeThreadMetadata(input.thread)}` : "";
+  const metadata = input.thread
+    ? ` ${serializeThreadMetadata(input.thread)}`
+    : "";
   return `${prefix}${input.text}${metadata}`;
 }
 
@@ -146,6 +149,23 @@ export function createQuestionThreadMetadata(): CommentThreadMetadata {
   return {
     commentId,
     threadId: commentId,
+  };
+}
+
+export function createThreadReplyMetadata(input: {
+  root: Comment;
+  authorLabel: string;
+}): CommentThreadMetadata | null {
+  const rootThread = input.root.thread;
+  if (!rootThread) {
+    return null;
+  }
+
+  return {
+    commentId: createRandomCommentId(),
+    threadId: rootThread.threadId,
+    replyTo: rootThread.commentId,
+    authorLabel: input.authorLabel,
   };
 }
 
@@ -185,7 +205,10 @@ export function buildCommentThreadGroups(
       const rootComment = commentsByThreadCommentId.get(
         comment.thread?.replyTo ?? "",
       );
-      if (rootComment && rootComment.thread?.threadId === comment.thread?.threadId) {
+      if (
+        rootComment &&
+        rootComment.thread?.threadId === comment.thread?.threadId
+      ) {
         continue;
       }
       groups.push({ root: comment, replies: [] });
@@ -195,8 +218,9 @@ export function buildCommentThreadGroups(
     const replies =
       repliesByRootCommentId
         .get(comment.thread?.commentId ?? "")
-        ?.filter((reply) => reply.thread?.threadId === comment.thread?.threadId) ??
-      [];
+        ?.filter(
+          (reply) => reply.thread?.threadId === comment.thread?.threadId,
+        ) ?? [];
     groups.push({ root: comment, replies });
   }
 

@@ -134,6 +134,7 @@ export function CommentMargin({
 }: Props) {
   const editCommentAction = useAppStore((s) => s.editComment);
   const deleteCommentAction = useAppStore((s) => s.deleteComment);
+  const replyToCommentThreadAction = useAppStore((s) => s.replyToCommentThread);
   const [addingBlock, setAddingBlock] = useState<{
     index: number;
     top: number;
@@ -160,9 +161,7 @@ export function CommentMargin({
       const visibleComments = pendingComments.filter(
         (comment) => comment.path === currentPath,
       );
-      return visibleComments.length > 0
-        ? visibleComments
-        : EMPTY_PEER_COMMENTS;
+      return visibleComments.length > 0 ? visibleComments : EMPTY_PEER_COMMENTS;
     }),
   );
   const documentUpdateAvailable = useAppStore(selectDocumentUpdateAvailable);
@@ -185,7 +184,9 @@ export function CommentMargin({
         ? commentFilter === "resolved"
           ? []
           : allThreadGroups
-        : allThreadGroups.filter((thread) => thread.root.type === commentFilter),
+        : allThreadGroups.filter(
+            (thread) => thread.root.type === commentFilter,
+          ),
     [allThreadGroups, commentFilter],
   );
   const [groups, setGroups] = useState<DotGroup[]>([]);
@@ -225,12 +226,7 @@ export function CommentMargin({
       byBlock.set(idx, arr);
     }
     return byBlock;
-  }, [
-    peerMode,
-    myPeerComments,
-    peerActiveFilePath,
-    hostPendingPeerComments,
-  ]);
+  }, [peerMode, myPeerComments, peerActiveFilePath, hostPendingPeerComments]);
 
   // Close card when clicking outside
   useEffect(() => {
@@ -368,38 +364,40 @@ export function CommentMargin({
 
   return (
     <div className="comment-margin">
-      {hoveredBlock && !addingBlock && !(peerMode && documentUpdateAvailable) && (
-        <div
-          className="comment-margin__add-wrapper"
-          style={{ top: hoveredBlock.top }}
-        >
-          <button
-            className="comment-margin__add"
-            aria-label="Add comment"
-            onClick={(e) => {
-              e.stopPropagation();
-              setAddingBlock(hoveredBlock);
-              if (peerMode) {
-                setPeerDraftCommentOpen(true);
-              }
-            }}
+      {hoveredBlock &&
+        !addingBlock &&
+        !(peerMode && documentUpdateAvailable) && (
+          <div
+            className="comment-margin__add-wrapper"
+            style={{ top: hoveredBlock.top }}
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+            <button
+              className="comment-margin__add"
+              aria-label="Add comment"
+              onClick={(e) => {
+                e.stopPropagation();
+                setAddingBlock(hoveredBlock);
+                if (peerMode) {
+                  setPeerDraftCommentOpen(true);
+                }
+              }}
             >
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-          </button>
-        </div>
-      )}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+            </button>
+          </div>
+        )}
       {addingBlock && (
         <AddCommentForm
           top={addingBlock.top}
@@ -480,10 +478,32 @@ export function CommentMargin({
                 top={floatingTop ?? top}
                 cardRef={activeCardRef}
                 onClose={() => setActiveId(null)}
-                onEdit={(id, type, text) => editCommentAction(id, type, text)}
+                onEdit={(id, type, text) => {
+                  editCommentAction(id, type, text).catch((error) => {
+                    console.error(
+                      "[CommentMargin] failed to edit comment:",
+                      error,
+                    );
+                  });
+                }}
                 onDelete={(id) => {
-                  deleteCommentAction(id);
+                  deleteCommentAction(id).catch((error) => {
+                    console.error(
+                      "[CommentMargin] failed to delete comment:",
+                      error,
+                    );
+                  });
                   setActiveId(null);
+                }}
+                onReply={(rootCommentId, text) => {
+                  replyToCommentThreadAction(rootCommentId, text).catch(
+                    (error) => {
+                      console.error(
+                        "[CommentMargin] failed to reply to thread:",
+                        error,
+                      );
+                    },
+                  );
                 }}
               />
             )}
@@ -494,9 +514,7 @@ export function CommentMargin({
       {Array.from(peerDotGroups.entries()).map(([blockIdx, peerComments]) => {
         // Skip blocks already rendered with host groups
         if (
-          groups.some(
-            (group) => group.threads[0]?.root.blockIndex === blockIdx,
-          )
+          groups.some((group) => group.threads[0]?.root.blockIndex === blockIdx)
         ) {
           return null;
         }
