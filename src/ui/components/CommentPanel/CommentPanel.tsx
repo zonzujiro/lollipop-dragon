@@ -20,6 +20,7 @@ import { COMMENT_TYPE_COLOR } from "../../../types/criticmarkup";
 import type { Comment, CommentType } from "../../../types/criticmarkup";
 import type { PeerComment } from "../../../types/share";
 import type { TabState } from "../../../types/tab";
+import { canEditComment } from "../../../utils/commentPermissions";
 import { AgentTerminal } from "../AgentTerminal";
 
 const ALL_TYPES: CommentType[] = [
@@ -1064,7 +1065,8 @@ function CommentEntry({
     canEdit &&
     (!isFullComment ||
       !comment.criticType ||
-      EDITABLE_CRITIC_TYPES.includes(comment.criticType));
+      (canEditComment(comment) &&
+        EDITABLE_CRITIC_TYPES.includes(comment.criticType)));
 
   if (editing) {
     return (

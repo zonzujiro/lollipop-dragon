@@ -4,6 +4,7 @@ import type { RefObject } from "react";
 import { COMMENT_TYPE_COLOR } from "../../../types/criticmarkup";
 import type { Comment, CommentType } from "../../../types/criticmarkup";
 import type { CommentThreadGroup } from "../../../markup";
+import { canEditComment } from "../../../utils/commentPermissions";
 
 const EDITABLE_COMMENT_TYPES: CommentType[] = [
   "note",
@@ -149,7 +150,9 @@ function CommentRow({
   onCancelDelete,
   onConfirmDelete,
 }: CommentRowProps) {
-  const editable = EDITABLE_CRITIC_TYPES.includes(comment.criticType);
+  const editable =
+    canEditComment(comment) &&
+    EDITABLE_CRITIC_TYPES.includes(comment.criticType);
   const authorLabel =
     comment.type === "answer" ? (comment.thread?.authorLabel ?? "Agent") : null;
   const deletingThreadRoot = !!comment.thread && !comment.thread.replyTo;
