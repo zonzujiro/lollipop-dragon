@@ -183,6 +183,7 @@ describe("CommentPanel — active entry", () => {
     const { container } = render(<CommentPanel />);
 
     expect(screen.getByText("Why is this here?")).toBeInTheDocument();
+    expect(screen.getByText("answered")).toBeInTheDocument();
     expect(
       screen.queryByText("Because it explains reconnect fallback."),
     ).not.toBeInTheDocument();
@@ -206,7 +207,7 @@ describe("CommentPanel — close", () => {
 });
 
 describe("CommentPanel — agent prompt", () => {
-  it("shows a copy review prompt button when actionable comments exist", () => {
+  it("does not show copy-prompt actions in the comments panel header", () => {
     setTestState({
       activeFilePath: "docs/spec.md",
       comments: [
@@ -220,46 +221,14 @@ describe("CommentPanel — agent prompt", () => {
 
     render(<CommentPanel />);
     expect(
-      screen.getByRole("button", { name: "Copy review prompt" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "Copy review prompt" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Copy agent prompt" }),
+    ).not.toBeInTheDocument();
   });
 
-  it("copies the address-comments prompt to the clipboard", async () => {
-    const user = userEvent.setup();
-    const writeText = vi
-      .spyOn(navigator.clipboard, "writeText")
-      .mockResolvedValue(undefined);
-
-    setTestState({
-      activeFilePath: "docs/spec.md",
-      comments: [
-        makeCommentBase({
-          id: "fix-root",
-          type: "fix",
-          text: "Fix the intro",
-        }),
-      ],
-    });
-
-    render(<CommentPanel />);
-    await user.click(
-      screen.getByRole("button", { name: "Copy review prompt" }),
-    );
-
-    expect(writeText).toHaveBeenCalledOnce();
-    expect(writeText.mock.calls[0]?.[0]).toContain("Work only in docs/spec.md");
-    expect(writeText.mock.calls[0]?.[0]).toContain(
-      "- fix-root (fix): Fix the intro",
-    );
-    expect(useAppStore.getState().toast).toBe("Agent review prompt copied");
-  });
-
-  it("copies a folder address-comments prompt from scanned file comments", async () => {
-    const user = userEvent.setup();
-    const writeText = vi
-      .spyOn(navigator.clipboard, "writeText")
-      .mockResolvedValue(undefined);
-
+  it("does not show folder-level copy-prompt actions in the comments panel header", () => {
     setTestState({
       fileTree: [
         {
@@ -295,26 +264,12 @@ describe("CommentPanel — agent prompt", () => {
     });
 
     render(<CommentPanel />);
-    await user.click(
-      screen.getByRole("button", { name: "Copy review prompt" }),
-    );
-
-    expect(writeText).toHaveBeenCalledOnce();
-    expect(writeText.mock.calls[0]?.[0]).toContain(
-      "Work only in the listed markdown files",
-    );
-    expect(writeText.mock.calls[0]?.[0]).toContain("- docs/notes.md");
-    expect(writeText.mock.calls[0]?.[0]).toContain(
-      "  - note-root (note): Check this claim",
-    );
-    expect(writeText.mock.calls[0]?.[0]).toContain("- docs/spec.md");
-    expect(writeText.mock.calls[0]?.[0]).toContain(
-      "  - fix-root (fix): Fix the intro",
-    );
-    expect(useAppStore.getState().toast).toBe("Agent review prompt copied");
+    expect(
+      screen.queryByRole("button", { name: "Copy review prompt" }),
+    ).not.toBeInTheDocument();
   });
 
-  it("shows a copy prompt button when question threads exist", () => {
+  it("does not show question-thread copy-prompt actions in the comments panel header", () => {
     setTestState({
       comments: [
         makeCommentBase({
@@ -331,35 +286,8 @@ describe("CommentPanel — agent prompt", () => {
 
     render(<CommentPanel />);
     expect(
-      screen.getByRole("button", { name: "Copy agent prompt" }),
-    ).toBeInTheDocument();
-  });
-
-  it("copies the agent prompt to the clipboard", async () => {
-    const user = userEvent.setup();
-    const writeText = vi
-      .spyOn(navigator.clipboard, "writeText")
-      .mockResolvedValue(undefined);
-
-    setTestState({
-      comments: [
-        makeCommentBase({
-          id: "question-root",
-          type: "question",
-          text: "Why is this here?",
-          thread: {
-            commentId: "mr-question-1",
-            threadId: "mr-question-1",
-          },
-        }),
-      ],
-    });
-
-    render(<CommentPanel />);
-    await user.click(screen.getByRole("button", { name: "Copy agent prompt" }));
-
-    expect(writeText).toHaveBeenCalledOnce();
-    expect(useAppStore.getState().toast).toBe("Agent prompt copied");
+      screen.queryByRole("button", { name: "Copy agent prompt" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows and stops an active agent run for the current tab", async () => {

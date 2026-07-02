@@ -1,16 +1,9 @@
 import "./CommentPanel.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  buildAddressCommentsAgentPrompt,
-  buildAgentReplyPrompt,
-  buildCommentThreadGroups,
-  buildFolderAddressCommentsAgentPrompt,
-} from "../../../markup";
+import { buildCommentThreadGroups } from "../../../markup";
 import {
   getActiveAgentRunForTab,
-  getAddressableCommentTargets,
   getFinishedAgentRunHistoryForTab,
-  getFolderAddressableCommentTargets,
 } from "../../../modules/agent-workflow";
 import type { AgentRun, AgentRunStatus } from "../../../modules/agent-workflow";
 import {
@@ -27,10 +20,6 @@ import { COMMENT_TYPE_COLOR } from "../../../types/criticmarkup";
 import type { Comment, CommentType } from "../../../types/criticmarkup";
 import type { PeerComment } from "../../../types/share";
 import type { TabState } from "../../../types/tab";
-import {
-  getAddressCommentsAgentAction,
-  getQuestionThreadAgentAction,
-} from "../../agentActions";
 import { AgentTerminal } from "../AgentTerminal";
 
 const ALL_TYPES: CommentType[] = [
@@ -75,6 +64,11 @@ const EMPTY_COMMENTS: Comment[] = [];
 const EMPTY_FILE_TREE: TabState["fileTree"] = [];
 const EMPTY_ALL_FILE_COMMENTS: TabState["allFileComments"] = {};
 const EMPTY_AGENT_RUNS: AgentRun[] = [];
+const EMPTY_ANSWERED_COMMENT_IDS = new Set<string>();
+const EMPTY_ANSWERED_COMMENT_IDS_BY_PATH = new Map<
+  string,
+  ReadonlySet<string>
+>();
 const INITIAL_AGENT_CAPABILITY: AgentRuntimeCapability = {
   canRunAgent: false,
   unavailableMessage: canRunAgent
@@ -160,6 +154,19 @@ function getRootOnlyComments(comments: Comment[]): Comment[] {
   return buildCommentThreadGroups(comments).map((group) => group.root);
 }
 
+function getAnsweredQuestionIds(comments: Comment[]): ReadonlySet<string> {
+  const answeredQuestionIds = new Set<string>();
+  for (const group of buildCommentThreadGroups(comments)) {
+    if (
+      group.root.type === "question" &&
+      group.replies.some((reply) => reply.type === "answer")
+    ) {
+      answeredQuestionIds.add(group.root.id);
+    }
+  }
+  return answeredQuestionIds;
+}
+
 function getActiveRootCommentId(
   comments: Comment[],
   activeCommentId: string | null,
@@ -191,6 +198,10 @@ export function CommentPanel({ peerMode = false }: Props) {
     () => getRootOnlyComments(comments),
     [comments],
   );
+  const answeredQuestionIds = useMemo(
+    () => getAnsweredQuestionIds(comments),
+    [comments],
+  );
   const resolvedComments = tab?.resolvedComments ?? EMPTY_COMMENTS;
   const activeCommentId = tab?.activeCommentId ?? null;
   const activeRootCommentId = useMemo(
@@ -218,12 +229,6 @@ export function CommentPanel({ peerMode = false }: Props) {
   const editPeerComment = useAppStore((state) => state.editPeerComment);
   const deletePeerComment = useAppStore((state) => state.deletePeerComment);
   const selectPeerFile = useAppStore((state) => state.selectPeerFile);
-  const startQuestionThreadAgentRun = useAppStore(
-    (state) => state.startQuestionThreadAgentRun,
-  );
-  const startAddressCommentsAgentRun = useAppStore(
-    (state) => state.startAddressCommentsAgentRun,
-  );
   const stopActiveAgentRun = useAppStore((state) => state.stopActiveAgentRun);
   const syncActiveAgentRunStatus = useAppStore(
     (state) => state.syncActiveAgentRunStatus,
@@ -305,6 +310,16 @@ export function CommentPanel({ peerMode = false }: Props) {
     );
     return entries;
   }, [isFolderMode, allFileComments]);
+  const answeredQuestionIdsByPath = useMemo(() => {
+    if (!isFolderMode) {
+      return EMPTY_ANSWERED_COMMENT_IDS_BY_PATH;
+    }
+    const byPath = new Map<string, ReadonlySet<string>>();
+    for (const entry of Object.values(allFileComments)) {
+      byPath.set(entry.filePath, getAnsweredQuestionIds(entry.comments));
+    }
+    return byPath;
+  }, [allFileComments, isFolderMode]);
 
   // Total count across all files for folder/peer-multi-file mode
   const totalCrossFileCount = useMemo(() => {
@@ -319,38 +334,6 @@ export function CommentPanel({ peerMode = false }: Props) {
       0,
     );
   }, [isPeerMultiFile, myPeerComments.length, isFolderMode, crossFileComments]);
-
-  const hasQuestionThreads = useMemo(() => {
-    if (peerMode) {
-      return false;
-    }
-    if (isFolderMode) {
-      return crossFileComments.some((entry) =>
-        entry.comments.some(
-          (comment) => comment.type === "question" && !!comment.thread,
-        ),
-      );
-    }
-    return hostRootComments.some(
-      (comment) => comment.type === "question" && !!comment.thread,
-    );
-  }, [crossFileComments, hostRootComments, isFolderMode, peerMode]);
-  const addressableCommentTargets = useMemo(() => {
-    if (peerMode || isFolderMode) {
-      return [];
-    }
-    return getAddressableCommentTargets(comments);
-  }, [comments, isFolderMode, peerMode]);
-  const folderAddressableCommentTargets = useMemo(() => {
-    if (peerMode || !isFolderMode) {
-      return [];
-    }
-    return getFolderAddressableCommentTargets(crossFileComments);
-  }, [crossFileComments, isFolderMode, peerMode]);
-  const hasAddressableComments = isFolderMode
-    ? folderAddressableCommentTargets.length > 0
-    : addressableCommentTargets.length > 0;
-  const shouldPromptAgentSetup = canRunAgent && !agentCapability.canRunAgent;
 
   const isResolved = !peerMode && commentFilter === "resolved";
 
@@ -424,44 +407,20 @@ export function CommentPanel({ peerMode = false }: Props) {
     return body.length > 72 ? body.slice(0, 72) + "…" : body;
   }
 
-  async function handleCopyAgentPrompt() {
-    try {
-      await navigator.clipboard.writeText(buildAgentReplyPrompt());
-      showToast("Agent prompt copied");
-    } catch (error) {
-      console.error("[CommentPanel] failed to copy agent prompt:", error);
-      showToast("Couldn't copy agent prompt");
-    }
+  function handleEditHostComment(id: string, type: CommentType, text: string) {
+    editComment(id, type, text).catch((error) => {
+      console.error("[CommentPanel] failed to edit comment:", error);
+      showToast("Couldn't edit comment");
+    });
   }
 
-  async function handleCopyAddressCommentsPrompt() {
-    const targetPath =
-      activeFilePath ?? tab?.fileName ?? "the active markdown file";
-    const prompt = isFolderMode
-      ? buildFolderAddressCommentsAgentPrompt({
-          targets: folderAddressableCommentTargets,
-        })
-      : buildAddressCommentsAgentPrompt({
-          targetPath,
-          comments: addressableCommentTargets,
-        });
-    try {
-      await navigator.clipboard.writeText(prompt);
-      showToast("Agent review prompt copied");
-    } catch (error) {
-      console.error("[CommentPanel] failed to copy agent prompt:", error);
-      showToast("Couldn't copy agent prompt");
-    }
+  function handleDeleteHostComment(id: string) {
+    deleteComment(id).catch((error) => {
+      console.error("[CommentPanel] failed to delete comment:", error);
+      showToast("Couldn't delete comment");
+    });
   }
 
-  const addressCommentsAgentAction = getAddressCommentsAgentAction({
-    canRunAgent: agentCapability.canRunAgent || shouldPromptAgentSetup,
-    canStartAddressCommentsRun: hasAddressableComments,
-  });
-  const questionThreadAgentAction = getQuestionThreadAgentAction({
-    canRunAgent: agentCapability.canRunAgent || shouldPromptAgentSetup,
-    canStartQuestionThreadRun: hasQuestionThreads,
-  });
   const canStopAgentRun = Boolean(
     activeAgentRun && ACTIVE_AGENT_RUN_STATUSES.has(activeAgentRun.status),
   );
@@ -498,38 +457,6 @@ export function CommentPanel({ peerMode = false }: Props) {
     !agentCapability.canRunAgent &&
     agentCapability.unavailableMessage,
   );
-
-  async function handleQuestionThreadAgentAction() {
-    if (questionThreadAgentAction.kind === "copy_prompt") {
-      await handleCopyAgentPrompt();
-      return;
-    }
-
-    const result = await startQuestionThreadAgentRun();
-    if (result.status === "unavailable") {
-      if (canRunAgent && result.reason === "agent_unavailable") {
-        openAgentSettings();
-        return;
-      }
-      showToast(result.message);
-    }
-  }
-
-  async function handleAddressCommentsAgentAction() {
-    if (addressCommentsAgentAction.kind === "copy_prompt") {
-      await handleCopyAddressCommentsPrompt();
-      return;
-    }
-
-    const result = await startAddressCommentsAgentRun();
-    if (result.status === "unavailable") {
-      if (canRunAgent && result.reason === "agent_unavailable") {
-        openAgentSettings();
-        return;
-      }
-      showToast(result.message);
-    }
-  }
 
   async function handleStopAgentRun() {
     const result = await stopActiveAgentRun();
@@ -711,37 +638,13 @@ export function CommentPanel({ peerMode = false }: Props) {
           )}
         </span>
         {!peerMode && displayCount > 0 && (
-          <>
-            {hasAddressableComments && !canStopAgentRun && (
-              <button
-                className="comment-panel__secondary-action"
-                onClick={() => {
-                  void handleAddressCommentsAgentAction();
-                }}
-                title={addressCommentsAgentAction.title}
-              >
-                {addressCommentsAgentAction.label}
-              </button>
-            )}
-            {hasQuestionThreads && !canStopAgentRun && (
-              <button
-                className="comment-panel__secondary-action"
-                onClick={() => {
-                  void handleQuestionThreadAgentAction();
-                }}
-                title={questionThreadAgentAction.title}
-              >
-                {questionThreadAgentAction.label}
-              </button>
-            )}
-            <button
-              className="comment-panel__danger-trigger"
-              onClick={() => setConfirmDeleteAll(true)}
-              title="Review before deleting all comments from the file"
-            >
-              Clear
-            </button>
-          </>
+          <button
+            className="comment-panel__danger-trigger"
+            onClick={() => setConfirmDeleteAll(true)}
+            title="Review before deleting all comments from the file"
+          >
+            Clear
+          </button>
         )}
         <button
           className="comment-panel__close"
@@ -995,6 +898,7 @@ export function CommentPanel({ peerMode = false }: Props) {
             onCrossFileClick={(filePath) => selectPeerFile(filePath)}
             onEdit={editPeerComment}
             onDelete={deletePeerComment}
+            answeredCommentIdsByPath={EMPTY_ANSWERED_COMMENT_IDS_BY_PATH}
           />
         ) : isFolderMode ? (
           <CrossFileList
@@ -1003,8 +907,9 @@ export function CommentPanel({ peerMode = false }: Props) {
             activeCommentId={activeRootCommentId}
             onEntryClick={handleEntryClick}
             onCrossFileClick={handleCrossFileClick}
-            onEdit={editComment}
-            onDelete={deleteComment}
+            onEdit={handleEditHostComment}
+            onDelete={handleDeleteHostComment}
+            answeredCommentIdsByPath={answeredQuestionIdsByPath}
           />
         ) : (
           <SingleFileList
@@ -1016,8 +921,11 @@ export function CommentPanel({ peerMode = false }: Props) {
             onEntryClick={handleEntryClick}
             entryLabel={entryLabel}
             hostEntryLabel={hostEntryLabel}
-            onEdit={peerMode ? editPeerComment : editComment}
-            onDelete={peerMode ? deletePeerComment : deleteComment}
+            onEdit={peerMode ? editPeerComment : handleEditHostComment}
+            onDelete={peerMode ? deletePeerComment : handleDeleteHostComment}
+            answeredCommentIds={
+              peerMode ? EMPTY_ANSWERED_COMMENT_IDS : answeredQuestionIds
+            }
           />
         )}
       </div>
@@ -1127,6 +1035,7 @@ function CommentEntry({
   isActive,
   isOtherFile,
   canEdit,
+  answered,
   onClick,
   onEdit,
   onDelete,
@@ -1135,6 +1044,7 @@ function CommentEntry({
   isActive: boolean;
   isOtherFile: boolean;
   canEdit: boolean;
+  answered: boolean;
   onClick: () => void;
   onEdit?: (id: string, type: CommentType, text: string) => void;
   onDelete?: (id: string) => void;
@@ -1219,6 +1129,14 @@ function CommentEntry({
       {comment.blockIndex !== undefined && (
         <span className="comment-panel__ref">¶{comment.blockIndex + 1}</span>
       )}
+      {answered && (
+        <span
+          className="comment-panel__status"
+          title="This question has an answer"
+        >
+          answered
+        </span>
+      )}
       {canEdit && (
         <span
           className="comment-panel__entry-actions"
@@ -1257,6 +1175,7 @@ function CrossFileList({
   onCrossFileClick,
   onEdit,
   onDelete,
+  answeredCommentIdsByPath,
 }: {
   entries: {
     filePath: string;
@@ -1269,6 +1188,7 @@ function CrossFileList({
   onCrossFileClick: (filePath: string, rawStart: number) => void;
   onEdit: (id: string, type: CommentType, text: string) => void;
   onDelete: (id: string) => void;
+  answeredCommentIdsByPath: ReadonlyMap<string, ReadonlySet<string>>;
 }) {
   const totalCount = entries.reduce(
     (sum, entry) => sum + entry.comments.length,
@@ -1294,6 +1214,9 @@ function CrossFileList({
             {entry.comments.map((comment) => {
               const rawStart = "rawStart" in comment ? comment.rawStart : 0;
               const canEdit = true;
+              const answeredCommentIds =
+                answeredCommentIdsByPath.get(entry.filePath) ??
+                EMPTY_ANSWERED_COMMENT_IDS;
               return (
                 <CommentEntry
                   key={`${entry.filePath}:${comment.id}`}
@@ -1301,6 +1224,7 @@ function CrossFileList({
                   isActive={isActiveFile && activeCommentId === comment.id}
                   isOtherFile={!isActiveFile}
                   canEdit={canEdit}
+                  answered={answeredCommentIds.has(comment.id)}
                   onClick={() => {
                     if (isActiveFile) {
                       onEntryClick(comment.id, comment.blockIndex);
@@ -1333,6 +1257,7 @@ function SingleFileList({
   hostEntryLabel,
   onEdit,
   onDelete,
+  answeredCommentIds,
 }: {
   visible: (Comment | DisplayComment)[];
   isResolved: boolean;
@@ -1344,6 +1269,7 @@ function SingleFileList({
   hostEntryLabel: (comment: Comment) => string;
   onEdit: (id: string, type: CommentType, text: string) => void;
   onDelete: (id: string) => void;
+  answeredCommentIds: ReadonlySet<string>;
 }) {
   if (visible.length === 0) {
     return (
@@ -1397,6 +1323,7 @@ function SingleFileList({
             isActive={activeCommentId === comment.id}
             isOtherFile={false}
             canEdit={true}
+            answered={answeredCommentIds.has(comment.id)}
             onClick={() => onEntryClick(comment.id, comment.blockIndex)}
             onEdit={onEdit}
             onDelete={onDelete}

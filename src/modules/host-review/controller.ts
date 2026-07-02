@@ -1,8 +1,10 @@
 import type { StoreApi } from "zustand";
 import {
   applyDelete,
+  applyDeleteMany,
   applyEdit,
   assignBlockIndices,
+  buildCommentThreadGroups,
   insertComment as insertCommentService,
   parseMarkdownFrontmatter,
   parseCriticMarkup,
@@ -74,6 +76,24 @@ export function findResolvedComments(
   rawContent: string,
 ): Comment[] {
   return comments.filter((comment) => !rawContent.includes(comment.raw));
+}
+
+function getDeletedCommentsForSelection(
+  comments: Comment[],
+  selectedComment: Comment,
+): Comment[] {
+  if (!selectedComment.thread || selectedComment.thread.replyTo) {
+    return [selectedComment];
+  }
+
+  const selectedThread = buildCommentThreadGroups(comments).find(
+    (thread) => thread.root.id === selectedComment.id,
+  );
+  if (!selectedThread) {
+    return [selectedComment];
+  }
+
+  return [selectedThread.root, ...selectedThread.replies];
 }
 
 export async function writeAndUpdate<
@@ -292,7 +312,10 @@ export function createHostReviewControllerActions<
         set,
         buildUpdatedActiveTabs,
         fileHandle: tab.fileHandle,
-        newRawContent: applyDelete(tab.rawContent, comment),
+        newRawContent: applyDeleteMany(
+          tab.rawContent,
+          getDeletedCommentsForSelection(tab.comments, comment),
+        ),
       });
     },
 

@@ -90,7 +90,9 @@ describe("CommentThreadCard", () => {
       />,
     );
 
-    await user.click(screen.getAllByRole("button", { name: "Edit comment" })[1]);
+    await user.click(
+      screen.getAllByRole("button", { name: "Edit comment" })[1],
+    );
     const textarea = screen.getByDisplayValue(
       "It explains the reconnect fallback path.",
     );
@@ -124,5 +126,24 @@ describe("CommentThreadCard", () => {
     await user.click(screen.getByRole("button", { name: "Confirm delete" }));
 
     expect(onDelete).toHaveBeenCalledWith("reply-comment");
+  });
+
+  it("labels root deletion as deleting the thread", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <CommentThreadCard
+        thread={makeQuestionThread().thread}
+        top={0}
+        onClose={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    await user.click(
+      screen.getAllByRole("button", { name: "Delete comment" })[0],
+    );
+
+    expect(screen.getByText("Delete this thread?")).toBeInTheDocument();
   });
 });

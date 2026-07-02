@@ -7,7 +7,11 @@ vi.mock("../../../config", () => ({
 }));
 
 import { Header } from "./index";
-import { resetTestStore, setTestState } from "../../../testing/testHelpers";
+import {
+  makeComment,
+  resetTestStore,
+  setTestState,
+} from "../../../testing/testHelpers";
 
 beforeEach(() => {
   resetTestStore();
@@ -126,5 +130,71 @@ describe("Header share buttons", () => {
       await user.click(screen.getByRole("button", { name: "Share folder" }));
       expect(onShareFolder).toHaveBeenCalledOnce();
     });
+  });
+});
+
+describe("Header review actions", () => {
+  it("keeps the address-comments prompt available from the toolbar menu", async () => {
+    const user = userEvent.setup();
+    const writeText = vi
+      .spyOn(navigator.clipboard, "writeText")
+      .mockResolvedValue(undefined);
+
+    setTestState({
+      fileName: "spec.md",
+      activeFilePath: "docs/spec.md",
+      comments: [
+        makeComment({
+          id: "fix-root",
+          type: "fix",
+          text: "Fix the intro",
+        }),
+      ],
+    });
+
+    render(<Header />);
+    await user.click(screen.getByRole("button", { name: "Review actions" }));
+    await user.click(
+      screen.getByRole("menuitem", { name: "Copy review prompt" }),
+    );
+
+    expect(writeText).toHaveBeenCalledOnce();
+    expect(writeText.mock.calls[0]?.[0]).toContain("Work only in docs/spec.md");
+    expect(writeText.mock.calls[0]?.[0]).toContain(
+      "- fix-root (fix): Fix the intro",
+    );
+  });
+
+  it("keeps the question-answer prompt available from the toolbar menu", async () => {
+    const user = userEvent.setup();
+    const writeText = vi
+      .spyOn(navigator.clipboard, "writeText")
+      .mockResolvedValue(undefined);
+
+    setTestState({
+      fileName: "spec.md",
+      comments: [
+        makeComment({
+          id: "question-root",
+          type: "question",
+          text: "Why is this here?",
+          thread: {
+            commentId: "mr-question-1",
+            threadId: "mr-question-1",
+          },
+        }),
+      ],
+    });
+
+    render(<Header />);
+    await user.click(screen.getByRole("button", { name: "Review actions" }));
+    await user.click(
+      screen.getByRole("menuitem", { name: "Copy answer prompt" }),
+    );
+
+    expect(writeText).toHaveBeenCalledOnce();
+    expect(writeText.mock.calls[0]?.[0]).toContain(
+      "answer MarkReview threaded questions inline",
+    );
   });
 });

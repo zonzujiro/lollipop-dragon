@@ -49,7 +49,9 @@ function CommentBody({ comment }: { comment: Comment }) {
           "{comment.highlightedText}"
         </p>
       )}
-      {comment.text && <p className="comment-thread-card__content">{comment.text}</p>}
+      {comment.text && (
+        <p className="comment-thread-card__content">{comment.text}</p>
+      )}
     </>
   );
 }
@@ -149,9 +151,8 @@ function CommentRow({
 }: CommentRowProps) {
   const editable = EDITABLE_CRITIC_TYPES.includes(comment.criticType);
   const authorLabel =
-    comment.type === "answer"
-      ? (comment.thread?.authorLabel ?? "Agent")
-      : null;
+    comment.type === "answer" ? (comment.thread?.authorLabel ?? "Agent") : null;
+  const deletingThreadRoot = !!comment.thread && !comment.thread.replyTo;
 
   return (
     <div
@@ -199,7 +200,11 @@ function CommentRow({
         />
       ) : confirmingDelete ? (
         <div className="comment-thread-card__confirm">
-          <p>Delete this comment?</p>
+          <p>
+            {deletingThreadRoot
+              ? "Delete this thread?"
+              : "Delete this comment?"}
+          </p>
           <div className="comment-add-form__actions">
             <button
               className="comment-thread-card__confirm-yes"
@@ -266,7 +271,9 @@ export function CommentThreadCard({
 
       <div className="comment-thread-card__list">
         {comments.length === 0 && (
-          <p className="comment-thread-card__empty">No comments in this thread.</p>
+          <p className="comment-thread-card__empty">
+            No comments in this thread.
+          </p>
         )}
         {comments.map((comment, index) => (
           <CommentRow

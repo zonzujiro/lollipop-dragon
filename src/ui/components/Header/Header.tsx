@@ -1,5 +1,16 @@
 import "./Header.css";
-import { buildCommentThreadGroups } from "../../../markup";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  buildAddressCommentsAgentPrompt,
+  buildAgentReplyPrompt,
+  buildCommentThreadGroups,
+  buildFolderAddressCommentsAgentPrompt,
+} from "../../../markup";
+import {
+  getActiveAgentRunForTab,
+  getAddressableCommentTargets,
+  getFolderAddressableCommentTargets,
+} from "../../../modules/agent-workflow";
 import { useAppStore } from "../../../store";
 import { useActiveTab } from "../../../store/selectors";
 import { selectUnsubmittedPeerComments } from "../../../modules/peer-review";
@@ -10,9 +21,11 @@ import { TableOfContents } from "../TableOfContents";
 import { ConnectionStatus } from "../ConnectionStatus";
 import { WORKER_URL } from "../../../config";
 import { syncActiveShares } from "../../../modules/sharing";
+import { canRunAgent } from "../../../runtime";
 import { downloadActiveFile } from "./downloadActiveFile";
 import { tabRequiresRestoreAccess } from "../../../types/tab";
-import { canRunAgent } from "../../../runtime";
+import type { Comment } from "../../../types/criticmarkup";
+import type { TabState } from "../../../types/tab";
 
 function FocusIcon() {
   return (
@@ -240,6 +253,30 @@ function CommentIcon() {
   );
 }
 
+function AgentIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 8V4H8" />
+      <rect width="16" height="12" x="4" y="8" rx="2" />
+      <path d="M2 14h2" />
+      <path d="M20 14h2" />
+      <path d="M15 13v2" />
+      <path d="M9 13v2" />
+    </svg>
+  );
+}
+
 function PresentIcon() {
   return (
     <svg
@@ -259,27 +296,41 @@ function PresentIcon() {
   );
 }
 
-function AgentIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="4" y="6" width="16" height="12" rx="2" />
-      <path d="M8 10h.01" />
-      <path d="M16 10h.01" />
-      <path d="M9 14h6" />
-      <path d="M12 2v4" />
-    </svg>
-  );
+const ACTIVE_AGENT_RUN_STATUSES = new Set([
+  "queued",
+  "running",
+  "needs_attention",
+]);
+const EMPTY_COMMENTS: Comment[] = [];
+const EMPTY_ALL_FILE_COMMENTS: TabState["allFileComments"] = {};
+const EMPTY_FILE_TREE: TabState["fileTree"] = [];
+const EMPTY_SHARES: TabState["shares"] = [];
+
+interface FileCommentEntry {
+  filePath: string;
+  fileName: string;
+  comments: Comment[];
+}
+
+interface HeaderMenuPosition {
+  top: number;
+  right: number;
+}
+
+function getRootOnlyComments(comments: Comment[]): Comment[] {
+  return buildCommentThreadGroups(comments).map((group) => group.root);
+}
+
+function getRootOnlyFileComments(
+  allFileComments: TabState["allFileComments"],
+): FileCommentEntry[] {
+  return Object.values(allFileComments)
+    .map((entry) => ({
+      ...entry,
+      comments: getRootOnlyComments(entry.comments),
+    }))
+    .filter((entry) => entry.comments.length > 0)
+    .sort((entryA, entryB) => entryA.filePath.localeCompare(entryB.filePath));
 }
 
 interface Props {
@@ -304,7 +355,6 @@ export function Header({
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const toggleCommentPanel = useAppStore((s) => s.toggleCommentPanel);
   const toggleSharedPanel = useAppStore((s) => s.toggleSharedPanel);
-  const openAgentSettings = useAppStore((s) => s.openAgentSettings);
   const syncPeerComments = useAppStore((s) => s.syncPeerComments);
   const documentUpdateAvailable = useAppStore(selectDocumentUpdateAvailable);
 
@@ -316,15 +366,16 @@ export function Header({
 
   const fileName = tab?.fileName ?? null;
   const directoryName = tab?.directoryName ?? null;
-  const fileTree = tab?.fileTree ?? [];
+  const fileTree = tab?.fileTree ?? EMPTY_FILE_TREE;
   const sidebarOpen = tab?.sidebarOpen ?? false;
-  const comments = tab?.comments ?? [];
-  const allFileComments = tab?.allFileComments ?? {};
+  const comments = tab?.comments ?? EMPTY_COMMENTS;
+  const allFileComments = tab?.allFileComments ?? EMPTY_ALL_FILE_COMMENTS;
+  const activeFilePath = tab?.activeFilePath ?? null;
   const peerCommentPanelOpen = useAppStore((s) => s.peerCommentPanelOpen);
   const rawCommentPanelOpen = peerMode
     ? peerCommentPanelOpen
     : (tab?.commentPanelOpen ?? false);
-  const shares = tab?.shares ?? [];
+  const shares = tab?.shares ?? EMPTY_SHARES;
   const rawSharedPanelOpen = tab?.sharedPanelOpen ?? false;
   const hasActiveShares = shares.some(
     (share) => new Date(share.expiresAt) > new Date(),
@@ -353,6 +404,16 @@ export function Header({
     ? false
     : rawCommentPanelOpen;
   const sharedPanelOpen = disableHostReviewActions ? false : rawSharedPanelOpen;
+  const showToast = useAppStore((state) => state.showToast);
+  const startAddressCommentsAgentRun = useAppStore(
+    (state) => state.startAddressCommentsAgentRun,
+  );
+  const startQuestionThreadAgentRun = useAppStore(
+    (state) => state.startQuestionThreadAgentRun,
+  );
+  const activeAgentRun = useAppStore((state) =>
+    tab?.id ? getActiveAgentRunForTab(state, tab.id) : null,
+  );
   const totalPending = shares.reduce(
     (total, share) => total + share.pendingCommentCount,
     0,
@@ -365,6 +426,96 @@ export function Header({
       : hasContent
         ? "File review"
         : "";
+  const rootComments = useMemo(() => getRootOnlyComments(comments), [comments]);
+  const crossFileComments = useMemo(
+    () => getRootOnlyFileComments(allFileComments),
+    [allFileComments],
+  );
+  const addressableCommentTargets = useMemo(() => {
+    if (peerMode || hasFolderComments) {
+      return [];
+    }
+    return getAddressableCommentTargets(comments);
+  }, [comments, hasFolderComments, peerMode]);
+  const folderAddressableCommentTargets = useMemo(() => {
+    if (peerMode || !hasFolderComments) {
+      return [];
+    }
+    return getFolderAddressableCommentTargets(crossFileComments);
+  }, [crossFileComments, hasFolderComments, peerMode]);
+  const hasAddressableComments = hasFolderComments
+    ? folderAddressableCommentTargets.length > 0
+    : addressableCommentTargets.length > 0;
+  const hasQuestionThreads =
+    !peerMode &&
+    (hasFolderComments
+      ? crossFileComments.some((entry) =>
+          entry.comments.some(
+            (comment) => comment.type === "question" && !!comment.thread,
+          ),
+        )
+      : rootComments.some(
+          (comment) => comment.type === "question" && !!comment.thread,
+        ));
+  const activeAgentRunInProgress = Boolean(
+    activeAgentRun && ACTIVE_AGENT_RUN_STATUSES.has(activeAgentRun.status),
+  );
+  const showAgentActions =
+    !peerMode &&
+    hasContent &&
+    !disableHostReviewActions &&
+    (hasAddressableComments || hasQuestionThreads);
+
+  async function handleCopyAddressCommentsPrompt() {
+    const targetPath = activeFilePath ?? fileName ?? "the active markdown file";
+    const prompt = hasFolderComments
+      ? buildFolderAddressCommentsAgentPrompt({
+          targets: folderAddressableCommentTargets,
+        })
+      : buildAddressCommentsAgentPrompt({
+          targetPath,
+          comments: addressableCommentTargets,
+        });
+    try {
+      await navigator.clipboard.writeText(prompt);
+      showToast("Agent review prompt copied");
+    } catch (error) {
+      console.error("[Header] failed to copy review prompt:", error);
+      showToast("Couldn't copy agent prompt");
+    }
+  }
+
+  async function handleCopyQuestionPrompt() {
+    try {
+      await navigator.clipboard.writeText(buildAgentReplyPrompt());
+      showToast("Agent prompt copied");
+    } catch (error) {
+      console.error("[Header] failed to copy question prompt:", error);
+      showToast("Couldn't copy agent prompt");
+    }
+  }
+
+  async function handleAddressCommentsAction() {
+    if (!canRunAgent) {
+      await handleCopyAddressCommentsPrompt();
+      return;
+    }
+    const result = await startAddressCommentsAgentRun();
+    if (result.status === "unavailable") {
+      showToast(result.message);
+    }
+  }
+
+  async function handleQuestionThreadAction() {
+    if (!canRunAgent) {
+      await handleCopyQuestionPrompt();
+      return;
+    }
+    const result = await startQuestionThreadAgentRun();
+    if (result.status === "unavailable") {
+      showToast(result.message);
+    }
+  }
 
   return (
     <>
@@ -391,7 +542,9 @@ export function Header({
           {!peerMode && (
             <div className="app-header__group app-header__group--source">
               <button
-                onClick={openFileInNewTab}
+                onClick={() => {
+                  void openFileInNewTab();
+                }}
                 className="app-header__btn app-header__btn--text"
                 title="Open file"
               >
@@ -399,7 +552,9 @@ export function Header({
                 <span className="app-header__btn-label">Open file</span>
               </button>
               <button
-                onClick={openDirectoryInNewTab}
+                onClick={() => {
+                  void openDirectoryInNewTab();
+                }}
                 className="app-header__btn app-header__btn--text"
                 title="Open folder"
               >
@@ -453,7 +608,9 @@ export function Header({
               </button>
               {hasActiveShares && (
                 <button
-                  onClick={syncActiveShares}
+                  onClick={() => {
+                    void syncActiveShares();
+                  }}
                   title="Push latest content to all active shares"
                   className="app-header__btn app-header__btn--text"
                   disabled={disableHostReviewActions}
@@ -466,18 +623,6 @@ export function Header({
           )}
 
           <div className="app-header__group app-header__group--view">
-            {!peerMode && canRunAgent && (
-              <button
-                onClick={openAgentSettings}
-                aria-label="Configure desktop agent"
-                title="Configure desktop agent"
-                className="app-header__btn app-header__btn--text"
-              >
-                <AgentIcon />
-                <span className="app-header__btn-label">Agent</span>
-              </button>
-            )}
-
             <TableOfContents peerMode={peerMode} />
 
             <button
@@ -496,7 +641,9 @@ export function Header({
             <div className="app-header__group app-header__group--peer">
               {unsubmittedPeerCount > 0 && (
                 <button
-                  onClick={syncPeerComments}
+                  onClick={() => {
+                    void syncPeerComments();
+                  }}
                   aria-label="Submit comments"
                   title={
                     documentUpdateAvailable
@@ -513,7 +660,9 @@ export function Header({
                 </button>
               )}
               <button
-                onClick={downloadActiveFile}
+                onClick={() => {
+                  void downloadActiveFile();
+                }}
                 aria-label="Save file"
                 title="Download current file as .md"
                 className="app-header__btn app-header__btn--text"
@@ -525,6 +674,21 @@ export function Header({
           )}
 
           <div className="app-header__group app-header__group--review">
+            {showAgentActions && (
+              <ReviewAgentMenu
+                disabled={activeAgentRunInProgress}
+                canAddressComments={hasAddressableComments}
+                canAnswerQuestions={hasQuestionThreads}
+                addressLabel={
+                  canRunAgent ? "Address comments" : "Copy review prompt"
+                }
+                questionLabel={
+                  canRunAgent ? "Answer questions" : "Copy answer prompt"
+                }
+                onAddressComments={handleAddressCommentsAction}
+                onAnswerQuestions={handleQuestionThreadAction}
+              />
+            )}
             <button
               onClick={toggleCommentPanel}
               aria-label={
@@ -572,5 +736,130 @@ export function Header({
         </div>
       </header>
     </>
+  );
+}
+
+function ReviewAgentMenu({
+  disabled,
+  canAddressComments,
+  canAnswerQuestions,
+  addressLabel,
+  questionLabel,
+  onAddressComments,
+  onAnswerQuestions,
+}: {
+  disabled: boolean;
+  canAddressComments: boolean;
+  canAnswerQuestions: boolean;
+  addressLabel: string;
+  questionLabel: string;
+  onAddressComments: () => Promise<void>;
+  onAnswerQuestions: () => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<HeaderMenuPosition | null>(
+    null,
+  );
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+
+  const updateMenuPosition = useCallback(() => {
+    const button = buttonRef.current;
+    if (!button) {
+      return;
+    }
+    const rect = button.getBoundingClientRect();
+    setMenuPosition({
+      top: rect.bottom + 6,
+      right: Math.max(8, window.innerWidth - rect.right),
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    function handleDocumentClick(event: MouseEvent) {
+      const targetNode = event.target;
+      if (targetNode instanceof Node && menuRef.current?.contains(targetNode)) {
+        return;
+      }
+      setOpen(false);
+    }
+
+    updateMenuPosition();
+    document.addEventListener("click", handleDocumentClick);
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+    return () => {
+      document.removeEventListener("click", handleDocumentClick);
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
+    };
+  }, [open, updateMenuPosition]);
+
+  async function handleMenuAction(action: () => Promise<void>) {
+    setOpen(false);
+    await action();
+  }
+
+  return (
+    <div className="app-header__menu-wrap" ref={menuRef}>
+      <button
+        ref={buttonRef}
+        type="button"
+        className={`app-header__btn app-header__btn--icon app-header__btn--review${open ? " app-header__btn--active" : ""}`}
+        aria-label="Review actions"
+        aria-expanded={open}
+        title={
+          disabled
+            ? "Wait for the active agent run to finish"
+            : "Review actions"
+        }
+        disabled={disabled}
+        onClick={(event) => {
+          event.stopPropagation();
+          if (!open) {
+            updateMenuPosition();
+          }
+          setOpen((currentOpen) => !currentOpen);
+        }}
+      >
+        <AgentIcon />
+      </button>
+      {open && (
+        <div
+          className="app-header__menu"
+          role="menu"
+          style={{ position: "fixed", ...(menuPosition ?? {}) }}
+        >
+          {canAddressComments && (
+            <button
+              type="button"
+              className="app-header__menu-item"
+              role="menuitem"
+              onClick={() => {
+                void handleMenuAction(onAddressComments);
+              }}
+            >
+              {addressLabel}
+            </button>
+          )}
+          {canAnswerQuestions && (
+            <button
+              type="button"
+              className="app-header__menu-item"
+              role="menuitem"
+              onClick={() => {
+                void handleMenuAction(onAnswerQuestions);
+              }}
+            >
+              {questionLabel}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
