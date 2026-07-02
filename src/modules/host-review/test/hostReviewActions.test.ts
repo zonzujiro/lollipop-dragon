@@ -233,6 +233,50 @@ describe("store.deleteComment", () => {
   });
 });
 
+describe("store.replyToCommentThread", () => {
+  it("writes a linked user answer and saves undoState", async () => {
+    const { handle, mockWritable } = makeHandle();
+    const questionRaw =
+      '{>>question: Why? [markreview id="mr-question-1" thread="mr-question-1"]<<}';
+    const rawContent = `Before ${questionRaw} after`;
+    const questionStart = rawContent.indexOf(questionRaw);
+    setTestState({
+      fileHandle: handle,
+      rawContent,
+      comments: [
+        makeComment({
+          id: "question-root",
+          type: "question",
+          text: "Why?",
+          raw: questionRaw,
+          rawStart: questionStart,
+          rawEnd: questionStart + questionRaw.length,
+          thread: {
+            commentId: "mr-question-1",
+            threadId: "mr-question-1",
+          },
+        }),
+      ],
+    });
+
+    await useAppStore
+      .getState()
+      .replyToCommentThread("question-root", "Because it explains fallback.");
+
+    const writtenContent: unknown = mockWritable.write.mock.calls[0]?.[0];
+    if (typeof writtenContent !== "string") {
+      throw new Error("Expected reply write to receive markdown text.");
+    }
+
+    expect(writtenContent).toMatch(
+      /Before \{>>question: Why\? \[markreview id="mr-question-1" thread="mr-question-1"\]<<}\{>>answer: Because it explains fallback\. \[markreview id="mr-[^"]+" thread="mr-question-1" replyTo="mr-question-1" author="You"\]<<} after/,
+    );
+    const tab = getActiveTab(useAppStore.getState());
+    expect(tab?.rawContent).toBe(writtenContent);
+    expect(tab?.undoState?.rawContent).toBe(rawContent);
+  });
+});
+
 describe("store.undo", () => {
   it("restores rawContent from undoState and clears it", async () => {
     const { handle, mockWritable } = makeHandle();

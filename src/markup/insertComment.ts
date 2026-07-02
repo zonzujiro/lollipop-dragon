@@ -2,6 +2,7 @@ import { getBlockPositions } from "./blockIndex";
 import type { Comment, CommentType } from "../types/criticmarkup";
 import {
   createQuestionThreadMetadata,
+  createThreadReplyMetadata,
   serializeCommentBody,
 } from "./commentProtocol";
 
@@ -108,8 +109,49 @@ export function insertComment(input: {
     thread,
   })}<<}`;
   return (
-    input.rawContent.slice(0, rawPos) +
+    input.rawContent.slice(0, rawPos) + markup + input.rawContent.slice(rawPos)
+  );
+}
+
+export function insertThreadReply(input: {
+  rawContent: string;
+  root: Comment;
+  replies: Comment[];
+  text: string;
+  authorLabel: string;
+}): string {
+  const thread = createThreadReplyMetadata({
+    root: input.root,
+    authorLabel: input.authorLabel,
+  });
+  if (!thread) {
+    console.error("[insertThreadReply] root comment has no thread metadata", {
+      rootId: input.root.id,
+    });
+    return input.rawContent;
+  }
+
+  const latestThreadComment = [input.root, ...input.replies]
+    .filter(
+      (comment) =>
+        comment.thread?.threadId === thread.threadId &&
+        (comment.id === input.root.id ||
+          comment.thread?.replyTo === thread.replyTo),
+    )
+    .sort(
+      (leftComment, rightComment) => rightComment.rawEnd - leftComment.rawEnd,
+    )[0];
+
+  const insertPosition = latestThreadComment?.rawEnd ?? input.root.rawEnd;
+  const markup = `{>>${serializeCommentBody({
+    type: "answer",
+    text: input.text,
+    thread,
+  })}<<}`;
+
+  return (
+    input.rawContent.slice(0, insertPosition) +
     markup +
-    input.rawContent.slice(rawPos)
+    input.rawContent.slice(insertPosition)
   );
 }

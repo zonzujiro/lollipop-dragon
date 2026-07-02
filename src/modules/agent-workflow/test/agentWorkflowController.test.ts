@@ -243,6 +243,7 @@ describe("question thread agent run context", () => {
       workspaceRootPath: "/tmp/project",
     });
     expect(request.prompt).toContain("Work only in docs/spec.md");
+    expect(request.prompt).toContain("Read the entire existing thread");
     expect(request.prompt).toContain("- mr-question-1");
     expect(request.prompt).toContain("- mr-question-2");
     expect(request.prompt).toContain("Do not edit unrelated files");
