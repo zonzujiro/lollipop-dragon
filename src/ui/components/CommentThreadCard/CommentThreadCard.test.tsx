@@ -77,7 +77,7 @@ describe("CommentThreadCard", () => {
     expect(screen.getByText("Agent")).toBeInTheDocument();
   });
 
-  it("edits the selected thread message", async () => {
+  it("edits the selected user-authored thread message", async () => {
     const user = userEvent.setup();
     const onEdit = vi.fn();
 
@@ -90,21 +90,32 @@ describe("CommentThreadCard", () => {
       />,
     );
 
-    await user.click(
-      screen.getAllByRole("button", { name: "Edit comment" })[1],
-    );
-    const textarea = screen.getByDisplayValue(
-      "It explains the reconnect fallback path.",
-    );
+    await user.click(screen.getByRole("button", { name: "Edit comment" }));
+    const textarea = screen.getByDisplayValue("Why is this section needed?");
     await user.clear(textarea);
-    await user.type(textarea, "Updated answer.");
+    await user.type(textarea, "Updated question.");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     expect(onEdit).toHaveBeenCalledWith(
-      "reply-comment",
-      "answer",
-      "Updated answer.",
+      "root-comment",
+      "question",
+      "Updated question.",
     );
+  });
+
+  it("does not allow editing linked agent answers", () => {
+    render(
+      <CommentThreadCard
+        thread={makeQuestionThread().thread}
+        top={0}
+        onClose={vi.fn()}
+        onEdit={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getAllByRole("button", { name: "Edit comment" }),
+    ).toHaveLength(1);
   });
 
   it("deletes the selected thread message", async () => {

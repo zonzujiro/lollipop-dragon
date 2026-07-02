@@ -191,6 +191,38 @@ describe("CommentPanel — active entry", () => {
     const active = container.querySelector(".comment-panel__entry--active");
     expect(active?.textContent).toContain("Why is this here?");
   });
+
+  it("does not show edit actions for agent-authored answer comments", async () => {
+    const user = userEvent.setup();
+    setTestState({
+      comments: [
+        makeCommentBase({
+          id: "answer-reply",
+          type: "answer",
+          text: "Because it explains reconnect fallback.",
+          blockIndex: 0,
+          thread: {
+            commentId: "mr-answer-1",
+            threadId: "mr-question-1",
+            replyTo: "mr-question-1",
+            authorLabel: "Codex",
+          },
+        }),
+      ],
+    });
+
+    render(<CommentPanel />);
+
+    await user.hover(
+      screen.getByText("Because it explains reconnect fallback."),
+    );
+    expect(
+      screen.queryByRole("button", { name: "Edit comment" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Delete comment" }),
+    ).toBeInTheDocument();
+  });
 });
 
 describe("CommentPanel — close", () => {

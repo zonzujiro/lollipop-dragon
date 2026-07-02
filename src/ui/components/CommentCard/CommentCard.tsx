@@ -2,6 +2,7 @@ import "./CommentCard.css";
 import { useState } from "react";
 import { COMMENT_TYPE_COLOR } from "../../../types/criticmarkup";
 import type { Comment, CommentType } from "../../../types/criticmarkup";
+import { canEditComment } from "../../../utils/commentPermissions";
 
 const COMMENT_TYPES: CommentType[] = [
   "note",
@@ -106,6 +107,7 @@ export function CommentCard({
           {!editing &&
             !confirming &&
             onEdit &&
+            canEditComment(comment) &&
             EDITABLE_TYPES.includes(comment.criticType) && (
               <button
                 className="comment-card__edit"

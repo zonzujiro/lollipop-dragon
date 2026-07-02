@@ -103,6 +103,7 @@ MarkReview extends the plain comment protocol for threaded review questions.
 - The reply reuses the root `thread` value and sets `replyTo` to the root question `id`.
 - The reply can also include `author` so the UI can show `Codex`, `Cursor`, or a generic `Agent` label.
 - The Comments panel keeps replies collapsed under the root question and marks the root as `answered` once an `answer:` reply exists.
+- Agent-authored replies render as read-only comments in the UI. Users can delete them, but cannot edit their text or type.
 - Deleting a thread-root `question:` comment deletes the linked `answer:` replies in the same thread so replies never remain as orphan comments.
 
 Example root:
