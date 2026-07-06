@@ -142,13 +142,13 @@ describe("CommentPanel — active entry", () => {
     expect(tab?.activeCommentId).toBe("0");
   });
 
-  it("clears activeCommentId when clicking the active entry again", async () => {
+  it("keeps the active comment open when clicking the active entry again", async () => {
     const user = userEvent.setup();
     setTestState({ comments, activeCommentId: "0" });
     render(<CommentPanel />);
     await user.click(screen.getByText("fix the intro"));
     const tab = getActiveTab(useAppStore.getState());
-    expect(tab?.activeCommentId).toBeNull();
+    expect(tab?.activeCommentId).toBe("0");
   });
 
   it("keeps threaded replies out of the panel list and highlights the root entry", () => {

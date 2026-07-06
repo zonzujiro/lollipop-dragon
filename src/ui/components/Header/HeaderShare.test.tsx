@@ -134,7 +134,7 @@ describe("Header share buttons", () => {
 });
 
 describe("Header review actions", () => {
-  it("keeps the address-comments prompt available from the toolbar menu", async () => {
+  it("copies one review prompt with comment and thread instructions", async () => {
     const user = userEvent.setup();
     const writeText = vi
       .spyOn(navigator.clipboard, "writeText")
@@ -149,23 +149,36 @@ describe("Header review actions", () => {
           type: "fix",
           text: "Fix the intro",
         }),
+        makeComment({
+          id: "question-root",
+          type: "question",
+          text: "Why is this here?",
+          thread: {
+            commentId: "mr-question-1",
+            threadId: "mr-question-1",
+          },
+        }),
       ],
     });
 
     render(<Header />);
-    await user.click(screen.getByRole("button", { name: "Review actions" }));
     await user.click(
-      screen.getByRole("menuitem", { name: "Copy review prompt" }),
+      screen.getByRole("button", { name: "Copy review prompt" }),
     );
 
     expect(writeText).toHaveBeenCalledOnce();
-    expect(writeText.mock.calls[0]?.[0]).toContain("Work only in docs/spec.md");
-    expect(writeText.mock.calls[0]?.[0]).toContain(
-      "- fix-root (fix): Fix the intro",
-    );
+    const prompt = writeText.mock.calls[0]?.[0];
+    expect(prompt).toContain("Review docs/spec.md");
+    expect(prompt).toContain("Work only in docs/spec.md");
+    expect(prompt).toContain("- fix-root (fix): Fix the intro");
+    expect(prompt).toContain("- mr-question-1");
+    expect(prompt).toContain("Question thread replies");
+    expect(
+      screen.queryByRole("button", { name: "Copy answer prompt" }),
+    ).not.toBeInTheDocument();
   });
 
-  it("keeps the question-answer prompt available from the toolbar menu", async () => {
+  it("copies the review prompt when only question threads are present", async () => {
     const user = userEvent.setup();
     const writeText = vi
       .spyOn(navigator.clipboard, "writeText")
@@ -187,14 +200,14 @@ describe("Header review actions", () => {
     });
 
     render(<Header />);
-    await user.click(screen.getByRole("button", { name: "Review actions" }));
     await user.click(
-      screen.getByRole("menuitem", { name: "Copy answer prompt" }),
+      screen.getByRole("button", { name: "Copy review prompt" }),
     );
 
     expect(writeText).toHaveBeenCalledOnce();
-    expect(writeText.mock.calls[0]?.[0]).toContain(
-      "answer MarkReview threaded questions inline",
-    );
+    const prompt = writeText.mock.calls[0]?.[0];
+    expect(prompt).toContain("Review spec.md");
+    expect(prompt).toContain("Answer these MarkReview question threads");
+    expect(prompt).toContain("- mr-question-1");
   });
 });

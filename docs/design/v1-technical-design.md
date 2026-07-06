@@ -29,16 +29,16 @@ v1 is the first usable version of MarkReview: a client-side React app that opens
 
 ## 2. Tech Stack
 
-| Layer | Choice | Why |
-|---|---|---|
-| Framework | React 19 + Vite | Fast dev cycle, huge ecosystem |
-| Markdown parsing | `react-markdown` + `remark-gfm` | Industry standard, plugin-based, safe rendering |
-| Diagrams | `mermaid` (direct) | Official library, render to SVG in a custom component |
-| Syntax highlighting | `rehype-shiki` (`@shikijs/rehype`) | Modern, accurate, async, 180+ languages |
-| File access | File System Access API | Native browser API, no server needed |
-| Styling | Tailwind CSS | Utility-first, fast to iterate on design |
-| State management | Zustand | Lightweight, no boilerplate, good for mid-size apps |
-| CriticMarkup parsing | Custom parser (see §5) | No maintained library exists; syntax is simple enough to parse with regex + state machine |
+| Layer                | Choice                             | Why                                                                                       |
+| -------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------- |
+| Framework            | React 19 + Vite                    | Fast dev cycle, huge ecosystem                                                            |
+| Markdown parsing     | `react-markdown` + `remark-gfm`    | Industry standard, plugin-based, safe rendering                                           |
+| Diagrams             | `mermaid` (direct)                 | Official library, render to SVG in a custom component                                     |
+| Syntax highlighting  | `rehype-shiki` (`@shikijs/rehype`) | Modern, accurate, async, 180+ languages                                                   |
+| File access          | File System Access API             | Native browser API, no server needed                                                      |
+| Styling              | Tailwind CSS                       | Utility-first, fast to iterate on design                                                  |
+| State management     | Zustand                            | Lightweight, no boilerplate, good for mid-size apps                                       |
+| CriticMarkup parsing | Custom parser (see §5)             | No maintained library exists; syntax is simple enough to parse with regex + state machine |
 
 ---
 
@@ -106,29 +106,38 @@ No maintained JS library exists for CriticMarkup, so we build a custom parser. T
 **Input:** Raw markdown string containing CriticMarkup annotations.
 
 **Output:**
+
 - `cleanMarkdown`: The markdown with all CriticMarkup removed (for rendering)
 - `comments[]`: Array of extracted comment objects with position info
 
 ```typescript
 interface Comment {
-  id: string;                  // Generated unique ID
-  type: CommentType;           // 'fix' | 'rewrite' | 'expand' | 'clarify' | 'question' | 'remove' | 'note'
-  text: string;                // The comment body (after type prefix)
-  highlightedText?: string;    // The text between {== ==} if present
-  rawMarkup: string;           // Original CriticMarkup string (for reinsertion)
+  id: string; // Generated unique ID
+  type: CommentType; // 'fix' | 'rewrite' | 'expand' | 'clarify' | 'question' | 'remove' | 'note'
+  text: string; // The comment body (after type prefix)
+  highlightedText?: string; // The text between {== ==} if present
+  rawMarkup: string; // Original CriticMarkup string (for reinsertion)
   position: {
-    startOffset: number;       // Character offset in raw markdown
+    startOffset: number; // Character offset in raw markdown
     endOffset: number;
-    blockIndex: number;        // Which rendered block this maps to
+    blockIndex: number; // Which rendered block this maps to
   };
-  syntax: 'highlight_comment'  // {==text==}{>>comment<<}
-        | 'standalone_comment' // {>>comment<<}
-        | 'addition'           // {++text++}
-        | 'deletion'           // {--text--}
-        | 'substitution';      // {~~old~>new~~}
+  syntax:
+    | "highlight_comment" // {==text==}{>>comment<<}
+    | "standalone_comment" // {>>comment<<}
+    | "addition" // {++text++}
+    | "deletion" // {--text--}
+    | "substitution"; // {~~old~>new~~}
 }
 
-type CommentType = 'fix' | 'rewrite' | 'expand' | 'clarify' | 'question' | 'remove' | 'note';
+type CommentType =
+  | "fix"
+  | "rewrite"
+  | "expand"
+  | "clarify"
+  | "question"
+  | "remove"
+  | "note";
 ```
 
 ### 5.3 Parsing approach
@@ -144,6 +153,7 @@ const CRITIC_PATTERNS = {
 ```
 
 Parse in two passes:
+
 1. **Extract pass**: Find all CriticMarkup spans, record their positions and content, assign to nearest block
 2. **Clean pass**: Remove all CriticMarkup from the markdown string to produce clean render input
 
@@ -190,11 +200,13 @@ When the user adds a comment on a block:
 ### Insertion example
 
 **Before:**
+
 ```markdown
 PostgreSQL is the best choice for this project.
 ```
 
 **After user adds a "fix" comment:**
+
 ```markdown
 PostgreSQL is the best choice for this project.{>>fix: This claim needs evidence. Compare PostgreSQL, MySQL, and SQLite.<<}
 ```
@@ -216,15 +228,19 @@ interface AppStore {
 
   // UI state
   commentPanelOpen: boolean;
-  commentFilter: CommentType | 'all';
-  theme: 'light' | 'dark';
+  commentFilter: CommentType | "all";
+  theme: "light" | "dark";
   focusMode: boolean;
 
   // Actions
   openFile: () => Promise<void>;
-  addComment: (blockIndex: number, type: CommentType, text: string) => Promise<void>;
+  addComment: (
+    blockIndex: number,
+    type: CommentType,
+    text: string,
+  ) => Promise<void>;
   refreshFile: () => Promise<void>;
-  setTheme: (theme: 'light' | 'dark') => void;
+  setTheme: (theme: "light" | "dark") => void;
   toggleFocusMode: () => void;
 }
 ```
@@ -296,14 +312,14 @@ Spacing:
 
 ## 11. Known Limitations & Risks
 
-| Risk | Mitigation |
-|---|---|
-| File System Access API is Chrome/Edge only | Clearly state browser requirement; Phase 2 adds server mode |
-| Large files (10k+ lines) may slow react-markdown | Virtualize rendering if needed; defer mermaid for off-screen blocks |
-| CriticMarkup regex parser may miss edge cases | Start with common patterns; add test suite with real-world examples |
-| Block index mapping can break if markdown structure is ambiguous | Use conservative mapping; log warnings for unmapped comments |
-| Permission prompts on every session | Inform user; explore `navigator.storage.getDirectory()` for persistence |
-| No undo for comment insertion | Rely on git / manual editing for now; add undo in v2 |
+| Risk                                                             | Mitigation                                                              |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| File System Access API is Chrome/Edge only                       | Clearly state browser requirement; Phase 2 adds server mode             |
+| Large files (10k+ lines) may slow react-markdown                 | Virtualize rendering if needed; defer mermaid for off-screen blocks     |
+| CriticMarkup regex parser may miss edge cases                    | Start with common patterns; add test suite with real-world examples     |
+| Block index mapping can break if markdown structure is ambiguous | Use conservative mapping; log warnings for unmapped comments            |
+| Permission prompts on every session                              | Inform user; explore `navigator.storage.getDirectory()` for persistence |
+| No undo for comment insertion                                    | Rely on git / manual editing for now; add undo in v2                    |
 
 ---
 
@@ -311,15 +327,16 @@ Spacing:
 
 ### 12.1 Tools
 
-| Tool | Purpose |
-|---|---|
-| Vitest | Unit and integration tests (Vite-native, fast) |
-| React Testing Library | Component rendering and interaction tests |
-| Playwright | E2E browser tests (needs real File System Access API) |
+| Tool                  | Purpose                                               |
+| --------------------- | ----------------------------------------------------- |
+| Vitest                | Unit and integration tests (Vite-native, fast)        |
+| React Testing Library | Component rendering and interaction tests             |
+| Playwright            | E2E browser tests (needs real File System Access API) |
 
 ### 12.2 Unit Tests
 
 **CriticMarkup parser** — the highest-risk custom code, needs the most coverage:
+
 - Extraction: each syntax type (highlight+comment, standalone, addition, deletion, substitution) parsed correctly
 - Type prefix parsing: `fix:`, `rewrite:`, `expand:`, etc. extracted and categorized
 - Clean output: all CriticMarkup removed, surrounding markdown intact
@@ -328,12 +345,14 @@ Spacing:
 - Edge cases: nested markup, CriticMarkup inside code blocks (should be ignored), empty comments, multiline comments, adjacent comments on same block, malformed/incomplete syntax
 
 **Comment insertion logic:**
+
 - Standalone comment appended to correct block position
 - Type prefix formatted correctly
 - Insertion doesn't corrupt surrounding markdown or existing CriticMarkup
 - Insertion at document start, end, and between blocks
 
 **File system service:**
+
 - Read returns correct string content
 - Write persists content (mocked `FileSystemFileHandle` in unit tests)
 - Graceful handling of permission denied, file not found, file locked
@@ -341,8 +360,8 @@ Spacing:
 ### 12.3 Component Tests
 
 - **MarkdownRenderer**: renders GFM tables, code blocks, task lists, mermaid; blocks have `data-block-index` attributes
-- **CommentMargin**: correct number of dots per block, color matches comment type, click expands card
-- **CommentPanel**: lists all comments in document order, filters work by type, shows correct count
+- **CommentMargin**: correct number of dots per block, color matches comment type, click expands a draggable floating card
+- **CommentPanel**: lists all comments in document order, filters work by type, shows correct count, clicking an entry opens the related floating card
 - **AddCommentPopover**: opens on hover icon click, type selector works, submit inserts comment
 - **FilePicker**: picker opens, file name displayed in header, "open another" resets state
 
@@ -364,19 +383,19 @@ Spacing:
 
 A checklist of markdown features to visually verify before each release:
 
-| Feature | Renders correctly | With CriticMarkup nearby |
-|---|---|---|
-| Paragraphs | ☐ | ☐ |
-| Headings (h1–h6) | ☐ | ☐ |
-| GFM tables | ☐ | ☐ |
-| Fenced code blocks | ☐ | ☐ |
-| Mermaid diagrams | ☐ | ☐ |
-| Task lists | ☐ | ☐ |
-| Footnotes | ☐ | ☐ |
-| Nested lists | ☐ | ☐ |
-| Blockquotes | ☐ | ☐ |
-| Images | ☐ | ☐ |
-| Horizontal rules | ☐ | ☐ |
+| Feature            | Renders correctly | With CriticMarkup nearby |
+| ------------------ | ----------------- | ------------------------ |
+| Paragraphs         | ☐                 | ☐                        |
+| Headings (h1–h6)   | ☐                 | ☐                        |
+| GFM tables         | ☐                 | ☐                        |
+| Fenced code blocks | ☐                 | ☐                        |
+| Mermaid diagrams   | ☐                 | ☐                        |
+| Task lists         | ☐                 | ☐                        |
+| Footnotes          | ☐                 | ☐                        |
+| Nested lists       | ☐                 | ☐                        |
+| Blockquotes        | ☐                 | ☐                        |
+| Images             | ☐                 | ☐                        |
+| Horizontal rules   | ☐                 | ☐                        |
 
 ---
 

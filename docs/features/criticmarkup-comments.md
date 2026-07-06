@@ -46,7 +46,7 @@ Developers and technical professionals who use LLM CLIs to generate structured r
 
 **Step 3:** Developer selects any block and leaves a comment. The editor writes CriticMarkup directly into the markdown file with a Conventional Comments-style type prefix.
 
-**Step 4:** Developer tells the LLM CLI: "Read this file and address all CriticMarkup comments." For standard comments, the LLM sees the comments inline, makes the fixes, and removes the markup. For threaded `question:` comments, the developer can use MarkReview's `Copy agent prompt` helper so the agent answers inline with a linked `answer:` reply instead of rewriting the original question.
+**Step 4:** Developer uses MarkReview's review prompt to tell the LLM CLI to review the current file. For standard comments, the LLM sees the comments inline, makes the fixes, and removes the markup. For threaded `question:` comments, the same prompt asks the agent to answer inline with a linked `answer:` reply instead of rewriting the original question.
 
 **Step 5:** Developer refreshes (Phase 1) or sees live updates (Phase 2) with the LLM's changes applied.
 
@@ -121,7 +121,7 @@ Example reply:
 
 ### 6.4 Why This Works
 
-For standard comments, the LLM reads the file and sees comments as part of the content — no separate protocol to learn. CriticMarkup is well-represented in LLM training data, so models already understand it. For threaded `question:` comments, MarkReview adds a small metadata extension plus a `Copy agent prompt` helper so replies stay linked without introducing sidecar files. Comments and content still stay in sync because everything lives in the same file. Any text editor can view and edit the annotations. No sidecar files, no sync issues, no export/import steps.
+For standard comments, the LLM reads the file and sees comments as part of the content — no separate protocol to learn. CriticMarkup is well-represented in LLM training data, so models already understand it. For threaded `question:` comments, MarkReview adds a small metadata extension plus the unified review prompt so replies stay linked without introducing sidecar files. Comments and content still stay in sync because everything lives in the same file. Any text editor can view and edit the annotations. No sidecar files, no sync issues, no export/import steps.
 
 ### 6.5 Editor Responsibilities
 
@@ -187,7 +187,7 @@ metadata block.
 
 ### 8.3 Block-Level Commenting UI
 
-Every rendered block (paragraph, heading, table, code block, diagram, list item) is commentable. On hover, a visible comment icon appears in the left margin. Clicking opens an inline comment form with type selector and text input. Existing comments show as colored markers in the margin — color-coded by type, with a stronger selected state so their document anchor is clear. Clicking a marker expands the comment card. The right sidebar shows all comments in document order. Filters: all, by type, pending only (CriticMarkup still present), resolved (CriticMarkup removed by the LLM). Bulk deletion requires a confirmation step instead of deleting directly from the panel header.
+Every rendered block (paragraph, heading, table, code block, diagram, list item) is commentable. On hover, a visible comment icon appears in the left margin. Clicking opens an inline comment form with type selector and text input. Existing comments show as colored markers in the margin — color-coded by type, with a stronger selected state so their document anchor is clear. Clicking a marker expands the floating comment card. Clicking a comment in the right sidebar opens the same floating card at the related document block. The floating card can be dragged around the viewport and resets to its anchored position when another comment opens. The right sidebar shows all comments in document order. Filters: all, by type, pending only (CriticMarkup still present), resolved (CriticMarkup removed by the LLM). Bulk deletion requires a confirmation step instead of deleting directly from the panel header.
 
 ### 8.4 Design
 
@@ -211,7 +211,7 @@ Typeform-inspired: the content is the interface. Light mode default with dark mo
 
 - Time from opening a folder to leaving the first comment: under 10 seconds
 - The LLM addresses standard CriticMarkup comments correctly without additional prompting beyond "read and address the comments in this file"
-- Threaded `question:` comments can be answered by the user in the thread card or handed off with `Copy agent prompt`, and the resulting `answer:` replies render as linked inline threads
+- Threaded `question:` comments can be answered by the user in the thread card or handed off with the review prompt, and the resulting `answer:` replies render as linked inline threads
 - A full review-comment-revise cycle completes in under 5 minutes
 - The reading experience is rated as comfortable and clean for documents over 3,000 words
 - Zero data leaves the user's machine

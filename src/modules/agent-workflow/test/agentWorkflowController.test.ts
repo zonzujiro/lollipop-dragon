@@ -16,6 +16,7 @@ import {
   createAgentWorkflowControllerActions,
   getAddressableCommentTargets,
   getFolderAddressableCommentTargets,
+  getFolderReviewCommentTargets,
   getPendingPeerCommentTargets,
   getQuestionThreadCommentIds,
 } from "../controller";
@@ -88,6 +89,7 @@ describe("address comments agent run context", () => {
           text: "Rewrite this paragraph",
         },
       ],
+      questionThreadIds: ["mr-question-1"],
       workspaceRootPath: "/tmp/project",
     });
 
@@ -95,7 +97,7 @@ describe("address comments agent run context", () => {
       tabId: "tab-1",
       taskKind: "address_comments",
       targetPaths: ["docs/spec.md"],
-      selectedCommentIds: ["comment-1", "comment-2"],
+      selectedCommentIds: ["comment-1", "comment-2", "mr-question-1"],
       runnerKind: "terminal",
       workspaceRootPath: "/tmp/project",
     });
@@ -105,8 +107,9 @@ describe("address comments agent run context", () => {
       "- comment-2 (rewrite): Rewrite this paragraph",
     );
     expect(request.prompt).toContain(
-      "Do not answer threaded question comments",
+      "Answer these MarkReview question threads",
     );
+    expect(request.prompt).toContain("- mr-question-1");
   });
 
   it("selects a bounded set of folder comment targets", () => {
@@ -153,6 +156,34 @@ describe("address comments agent run context", () => {
     ]);
   });
 
+  it("selects folder review targets with question threads", () => {
+    const targets = getFolderReviewCommentTargets([
+      {
+        filePath: "docs/questions.md",
+        fileName: "questions.md",
+        comments: [
+          makeComment({
+            id: "question-root",
+            type: "question",
+            text: "Why is this here?",
+            thread: {
+              commentId: "mr-question-1",
+              threadId: "mr-question-1",
+            },
+          }),
+        ],
+      },
+    ]);
+
+    expect(targets).toEqual([
+      {
+        filePath: "docs/questions.md",
+        comments: [],
+        questionThreadIds: ["mr-question-1"],
+      },
+    ]);
+  });
+
   it("builds a bounded folder request for addressing comments", () => {
     const request = buildFolderAddressCommentsAgentRunRequest({
       tabId: "tab-1",
@@ -167,6 +198,7 @@ describe("address comments agent run context", () => {
               text: "Fix A",
             },
           ],
+          questionThreadIds: ["mr-question-a"],
         },
         {
           filePath: "docs/b.md",
@@ -177,6 +209,7 @@ describe("address comments agent run context", () => {
               text: "Check B",
             },
           ],
+          questionThreadIds: [],
         },
       ],
     });
@@ -185,13 +218,18 @@ describe("address comments agent run context", () => {
       tabId: "tab-1",
       taskKind: "address_comments",
       targetPaths: ["docs/a.md", "docs/b.md"],
-      selectedCommentIds: ["docs/a.md#fix-a", "docs/b.md#note-b"],
+      selectedCommentIds: [
+        "docs/a.md#fix-a",
+        "docs/a.md#mr-question-a",
+        "docs/b.md#note-b",
+      ],
       runnerKind: "terminal",
       workspaceRootPath: "/tmp/project",
     });
     expect(request.prompt).toContain("Work only in the listed markdown files");
     expect(request.prompt).toContain("- docs/a.md");
     expect(request.prompt).toContain("  - fix-a (fix): Fix A");
+    expect(request.prompt).toContain("  - mr-question-a");
     expect(request.prompt).toContain("- docs/b.md");
     expect(request.prompt).toContain("  - note-b (note): Check B");
   });
@@ -504,19 +542,26 @@ describe("address comments agent run controller", () => {
     expect(requests).toEqual([]);
   });
 
-  it("returns unavailable when no actionable comments exist", async () => {
+  it("creates a review run when only question threads exist", async () => {
+    const requests: AgentRunRequest[] = [];
     const runtime: AgentRuntime = {
       canRunAgent: true,
       getCapability: () =>
         Promise.resolve({ canRunAgent: true, unavailableMessage: null }),
-      startRun: () => Promise.resolve("terminal-session-1"),
+      startRun: (request) => {
+        requests.push(request);
+        return Promise.resolve("terminal-session-1");
+      },
       stopRun: () => Promise.resolve(),
       getRunStatus: () => Promise.resolve({ status: "running", output: "" }),
     };
+    const showToastMessages: string[] = [];
     const actions = createAgentWorkflowControllerActions({
       get: useAppStore.getState,
       getActiveTab: (get) => getActiveTab(get()),
-      showToast: () => {},
+      showToast: (message) => {
+        showToastMessages.push(message);
+      },
       runtime,
     });
 
@@ -535,12 +580,18 @@ describe("address comments agent run controller", () => {
 
     const result = await actions.startAddressCommentsAgentRun();
 
-    expect(result).toEqual({
-      status: "unavailable",
-      reason: "no_addressable_comments",
-      message: "No unresolved actionable comments are available.",
+    expect(result.status).toBe("started");
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({
+      tabId: "test-tab",
+      taskKind: "address_comments",
+      targetPaths: ["spec.md"],
+      selectedCommentIds: ["mr-question-1"],
     });
-    expect(useAppStore.getState().agentRuns).toEqual({});
+    expect(requests[0]?.prompt).toContain(
+      "Answer these MarkReview question threads",
+    );
+    expect(showToastMessages).toEqual(["Agent run started"]);
   });
 
   it("creates a folder run from scanned file comments", async () => {

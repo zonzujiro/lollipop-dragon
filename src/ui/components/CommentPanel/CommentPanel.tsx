@@ -390,7 +390,7 @@ export function CommentPanel({ peerMode = false }: Props) {
   }, [isPeerMultiFile, peerCrossFileEntries, commentFilter]);
 
   function handleEntryClick(id: string, blockIndex: number | undefined) {
-    setActiveCommentId(activeCommentId === id ? null : id);
+    setActiveCommentId(id);
     scrollToBlock(blockIndex);
   }
 

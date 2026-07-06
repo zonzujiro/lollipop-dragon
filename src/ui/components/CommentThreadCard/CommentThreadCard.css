@@ -14,12 +14,28 @@
   line-height: 1.5;
 }
 
+.comment-thread-card--dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
 .comment-thread-card__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
   margin-bottom: 0.75rem;
+}
+
+.comment-thread-card__drag-handle {
+  min-width: 0;
+  flex: 1;
+  cursor: grab;
+  touch-action: none;
+}
+
+.comment-thread-card__drag-handle:active {
+  cursor: grabbing;
 }
 
 .comment-thread-card__title {
