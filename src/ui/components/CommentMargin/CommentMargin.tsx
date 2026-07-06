@@ -30,6 +30,10 @@ const EMPTY_PEER_COMMENTS: PeerComment[] = [];
 
 interface AddCommentFormProps {
   top: number;
+  dragPosition?: FloatingCardPosition | null;
+  dragging?: boolean;
+  formRef?: React.RefObject<HTMLFormElement | null>;
+  onDragStart?: (event: React.PointerEvent) => void;
   onSubmit: (type: CommentType, text: string) => void;
   onCancel: () => void;
   disabled?: boolean;
@@ -37,12 +41,23 @@ interface AddCommentFormProps {
 
 function AddCommentForm({
   top,
+  dragPosition = null,
+  dragging = false,
+  formRef,
+  onDragStart,
   onSubmit,
   onCancel,
   disabled = false,
 }: AddCommentFormProps) {
   const [type, setType] = useState<CommentType>("note");
   const [text, setText] = useState("");
+  const formStyle: React.CSSProperties = dragPosition
+    ? {
+        position: "fixed",
+        top: dragPosition.top,
+        left: dragPosition.left,
+      }
+    : { top };
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -55,13 +70,20 @@ function AddCommentForm({
 
   return (
     <form
-      className="comment-add-form"
-      style={{ top }}
+      ref={formRef}
+      className={`comment-add-form${dragging ? " comment-add-form--dragging" : ""}`}
+      style={formStyle}
       onSubmit={handleSubmit}
       onClick={(e) => e.stopPropagation()}
     >
       <div className="comment-add-form__header">
-        <span className="comment-add-form__title">Add comment</span>
+        <div
+          className="comment-add-form__drag-handle"
+          onPointerDown={onDragStart}
+          title="Drag comment panel"
+        >
+          <span className="comment-add-form__title">Add comment</span>
+        </div>
         <span className="comment-add-form__meta">{type}</span>
       </div>
       <div className="comment-add-form__types">
@@ -207,6 +229,7 @@ export function CommentMargin({
     useState<FloatingCardDragState | null>(null);
   const measureRef = useRef<() => void>(() => {});
   const activeCardRef = useRef<HTMLDivElement | null>(null);
+  const addFormRef = useRef<HTMLFormElement | null>(null);
 
   // In peer mode, show the peer's own comments as dots
   const myPeerComments = useAppStore((s) => s.myPeerComments);
@@ -376,10 +399,12 @@ export function CommentMargin({
     };
   }, [activeThreadData, containerRef]);
 
+  const addingBlockIndex = addingBlock?.index ?? null;
+
   useEffect(() => {
     setFloatingCardPosition(null);
     setFloatingCardDragState(null);
-  }, [activeId]);
+  }, [activeId, addingBlockIndex]);
 
   useEffect(() => {
     if (!floatingCardDragState) {
@@ -387,8 +412,8 @@ export function CommentMargin({
     }
 
     function handlePointerMove(event: PointerEvent) {
-      const card = activeCardRef.current;
-      if (!card) {
+      const popup = addFormRef.current ?? activeCardRef.current;
+      if (!popup) {
         return;
       }
       if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) {
@@ -397,11 +422,11 @@ export function CommentMargin({
       const padding = 8;
       const maxLeft = Math.max(
         padding,
-        window.innerWidth - card.offsetWidth - padding,
+        window.innerWidth - popup.offsetWidth - padding,
       );
       const maxTop = Math.max(
         padding,
-        window.innerHeight - card.offsetHeight - padding,
+        window.innerHeight - popup.offsetHeight - padding,
       );
       const nextLeft = Math.min(
         Math.max(event.clientX - floatingCardDragState.offsetLeft, padding),
@@ -431,21 +456,21 @@ export function CommentMargin({
     };
   }, [floatingCardDragState]);
 
-  function handleFloatingCardDragStart(event: React.PointerEvent) {
+  function handleFloatingPopupDragStart(event: React.PointerEvent) {
     if (event.button > 0) {
       return;
     }
     if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) {
       return;
     }
-    const card = activeCardRef.current;
-    if (!card) {
+    const popup = addFormRef.current ?? activeCardRef.current;
+    if (!popup) {
       return;
     }
     event.preventDefault();
     event.stopPropagation();
 
-    const rect = card.getBoundingClientRect();
+    const rect = popup.getBoundingClientRect();
     setFloatingCardPosition({
       top: rect.top,
       left: rect.left,
@@ -470,6 +495,7 @@ export function CommentMargin({
               aria-label="Add comment"
               onClick={(e) => {
                 e.stopPropagation();
+                setActiveId(null);
                 setAddingBlock(hoveredBlock);
                 if (peerMode) {
                   setPeerDraftCommentOpen(true);
@@ -495,6 +521,10 @@ export function CommentMargin({
       {addingBlock && (
         <AddCommentForm
           top={addingBlock.top}
+          dragPosition={floatingCardPosition}
+          dragging={!!floatingCardDragState}
+          formRef={addFormRef}
+          onDragStart={handleFloatingPopupDragStart}
           onSubmit={(type, text) => {
             if (peerMode && onPostPeerComment) {
               onPostPeerComment(addingBlock.index, type, text);
@@ -542,6 +572,10 @@ export function CommentMargin({
                     title={`${thread.root.type}: ${thread.root.text}`}
                     onClick={(e) => {
                       e.stopPropagation();
+                      setAddingBlock(null);
+                      if (peerMode) {
+                        setPeerDraftCommentOpen(false);
+                      }
                       setActiveId(isActive ? null : thread.root.id);
                     }}
                   />
@@ -573,7 +607,7 @@ export function CommentMargin({
                 dragPosition={floatingCardPosition}
                 dragging={!!floatingCardDragState}
                 cardRef={activeCardRef}
-                onDragStart={handleFloatingCardDragStart}
+                onDragStart={handleFloatingPopupDragStart}
                 onClose={() => setActiveId(null)}
                 onEdit={(id, type, text) => {
                   editCommentAction(id, type, text).catch((error) => {
