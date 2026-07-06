@@ -101,10 +101,14 @@ MarkReview extends the plain comment protocol for threaded review questions.
 - MarkReview writes hidden `[markreview ...]` metadata into app-created `question:` comments so a raw markdown file still carries stable thread identifiers.
 - Agents reply with a separate inline `answer:` CriticMarkup comment near the same text block.
 - Users can also reply directly from the thread card; MarkReview writes the same linked `answer:` CriticMarkup reply with `author="You"`.
+- Users can switch the thread composer from `Reply` to `Action` and choose a compact action type (`fix`, `rewrite`, `expand`, `clarify`, or `remove`). MarkReview writes that action as a linked threaded CriticMarkup comment with `author="You"` instead of `answer:`.
 - The reply reuses the root `thread` value and sets `replyTo` to the root question `id`.
 - The reply can also include `author` so the UI can show `Codex`, `Cursor`, or a generic `Agent` label.
 - The Comments panel keeps replies collapsed under the root question and marks the root as `answered` once an `answer:` reply exists.
 - Agent-authored replies render as read-only comments in the UI. User-authored replies can be edited or deleted.
+- Thread cards visually distinguish user-authored answers from external or agent-authored answers so ownership is clear at a glance.
+- Threaded action replies are work instructions, not conversational answers. The review-agent prompt tells agents to apply the requested edit directly, remove the resolved thread after the edit, and avoid adding a confirmation `answer:` reply.
+- While a question, answer, or action reply in the thread card is being edited or delete-confirmed, the composer is hidden so the user sees only one active input surface.
 - Deleting a thread-root `question:` comment deletes the linked `answer:` replies in the same thread so replies never remain as orphan comments.
 
 Example root:
@@ -117,6 +121,12 @@ Example reply:
 
 ```text
 {>>answer: This section explains the reconnect fallback path after a missed live event. [markreview id="mr-answer-1" thread="mr-question-1" replyTo="mr-question-1" author="Codex"]<<}
+```
+
+Example action reply:
+
+```text
+{>>remove: Delete BL-2 from this section. [markreview id="mr-action-1" thread="mr-question-1" replyTo="mr-question-1" author="You"]<<}
 ```
 
 ### 6.4 Why This Works
@@ -187,7 +197,7 @@ metadata block.
 
 ### 8.3 Block-Level Commenting UI
 
-Every rendered block (paragraph, heading, table, code block, diagram, list item) is commentable. On hover, a visible comment icon appears in the left margin. Clicking opens a floating comment popup with a type selector and text input. Existing comments show as colored markers in the margin — color-coded by type, with a stronger selected state so their document anchor is clear. Clicking a marker expands the same floating popup with the saved comment card. Clicking a comment in the right sidebar opens the same floating popup at the related document block. The comment popup can be dragged around the viewport in both add and view modes, and it resets to its anchored position when another comment or add form opens. The right sidebar shows all comments in document order. Filters: all, by type, pending only (CriticMarkup still present), resolved (CriticMarkup removed by the LLM). Bulk deletion requires a confirmation step instead of deleting directly from the panel header.
+Every rendered block (paragraph, heading, table, code block, diagram, list item) is commentable. On hover, a visible comment icon appears in the left margin. Clicking opens a floating comment popup with a type selector and text input. Existing comments show as colored markers in the margin — color-coded by type, with a stronger selected state so their document anchor is clear. The hover comment icon and existing comment markers occupy separate margin lanes so neither control covers the other. Clicking a marker expands the same floating popup with the saved comment card. Clicking a comment in the right sidebar opens the same floating popup at the related document block. The comment popup can be dragged around the viewport in both add and view modes, and it resets to its anchored position when another comment or add form opens. The right sidebar shows all comments in document order. Filters: all, by type, pending only (CriticMarkup still present), resolved (CriticMarkup removed by the LLM). Bulk deletion requires a confirmation step instead of deleting directly from the panel header.
 
 ### 8.4 Design
 

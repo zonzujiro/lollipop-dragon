@@ -53,6 +53,17 @@ describe("address comments agent run context", () => {
         },
       }),
       makeComment({
+        id: "remove-reply",
+        type: "remove",
+        text: "Delete this section.",
+        thread: {
+          commentId: "mr-action-1",
+          threadId: "mr-question-1",
+          replyTo: "mr-question-1",
+          authorLabel: "You",
+        },
+      }),
+      makeComment({
         id: "note-root",
         type: "note",
         text: "Check this claim",
@@ -64,6 +75,11 @@ describe("address comments agent run context", () => {
         id: "fix-root",
         type: "fix",
         text: "Fix the intro",
+      },
+      {
+        id: "mr-action-1",
+        type: "remove",
+        text: "Delete this section.",
       },
       {
         id: "note-root",
@@ -110,6 +126,10 @@ describe("address comments agent run context", () => {
       "Answer these MarkReview question threads",
     );
     expect(request.prompt).toContain("- mr-question-1");
+    expect(request.prompt).toContain("Thread action replies");
+    expect(request.prompt).toContain(
+      "Do not add a new `answer:` or confirmation comment",
+    );
   });
 
   it("selects a bounded set of folder comment targets", () => {
@@ -262,6 +282,31 @@ describe("question thread agent run context", () => {
     ]);
 
     expect(commentIds).toEqual(["mr-question-1"]);
+  });
+
+  it("excludes question threads that contain user action replies", () => {
+    const commentIds = getQuestionThreadCommentIds([
+      makeComment({
+        id: "question-root",
+        type: "question",
+        thread: {
+          commentId: "mr-question-1",
+          threadId: "mr-question-1",
+        },
+      }),
+      makeComment({
+        id: "remove-reply",
+        type: "remove",
+        thread: {
+          commentId: "mr-action-1",
+          threadId: "mr-question-1",
+          replyTo: "mr-question-1",
+          authorLabel: "You",
+        },
+      }),
+    ]);
+
+    expect(commentIds).toEqual([]);
   });
 
   it("builds a narrow active-file request for answering questions", () => {

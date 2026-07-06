@@ -325,6 +325,35 @@ describe("CommentMargin — AddCommentForm", () => {
     expect(screen.queryByText("Fix this paragraph")).not.toBeInTheDocument();
   });
 
+  it("keeps the add button visible alongside existing comment dots", () => {
+    setTestState({
+      activeCommentId: "fix-root",
+      comments: [
+        makeComment({
+          id: "fix-root",
+          type: "fix",
+          text: "Fix this paragraph",
+          blockIndex: 0,
+        }),
+      ],
+    });
+
+    render(
+      <CommentMargin
+        containerRef={createContainerRef([96])}
+        hoveredBlock={{ index: 0, top: 96 }}
+        onAddComment={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Add comment" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /fix: Fix this paragraph/i }),
+    ).toBeInTheDocument();
+  });
+
   it("closes the add form when an existing comment opens", async () => {
     const user = userEvent.setup();
     setTestState({

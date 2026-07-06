@@ -42,6 +42,7 @@ function buildQuestionReplyRules(): string {
   return `Question thread replies:
 - Leave each original question comment unchanged.
 - Read the entire existing thread for each question, including human and agent answers already present.
+- If a thread contains user-authored threaded action comments (\`fix:\`, \`rewrite:\`, \`expand:\`, \`clarify:\`, or \`remove:\` with \`replyTo\` metadata), treat those as document-change instructions instead of questions to answer.
 - Reply with a separate inline CriticMarkup comment near the same text block.
 - Use the \`answer:\` prefix in every reply.
 - Keep the question's existing \`thread\` value.
@@ -49,6 +50,15 @@ function buildQuestionReplyRules(): string {
 - Give your reply its own unique \`id\`.
 - Add your agent name in \`author\` (for example \`Codex\` or \`Cursor\`).
 - Keep answers concise, specific, and grounded in the referenced text.`;
+}
+
+function buildThreadActionRules(): string {
+  return `Thread action replies:
+- A user-authored threaded action comment is a MarkReview comment with \`replyTo\` metadata and type \`fix:\`, \`rewrite:\`, \`expand:\`, \`clarify:\`, or \`remove:\`.
+- Treat these comments as instructions to change the markdown, not as messages to answer.
+- Apply the requested edit directly in the markdown.
+- After applying the edit, remove the resolved thread from the file, including the root \`question:\`, prior \`answer:\` replies, and the action comment.
+- Do not add a new \`answer:\` or confirmation comment for completed actions.`;
 }
 
 function buildCommentList(comments: AddressCommentsPromptComment[]): string {
@@ -102,6 +112,8 @@ ${questionThreadList}
 - Do not remove question comments when answering them.
 - Do not edit unrelated files or unrelated comments.
 
+${buildThreadActionRules()}
+
 ${buildQuestionReplyRules()}`;
 }
 
@@ -143,6 +155,8 @@ ${targetList}
 - Remove each addressed MarkReview comment once its requested change is applied.
 - Do not remove question comments when answering them.
 - Do not edit unrelated files or unrelated comments.
+
+${buildThreadActionRules()}
 
 ${buildQuestionReplyRules()}`;
 }

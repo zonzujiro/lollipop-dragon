@@ -56,7 +56,11 @@ export interface HostReviewActions {
   ) => Promise<void>;
   editComment: (id: string, type: CommentType, text: string) => Promise<void>;
   deleteComment: (id: string) => Promise<void>;
-  replyToCommentThread: (rootCommentId: string, text: string) => Promise<void>;
+  replyToCommentThread: (
+    rootCommentId: string,
+    text: string,
+    type?: CommentType,
+  ) => Promise<void>;
   deleteAllComments: () => Promise<void>;
   undo: () => Promise<void>;
   clearUndo: () => void;
