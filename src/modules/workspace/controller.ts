@@ -424,6 +424,79 @@ function buildRestoreAccessState(message: string): Partial<TabState> {
   };
 }
 
+async function requestBrowserWritePermission(
+  handle: FileSystemHandle,
+): Promise<boolean> {
+  const writePermission = await handle.requestPermission({
+    mode: "readwrite",
+  });
+  return writePermission === "granted";
+}
+
+async function getSavedFileTarget(tab: TabState): Promise<FileTarget | null> {
+  if (tab.fileHandle) {
+    return tab.fileHandle;
+  }
+
+  const handle = await getHandle(`tab:${tab.id}:file`);
+  if (!handle || !isBrowserFileHandle(handle)) {
+    return null;
+  }
+
+  return handle;
+}
+
+async function getSavedDirectoryTarget(
+  tab: TabState,
+): Promise<DirectoryTarget | null> {
+  if (tab.directoryHandle) {
+    return tab.directoryHandle;
+  }
+
+  const handle = await getHandle(`tab:${tab.id}:directory`);
+  if (!handle || !isBrowserDirectoryHandle(handle)) {
+    return null;
+  }
+
+  return handle;
+}
+
+async function getSavedWritableFileTarget(
+  tab: TabState,
+): Promise<FileTarget | null> {
+  const target = await getSavedFileTarget(tab);
+  if (!target) {
+    return null;
+  }
+
+  if (isBrowserFileHandle(target)) {
+    const hasWriteAccess = await requestBrowserWritePermission(target);
+    if (!hasWriteAccess) {
+      return null;
+    }
+  }
+
+  return target;
+}
+
+async function getSavedWritableDirectoryTarget(
+  tab: TabState,
+): Promise<DirectoryTarget | null> {
+  const target = await getSavedDirectoryTarget(tab);
+  if (!target) {
+    return null;
+  }
+
+  if (isBrowserDirectoryHandle(target)) {
+    const hasWriteAccess = await requestBrowserWritePermission(target);
+    if (!hasWriteAccess) {
+      return null;
+    }
+  }
+
+  return target;
+}
+
 function buildFileRestoreMessage(fileName: string): string {
   return `Live access to "${fileName}" is unavailable. Open the file again to restore commenting and share review.`;
 }
@@ -863,10 +936,7 @@ export function createWorkspaceControllerActions<
           await scanAllFileComments();
         }
       } catch (error) {
-        console.error(
-          "[openDirectoryInNewTab] failed to open folder:",
-          error,
-        );
+        console.error("[openDirectoryInNewTab] failed to open folder:", error);
         showToast("Folder could not be opened. Check the terminal logs.");
       }
     },
@@ -879,13 +949,22 @@ export function createWorkspaceControllerActions<
 
       if (tab.directoryName) {
         try {
-          const result = await openDirectory();
-          if (!result) {
+          const target = await getSavedWritableDirectoryTarget(tab);
+          if (!target) {
+            set((state) => ({
+              tabs: buildUpdatedTabs(state.tabs, tabId, () => ({
+                restoreError: buildFolderRestoreMessage({
+                  directoryName: tab.directoryName,
+                  fileName: tab.fileName,
+                }),
+              })),
+            }));
+            showToast("Folder access was not restored");
             return;
           }
 
-          await saveBrowserHandle(`tab:${tabId}:directory`, result.handle);
-          const tree = await buildFileTree(result.handle);
+          await saveBrowserHandle(`tab:${tabId}:directory`, target);
+          const tree = await buildFileTree(target);
           const restoredFile = await restoreActiveFileFromTree({
             tree,
             activeFilePath: tab.activeFilePath,
@@ -894,9 +973,9 @@ export function createWorkspaceControllerActions<
           });
           set((state) => ({
             tabs: buildUpdatedTabs(state.tabs, tabId, () => ({
-              directoryHandle: result.handle,
-              directoryName: result.name,
-              label: result.name,
+              directoryHandle: target,
+              directoryName: target.name,
+              label: target.name,
               fileTree: tree,
               fileHandle: restoredFile.fileHandle,
               fileName: restoredFile.fileName,
@@ -937,18 +1016,26 @@ export function createWorkspaceControllerActions<
       }
 
       try {
-        const result = await openFile();
-        if (!result) {
+        const target = await getSavedWritableFileTarget(tab);
+        if (!target) {
+          set((state) => ({
+            tabs: buildUpdatedTabs(state.tabs, tabId, () => ({
+              restoreError: buildFileRestoreMessage(
+                tab.fileName ?? "this file",
+              ),
+            })),
+          }));
+          showToast("File access was not restored");
           return;
         }
 
-        await saveBrowserHandle(`tab:${tabId}:file`, result.handle);
-        const rawContent = await readFile(result.handle);
+        await saveBrowserHandle(`tab:${tabId}:file`, target);
+        const rawContent = await readFile(target);
         set((state) => ({
           tabs: buildUpdatedTabs(state.tabs, tabId, () => ({
-            fileHandle: result.handle,
-            fileName: result.name,
-            label: result.name,
+            fileHandle: target,
+            fileName: target.name,
+            label: target.name,
             rawContent,
             writeAllowed: true,
             restoreError: null,

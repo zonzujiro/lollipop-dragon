@@ -520,10 +520,11 @@ describe("store.restoreTabs", () => {
 });
 
 describe("store.reopenTab", () => {
-  it("reopens a folder tab and restores its previous active file", async () => {
+  it("reopens a folder tab from its saved handle and restores its previous active file", async () => {
     const directoryHandle = {
       kind: "directory",
       name: "project",
+      requestPermission: vi.fn().mockResolvedValue("granted"),
     };
     const recoveredFileHandle = {
       kind: "file",
@@ -566,17 +567,17 @@ describe("store.reopenTab", () => {
       activeTabId: fileTab.id,
     });
 
-    vi.mocked(openDirectory).mockResolvedValue({
-      handle: directoryHandle,
-      name: "project",
-    });
+    vi.mocked(getHandle).mockResolvedValue(directoryHandle);
     vi.mocked(buildFileTree).mockResolvedValue(tree);
     vi.mocked(readFile).mockResolvedValue("# Updated");
 
     await useAppStore.getState().reopenTab(fileTab.id);
 
     const tab = getActiveTab(useAppStore.getState());
-    expect(openDirectory).toHaveBeenCalled();
+    expect(openDirectory).not.toHaveBeenCalled();
+    expect(directoryHandle.requestPermission).toHaveBeenCalledWith({
+      mode: "readwrite",
+    });
     expect(saveHandle).toHaveBeenCalledWith(
       `tab:${fileTab.id}:directory`,
       directoryHandle,
@@ -590,6 +591,82 @@ describe("store.reopenTab", () => {
     expect(tab?.sharedPanelOpen).toBe(true);
     expect(tab?.restoreError).toBeNull();
     expect(tab?.writeAllowed).toBe(true);
+  });
+
+  it("reopens a file tab from its saved handle without opening a picker", async () => {
+    const fileHandle = {
+      kind: "file",
+      name: "notes.md",
+      requestPermission: vi.fn().mockResolvedValue("granted"),
+    };
+    const fileTab = createDefaultTab({
+      id: "file-tab",
+      label: "notes.md",
+      fileName: "notes.md",
+      rawContent: "# Persisted",
+      restoreError:
+        'Live access to "notes.md" is unavailable. Open the file again to restore commenting and share review.',
+      writeAllowed: false,
+    });
+
+    useAppStore.setState({
+      tabs: [fileTab],
+      activeTabId: fileTab.id,
+    });
+
+    vi.mocked(getHandle).mockResolvedValue(fileHandle);
+    vi.mocked(readFile).mockResolvedValue("# Updated");
+
+    await useAppStore.getState().reopenTab(fileTab.id);
+
+    const tab = getActiveTab(useAppStore.getState());
+    expect(openFile).not.toHaveBeenCalled();
+    expect(fileHandle.requestPermission).toHaveBeenCalledWith({
+      mode: "readwrite",
+    });
+    expect(saveHandle).toHaveBeenCalledWith(
+      `tab:${fileTab.id}:file`,
+      fileHandle,
+    );
+    expect(tab?.fileHandle).toBe(fileHandle);
+    expect(tab?.fileName).toBe("notes.md");
+    expect(tab?.rawContent).toBe("# Updated");
+    expect(tab?.restoreError).toBeNull();
+    expect(tab?.writeAllowed).toBe(true);
+  });
+
+  it("keeps a file tab in restore state when saved handle permission is denied", async () => {
+    const fileHandle = {
+      kind: "file",
+      name: "notes.md",
+      requestPermission: vi.fn().mockResolvedValue("denied"),
+    };
+    const fileTab = createDefaultTab({
+      id: "file-tab",
+      label: "notes.md",
+      fileName: "notes.md",
+      rawContent: "# Persisted",
+      restoreError:
+        'Live access to "notes.md" is unavailable. Open the file again to restore commenting and share review.',
+      writeAllowed: false,
+    });
+
+    useAppStore.setState({
+      tabs: [fileTab],
+      activeTabId: fileTab.id,
+    });
+
+    vi.mocked(getHandle).mockResolvedValue(fileHandle);
+
+    await useAppStore.getState().reopenTab(fileTab.id);
+
+    const tab = getActiveTab(useAppStore.getState());
+    expect(openFile).not.toHaveBeenCalled();
+    expect(readFile).not.toHaveBeenCalled();
+    expect(saveHandle).not.toHaveBeenCalled();
+    expect(tab?.restoreError).toContain("notes.md");
+    expect(tab?.writeAllowed).toBe(false);
+    expect(useAppStore.getState().toast).toBe("File access was not restored");
   });
 });
 
