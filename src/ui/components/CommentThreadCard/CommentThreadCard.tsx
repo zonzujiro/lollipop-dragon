@@ -90,6 +90,7 @@ function CommentEditForm({
             key={commentType}
             type="button"
             className={`comment-add-form__type${editType === commentType ? " comment-add-form__type--active" : ""}`}
+            data-comment-type={commentType}
             aria-pressed={editType === commentType}
             onClick={() => setEditType(commentType)}
           >

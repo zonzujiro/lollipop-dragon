@@ -866,6 +866,7 @@ export function CommentPanel({ peerMode = false }: Props) {
                 <button
                   key={type}
                   className={`comment-panel__filter${commentFilter === type ? " comment-panel__filter--active" : ""}`}
+                  data-comment-type={type}
                   style={
                     commentFilter === type
                       ? {
@@ -969,6 +970,7 @@ function InlineEditForm({
             key={commentType}
             type="button"
             className={`comment-add-form__type${editType === commentType ? " comment-add-form__type--active" : ""}`}
+            data-comment-type={commentType}
             aria-pressed={editType === commentType}
             onClick={() => setEditType(commentType)}
           >

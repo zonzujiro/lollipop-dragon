@@ -198,9 +198,22 @@
   color: var(--accent);
 }
 
+.comment-add-form__type[data-comment-type="remove"] {
+  color: var(--c-red);
+}
+
+.comment-add-form__type[data-comment-type="remove"]:hover {
+  border-color: color-mix(in srgb, var(--c-red) 42%, var(--border));
+  color: var(--c-red);
+}
+
 .comment-add-form__type:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.comment-add-form__type[data-comment-type="remove"]:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-red) 30%, transparent);
 }
 
 .comment-add-form__type--active {
@@ -208,6 +221,12 @@
   border-color: var(--accent);
   color: #fff;
   box-shadow: var(--shadow-sm);
+}
+
+.comment-add-form__type--active[data-comment-type="remove"] {
+  background: var(--c-red);
+  border-color: var(--c-red);
+  color: #fff;
 }
 
 .comment-add-form__input {

@@ -92,6 +92,7 @@ function AddCommentForm({
             key={t}
             type="button"
             className={`comment-add-form__type${type === t ? " comment-add-form__type--active" : ""}`}
+            data-comment-type={t}
             aria-pressed={type === t}
             onClick={() => setType(t)}
             disabled={disabled}
