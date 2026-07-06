@@ -7,7 +7,7 @@
 
 .comment-margin__dots {
   position: absolute;
-  right: 0.7rem;
+  right: 0.2rem;
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -43,7 +43,7 @@
 
 .comment-margin__add-wrapper {
   position: absolute;
-  left: 0.25rem;
+  left: -0.45rem;
   margin-top: -6px;
 }
 

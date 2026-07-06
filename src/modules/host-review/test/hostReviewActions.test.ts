@@ -275,6 +275,49 @@ describe("store.replyToCommentThread", () => {
     expect(tab?.rawContent).toBe(writtenContent);
     expect(tab?.undoState?.rawContent).toBe(rawContent);
   });
+
+  it("writes a linked user action with the selected comment type", async () => {
+    const { handle, mockWritable } = makeHandle();
+    const questionRaw =
+      '{>>question: Why? [markreview id="mr-question-1" thread="mr-question-1"]<<}';
+    const rawContent = `Before ${questionRaw} after`;
+    const questionStart = rawContent.indexOf(questionRaw);
+    setTestState({
+      fileHandle: handle,
+      rawContent,
+      comments: [
+        makeComment({
+          id: "question-root",
+          type: "question",
+          text: "Why?",
+          raw: questionRaw,
+          rawStart: questionStart,
+          rawEnd: questionStart + questionRaw.length,
+          thread: {
+            commentId: "mr-question-1",
+            threadId: "mr-question-1",
+          },
+        }),
+      ],
+    });
+
+    await useAppStore
+      .getState()
+      .replyToCommentThread(
+        "question-root",
+        "Delete this paragraph.",
+        "remove",
+      );
+
+    const writtenContent: unknown = mockWritable.write.mock.calls[0]?.[0];
+    if (typeof writtenContent !== "string") {
+      throw new Error("Expected action write to receive markdown text.");
+    }
+
+    expect(writtenContent).toMatch(
+      /Before \{>>question: Why\? \[markreview id="mr-question-1" thread="mr-question-1"\]<<}\{>>remove: Delete this paragraph\. \[markreview id="mr-[^"]+" thread="mr-question-1" replyTo="mr-question-1" author="You"\]<<} after/,
+    );
+  });
 });
 
 describe("store.undo", () => {

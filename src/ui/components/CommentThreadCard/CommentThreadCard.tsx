@@ -17,6 +17,23 @@ const EDITABLE_COMMENT_TYPES: CommentType[] = [
 ];
 
 const EDITABLE_CRITIC_TYPES: Comment["criticType"][] = ["comment", "highlight"];
+const ACTION_REPLY_TYPES: CommentType[] = [
+  "fix",
+  "rewrite",
+  "expand",
+  "clarify",
+  "remove",
+];
+
+type ThreadComposerMode = "reply" | "action";
+
+function getThreadAuthorKind(comment: Comment): "mine" | "external" | "none" {
+  if (!comment.thread?.replyTo) {
+    return "none";
+  }
+
+  return comment.thread?.authorLabel === "You" ? "mine" : "external";
+}
 
 function CommentBody({ comment }: { comment: Comment }) {
   if (comment.criticType === "addition") {
@@ -154,14 +171,23 @@ function CommentRow({
   const editable =
     canEditComment(comment) &&
     EDITABLE_CRITIC_TYPES.includes(comment.criticType);
-  const authorLabel =
-    comment.type === "answer" ? (comment.thread?.authorLabel ?? "Agent") : null;
+  const authorLabel = comment.thread?.replyTo
+    ? (comment.thread.authorLabel ??
+      (comment.type === "answer" ? "Agent" : null))
+    : null;
+  const authorKind = getThreadAuthorKind(comment);
   const deletingThreadRoot = !!comment.thread && !comment.thread.replyTo;
+  const itemClasses = [
+    "comment-thread-card__item",
+    reply ? "comment-thread-card__item--reply" : "",
+    authorKind === "mine" ? "comment-thread-card__item--mine" : "",
+    authorKind === "external" ? "comment-thread-card__item--external" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
-    <div
-      className={`comment-thread-card__item${reply ? " comment-thread-card__item--reply" : ""}`}
-    >
+    <div className={itemClasses}>
       <div className="comment-thread-card__item-header">
         <div className="comment-thread-card__meta">
           <span
@@ -171,7 +197,11 @@ function CommentRow({
             {comment.type}
           </span>
           {authorLabel && (
-            <span className="comment-thread-card__author">{authorLabel}</span>
+            <span
+              className={`comment-thread-card__author comment-thread-card__author--${authorKind}`}
+            >
+              {authorLabel}
+            </span>
           )}
         </div>
         <div className="comment-thread-card__actions">
@@ -242,7 +272,7 @@ interface Props {
   onClose: () => void;
   onEdit?: (id: string, type: CommentType, text: string) => void;
   onDelete?: (id: string) => void;
-  onReply?: (rootCommentId: string, text: string) => void;
+  onReply?: (rootCommentId: string, text: string, type: CommentType) => void;
 }
 
 export function CommentThreadCard({
@@ -260,9 +290,15 @@ export function CommentThreadCard({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
+  const [replyMode, setReplyMode] = useState<ThreadComposerMode>("reply");
+  const [actionType, setActionType] = useState<CommentType>("remove");
   const comments = [thread.root, ...thread.replies];
+  const hasActiveInlineAction = editingId !== null || confirmingId !== null;
   const canReplyToThread =
-    thread.root.type === "question" && !!thread.root.thread && !!onReply;
+    thread.root.type === "question" &&
+    !!thread.root.thread &&
+    !!onReply &&
+    !hasActiveInlineAction;
   const cardStyle: CSSProperties = dragPosition
     ? {
         position: "fixed",
@@ -278,7 +314,11 @@ export function CommentThreadCard({
     if (!trimmedText || !onReply) {
       return;
     }
-    onReply(thread.root.id, trimmedText);
+    onReply(
+      thread.root.id,
+      trimmedText,
+      replyMode === "action" ? actionType : "answer",
+    );
     setReplyText("");
   }
 
@@ -347,10 +387,56 @@ export function CommentThreadCard({
           className="comment-thread-card__reply-form"
           onSubmit={handleReplySubmit}
         >
+          <div className="comment-thread-card__reply-toolbar">
+            <div
+              className="comment-thread-card__reply-mode"
+              aria-label="Thread response mode"
+            >
+              <button
+                type="button"
+                className={`comment-thread-card__reply-mode-button${replyMode === "reply" ? " comment-thread-card__reply-mode-button--active" : ""}`}
+                aria-pressed={replyMode === "reply"}
+                onClick={() => setReplyMode("reply")}
+              >
+                Reply
+              </button>
+              <button
+                type="button"
+                className={`comment-thread-card__reply-mode-button${replyMode === "action" ? " comment-thread-card__reply-mode-button--active" : ""}`}
+                aria-pressed={replyMode === "action"}
+                onClick={() => setReplyMode("action")}
+              >
+                Action
+              </button>
+            </div>
+            {replyMode === "action" && (
+              <div
+                className="comment-thread-card__action-types"
+                aria-label="Action type"
+              >
+                {ACTION_REPLY_TYPES.map((commentType) => (
+                  <button
+                    key={commentType}
+                    type="button"
+                    className={`comment-thread-card__action-type${actionType === commentType ? " comment-thread-card__action-type--active" : ""}`}
+                    data-comment-type={commentType}
+                    aria-pressed={actionType === commentType}
+                    onClick={() => setActionType(commentType)}
+                  >
+                    {commentType}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <textarea
             className="comment-thread-card__reply-input"
             aria-label="Answer text"
-            placeholder="Write an answer..."
+            placeholder={
+              replyMode === "action"
+                ? "Tell agent what to change..."
+                : "Write an answer..."
+            }
             rows={2}
             value={replyText}
             onChange={(event) => setReplyText(event.target.value)}
@@ -360,7 +446,7 @@ export function CommentThreadCard({
             className="comment-thread-card__reply-send"
             disabled={!replyText.trim()}
           >
-            Send
+            {replyMode === "action" ? "Apply" : "Send"}
           </button>
         </form>
       )}

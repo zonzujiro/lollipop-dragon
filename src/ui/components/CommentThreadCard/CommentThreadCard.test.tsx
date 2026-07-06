@@ -77,6 +77,36 @@ describe("CommentThreadCard", () => {
     expect(screen.getByText("Agent")).toBeInTheDocument();
   });
 
+  it("visually distinguishes user-authored answers from external answers", () => {
+    const { root, reply } = makeQuestionThread();
+    const userReply = makeComment({
+      id: "user-reply-comment",
+      type: "answer",
+      text: "I think we can remove this section.",
+      thread: {
+        commentId: "mr-answer-2",
+        threadId: "mr-question-1",
+        replyTo: "mr-question-1",
+        authorLabel: "You",
+      },
+    });
+
+    render(
+      <CommentThreadCard
+        thread={{ root, replies: [reply, userReply] }}
+        top={0}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText("Codex").closest(".comment-thread-card__item"),
+    ).toHaveClass("comment-thread-card__item--external");
+    expect(
+      screen.getByText("You").closest(".comment-thread-card__item"),
+    ).toHaveClass("comment-thread-card__item--mine");
+  });
+
   it("edits the selected user-authored thread message", async () => {
     const user = userEvent.setup();
     const onEdit = vi.fn();
@@ -101,6 +131,29 @@ describe("CommentThreadCard", () => {
       "question",
       "Updated question.",
     );
+  });
+
+  it("hides the answer composer while editing a thread comment", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <CommentThreadCard
+        thread={makeQuestionThread().thread}
+        top={0}
+        onClose={vi.fn()}
+        onEdit={vi.fn()}
+        onReply={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Answer text")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Edit comment" }));
+
+    expect(screen.queryByLabelText("Answer text")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Send" }),
+    ).not.toBeInTheDocument();
   });
 
   it("does not allow editing linked agent answers", () => {
@@ -175,7 +228,38 @@ describe("CommentThreadCard", () => {
     await user.type(input, "This is my answer.");
     await user.click(screen.getByRole("button", { name: "Send" }));
 
-    expect(onReply).toHaveBeenCalledWith("root-comment", "This is my answer.");
+    expect(onReply).toHaveBeenCalledWith(
+      "root-comment",
+      "This is my answer.",
+      "answer",
+    );
+    expect(input).toHaveValue("");
+  });
+
+  it("submits a typed action from the thread composer", async () => {
+    const user = userEvent.setup();
+    const onReply = vi.fn();
+
+    render(
+      <CommentThreadCard
+        thread={makeQuestionThread().thread}
+        top={0}
+        onClose={vi.fn()}
+        onReply={onReply}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Action" }));
+    await user.click(screen.getByRole("button", { name: "remove" }));
+    const input = screen.getByLabelText("Answer text");
+    await user.type(input, "Delete BL-2.");
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+
+    expect(onReply).toHaveBeenCalledWith(
+      "root-comment",
+      "Delete BL-2.",
+      "remove",
+    );
     expect(input).toHaveValue("");
   });
 

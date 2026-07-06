@@ -228,4 +228,35 @@ describe("insertThreadReply", () => {
       /\{>>answer: Existing answer\. \[markreview id="mr-answer-1" thread="mr-question-1" replyTo="mr-question-1" author="Codex"\]<<}\{>>answer: Follow-up answer\. \[markreview id="mr-[^"]+" thread="mr-question-1" replyTo="mr-question-1" author="You"\]<<} end/,
     );
   });
+
+  it("adds a linked action reply with the selected action type", () => {
+    const questionRaw =
+      '{>>question: Why? [markreview id="mr-question-1" thread="mr-question-1"]<<}';
+    const raw = `Before ${questionRaw} after`;
+    const questionStart = raw.indexOf(questionRaw);
+    const root = makeComment({
+      id: "question-root",
+      type: "question",
+      raw: questionRaw,
+      rawStart: questionStart,
+      rawEnd: questionStart + questionRaw.length,
+      thread: {
+        commentId: "mr-question-1",
+        threadId: "mr-question-1",
+      },
+    });
+
+    const result = insertThreadReply({
+      rawContent: raw,
+      root,
+      replies: [],
+      type: "remove",
+      text: "Delete this paragraph.",
+      authorLabel: "You",
+    });
+
+    expect(result).toMatch(
+      /Before \{>>question: Why\? \[markreview id="mr-question-1" thread="mr-question-1"\]<<}\{>>remove: Delete this paragraph\. \[markreview id="mr-[^"]+" thread="mr-question-1" replyTo="mr-question-1" author="You"\]<<} after/,
+    );
+  });
 });

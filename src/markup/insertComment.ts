@@ -117,6 +117,7 @@ export function insertThreadReply(input: {
   rawContent: string;
   root: Comment;
   replies: Comment[];
+  type?: CommentType;
   text: string;
   authorLabel: string;
 }): string {
@@ -144,7 +145,7 @@ export function insertThreadReply(input: {
 
   const insertPosition = latestThreadComment?.rawEnd ?? input.root.rawEnd;
   const markup = `{>>${serializeCommentBody({
-    type: "answer",
+    type: input.type ?? "answer",
     text: input.text,
     thread,
   })}<<}`;

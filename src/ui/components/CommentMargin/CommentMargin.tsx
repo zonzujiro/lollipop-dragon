@@ -627,8 +627,8 @@ export function CommentMargin({
                   });
                   setActiveId(null);
                 }}
-                onReply={(rootCommentId, text) => {
-                  replyToCommentThreadAction(rootCommentId, text).catch(
+                onReply={(rootCommentId, text, type) => {
+                  replyToCommentThreadAction(rootCommentId, text, type).catch(
                     (error) => {
                       console.error(
                         "[CommentMargin] failed to reply to thread:",

@@ -123,10 +123,28 @@ const ADDRESSABLE_COMMENT_TYPES = new Set<Comment["type"]>([
   "remove",
   "note",
 ]);
+const THREAD_ACTION_COMMENT_TYPES = new Set<Comment["type"]>([
+  "fix",
+  "rewrite",
+  "expand",
+  "clarify",
+  "remove",
+]);
+
+function isThreadActionReply(comment: Comment): boolean {
+  return (
+    !!comment.thread?.replyTo && THREAD_ACTION_COMMENT_TYPES.has(comment.type)
+  );
+}
 
 export function getQuestionThreadCommentIds(comments: Comment[]): string[] {
   return buildCommentThreadGroups(comments)
-    .filter((group) => group.root.type === "question" && !!group.root.thread)
+    .filter(
+      (group) =>
+        group.root.type === "question" &&
+        !!group.root.thread &&
+        !group.replies.some(isThreadActionReply),
+    )
     .map((group) => group.root.thread?.commentId ?? group.root.id);
 }
 
@@ -143,14 +161,17 @@ function commentPromptText(comment: Comment): string {
 export function getAddressableCommentTargets(
   comments: Comment[],
 ): AddressableCommentTarget[] {
-  return buildCommentThreadGroups(comments)
-    .map((group) => group.root)
-    .filter((comment) => ADDRESSABLE_COMMENT_TYPES.has(comment.type))
-    .map((comment) => ({
+  return buildCommentThreadGroups(comments).flatMap((group) => {
+    const rootTargets = ADDRESSABLE_COMMENT_TYPES.has(group.root.type)
+      ? [group.root]
+      : [];
+    const actionReplyTargets = group.replies.filter(isThreadActionReply);
+    return [...rootTargets, ...actionReplyTargets].map((comment) => ({
       id: comment.thread?.commentId ?? comment.id,
       type: comment.type,
       text: commentPromptText(comment),
     }));
+  });
 }
 
 export function getFolderAddressableCommentTargets(

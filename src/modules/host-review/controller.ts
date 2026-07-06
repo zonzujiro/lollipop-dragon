@@ -392,7 +392,7 @@ export function createHostReviewControllerActions<
       });
     },
 
-    replyToCommentThread: async (rootCommentId, text) => {
+    replyToCommentThread: async (rootCommentId, text, type = "answer") => {
       const tab = getActiveTab(get);
       if (!tab?.fileHandle) {
         return;
@@ -421,6 +421,7 @@ export function createHostReviewControllerActions<
           rawContent: tab.rawContent,
           root: selectedThread.root,
           replies: selectedThread.replies,
+          type,
           text,
           authorLabel: "You",
         }),
