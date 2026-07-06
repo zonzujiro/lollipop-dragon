@@ -113,6 +113,16 @@ interface DotGroup {
   threads: CommentThreadGroup[];
 }
 
+interface FloatingCardPosition {
+  top: number;
+  left: number;
+}
+
+interface FloatingCardDragState {
+  offsetTop: number;
+  offsetLeft: number;
+}
+
 interface Props {
   containerRef: React.RefObject<HTMLDivElement | null>;
   hoveredBlock: { index: number; top: number } | null;
@@ -191,6 +201,10 @@ export function CommentMargin({
   );
   const [groups, setGroups] = useState<DotGroup[]>([]);
   const [floatingTop, setFloatingTop] = useState<number | null>(null);
+  const [floatingCardPosition, setFloatingCardPosition] =
+    useState<FloatingCardPosition | null>(null);
+  const [floatingCardDragState, setFloatingCardDragState] =
+    useState<FloatingCardDragState | null>(null);
   const measureRef = useRef<() => void>(() => {});
   const activeCardRef = useRef<HTMLDivElement | null>(null);
 
@@ -362,6 +376,86 @@ export function CommentMargin({
     };
   }, [activeThreadData, containerRef]);
 
+  useEffect(() => {
+    setFloatingCardPosition(null);
+    setFloatingCardDragState(null);
+  }, [activeId]);
+
+  useEffect(() => {
+    if (!floatingCardDragState) {
+      return;
+    }
+
+    function handlePointerMove(event: PointerEvent) {
+      const card = activeCardRef.current;
+      if (!card) {
+        return;
+      }
+      if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) {
+        return;
+      }
+      const padding = 8;
+      const maxLeft = Math.max(
+        padding,
+        window.innerWidth - card.offsetWidth - padding,
+      );
+      const maxTop = Math.max(
+        padding,
+        window.innerHeight - card.offsetHeight - padding,
+      );
+      const nextLeft = Math.min(
+        Math.max(event.clientX - floatingCardDragState.offsetLeft, padding),
+        maxLeft,
+      );
+      const nextTop = Math.min(
+        Math.max(event.clientY - floatingCardDragState.offsetTop, padding),
+        maxTop,
+      );
+      setFloatingCardPosition({
+        top: nextTop,
+        left: nextLeft,
+      });
+    }
+
+    function handlePointerUp() {
+      setFloatingCardDragState(null);
+    }
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
+    };
+  }, [floatingCardDragState]);
+
+  function handleFloatingCardDragStart(event: React.PointerEvent) {
+    if (event.button > 0) {
+      return;
+    }
+    if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) {
+      return;
+    }
+    const card = activeCardRef.current;
+    if (!card) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+
+    const rect = card.getBoundingClientRect();
+    setFloatingCardPosition({
+      top: rect.top,
+      left: rect.left,
+    });
+    setFloatingCardDragState({
+      offsetTop: event.clientY - rect.top,
+      offsetLeft: event.clientX - rect.left,
+    });
+  }
+
   return (
     <div className="comment-margin">
       {hoveredBlock &&
@@ -476,7 +570,10 @@ export function CommentMargin({
               <CommentThreadCard
                 thread={activeThread}
                 top={floatingTop ?? top}
+                dragPosition={floatingCardPosition}
+                dragging={!!floatingCardDragState}
                 cardRef={activeCardRef}
+                onDragStart={handleFloatingCardDragStart}
                 onClose={() => setActiveId(null)}
                 onEdit={(id, type, text) => {
                   editCommentAction(id, type, text).catch((error) => {

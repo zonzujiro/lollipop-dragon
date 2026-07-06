@@ -7,11 +7,13 @@ interface AddressCommentsPromptComment {
 interface AddressCommentsPromptInput {
   targetPath: string;
   comments: AddressCommentsPromptComment[];
+  questionThreadIds?: string[];
 }
 
 interface FolderAddressCommentsPromptTarget {
   filePath: string;
   comments: AddressCommentsPromptComment[];
+  questionThreadIds?: string[];
 }
 
 interface FolderAddressCommentsPromptInput {
@@ -36,10 +38,8 @@ interface PendingPeerCommentsPromptInput {
   targets: PendingPeerCommentPromptTarget[];
 }
 
-export function buildAgentReplyPrompt(): string {
-  return `Review this markdown file and answer MarkReview threaded questions inline.
-
-Rules:
+function buildQuestionReplyRules(): string {
+  return `Question thread replies:
 - Leave each original question comment unchanged.
 - Read the entire existing thread for each question, including human and agent answers already present.
 - Reply with a separate inline CriticMarkup comment near the same text block.
@@ -48,7 +48,31 @@ Rules:
 - Set \`replyTo\` to the question's \`id\`.
 - Give your reply its own unique \`id\`.
 - Add your agent name in \`author\` (for example \`Codex\` or \`Cursor\`).
-- Keep answers concise, specific, and grounded in the referenced text.
+- Keep answers concise, specific, and grounded in the referenced text.`;
+}
+
+function buildCommentList(comments: AddressCommentsPromptComment[]): string {
+  if (comments.length === 0) {
+    return "- None listed.";
+  }
+
+  return comments
+    .map((comment) => `- ${comment.id} (${comment.type}): ${comment.text}`)
+    .join("\n");
+}
+
+function buildQuestionThreadList(questionThreadIds: string[]): string {
+  if (questionThreadIds.length === 0) {
+    return "- Answer any MarkReview question threads you find as needed.";
+  }
+
+  return questionThreadIds.map((commentId) => `- ${commentId}`).join("\n");
+}
+
+export function buildAgentReplyPrompt(): string {
+  return `Review this markdown file and answer MarkReview threaded questions inline.
+
+${buildQuestionReplyRules()}
 
 Example question:
 {>>question: Why is this section needed? [markreview id="mr-question-1" thread="mr-question-1"]<<}
@@ -60,20 +84,25 @@ Example answer:
 export function buildAddressCommentsAgentPrompt(
   input: AddressCommentsPromptInput,
 ): string {
-  const commentList = input.comments
-    .map((comment) => `- ${comment.id} (${comment.type}): ${comment.text}`)
-    .join("\n");
+  const commentList = buildCommentList(input.comments);
+  const questionThreadList = buildQuestionThreadList(
+    input.questionThreadIds ?? [],
+  );
 
-  return `Review this markdown file and address the listed MarkReview comments.
+  return `Review ${input.targetPath} and update it directly.
 
 Scope:
 - Work only in ${input.targetPath}.
-- Address only these unresolved comment ids:
+- Address these unresolved MarkReview comments:
 ${commentList}
+- Answer these MarkReview question threads as needed:
+${questionThreadList}
 - Apply the requested edits directly in the markdown.
 - Remove each addressed MarkReview comment once its requested change is applied.
-- Do not answer threaded question comments in this run.
-- Do not edit unrelated files or unrelated comments.`;
+- Do not remove question comments when answering them.
+- Do not edit unrelated files or unrelated comments.
+
+${buildQuestionReplyRules()}`;
 }
 
 export function buildFolderAddressCommentsAgentPrompt(
@@ -86,20 +115,36 @@ export function buildFolderAddressCommentsAgentPrompt(
           (comment) => `  - ${comment.id} (${comment.type}): ${comment.text}`,
         )
         .join("\n");
-      return `- ${target.filePath}\n${commentList}`;
+      const questionThreadList = (target.questionThreadIds ?? [])
+        .map((commentId) => `  - ${commentId}`)
+        .join("\n");
+      const sections = [`- ${target.filePath}`];
+      if (commentList) {
+        sections.push("  Comments:", commentList);
+      }
+      if (questionThreadList) {
+        sections.push("  Question threads:", questionThreadList);
+      }
+      if (!commentList && !questionThreadList) {
+        sections.push("  - Review this file for any MarkReview threads.");
+      }
+      return sections.join("\n");
     })
     .join("\n");
 
-  return `Review this markdown folder and address the listed MarkReview comments.
+  return `Review these markdown files and update them directly.
 
 Scope:
 - Work only in the listed markdown files.
-- Address only these unresolved comment ids:
+- Address the listed unresolved MarkReview comments.
+- Answer the listed MarkReview question threads as needed.
 ${targetList}
 - Apply the requested edits directly in the markdown files.
 - Remove each addressed MarkReview comment once its requested change is applied.
-- Do not answer threaded question comments in this run.
-- Do not edit unrelated files or unrelated comments.`;
+- Do not remove question comments when answering them.
+- Do not edit unrelated files or unrelated comments.
+
+${buildQuestionReplyRules()}`;
 }
 
 export function buildPendingPeerCommentsAgentPrompt(

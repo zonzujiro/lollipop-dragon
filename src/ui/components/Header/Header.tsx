@@ -1,15 +1,15 @@
 import "./Header.css";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import {
   buildAddressCommentsAgentPrompt,
-  buildAgentReplyPrompt,
   buildCommentThreadGroups,
   buildFolderAddressCommentsAgentPrompt,
 } from "../../../markup";
 import {
   getActiveAgentRunForTab,
   getAddressableCommentTargets,
-  getFolderAddressableCommentTargets,
+  getFolderReviewCommentTargets,
+  getQuestionThreadCommentIds,
 } from "../../../modules/agent-workflow";
 import { useAppStore } from "../../../store";
 import { useActiveTab } from "../../../store/selectors";
@@ -312,11 +312,6 @@ interface FileCommentEntry {
   comments: Comment[];
 }
 
-interface HeaderMenuPosition {
-  top: number;
-  right: number;
-}
-
 function getRootOnlyComments(comments: Comment[]): Comment[] {
   return buildCommentThreadGroups(comments).map((group) => group.root);
 }
@@ -408,9 +403,6 @@ export function Header({
   const startAddressCommentsAgentRun = useAppStore(
     (state) => state.startAddressCommentsAgentRun,
   );
-  const startQuestionThreadAgentRun = useAppStore(
-    (state) => state.startQuestionThreadAgentRun,
-  );
   const activeAgentRun = useAppStore((state) =>
     tab?.id ? getActiveAgentRunForTab(state, tab.id) : null,
   );
@@ -437,81 +429,59 @@ export function Header({
     }
     return getAddressableCommentTargets(comments);
   }, [comments, hasFolderComments, peerMode]);
-  const folderAddressableCommentTargets = useMemo(() => {
+  const questionThreadIds = useMemo(() => {
+    if (peerMode || hasFolderComments) {
+      return [];
+    }
+    return getQuestionThreadCommentIds(rootComments);
+  }, [hasFolderComments, peerMode, rootComments]);
+  const folderReviewCommentTargets = useMemo(() => {
     if (peerMode || !hasFolderComments) {
       return [];
     }
-    return getFolderAddressableCommentTargets(crossFileComments);
+    return getFolderReviewCommentTargets(crossFileComments);
   }, [crossFileComments, hasFolderComments, peerMode]);
   const hasAddressableComments = hasFolderComments
-    ? folderAddressableCommentTargets.length > 0
+    ? folderReviewCommentTargets.some((target) => target.comments.length > 0)
     : addressableCommentTargets.length > 0;
-  const hasQuestionThreads =
-    !peerMode &&
-    (hasFolderComments
-      ? crossFileComments.some((entry) =>
-          entry.comments.some(
-            (comment) => comment.type === "question" && !!comment.thread,
-          ),
-        )
-      : rootComments.some(
-          (comment) => comment.type === "question" && !!comment.thread,
-        ));
+  const hasQuestionThreads = hasFolderComments
+    ? folderReviewCommentTargets.some(
+        (target) => target.questionThreadIds.length > 0,
+      )
+    : questionThreadIds.length > 0;
+  const hasReviewTargets = hasAddressableComments || hasQuestionThreads;
   const activeAgentRunInProgress = Boolean(
     activeAgentRun && ACTIVE_AGENT_RUN_STATUSES.has(activeAgentRun.status),
   );
   const showAgentActions =
-    !peerMode &&
-    hasContent &&
-    !disableHostReviewActions &&
-    (hasAddressableComments || hasQuestionThreads);
+    !peerMode && hasContent && !disableHostReviewActions && hasReviewTargets;
 
-  async function handleCopyAddressCommentsPrompt() {
+  async function handleCopyReviewPrompt() {
     const targetPath = activeFilePath ?? fileName ?? "the active markdown file";
     const prompt = hasFolderComments
       ? buildFolderAddressCommentsAgentPrompt({
-          targets: folderAddressableCommentTargets,
+          targets: folderReviewCommentTargets,
         })
       : buildAddressCommentsAgentPrompt({
           targetPath,
           comments: addressableCommentTargets,
+          questionThreadIds,
         });
     try {
       await navigator.clipboard.writeText(prompt);
-      showToast("Agent review prompt copied");
+      showToast("Review prompt copied");
     } catch (error) {
       console.error("[Header] failed to copy review prompt:", error);
       showToast("Couldn't copy agent prompt");
     }
   }
 
-  async function handleCopyQuestionPrompt() {
-    try {
-      await navigator.clipboard.writeText(buildAgentReplyPrompt());
-      showToast("Agent prompt copied");
-    } catch (error) {
-      console.error("[Header] failed to copy question prompt:", error);
-      showToast("Couldn't copy agent prompt");
-    }
-  }
-
-  async function handleAddressCommentsAction() {
+  async function handleReviewAction() {
     if (!canRunAgent) {
-      await handleCopyAddressCommentsPrompt();
+      await handleCopyReviewPrompt();
       return;
     }
     const result = await startAddressCommentsAgentRun();
-    if (result.status === "unavailable") {
-      showToast(result.message);
-    }
-  }
-
-  async function handleQuestionThreadAction() {
-    if (!canRunAgent) {
-      await handleCopyQuestionPrompt();
-      return;
-    }
-    const result = await startQuestionThreadAgentRun();
     if (result.status === "unavailable") {
       showToast(result.message);
     }
@@ -675,18 +645,10 @@ export function Header({
 
           <div className="app-header__group app-header__group--review">
             {showAgentActions && (
-              <ReviewAgentMenu
+              <ReviewAgentButton
                 disabled={activeAgentRunInProgress}
-                canAddressComments={hasAddressableComments}
-                canAnswerQuestions={hasQuestionThreads}
-                addressLabel={
-                  canRunAgent ? "Address comments" : "Copy review prompt"
-                }
-                questionLabel={
-                  canRunAgent ? "Answer questions" : "Copy answer prompt"
-                }
-                onAddressComments={handleAddressCommentsAction}
-                onAnswerQuestions={handleQuestionThreadAction}
+                canRunAgent={canRunAgent}
+                onReview={handleReviewAction}
               />
             )}
             <button
@@ -739,127 +701,29 @@ export function Header({
   );
 }
 
-function ReviewAgentMenu({
+function ReviewAgentButton({
   disabled,
-  canAddressComments,
-  canAnswerQuestions,
-  addressLabel,
-  questionLabel,
-  onAddressComments,
-  onAnswerQuestions,
+  canRunAgent,
+  onReview,
 }: {
   disabled: boolean;
-  canAddressComments: boolean;
-  canAnswerQuestions: boolean;
-  addressLabel: string;
-  questionLabel: string;
-  onAddressComments: () => Promise<void>;
-  onAnswerQuestions: () => Promise<void>;
+  canRunAgent: boolean;
+  onReview: () => Promise<void>;
 }) {
-  const [open, setOpen] = useState(false);
-  const [menuPosition, setMenuPosition] = useState<HeaderMenuPosition | null>(
-    null,
-  );
-  const menuRef = useRef<HTMLDivElement | null>(null);
-  const buttonRef = useRef<HTMLButtonElement | null>(null);
-
-  const updateMenuPosition = useCallback(() => {
-    const button = buttonRef.current;
-    if (!button) {
-      return;
-    }
-    const rect = button.getBoundingClientRect();
-    setMenuPosition({
-      top: rect.bottom + 6,
-      right: Math.max(8, window.innerWidth - rect.right),
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    function handleDocumentClick(event: MouseEvent) {
-      const targetNode = event.target;
-      if (targetNode instanceof Node && menuRef.current?.contains(targetNode)) {
-        return;
-      }
-      setOpen(false);
-    }
-
-    updateMenuPosition();
-    document.addEventListener("click", handleDocumentClick);
-    window.addEventListener("resize", updateMenuPosition);
-    window.addEventListener("scroll", updateMenuPosition, true);
-    return () => {
-      document.removeEventListener("click", handleDocumentClick);
-      window.removeEventListener("resize", updateMenuPosition);
-      window.removeEventListener("scroll", updateMenuPosition, true);
-    };
-  }, [open, updateMenuPosition]);
-
-  async function handleMenuAction(action: () => Promise<void>) {
-    setOpen(false);
-    await action();
-  }
+  const label = canRunAgent ? "Review with agent" : "Copy review prompt";
 
   return (
-    <div className="app-header__menu-wrap" ref={menuRef}>
-      <button
-        ref={buttonRef}
-        type="button"
-        className={`app-header__btn app-header__btn--icon app-header__btn--review${open ? " app-header__btn--active" : ""}`}
-        aria-label="Review actions"
-        aria-expanded={open}
-        title={
-          disabled
-            ? "Wait for the active agent run to finish"
-            : "Review actions"
-        }
-        disabled={disabled}
-        onClick={(event) => {
-          event.stopPropagation();
-          if (!open) {
-            updateMenuPosition();
-          }
-          setOpen((currentOpen) => !currentOpen);
-        }}
-      >
-        <AgentIcon />
-      </button>
-      {open && (
-        <div
-          className="app-header__menu"
-          role="menu"
-          style={{ position: "fixed", ...(menuPosition ?? {}) }}
-        >
-          {canAddressComments && (
-            <button
-              type="button"
-              className="app-header__menu-item"
-              role="menuitem"
-              onClick={() => {
-                void handleMenuAction(onAddressComments);
-              }}
-            >
-              {addressLabel}
-            </button>
-          )}
-          {canAnswerQuestions && (
-            <button
-              type="button"
-              className="app-header__menu-item"
-              role="menuitem"
-              onClick={() => {
-                void handleMenuAction(onAnswerQuestions);
-              }}
-            >
-              {questionLabel}
-            </button>
-          )}
-        </div>
-      )}
-    </div>
+    <button
+      type="button"
+      className="app-header__btn app-header__btn--icon app-header__btn--review"
+      aria-label={label}
+      title={disabled ? "Wait for the active agent run to finish" : label}
+      disabled={disabled}
+      onClick={() => {
+        void onReview();
+      }}
+    >
+      <AgentIcon />
+    </button>
   );
 }

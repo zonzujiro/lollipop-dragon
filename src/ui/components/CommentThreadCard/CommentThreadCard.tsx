@@ -1,6 +1,6 @@
 import "./CommentThreadCard.css";
 import { useState } from "react";
-import type { RefObject } from "react";
+import type { CSSProperties, RefObject } from "react";
 import { COMMENT_TYPE_COLOR } from "../../../types/criticmarkup";
 import type { Comment, CommentType } from "../../../types/criticmarkup";
 import type { CommentThreadGroup } from "../../../markup";
@@ -234,7 +234,10 @@ function CommentRow({
 interface Props {
   thread: CommentThreadGroup;
   top: number;
+  dragPosition?: { top: number; left: number } | null;
+  dragging?: boolean;
   cardRef?: RefObject<HTMLDivElement | null>;
+  onDragStart?: (event: React.PointerEvent) => void;
   onClose: () => void;
   onEdit?: (id: string, type: CommentType, text: string) => void;
   onDelete?: (id: string) => void;
@@ -244,7 +247,10 @@ interface Props {
 export function CommentThreadCard({
   thread,
   top,
+  dragPosition = null,
+  dragging = false,
   cardRef,
+  onDragStart,
   onClose,
   onEdit,
   onDelete,
@@ -256,6 +262,13 @@ export function CommentThreadCard({
   const comments = [thread.root, ...thread.replies];
   const canReplyToThread =
     thread.root.type === "question" && !!thread.root.thread && !!onReply;
+  const cardStyle: CSSProperties = dragPosition
+    ? {
+        position: "fixed",
+        top: dragPosition.top,
+        left: dragPosition.left,
+      }
+    : { top };
 
   function handleReplySubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -271,14 +284,20 @@ export function CommentThreadCard({
   return (
     <div
       ref={cardRef}
-      className="comment-thread-card"
-      style={{ top }}
+      className={`comment-thread-card${dragging ? " comment-thread-card--dragging" : ""}`}
+      style={cardStyle}
       onClick={(event) => event.stopPropagation()}
     >
       <div className="comment-thread-card__header">
-        <span className="comment-thread-card__title">
-          {thread.replies.length > 0 ? "Thread" : "Comment"}
-        </span>
+        <div
+          className="comment-thread-card__drag-handle"
+          onPointerDown={onDragStart}
+          title="Drag comment panel"
+        >
+          <span className="comment-thread-card__title">
+            {thread.replies.length > 0 ? "Thread" : "Comment"}
+          </span>
+        </div>
         <button
           className="comment-thread-card__close"
           onClick={onClose}

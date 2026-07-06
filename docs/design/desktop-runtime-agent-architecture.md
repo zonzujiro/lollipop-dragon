@@ -349,14 +349,13 @@ that explicitly report local execution as unavailable. This keeps website
 behavior unchanged while giving desktop runtime work a stable state and
 capability boundary.
 
-UI capability note: the comment-panel threaded-question action resolves through
-an agent action capability helper. In the web runtime it remains the existing
-"Copy agent prompt" action. When a desktop runtime reports local agent
-execution, the same surface becomes "Ask agent" and calls the
-question-thread run controller action.
-The active-file unresolved-comments action follows the same capability path:
-website builds copy a review prompt, while desktop builds call the address
-comments run controller action.
+UI capability note: the host toolbar exposes one review agent action for the
+active file or folder. In the web runtime it copies a scoped review prompt that
+addresses unresolved MarkReview comments and answers question threads as needed.
+When a desktop runtime reports local agent execution, the same surface calls the
+address-comments controller action, which now carries question-thread ids in the
+generated prompt. The lower-level question-thread controller remains available
+for direct workflow use.
 
 Desktop shell implementation note: `src-tauri/` now contains the first Tauri v2
 native shell. It loads the existing Vite app in a native window and adds
