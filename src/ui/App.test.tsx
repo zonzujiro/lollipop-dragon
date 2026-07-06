@@ -274,9 +274,9 @@ describe("App — folder open", () => {
     expect(
       screen.getByRole("heading", { name: "Folder access needed" }),
     ).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Open folder" })).toHaveLength(
-      2,
-    );
+    expect(
+      screen.getByRole("button", { name: "Re-open current folder" }),
+    ).toBeInTheDocument();
     expect(screen.queryByTestId("markdown-renderer")).not.toBeInTheDocument();
   });
 

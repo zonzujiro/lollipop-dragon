@@ -86,8 +86,8 @@ export function getRestoreAccessActionLabel(
   tab: RestoreStateTab | null,
 ): string {
   if (tab?.directoryName) {
-    return "Open folder";
+    return "Re-open current folder";
   }
 
-  return "Open file";
+  return "Re-open current file";
 }

@@ -218,9 +218,10 @@ On page load:
 When a tab's file or folder cannot be accessed after a browser reopen, the UI keeps as much context visible as it safely can:
 
 - **File tab, last content available**: keep rendering the persisted markdown content
-- **Banner**: sticky restore-access banner at the top of the document with an "Open file" / "Open folder" action
+- **Banner**: sticky restore-access banner at the top of the document with a "Re-open current file" / "Re-open current folder" action
 - **Disabled actions**: comment creation, comment merge/review panels, and share-management actions stay disabled until access is restored
-- **No renderable file context**: show the full restore placeholder with an "Open file" / "Open folder" button
+- **No renderable file context**: show the full restore placeholder with a "Re-open current file" / "Re-open current folder" button
+- **Saved-target reopen**: when the user reopens a degraded tab, first reuse the saved file or folder handle/path and request permission from that button click instead of opening a picker
 - **Manual folder reopen**: when the user reopens a degraded folder tab and the last active file path still exists, restore that file immediately instead of dropping back to an empty folder view
 
 While `restoreError` is set, host-side review actions are disabled because the tab no longer has confirmed live write access.

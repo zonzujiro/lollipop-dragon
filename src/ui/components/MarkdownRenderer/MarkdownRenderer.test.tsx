@@ -181,7 +181,9 @@ describe("MarkdownRenderer — metadata", () => {
 
     const { container } = render(<MarkdownRenderer />);
 
-    expect(screen.getByRole("region", { name: "Metadata" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: "Metadata" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("id")).toBeInTheDocument();
     expect(
       screen.getByText("DEC-retrieval-fast-paths-use-generated-metadata"),
@@ -194,9 +196,9 @@ describe("MarkdownRenderer — metadata", () => {
         name: "Decision: Retrieval Fast Paths",
       }),
     ).toBeInTheDocument();
-    expect(container.querySelector(".markdown-body")?.textContent).not.toContain(
-      "participants:",
-    );
+    expect(
+      container.querySelector(".markdown-body")?.textContent,
+    ).not.toContain("participants:");
   });
 });
 
@@ -231,7 +233,7 @@ describe("MarkdownRenderer — read-only banner", () => {
 
     expect(screen.getByRole("status").textContent).toMatch(/live access/i);
     expect(
-      screen.getByRole("button", { name: "Open file" }),
+      screen.getByRole("button", { name: "Re-open current file" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("status").textContent).not.toMatch(/read-only/i);
   });
