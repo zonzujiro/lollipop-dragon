@@ -64,6 +64,7 @@ interface AddressCommentsRunContext {
   tabId: string;
   targetPath: string;
   comments: AddressableCommentTarget[];
+  questionThreadIds: string[];
   workspaceRootPath: string | null;
 }
 
@@ -72,9 +73,15 @@ interface FolderAddressableCommentTarget {
   comments: AddressableCommentTarget[];
 }
 
+interface FolderReviewCommentTarget {
+  filePath: string;
+  comments: AddressableCommentTarget[];
+  questionThreadIds: string[];
+}
+
 interface FolderAddressCommentsRunContext {
   tabId: string;
-  targets: FolderAddressableCommentTarget[];
+  targets: FolderReviewCommentTarget[];
   workspaceRootPath: string | null;
 }
 
@@ -179,6 +186,51 @@ export function getFolderAddressableCommentTargets(
       comments,
     });
     selectedCommentCount += comments.length;
+  }
+
+  return targets;
+}
+
+export function getFolderReviewCommentTargets(
+  entries: FileCommentEntry[],
+): FolderReviewCommentTarget[] {
+  const targets: FolderReviewCommentTarget[] = [];
+  let selectedCommentCount = 0;
+
+  const sortedEntries = [...entries].sort((entryA, entryB) =>
+    entryA.filePath.localeCompare(entryB.filePath),
+  );
+
+  for (const entry of sortedEntries) {
+    if (targets.length >= MAX_FOLDER_AGENT_TARGET_FILES) {
+      break;
+    }
+    if (selectedCommentCount >= MAX_FOLDER_AGENT_COMMENTS) {
+      break;
+    }
+
+    const remainingCommentCount =
+      MAX_FOLDER_AGENT_COMMENTS - selectedCommentCount;
+    const comments = getAddressableCommentTargets(entry.comments).slice(
+      0,
+      remainingCommentCount,
+    );
+    const remainingQuestionCount = remainingCommentCount - comments.length;
+    const questionThreadIds = getQuestionThreadCommentIds(entry.comments).slice(
+      0,
+      Math.max(0, remainingQuestionCount),
+    );
+    const targetCommentCount = comments.length + questionThreadIds.length;
+    if (targetCommentCount === 0) {
+      continue;
+    }
+
+    targets.push({
+      filePath: entry.filePath,
+      comments,
+      questionThreadIds,
+    });
+    selectedCommentCount += targetCommentCount;
   }
 
   return targets;
@@ -302,12 +354,16 @@ export function buildAddressCommentsAgentRunRequest(
     tabId: context.tabId,
     taskKind: "address_comments",
     targetPaths: [context.targetPath],
-    selectedCommentIds: context.comments.map((comment) => comment.id),
+    selectedCommentIds: [
+      ...context.comments.map((comment) => comment.id),
+      ...context.questionThreadIds,
+    ],
     runnerKind: "terminal",
     workspaceRootPath: context.workspaceRootPath,
     prompt: buildAddressCommentsAgentPrompt({
       targetPath: context.targetPath,
       comments: context.comments,
+      questionThreadIds: context.questionThreadIds,
     }),
   };
 }
@@ -319,9 +375,12 @@ export function buildFolderAddressCommentsAgentRunRequest(
     tabId: context.tabId,
     taskKind: "address_comments",
     targetPaths: context.targets.map((target) => target.filePath),
-    selectedCommentIds: context.targets.flatMap((target) =>
-      target.comments.map((comment) => `${target.filePath}#${comment.id}`),
-    ),
+    selectedCommentIds: context.targets.flatMap((target) => [
+      ...target.comments.map((comment) => `${target.filePath}#${comment.id}`),
+      ...target.questionThreadIds.map(
+        (commentId) => `${target.filePath}#${commentId}`,
+      ),
+    ]),
     runnerKind: "terminal",
     workspaceRootPath: context.workspaceRootPath,
     prompt: buildFolderAddressCommentsAgentPrompt({
@@ -532,13 +591,13 @@ export function createAgentWorkflowControllerActions<
       }
 
       if (isFolderAgentRunTab(tab)) {
-        const folderTargets = getFolderAddressableCommentTargets(
+        const folderTargets = getFolderReviewCommentTargets(
           Object.values(tab.allFileComments),
         );
         if (folderTargets.length === 0) {
           return unavailableResult({
             reason: "no_addressable_comments",
-            message: "No unresolved actionable comments are available.",
+            message: "No unresolved review comments are available.",
           });
         }
 
@@ -560,10 +619,11 @@ export function createAgentWorkflowControllerActions<
       }
 
       const addressableComments = getAddressableCommentTargets(tab.comments);
-      if (addressableComments.length === 0) {
+      const questionThreadIds = getQuestionThreadCommentIds(tab.comments);
+      if (addressableComments.length === 0 && questionThreadIds.length === 0) {
         return unavailableResult({
           reason: "no_addressable_comments",
-          message: "No unresolved actionable comments are available.",
+          message: "No unresolved review comments are available.",
         });
       }
 
@@ -572,6 +632,7 @@ export function createAgentWorkflowControllerActions<
           tabId: tab.id,
           targetPath,
           comments: addressableComments,
+          questionThreadIds,
           workspaceRootPath: getAgentWorkspaceRootPath(tab),
         }),
       );
