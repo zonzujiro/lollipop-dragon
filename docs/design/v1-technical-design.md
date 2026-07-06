@@ -360,8 +360,8 @@ Spacing:
 ### 12.3 Component Tests
 
 - **MarkdownRenderer**: renders GFM tables, code blocks, task lists, mermaid; blocks have `data-block-index` attributes
-- **CommentMargin**: correct number of dots per block, color matches comment type, click expands a draggable floating card
-- **CommentPanel**: lists all comments in document order, filters work by type, shows correct count, clicking an entry opens the related floating card
+- **CommentMargin**: correct number of dots per block, color matches comment type, click expands a draggable floating popup, add-comment form uses the same draggable popup shell
+- **CommentPanel**: lists all comments in document order, filters work by type, shows correct count, clicking an entry opens the related floating popup
 - **AddCommentPopover**: opens on hover icon click, type selector works, submit inserts comment
 - **FilePicker**: picker opens, file name displayed in header, "open another" resets state
 

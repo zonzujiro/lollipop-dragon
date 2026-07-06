@@ -259,6 +259,102 @@ describe("CommentMargin — AddCommentForm", () => {
 
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });
+
+  it("drags the add-comment form around the viewport", async () => {
+    const { user } = await openForm();
+
+    act(() => {
+      dispatchPointerDown(screen.getByTitle("Drag comment panel"), 20, 20);
+    });
+    await waitFor(() => {
+      const form = screen
+        .getByPlaceholderText("Add a comment…")
+        .closest(".comment-add-form");
+      expect(form).not.toBeNull();
+      if (form) {
+        expect(form).toHaveClass("comment-add-form--dragging");
+      }
+    });
+    act(() => {
+      dispatchPointerMove(140, 180);
+    });
+    fireEvent.pointerUp(window);
+
+    const form = screen
+      .getByPlaceholderText("Add a comment…")
+      .closest(".comment-add-form");
+    expect(form).not.toBeNull();
+    if (form) {
+      expect(form).toHaveStyle({
+        position: "fixed",
+        left: "120px",
+        top: "160px",
+      });
+    }
+
+    await user.type(screen.getByPlaceholderText("Add a comment…"), "still ok");
+    expect(screen.getByRole("button", { name: "Save" })).not.toBeDisabled();
+  });
+
+  it("closes the active comment card when the add form opens", async () => {
+    const user = userEvent.setup();
+    setTestState({
+      activeCommentId: "fix-root",
+      comments: [
+        makeComment({
+          id: "fix-root",
+          type: "fix",
+          text: "Fix this paragraph",
+          blockIndex: 0,
+        }),
+      ],
+    });
+
+    render(
+      <CommentMargin
+        containerRef={createContainerRef([96])}
+        hoveredBlock={{ index: 1, top: 180 }}
+        onAddComment={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByText("Fix this paragraph")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Add comment" }));
+
+    expect(screen.getByPlaceholderText("Add a comment…")).toBeInTheDocument();
+    expect(screen.queryByText("Fix this paragraph")).not.toBeInTheDocument();
+  });
+
+  it("closes the add form when an existing comment opens", async () => {
+    const user = userEvent.setup();
+    setTestState({
+      comments: [
+        makeComment({
+          id: "fix-root",
+          type: "fix",
+          text: "Fix this paragraph",
+          blockIndex: 0,
+        }),
+      ],
+    });
+
+    render(
+      <CommentMargin
+        containerRef={createContainerRef([96])}
+        hoveredBlock={{ index: 1, top: 180 }}
+        onAddComment={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Add comment" }));
+    expect(screen.getByPlaceholderText("Add a comment…")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /fix:/i }));
+
+    expect(
+      screen.queryByPlaceholderText("Add a comment…"),
+    ).not.toBeInTheDocument();
+    expect(await screen.findByText("Fix this paragraph")).toBeInTheDocument();
+  });
 });
 
 describe("CommentMargin — floating comment card", () => {

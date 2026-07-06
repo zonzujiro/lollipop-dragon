@@ -128,11 +128,27 @@
   gap: 0.7rem;
 }
 
+.comment-add-form--dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
 .comment-add-form__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+.comment-add-form__drag-handle {
+  min-width: 0;
+  flex: 1;
+  cursor: grab;
+  touch-action: none;
+}
+
+.comment-add-form__drag-handle:active {
+  cursor: grabbing;
 }
 
 .comment-add-form__title {
