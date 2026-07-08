@@ -335,9 +335,12 @@ serializable run metadata and controller actions for active-file unresolved
 comments, folder-level unresolved comments, active-file threaded questions, and
 pending peer comments selected from a host share. Active-file actions build an
 `AgentRunRequest` with one tab, one target path, selected comment ids, and a
-generated prompt. Folder address-comments and pending-peer-comment actions use
-the same tab-scoped run model with a sorted, bounded set of up to five files and
-twenty-five relevant comments from the active tab. The web runtime still reports
+generated prompt. Active-file and folder prompts rely on the MarkReview comments
+already embedded in the markdown instead of duplicating their bodies. Folder
+address-comments actions use a sorted, bounded set of up to five files and all
+actionable comments and question threads in those files. Pending-peer-comment
+actions remain bounded to five files and twenty-five comments because those
+details may not yet exist in the markdown. The web runtime still reports
 `canRunAgent: false`, so the website keeps copy-prompt paths until a desktop
 runtime provides an executable `AgentRuntime`.
 The generated prompt is also stored on the serializable run record so the active
@@ -354,8 +357,8 @@ active file or folder. In the web runtime it copies a scoped review prompt that
 addresses unresolved MarkReview comments and answers question threads as needed.
 When a desktop runtime reports local agent execution, the same surface calls the
 address-comments controller action, which now carries question-thread ids in the
-generated prompt. The lower-level question-thread controller remains available
-for direct workflow use.
+run metadata without duplicating them in the generated prompt. The lower-level
+question-thread controller remains available for direct workflow use.
 
 Desktop shell implementation note: `src-tauri/` now contains the first Tauri v2
 native shell. It loads the existing Vite app in a native window and adds

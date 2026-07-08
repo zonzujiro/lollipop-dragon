@@ -464,8 +464,6 @@ export function Header({
         })
       : buildAddressCommentsAgentPrompt({
           targetPath,
-          comments: addressableCommentTargets,
-          questionThreadIds,
         });
     try {
       await navigator.clipboard.writeText(prompt);

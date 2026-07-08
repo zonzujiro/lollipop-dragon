@@ -37,8 +37,9 @@ narrow agent run request.
 - Web runtime support can expose the same metadata while reporting that local
   execution is unavailable.
 - Executable actions are scoped to the active tab.
-- Folder-level executable actions use a bounded set of scanned comments from the
-  active folder tab.
+- Folder-level executable actions use up to five scanned files from the active
+  folder tab and include all actionable comments and question threads in those
+  files.
 - Pending peer-comment executable actions use a bounded set of comments from the
   selected share on the active host tab.
 

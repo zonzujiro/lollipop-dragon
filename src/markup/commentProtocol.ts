@@ -182,46 +182,72 @@ export interface CommentThreadGroup {
   replies: Comment[];
 }
 
+function findThreadRoot(
+  comment: Comment,
+  commentsByThreadCommentId: Map<string, Comment>,
+): Comment | null {
+  if (!isThreadReply(comment)) {
+    return comment;
+  }
+
+  const threadId = comment.thread?.threadId;
+  const commentId = comment.thread?.commentId;
+  if (!threadId || !commentId) {
+    return null;
+  }
+
+  const visitedCommentIds = new Set<string>([commentId]);
+  let currentComment = comment;
+
+  while (currentComment.thread?.replyTo) {
+    const parentCommentId = currentComment.thread.replyTo;
+    if (visitedCommentIds.has(parentCommentId)) {
+      return null;
+    }
+
+    const parentComment = commentsByThreadCommentId.get(parentCommentId);
+    if (!parentComment || parentComment.thread?.threadId !== threadId) {
+      return null;
+    }
+
+    visitedCommentIds.add(parentCommentId);
+    currentComment = parentComment;
+  }
+
+  return currentComment;
+}
+
 export function buildCommentThreadGroups(
   comments: Comment[],
 ): CommentThreadGroup[] {
   const commentsByThreadCommentId = new Map<string, Comment>();
-  const repliesByRootCommentId = new Map<string, Comment[]>();
 
   for (const comment of comments) {
     if (comment.thread?.commentId) {
       commentsByThreadCommentId.set(comment.thread.commentId, comment);
     }
-    if (comment.thread?.replyTo) {
-      const replies = repliesByRootCommentId.get(comment.thread.replyTo) ?? [];
-      replies.push(comment);
-      repliesByRootCommentId.set(comment.thread.replyTo, replies);
-    }
   }
 
   const groups: CommentThreadGroup[] = [];
+  const groupsByRoot = new Map<Comment, CommentThreadGroup>();
   for (const comment of comments) {
-    if (isThreadReply(comment)) {
-      const rootComment = commentsByThreadCommentId.get(
-        comment.thread?.replyTo ?? "",
-      );
-      if (
-        rootComment &&
-        rootComment.thread?.threadId === comment.thread?.threadId
-      ) {
-        continue;
-      }
-      groups.push({ root: comment, replies: [] });
+    const rootComment = findThreadRoot(comment, commentsByThreadCommentId);
+    if (rootComment && rootComment !== comment) {
       continue;
     }
 
-    const replies =
-      repliesByRootCommentId
-        .get(comment.thread?.commentId ?? "")
-        ?.filter(
-          (reply) => reply.thread?.threadId === comment.thread?.threadId,
-        ) ?? [];
-    groups.push({ root: comment, replies });
+    const group: CommentThreadGroup = { root: comment, replies: [] };
+    groups.push(group);
+    groupsByRoot.set(comment, group);
+  }
+
+  for (const comment of comments) {
+    const rootComment = findThreadRoot(comment, commentsByThreadCommentId);
+    if (!rootComment || rootComment === comment) {
+      continue;
+    }
+
+    groupsByRoot.get(rootComment)?.replies.push(comment);
   }
 
   return groups;

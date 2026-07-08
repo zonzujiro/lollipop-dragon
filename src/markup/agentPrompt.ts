@@ -1,19 +1,9 @@
-interface AddressCommentsPromptComment {
-  id: string;
-  type: string;
-  text: string;
-}
-
 interface AddressCommentsPromptInput {
   targetPath: string;
-  comments: AddressCommentsPromptComment[];
-  questionThreadIds?: string[];
 }
 
 interface FolderAddressCommentsPromptTarget {
   filePath: string;
-  comments: AddressCommentsPromptComment[];
-  questionThreadIds?: string[];
 }
 
 interface FolderAddressCommentsPromptInput {
@@ -46,7 +36,7 @@ function buildQuestionReplyRules(): string {
 - Reply with a separate inline CriticMarkup comment near the same text block.
 - Use the \`answer:\` prefix in every reply.
 - Keep the question's existing \`thread\` value.
-- Set \`replyTo\` to the question's \`id\`.
+- Set \`replyTo\` to the \`id\` of the question or follow-up message you are answering.
 - Give your reply its own unique \`id\`.
 - Add your agent name in \`author\` (for example \`Codex\` or \`Cursor\`).
 - Keep answers concise, specific, and grounded in the referenced text.`;
@@ -59,24 +49,6 @@ function buildThreadActionRules(): string {
 - Apply the requested edit directly in the markdown.
 - After applying the edit, remove the resolved thread from the file, including the root \`question:\`, prior \`answer:\` replies, and the action comment.
 - Do not add a new \`answer:\` or confirmation comment for completed actions.`;
-}
-
-function buildCommentList(comments: AddressCommentsPromptComment[]): string {
-  if (comments.length === 0) {
-    return "- None listed.";
-  }
-
-  return comments
-    .map((comment) => `- ${comment.id} (${comment.type}): ${comment.text}`)
-    .join("\n");
-}
-
-function buildQuestionThreadList(questionThreadIds: string[]): string {
-  if (questionThreadIds.length === 0) {
-    return "- Answer any MarkReview question threads you find as needed.";
-  }
-
-  return questionThreadIds.map((commentId) => `- ${commentId}`).join("\n");
 }
 
 export function buildAgentReplyPrompt(): string {
@@ -94,19 +66,12 @@ Example answer:
 export function buildAddressCommentsAgentPrompt(
   input: AddressCommentsPromptInput,
 ): string {
-  const commentList = buildCommentList(input.comments);
-  const questionThreadList = buildQuestionThreadList(
-    input.questionThreadIds ?? [],
-  );
-
   return `Review ${input.targetPath} and update it directly.
 
 Scope:
 - Work only in ${input.targetPath}.
-- Address these unresolved MarkReview comments:
-${commentList}
-- Answer these MarkReview question threads as needed:
-${questionThreadList}
+- Address all unresolved MarkReview comments in this file.
+- Answer its MarkReview question threads as needed.
 - Apply the requested edits directly in the markdown.
 - Remove each addressed MarkReview comment once its requested change is applied.
 - Do not remove question comments when answering them.
@@ -121,36 +86,17 @@ export function buildFolderAddressCommentsAgentPrompt(
   input: FolderAddressCommentsPromptInput,
 ): string {
   const targetList = input.targets
-    .map((target) => {
-      const commentList = target.comments
-        .map(
-          (comment) => `  - ${comment.id} (${comment.type}): ${comment.text}`,
-        )
-        .join("\n");
-      const questionThreadList = (target.questionThreadIds ?? [])
-        .map((commentId) => `  - ${commentId}`)
-        .join("\n");
-      const sections = [`- ${target.filePath}`];
-      if (commentList) {
-        sections.push("  Comments:", commentList);
-      }
-      if (questionThreadList) {
-        sections.push("  Question threads:", questionThreadList);
-      }
-      if (!commentList && !questionThreadList) {
-        sections.push("  - Review this file for any MarkReview threads.");
-      }
-      return sections.join("\n");
-    })
+    .map((target) => `- ${target.filePath}`)
     .join("\n");
 
   return `Review these markdown files and update them directly.
 
 Scope:
 - Work only in the listed markdown files.
-- Address the listed unresolved MarkReview comments.
-- Answer the listed MarkReview question threads as needed.
+- Review these files:
 ${targetList}
+- Address all unresolved MarkReview comments in those files.
+- Answer their MarkReview question threads as needed.
 - Apply the requested edits directly in the markdown files.
 - Remove each addressed MarkReview comment once its requested change is applied.
 - Do not remove question comments when answering them.
