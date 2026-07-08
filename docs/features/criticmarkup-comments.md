@@ -102,7 +102,11 @@ MarkReview extends the plain comment protocol for threaded review questions.
 - Agents reply with a separate inline `answer:` CriticMarkup comment near the same text block.
 - Users can also reply directly from the thread card; MarkReview writes the same linked `answer:` CriticMarkup reply with `author="You"`.
 - Users can switch the thread composer from `Reply` to `Action` and choose a compact action type (`fix`, `rewrite`, `expand`, `clarify`, or `remove`). MarkReview writes that action as a linked threaded CriticMarkup comment with `author="You"` instead of `answer:`.
-- The reply reuses the root `thread` value and sets `replyTo` to the root question `id`.
+- Every reply reuses the root `thread` value. Its `replyTo` can reference the
+  root question `id` or an earlier reply `id` when answering a follow-up.
+- The UI resolves reply ancestry within the same thread and renders every valid
+  descendant in document order. Broken, mismatched, or cyclic reply chains stay
+  visible as standalone comments instead of disappearing.
 - The reply can also include `author` so the UI can show `Codex`, `Cursor`, or a generic `Agent` label.
 - The Comments panel keeps replies collapsed under the root question and marks the root as `answered` once an `answer:` reply exists.
 - Agent-authored replies render as read-only comments in the UI. User-authored replies can be edited or deleted.

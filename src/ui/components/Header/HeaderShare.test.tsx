@@ -154,8 +154,8 @@ describe("Header review actions", () => {
           type: "question",
           text: "Why is this here?",
           thread: {
-            commentId: "mr-question-1",
-            threadId: "mr-question-1",
+            commentId: "mr-question-custom",
+            threadId: "mr-question-custom",
           },
         }),
       ],
@@ -170,8 +170,9 @@ describe("Header review actions", () => {
     const prompt = writeText.mock.calls[0]?.[0];
     expect(prompt).toContain("Review docs/spec.md");
     expect(prompt).toContain("Work only in docs/spec.md");
-    expect(prompt).toContain("- fix-root (fix): Fix the intro");
-    expect(prompt).toContain("- mr-question-1");
+    expect(prompt).not.toContain("fix-root");
+    expect(prompt).not.toContain("Fix the intro");
+    expect(prompt).not.toContain("mr-question-custom");
     expect(prompt).toContain("Question thread replies");
     expect(
       screen.queryByRole("button", { name: "Copy answer prompt" }),
@@ -192,8 +193,8 @@ describe("Header review actions", () => {
           type: "question",
           text: "Why is this here?",
           thread: {
-            commentId: "mr-question-1",
-            threadId: "mr-question-1",
+            commentId: "mr-question-custom",
+            threadId: "mr-question-custom",
           },
         }),
       ],
@@ -207,7 +208,7 @@ describe("Header review actions", () => {
     expect(writeText).toHaveBeenCalledOnce();
     const prompt = writeText.mock.calls[0]?.[0];
     expect(prompt).toContain("Review spec.md");
-    expect(prompt).toContain("Answer these MarkReview question threads");
-    expect(prompt).toContain("- mr-question-1");
+    expect(prompt).toContain("Answer its MarkReview question threads");
+    expect(prompt).not.toContain("mr-question-custom");
   });
 });

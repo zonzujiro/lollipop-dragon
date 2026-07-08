@@ -112,7 +112,6 @@ const SYNCABLE_AGENT_RUN_STATUSES = new Set<AgentRunStatus>([
 ]);
 const MAX_ACTIVE_AGENT_RUNS = 3;
 const MAX_FOLDER_AGENT_TARGET_FILES = 5;
-const MAX_FOLDER_AGENT_COMMENTS = 25;
 const MAX_PEER_AGENT_TARGET_FILES = 5;
 const MAX_PEER_AGENT_COMMENTS = 25;
 const ADDRESSABLE_COMMENT_TYPES = new Set<Comment["type"]>([
@@ -178,7 +177,6 @@ export function getFolderAddressableCommentTargets(
   entries: FileCommentEntry[],
 ): FolderAddressableCommentTarget[] {
   const targets: FolderAddressableCommentTarget[] = [];
-  let selectedCommentCount = 0;
 
   const sortedEntries = [...entries].sort((entryA, entryB) =>
     entryA.filePath.localeCompare(entryB.filePath),
@@ -188,16 +186,7 @@ export function getFolderAddressableCommentTargets(
     if (targets.length >= MAX_FOLDER_AGENT_TARGET_FILES) {
       break;
     }
-    if (selectedCommentCount >= MAX_FOLDER_AGENT_COMMENTS) {
-      break;
-    }
-
-    const remainingCommentCount =
-      MAX_FOLDER_AGENT_COMMENTS - selectedCommentCount;
-    const comments = getAddressableCommentTargets(entry.comments).slice(
-      0,
-      remainingCommentCount,
-    );
+    const comments = getAddressableCommentTargets(entry.comments);
     if (comments.length === 0) {
       continue;
     }
@@ -206,7 +195,6 @@ export function getFolderAddressableCommentTargets(
       filePath: entry.filePath,
       comments,
     });
-    selectedCommentCount += comments.length;
   }
 
   return targets;
@@ -216,7 +204,6 @@ export function getFolderReviewCommentTargets(
   entries: FileCommentEntry[],
 ): FolderReviewCommentTarget[] {
   const targets: FolderReviewCommentTarget[] = [];
-  let selectedCommentCount = 0;
 
   const sortedEntries = [...entries].sort((entryA, entryB) =>
     entryA.filePath.localeCompare(entryB.filePath),
@@ -226,21 +213,8 @@ export function getFolderReviewCommentTargets(
     if (targets.length >= MAX_FOLDER_AGENT_TARGET_FILES) {
       break;
     }
-    if (selectedCommentCount >= MAX_FOLDER_AGENT_COMMENTS) {
-      break;
-    }
-
-    const remainingCommentCount =
-      MAX_FOLDER_AGENT_COMMENTS - selectedCommentCount;
-    const comments = getAddressableCommentTargets(entry.comments).slice(
-      0,
-      remainingCommentCount,
-    );
-    const remainingQuestionCount = remainingCommentCount - comments.length;
-    const questionThreadIds = getQuestionThreadCommentIds(entry.comments).slice(
-      0,
-      Math.max(0, remainingQuestionCount),
-    );
+    const comments = getAddressableCommentTargets(entry.comments);
+    const questionThreadIds = getQuestionThreadCommentIds(entry.comments);
     const targetCommentCount = comments.length + questionThreadIds.length;
     if (targetCommentCount === 0) {
       continue;
@@ -251,7 +225,6 @@ export function getFolderReviewCommentTargets(
       comments,
       questionThreadIds,
     });
-    selectedCommentCount += targetCommentCount;
   }
 
   return targets;
@@ -383,8 +356,6 @@ export function buildAddressCommentsAgentRunRequest(
     workspaceRootPath: context.workspaceRootPath,
     prompt: buildAddressCommentsAgentPrompt({
       targetPath: context.targetPath,
-      comments: context.comments,
-      questionThreadIds: context.questionThreadIds,
     }),
   };
 }

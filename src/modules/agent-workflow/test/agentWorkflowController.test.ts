@@ -105,7 +105,7 @@ describe("address comments agent run context", () => {
           text: "Rewrite this paragraph",
         },
       ],
-      questionThreadIds: ["mr-question-1"],
+      questionThreadIds: ["mr-question-custom"],
       workspaceRootPath: "/tmp/project",
     });
 
@@ -113,26 +113,24 @@ describe("address comments agent run context", () => {
       tabId: "tab-1",
       taskKind: "address_comments",
       targetPaths: ["docs/spec.md"],
-      selectedCommentIds: ["comment-1", "comment-2", "mr-question-1"],
+      selectedCommentIds: ["comment-1", "comment-2", "mr-question-custom"],
       runnerKind: "terminal",
       workspaceRootPath: "/tmp/project",
     });
     expect(request.prompt).toContain("Work only in docs/spec.md");
-    expect(request.prompt).toContain("- comment-1 (fix): Fix the intro");
-    expect(request.prompt).toContain(
-      "- comment-2 (rewrite): Rewrite this paragraph",
-    );
-    expect(request.prompt).toContain(
-      "Answer these MarkReview question threads",
-    );
-    expect(request.prompt).toContain("- mr-question-1");
+    expect(request.prompt).not.toContain("comment-1");
+    expect(request.prompt).not.toContain("Fix the intro");
+    expect(request.prompt).not.toContain("comment-2");
+    expect(request.prompt).not.toContain("Rewrite this paragraph");
+    expect(request.prompt).not.toContain("mr-question-custom");
+    expect(request.prompt).toContain("Answer its MarkReview question threads");
     expect(request.prompt).toContain("Thread action replies");
     expect(request.prompt).toContain(
       "Do not add a new `answer:` or confirmation comment",
     );
   });
 
-  it("selects a bounded set of folder comment targets", () => {
+  it("selects a bounded set of folder target files", () => {
     const entries = Array.from({ length: 6 }, (_, index) => {
       const fileIndex = index + 1;
       return {
@@ -174,6 +172,39 @@ describe("address comments agent run context", () => {
         text: "Fix file 1",
       },
     ]);
+  });
+
+  it("keeps all review targets in each selected folder file", () => {
+    const comments = Array.from({ length: 30 }, (_unusedValue, index) =>
+      makeComment({
+        id: `fix-${index + 1}`,
+        type: "fix",
+        text: `Fix item ${index + 1}`,
+      }),
+    );
+    comments.push(
+      makeComment({
+        id: "question-root",
+        type: "question",
+        text: "Why?",
+        thread: {
+          commentId: "mr-question-custom",
+          threadId: "mr-question-custom",
+        },
+      }),
+    );
+
+    const targets = getFolderReviewCommentTargets([
+      {
+        filePath: "docs/spec.md",
+        fileName: "spec.md",
+        comments,
+      },
+    ]);
+
+    expect(targets).toHaveLength(1);
+    expect(targets[0]?.comments).toHaveLength(30);
+    expect(targets[0]?.questionThreadIds).toEqual(["mr-question-custom"]);
   });
 
   it("selects folder review targets with question threads", () => {
@@ -248,10 +279,12 @@ describe("address comments agent run context", () => {
     });
     expect(request.prompt).toContain("Work only in the listed markdown files");
     expect(request.prompt).toContain("- docs/a.md");
-    expect(request.prompt).toContain("  - fix-a (fix): Fix A");
-    expect(request.prompt).toContain("  - mr-question-a");
     expect(request.prompt).toContain("- docs/b.md");
-    expect(request.prompt).toContain("  - note-b (note): Check B");
+    expect(request.prompt).not.toContain("fix-a");
+    expect(request.prompt).not.toContain("Fix A");
+    expect(request.prompt).not.toContain("mr-question-a");
+    expect(request.prompt).not.toContain("note-b");
+    expect(request.prompt).not.toContain("Check B");
   });
 });
 
@@ -634,7 +667,7 @@ describe("address comments agent run controller", () => {
       selectedCommentIds: ["mr-question-1"],
     });
     expect(requests[0]?.prompt).toContain(
-      "Answer these MarkReview question threads",
+      "Answer its MarkReview question threads",
     );
     expect(showToastMessages).toEqual(["Agent run started"]);
   });
@@ -699,7 +732,8 @@ describe("address comments agent run controller", () => {
       workspaceRootPath: "/tmp/project",
     });
     expect(requests[0]?.prompt).toContain("- docs/spec.md");
-    expect(requests[0]?.prompt).toContain("  - fix-root (fix): Fix the intro");
+    expect(requests[0]?.prompt).not.toContain("fix-root");
+    expect(requests[0]?.prompt).not.toContain("Fix the intro");
   });
 });
 

@@ -210,12 +210,14 @@ Folder action:
 - active tab only
 - selected folder or workspace only
 - bounded list of files containing actionable comments
-- maximum five files and twenty-five comments per run in the first
-  implementation
+- maximum five files per run in the first implementation
+- all actionable comments and question threads in each selected file
 - no context from other open tabs
 
-The generated prompt should state the target path, task, included comments, and
-out-of-scope files.
+The generated prompt should state the target path, task, and out-of-scope files.
+It should not duplicate active-file or folder comment bodies because those
+comments are already embedded in the markdown. Pending peer comment prompts must
+still include comment details when they are not yet present in the markdown.
 
 ## Desktop Agent Actions For V1
 
