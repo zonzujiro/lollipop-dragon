@@ -3,13 +3,13 @@ import { extractComments } from "./criticmarkup";
 import { buildCommentThreadGroups } from "./commentProtocol";
 
 describe("buildCommentThreadGroups", () => {
-  it("includes replies to earlier replies in the root thread", () => {
+  it("places a nested answer after its parent before later sibling replies", () => {
     const comments = extractComments(
       [
         '{>>question: What is this and why is it needed? [markreview id="mr-question" thread="mr-question"]<<}',
-        '{>>answer: It validates the selected asset. [markreview id="mr-agent-1" thread="mr-question" replyTo="mr-question" author="Claude"]<<}',
-        '{>>answer: How does that apply when nothing is generated? [markreview id="mr-user" thread="mr-question" replyTo="mr-question" author="You"]<<}',
-        '{>>answer: It guards the selected reference rather than generated output. [markreview id="mr-agent-2" thread="mr-question" replyTo="mr-user" author="Claude"]<<}',
+        '{>>answer: How would this be implemented and where? [markreview id="mr-user-1" thread="mr-question" replyTo="mr-question" author="You"]<<}',
+        '{>>answer: So the agent picks one available shape? [markreview id="mr-user-2" thread="mr-question" replyTo="mr-question" author="You"]<<}',
+        '{>>answer: Add the dataset-backed description in ai-core. [markreview id="mr-agent" thread="mr-question" replyTo="mr-user-1" author="Claude"]<<}',
       ].join(""),
     );
 
@@ -18,9 +18,26 @@ describe("buildCommentThreadGroups", () => {
     expect(groups).toHaveLength(1);
     expect(groups[0]?.root.text).toBe("What is this and why is it needed?");
     expect(groups[0]?.replies.map((reply) => reply.text)).toEqual([
-      "It validates the selected asset.",
-      "How does that apply when nothing is generated?",
-      "It guards the selected reference rather than generated output.",
+      "How would this be implemented and where?",
+      "Add the dataset-backed description in ai-core.",
+      "So the agent picks one available shape?",
+    ]);
+  });
+
+  it("keeps sibling replies in document order", () => {
+    const comments = extractComments(
+      [
+        '{>>question: Why? [markreview id="mr-question" thread="mr-question"]<<}',
+        '{>>answer: First sibling. [markreview id="mr-first" thread="mr-question" replyTo="mr-question" author="You"]<<}',
+        '{>>answer: Second sibling. [markreview id="mr-second" thread="mr-question" replyTo="mr-question" author="You"]<<}',
+      ].join(""),
+    );
+
+    const groups = buildCommentThreadGroups(comments);
+
+    expect(groups[0]?.replies.map((reply) => reply.text)).toEqual([
+      "First sibling.",
+      "Second sibling.",
     ]);
   });
 

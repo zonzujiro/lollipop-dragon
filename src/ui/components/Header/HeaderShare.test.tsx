@@ -19,6 +19,18 @@ beforeEach(() => {
 });
 
 describe("Header share buttons", () => {
+  it.each([false, true])(
+    "shows the app logo when peer mode is %s",
+    (peerMode) => {
+      setTestState({ fileName: "readme.md" });
+      render(<Header peerMode={peerMode} />);
+
+      expect(
+        screen.getByRole("img", { name: "Lollipop Dragon" }),
+      ).toBeInTheDocument();
+    },
+  );
+
   describe("visibility", () => {
     it("shows Share file when a file is open and handler is provided", () => {
       setTestState({ fileName: "readme.md" });

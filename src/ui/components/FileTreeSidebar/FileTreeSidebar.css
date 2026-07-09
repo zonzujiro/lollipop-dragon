@@ -46,6 +46,13 @@
   white-space: nowrap;
 }
 
+.file-tree-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  flex-shrink: 0;
+}
+
 .file-tree-header__btn {
   background: none;
   border: none;

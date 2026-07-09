@@ -25,8 +25,6 @@ const ACTION_REPLY_TYPES: CommentType[] = [
   "remove",
 ];
 
-type ThreadComposerMode = "reply" | "action";
-
 function getThreadAuthorKind(comment: Comment): "mine" | "external" | "none" {
   if (!comment.thread?.replyTo) {
     return "none";
@@ -290,8 +288,8 @@ export function CommentThreadCard({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
-  const [replyMode, setReplyMode] = useState<ThreadComposerMode>("reply");
-  const [actionType, setActionType] = useState<CommentType>("remove");
+  const [selectedActionType, setSelectedActionType] =
+    useState<CommentType | null>(null);
   const comments = [thread.root, ...thread.replies];
   const hasActiveInlineAction = editingId !== null || confirmingId !== null;
   const canReplyToThread =
@@ -310,16 +308,35 @@ export function CommentThreadCard({
   function handleReplySubmit(event: React.FormEvent) {
     event.preventDefault();
     event.stopPropagation();
+    submitReply();
+  }
+
+  function submitReply() {
     const trimmedText = replyText.trim();
     if (!trimmedText || !onReply) {
       return;
     }
-    onReply(
-      thread.root.id,
-      trimmedText,
-      replyMode === "action" ? actionType : "answer",
-    );
+    onReply(thread.root.id, trimmedText, selectedActionType ?? "answer");
     setReplyText("");
+  }
+
+  function handleReplyKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (
+      event.key !== "Enter" ||
+      event.shiftKey ||
+      event.nativeEvent.isComposing
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    submitReply();
+  }
+
+  function toggleActionType(actionType: CommentType) {
+    setSelectedActionType((currentType) =>
+      currentType === actionType ? null : actionType,
+    );
   }
 
   return (
@@ -387,67 +404,47 @@ export function CommentThreadCard({
           className="comment-thread-card__reply-form"
           onSubmit={handleReplySubmit}
         >
-          <div className="comment-thread-card__reply-toolbar">
-            <div
-              className="comment-thread-card__reply-mode"
-              aria-label="Thread response mode"
-            >
-              <button
-                type="button"
-                className={`comment-thread-card__reply-mode-button${replyMode === "reply" ? " comment-thread-card__reply-mode-button--active" : ""}`}
-                aria-pressed={replyMode === "reply"}
-                onClick={() => setReplyMode("reply")}
-              >
-                Reply
-              </button>
-              <button
-                type="button"
-                className={`comment-thread-card__reply-mode-button${replyMode === "action" ? " comment-thread-card__reply-mode-button--active" : ""}`}
-                aria-pressed={replyMode === "action"}
-                onClick={() => setReplyMode("action")}
-              >
-                Action
-              </button>
-            </div>
-            {replyMode === "action" && (
-              <div
-                className="comment-thread-card__action-types"
-                aria-label="Action type"
-              >
-                {ACTION_REPLY_TYPES.map((commentType) => (
-                  <button
-                    key={commentType}
-                    type="button"
-                    className={`comment-thread-card__action-type${actionType === commentType ? " comment-thread-card__action-type--active" : ""}`}
-                    data-comment-type={commentType}
-                    aria-pressed={actionType === commentType}
-                    onClick={() => setActionType(commentType)}
-                  >
-                    {commentType}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <textarea
-            className="comment-thread-card__reply-input"
-            aria-label="Answer text"
-            placeholder={
-              replyMode === "action"
-                ? "Tell agent what to change..."
-                : "Write an answer..."
-            }
-            rows={2}
-            value={replyText}
-            onChange={(event) => setReplyText(event.target.value)}
-          />
-          <button
-            type="submit"
-            className="comment-thread-card__reply-send"
-            disabled={!replyText.trim()}
+          <div
+            className="comment-thread-card__action-types"
+            aria-label="Thread action type"
           >
-            {replyMode === "action" ? "Apply" : "Send"}
-          </button>
+            {ACTION_REPLY_TYPES.map((commentType) => (
+              <button
+                key={commentType}
+                type="button"
+                className={`comment-thread-card__action-type${selectedActionType === commentType ? " comment-thread-card__action-type--active" : ""}`}
+                data-comment-type={commentType}
+                aria-pressed={selectedActionType === commentType}
+                onClick={() => toggleActionType(commentType)}
+              >
+                {commentType}
+              </button>
+            ))}
+          </div>
+          <div className="comment-thread-card__reply-composer">
+            <textarea
+              className="comment-thread-card__reply-input"
+              aria-label="Answer text"
+              placeholder={
+                selectedActionType
+                  ? "Tell agent what to change..."
+                  : "Write an answer..."
+              }
+              rows={1}
+              value={replyText}
+              onChange={(event) => setReplyText(event.target.value)}
+              onKeyDown={handleReplyKeyDown}
+            />
+            <button
+              type="submit"
+              className="comment-thread-card__reply-send"
+              aria-label={selectedActionType ? "Apply action" : "Send reply"}
+              title={selectedActionType ? "Apply action" : "Send reply"}
+              disabled={!replyText.trim()}
+            >
+              <span aria-hidden="true">↑</span>
+            </button>
+          </div>
         </form>
       )}
     </div>

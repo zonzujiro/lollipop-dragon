@@ -85,6 +85,10 @@ The File System Access API requires a user gesture to re-grant permission after 
 
 A small clock/history icon in the header. Clicking it opens a dropdown listing recent entries. Available whenever at least one history entry exists.
 
+The menu renders above the header's scrolling action area so it remains visible
+when header actions overflow horizontally. It stays anchored to the history
+button while the viewport or a containing scroll area moves.
+
 ```
 ┌──────────────────────────────┐
 │  Recent                      │
@@ -198,6 +202,8 @@ history:${entryId}  — FileSystemHandle for the entry
 - Unit tests: history CRUD, limit enforcement, expiry pruning.
 - Unit tests: `removeTab` creates history entry and moves handle.
 - Integration test: close tab -> reopen from history -> shares reconnected.
+- Component test: the open history menu renders outside the scrolling header
+  actions and is not clipped by their overflow boundary.
 - Manual test: page reload -> history persists -> reopen works after permission grant.
 - **Deliverable:** Test suite passes; full close-reopen cycle verified.
 

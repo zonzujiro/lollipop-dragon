@@ -1,7 +1,8 @@
-import './FileTreeSidebar.css'
+import "./FileTreeSidebar.css";
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import type { SidebarTreeNode } from "../../../types/fileTree";
 import type { ShareRecord } from "../../../types/share";
+import { PanelLeftCloseIcon } from "../Icons";
 
 const MIN_WIDTH = 160;
 const MAX_WIDTH = 600;
@@ -236,6 +237,7 @@ export interface FileTreeSidebarProps {
   };
   onShare?: (nodes: SidebarTreeNode[], label: string) => void;
   shares?: ShareRecord[];
+  onCollapse?: () => void;
 }
 
 export function FileTreeSidebar({
@@ -245,6 +247,7 @@ export function FileTreeSidebar({
   header,
   onShare,
   shares = [],
+  onCollapse,
 }: FileTreeSidebarProps) {
   const [width, setWidth] = useState(loadWidth);
   const dragging = useRef(false);
@@ -287,16 +290,28 @@ export function FileTreeSidebar({
         <span className="file-tree-header__name" title={header.title}>
           {header.title}
         </span>
-        {header.action && (
-          <button
-            className="file-tree-header__btn"
-            onClick={header.action.onClick}
-            title={header.action.label}
-            aria-label={header.action.label}
-          >
-            {header.action.icon}
-          </button>
-        )}
+        <div className="file-tree-header__actions">
+          {header.action && (
+            <button
+              className="file-tree-header__btn"
+              onClick={header.action.onClick}
+              title={header.action.label}
+              aria-label={header.action.label}
+            >
+              {header.action.icon}
+            </button>
+          )}
+          {onCollapse && (
+            <button
+              className="file-tree-header__btn"
+              onClick={onCollapse}
+              title="Hide sidebar (⌘B)"
+              aria-label="Hide sidebar"
+            >
+              <PanelLeftCloseIcon />
+            </button>
+          )}
+        </div>
       </div>
       <div className="file-tree-scroll">
         {tree.map((node) => (

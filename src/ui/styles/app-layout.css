@@ -39,11 +39,36 @@
   flex: 1;
   display: flex;
   overflow: hidden;
+  position: relative;
 }
 
 .app-main {
   flex: 1;
   overflow: hidden;
+}
+
+.sidebar-reopen {
+  position: absolute;
+  top: 0.75rem;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-left: 0;
+  border-radius: 0 6px 6px 0;
+  background: var(--surface);
+  color: var(--text-muted);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+
+.sidebar-reopen:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* ── Empty state ──────────────────────────────────────────────── */

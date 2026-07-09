@@ -20,14 +20,11 @@
   flex: 1;
 }
 
-.app-header__filename {
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
-  font-weight: 500;
-  color: var(--accent);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.app-header__logo {
+  display: block;
+  width: auto;
+  height: 2.25rem;
+  flex-shrink: 0;
 }
 
 .app-header__actions {
@@ -240,10 +237,6 @@
     flex: 0 1 auto;
   }
 
-  .app-header__filename {
-    max-width: 8rem;
-  }
-
   .app-header__group + .app-header__group {
     padding-left: 0.3rem;
   }
@@ -266,8 +259,7 @@
     min-height: 3rem;
   }
 
-  .app-header__peer-badge,
-  .app-header__filename {
+  .app-header__peer-badge {
     display: none;
   }
 

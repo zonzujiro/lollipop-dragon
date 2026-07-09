@@ -11,10 +11,6 @@ import {
 } from "../../../testing/testHelpers";
 import type { Comment } from "../../../types/criticmarkup";
 
-function makeResolvedComment(id: string, text: string) {
-  return makeCommentBase({ id, type: "fix", text, raw: `{>>fix: ${text}<<}` });
-}
-
 function makeComment(
   id: string,
   type: Comment["type"],
@@ -450,64 +446,29 @@ describe("CommentPanel — agent prompt", () => {
   });
 });
 
-describe("CommentPanel — resolved filter", () => {
-  const resolved = [
-    makeResolvedComment("r0", "already fixed"),
-    makeResolvedComment("r1", "was removed"),
-  ];
+describe("CommentPanel — legacy resolved filter", () => {
+  it("shows current comments and no status controls for persisted resolved state", () => {
+    setTestState({
+      comments,
+      resolvedComments: [
+        makeCommentBase({
+          id: "resolved-comment",
+          type: "fix",
+          text: "already removed",
+        }),
+      ],
+      commentFilter: "resolved",
+    });
 
-  it("shows Pending and Resolved buttons when resolvedComments exist", () => {
-    setTestState({ resolvedComments: resolved });
     render(<CommentPanel />);
-    expect(
-      screen.getByRole("button", { name: /^Pending/ }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /^Resolved/ }),
-    ).toBeInTheDocument();
-  });
 
-  it("does not show status filter buttons when resolvedComments is empty", () => {
-    render(<CommentPanel />);
+    expect(screen.getByText("fix the intro")).toBeInTheDocument();
+    expect(screen.queryByText("already removed")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /^Pending/ }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /^Resolved/ }),
     ).not.toBeInTheDocument();
-  });
-
-  it("shows resolved comments in the list when Resolved filter is active", () => {
-    setTestState({ resolvedComments: resolved, commentFilter: "resolved" });
-    render(<CommentPanel />);
-    expect(screen.getByText("already fixed")).toBeInTheDocument();
-    expect(screen.getByText("was removed")).toBeInTheDocument();
-  });
-
-  it("resolved entries have strikethrough styling", () => {
-    setTestState({ resolvedComments: resolved, commentFilter: "resolved" });
-    const { container } = render(<CommentPanel />);
-    const resolvedTexts = container.querySelectorAll(
-      ".comment-panel__text--resolved",
-    );
-    expect(resolvedTexts.length).toBe(2);
-  });
-
-  it("clicking Resolved sets commentFilter to resolved", async () => {
-    const user = userEvent.setup();
-    setTestState({ resolvedComments: resolved });
-    render(<CommentPanel />);
-    await user.click(screen.getByRole("button", { name: /^Resolved/ }));
-    const tab = getActiveTab(useAppStore.getState());
-    expect(tab?.commentFilter).toBe("resolved");
-  });
-
-  it("clicking Resolved again resets to all", async () => {
-    const user = userEvent.setup();
-    setTestState({ resolvedComments: resolved, commentFilter: "resolved" });
-    render(<CommentPanel />);
-    await user.click(screen.getByRole("button", { name: /^Resolved/ }));
-    const tab = getActiveTab(useAppStore.getState());
-    expect(tab?.commentFilter).toBe("all");
   });
 });

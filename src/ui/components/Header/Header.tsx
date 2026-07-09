@@ -1,5 +1,6 @@
 import "./Header.css";
 import { useMemo } from "react";
+import lollipopDragonLogo from "../../../assets/lollipop-dragon-logo.svg";
 import {
   buildAddressCommentsAgentPrompt,
   buildCommentThreadGroups,
@@ -45,26 +46,6 @@ function FocusIcon() {
       <path d="M17 3h2a2 2 0 0 1 2 2v2" />
       <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
       <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
-    </svg>
-  );
-}
-
-function SidebarIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect width="18" height="18" x="3" y="3" rx="2" />
-      <path d="M9 3v18" />
     </svg>
   );
 }
@@ -347,7 +328,6 @@ export function Header({
   const theme = useAppStore((s) => s.theme);
   const setTheme = useAppStore((s) => s.setTheme);
   const toggleFocusMode = useAppStore((s) => s.toggleFocusMode);
-  const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const toggleCommentPanel = useAppStore((s) => s.toggleCommentPanel);
   const toggleSharedPanel = useAppStore((s) => s.toggleSharedPanel);
   const syncPeerComments = useAppStore((s) => s.syncPeerComments);
@@ -362,7 +342,6 @@ export function Header({
   const fileName = tab?.fileName ?? null;
   const directoryName = tab?.directoryName ?? null;
   const fileTree = tab?.fileTree ?? EMPTY_FILE_TREE;
-  const sidebarOpen = tab?.sidebarOpen ?? false;
   const comments = tab?.comments ?? EMPTY_COMMENTS;
   const allFileComments = tab?.allFileComments ?? EMPTY_ALL_FILE_COMMENTS;
   const activeFilePath = tab?.activeFilePath ?? null;
@@ -411,13 +390,6 @@ export function Header({
     0,
   );
 
-  const contextLabel = peerMode
-    ? (useAppStore.getState().peerFileName ?? "Shared document")
-    : hasFolderOpen
-      ? "Folder review"
-      : hasContent
-        ? "File review"
-        : "";
   const rootComments = useMemo(() => getRootOnlyComments(comments), [comments]);
   const crossFileComments = useMemo(
     () => getRootOnlyFileComments(allFileComments),
@@ -489,17 +461,11 @@ export function Header({
     <>
       <header className="app-header">
         <div className="app-header__left">
-          {hasFolderOpen && !peerMode && (
-            <button
-              onClick={toggleSidebar}
-              aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-              title={sidebarOpen ? "Hide sidebar (⌘B)" : "Show sidebar (⌘B)"}
-              className="app-header__btn app-header__btn--icon"
-            >
-              <SidebarIcon />
-            </button>
-          )}
-          <span className="app-header__filename">{contextLabel}</span>
+          <img
+            className="app-header__logo"
+            src={lollipopDragonLogo}
+            alt="Lollipop Dragon"
+          />
           {peerMode && (
             <span className="app-header__peer-badge">Reviewing</span>
           )}
