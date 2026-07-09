@@ -342,14 +342,6 @@
   opacity: 0.7;
 }
 
-.comment-panel__filter-sep {
-  width: 1px;
-  height: 16px;
-  background: var(--border);
-  margin: 0 0.1rem;
-  flex-shrink: 0;
-}
-
 .comment-panel__list {
   flex: 1;
   overflow-y: auto;
@@ -361,28 +353,6 @@
   font-size: 0.8rem;
   color: var(--text-muted);
   margin: 0;
-}
-
-.comment-panel__resolved-label {
-  padding: 0.5rem 0.75rem 0.25rem;
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin: 0;
-  border-top: 1px solid var(--border);
-  margin-top: 0.25rem;
-}
-
-.comment-panel__entry--resolved {
-  opacity: 0.5;
-  cursor: default;
-  pointer-events: none;
-}
-
-.comment-panel__text--resolved {
-  text-decoration: line-through;
 }
 
 .comment-panel__entry {

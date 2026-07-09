@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -169,10 +169,12 @@ describe("App — single file open", () => {
     });
   });
 
-  it("shows the header workflow context", () => {
-    const { container } = render(<App />);
-    const headerFilename = container.querySelector(".app-header__filename");
-    expect(headerFilename?.textContent).toBe("File review");
+  it("shows the app logo instead of a workflow context label", () => {
+    render(<App />);
+    expect(
+      screen.getByRole("img", { name: "Lollipop Dragon" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("File review")).not.toBeInTheDocument();
   });
 
   it("renders the MarkdownRenderer", () => {
@@ -293,10 +295,10 @@ describe("App — folder open", () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows "Folder review" in the header when a folder file is selected', () => {
+  it("does not repeat the folder context in the header", () => {
     setTestState({ fileName: "readme.md", activeFilePath: "readme.md" });
     render(<App />);
-    expect(screen.getByText("Folder review")).toBeInTheDocument();
+    expect(screen.queryByText("Folder review")).not.toBeInTheDocument();
   });
 
   it('shows "Open file" and "Open folder" buttons in folder mode', () => {
@@ -313,11 +315,24 @@ describe("App — folder open", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    expect(screen.getByRole("complementary")).toBeInTheDocument();
+    const sidebar = screen.getByRole("complementary");
+    expect(sidebar).toBeInTheDocument();
+    expect(
+      within(sidebar).getByRole("button", { name: "Hide sidebar" }),
+    ).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Hide sidebar" }));
+    await user.click(
+      within(sidebar).getByRole("button", { name: "Hide sidebar" }),
+    );
 
     expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Show sidebar" }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Show sidebar" }));
+
+    expect(screen.getByRole("complementary")).toBeInTheDocument();
   });
 
   it("toggles sidebar with Cmd+B", () => {

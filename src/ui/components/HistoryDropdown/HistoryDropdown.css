@@ -3,11 +3,9 @@
 }
 
 .history-dropdown__menu {
-  position: absolute;
-  top: calc(100% + 0.25rem);
-  right: 0;
+  position: fixed;
   z-index: 100;
-  width: 260px;
+  width: min(260px, calc(100vw - 1rem));
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;

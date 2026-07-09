@@ -101,16 +101,22 @@ MarkReview extends the plain comment protocol for threaded review questions.
 - MarkReview writes hidden `[markreview ...]` metadata into app-created `question:` comments so a raw markdown file still carries stable thread identifiers.
 - Agents reply with a separate inline `answer:` CriticMarkup comment near the same text block.
 - Users can also reply directly from the thread card; MarkReview writes the same linked `answer:` CriticMarkup reply with `author="You"`.
-- Users can switch the thread composer from `Reply` to `Action` and choose a compact action type (`fix`, `rewrite`, `expand`, `clarify`, or `remove`). MarkReview writes that action as a linked threaded CriticMarkup comment with `author="You"` instead of `answer:`.
+- The thread composer shows action buttons for `fix`, `rewrite`, `expand`, `clarify`, and `remove`. With no action selected, the message is a normal `answer:` reply. Selecting an action writes that type as a linked threaded CriticMarkup comment with `author="You"`; selecting the active action again returns to reply behavior.
 - Every reply reuses the root `thread` value. Its `replyTo` can reference the
   root question `id` or an earlier reply `id` when answering a follow-up.
 - The UI resolves reply ancestry within the same thread and renders every valid
-  descendant in document order. Broken, mismatched, or cyclic reply chains stay
-  visible as standalone comments instead of disappearing.
+  descendant in conversation order: a reply appears directly after the message
+  it answers, while sibling replies keep their document order. Broken,
+  mismatched, or cyclic reply chains stay visible as standalone comments instead
+  of disappearing.
 - The reply can also include `author` so the UI can show `Codex`, `Cursor`, or a generic `Agent` label.
 - The Comments panel keeps replies collapsed under the root question and marks the root as `answered` once an `answer:` reply exists.
 - Agent-authored replies render as read-only comments in the UI. User-authored replies can be edited or deleted.
 - Thread cards visually distinguish user-authored answers from external or agent-authored answers so ownership is clear at a glance.
+- The thread composer starts as a compact single-row field, grows up to four
+  lines as the user types, and keeps its submit arrow inside the field. Enter
+  submits, while Shift+Enter inserts a line break. A compact row of action
+  buttons sits above the field; no separate Reply/Action mode switch is shown.
 - Threaded action replies are work instructions, not conversational answers. The review-agent prompt tells agents to apply the requested edit directly, remove the resolved thread after the edit, and avoid adding a confirmation `answer:` reply.
 - While a question, answer, or action reply in the thread card is being edited or delete-confirmed, the composer is hidden so the user sees only one active input surface.
 - Deleting a thread-root `question:` comment deletes the linked `answer:` replies in the same thread so replies never remain as orphan comments.
@@ -185,7 +191,7 @@ Layer a local dev server on top: started via `npx markreview ./folder`.
 
 ### 8.1 Folder Navigation
 
-File tree sidebar showing the project structure with nested folders. Filters to show only `.md` files by default. Badge per file showing count of pending CriticMarkup comments. Click to open in the review pane. Collapsible sidebar to maximize reading space.
+File tree sidebar showing the project structure with nested folders. Filters to show only `.md` files by default. Badge per file showing count of pending CriticMarkup comments. Click to open in the review pane. The collapse control lives in the file-tree header beside the folder actions; while collapsed, a compact control at the document's left edge restores the tree. `Cmd+B` / `Ctrl+B` continues to toggle the active tab's sidebar.
 
 ### 8.2 Rich Markdown Rendering
 
@@ -201,11 +207,11 @@ metadata block.
 
 ### 8.3 Block-Level Commenting UI
 
-Every rendered block (paragraph, heading, table, code block, diagram, list item) is commentable. On hover, a visible comment icon appears in the left margin. Clicking opens a floating comment popup with a type selector and text input. Existing comments show as colored markers in the margin — color-coded by type, with a stronger selected state so their document anchor is clear. The hover comment icon and existing comment markers occupy separate margin lanes so neither control covers the other. Clicking a marker expands the same floating popup with the saved comment card. Clicking a comment in the right sidebar opens the same floating popup at the related document block. The comment popup can be dragged around the viewport in both add and view modes, and it resets to its anchored position when another comment or add form opens. The right sidebar shows all comments in document order. Filters: all, by type, pending only (CriticMarkup still present), resolved (CriticMarkup removed by the LLM). Bulk deletion requires a confirmation step instead of deleting directly from the panel header.
+Every rendered block (paragraph, heading, table, code block, diagram, list item) is commentable. On hover, a visible comment icon appears in the left margin. Clicking opens a floating comment popup with a type selector and text input. Existing comments show as colored markers in the margin — color-coded by type, with a stronger selected state so their document anchor is clear. The hover comment icon and existing comment markers occupy separate margin lanes so neither control covers the other. Clicking a marker expands the same floating popup with the saved comment card. Clicking a comment in the right sidebar opens the same floating popup at the related document block. The comment popup can be dragged around the viewport in both add and view modes, and it resets to its anchored position when another comment or add form opens. The right sidebar shows all comments still present in the markdown, in document order, with optional filters by comment type. Removed comments are not presented as a resolved archive. Bulk deletion requires a confirmation step instead of deleting directly from the panel header.
 
 ### 8.4 Design
 
-Typeform-inspired: the content is the interface. Light mode default with dark mode. Neutral palette — warm grays, off-white background, single accent color for interactive elements. Comment indicators are subtle until hovered. Focus mode — hide sidebar and comment margin, just the rendered document. Smooth transitions and micro-animations for comment interactions. Responsive layout for desktop and tablet.
+Typeform-inspired: the content is the interface. Light mode default with dark mode. Neutral palette — warm grays, off-white background, single accent color for interactive elements. The global header uses the Lollipop Dragon mark instead of repeating whether the active tab is a file or folder review; the tab bar and file tree already provide that context. Comment indicators are subtle until hovered. Focus mode — hide sidebar and comment margin, just the rendered document. Smooth transitions and micro-animations for comment interactions. Responsive layout for desktop and tablet.
 
 ---
 

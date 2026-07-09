@@ -148,6 +148,10 @@ Existing `openFile()` and `openDirectory()` become wrappers that create new tabs
 - Tabs scroll horizontally if they overflow
 - Reads `tabs`, `activeTabId` from store; calls `switchTab`, `removeTab`
 
+The global header shows the Lollipop Dragon logo in both host and peer modes. It
+does not repeat generic `File review` or `Folder review` labels because the tab
+and file-tree context already identify the current workspace.
+
 ### 6.2 Tab Label
 
 - Folder tab: `tab.directoryName`
@@ -180,6 +184,10 @@ The active tab's state drives which sidebar, comments, and panels are shown.
 | `Cmd+T` / `Ctrl+T`            | Open new tab (file picker)              |
 | `Ctrl+Tab` / `Ctrl+Shift+Tab` | Cycle through tabs                      |
 | `Cmd+B` / `Ctrl+B`            | Toggle sidebar (active tab) — unchanged |
+
+The visible collapse control is owned by the file-tree header. When the active
+host folder sidebar is collapsed, a compact control at the document's left edge
+restores it without moving the control back into the global header.
 
 ---
 

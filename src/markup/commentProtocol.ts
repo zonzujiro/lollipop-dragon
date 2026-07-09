@@ -217,6 +217,44 @@ function findThreadRoot(
   return currentComment;
 }
 
+function getRepliesInConversationOrder(
+  root: Comment,
+  repliesByParentCommentId: Map<string, Comment[]>,
+): Comment[] {
+  const rootCommentId = root.thread?.commentId;
+  if (!rootCommentId) {
+    return [];
+  }
+
+  const orderedReplies: Comment[] = [];
+  const visitedReplies = new Set<Comment>();
+  const pendingReplies = [
+    ...(repliesByParentCommentId.get(rootCommentId) ?? []),
+  ].reverse();
+
+  while (pendingReplies.length > 0) {
+    const reply = pendingReplies.pop();
+    if (!reply || visitedReplies.has(reply)) {
+      continue;
+    }
+
+    visitedReplies.add(reply);
+    orderedReplies.push(reply);
+
+    const replyCommentId = reply.thread?.commentId;
+    if (!replyCommentId) {
+      continue;
+    }
+
+    const childReplies = repliesByParentCommentId.get(replyCommentId) ?? [];
+    for (let index = childReplies.length - 1; index >= 0; index -= 1) {
+      pendingReplies.push(childReplies[index]);
+    }
+  }
+
+  return orderedReplies;
+}
+
 export function buildCommentThreadGroups(
   comments: Comment[],
 ): CommentThreadGroup[] {
@@ -229,7 +267,6 @@ export function buildCommentThreadGroups(
   }
 
   const groups: CommentThreadGroup[] = [];
-  const groupsByRoot = new Map<Comment, CommentThreadGroup>();
   for (const comment of comments) {
     const rootComment = findThreadRoot(comment, commentsByThreadCommentId);
     if (rootComment && rootComment !== comment) {
@@ -238,16 +275,30 @@ export function buildCommentThreadGroups(
 
     const group: CommentThreadGroup = { root: comment, replies: [] };
     groups.push(group);
-    groupsByRoot.set(comment, group);
   }
 
+  const repliesByParentCommentId = new Map<string, Comment[]>();
   for (const comment of comments) {
     const rootComment = findThreadRoot(comment, commentsByThreadCommentId);
     if (!rootComment || rootComment === comment) {
       continue;
     }
 
-    groupsByRoot.get(rootComment)?.replies.push(comment);
+    const parentCommentId = comment.thread?.replyTo;
+    if (!parentCommentId) {
+      continue;
+    }
+
+    const siblingReplies = repliesByParentCommentId.get(parentCommentId) ?? [];
+    siblingReplies.push(comment);
+    repliesByParentCommentId.set(parentCommentId, siblingReplies);
+  }
+
+  for (const group of groups) {
+    group.replies = getRepliesInConversationOrder(
+      group.root,
+      repliesByParentCommentId,
+    );
   }
 
   return groups;

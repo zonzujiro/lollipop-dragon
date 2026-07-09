@@ -20,6 +20,7 @@ import { findLiveFileInTree, toFileTreeNodes } from "../types/fileTree";
 import type { SidebarTreeNode } from "../types/fileTree";
 import { RestoreError } from "./components/RestoreError";
 import { ContentUpdateBanner } from "./components/ContentUpdateBanner";
+import { PanelLeftOpenIcon } from "./components/Icons";
 import {
   getRestoreAccessActionLabel,
   getRestoreAccessTitle,
@@ -149,6 +150,7 @@ function App() {
   const focusMode = useAppStore((s) => s.focusMode);
   const presentationMode = useAppStore((s) => s.presentationMode);
   const toggleFocusMode = useAppStore((s) => s.toggleFocusMode);
+  const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const enterPresentationMode = useAppStore((s) => s.enterPresentationMode);
   const selectFile = useAppStore((s) => s.selectFile);
   const showToast = useAppStore((s) => s.showToast);
@@ -388,7 +390,18 @@ function App() {
             header={hostHeader}
             onShare={WORKER_URL ? handleHostShare : undefined}
             shares={tab?.shares}
+            onCollapse={toggleSidebar}
           />
+        )}
+        {hasFolderOpen && !tab?.sidebarOpen && !focusMode && (
+          <button
+            className="sidebar-reopen"
+            onClick={toggleSidebar}
+            aria-label="Show sidebar"
+            title="Show sidebar (⌘B)"
+          >
+            <PanelLeftOpenIcon />
+          </button>
         )}
         <main className="app-main">
           {showRestorePlaceholder ? (

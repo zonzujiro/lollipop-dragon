@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { CommentThreadCard } from "./index";
@@ -152,7 +152,7 @@ describe("CommentThreadCard", () => {
 
     expect(screen.queryByLabelText("Answer text")).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Send" }),
+      screen.queryByRole("button", { name: "Send reply" }),
     ).not.toBeInTheDocument();
   });
 
@@ -226,7 +226,7 @@ describe("CommentThreadCard", () => {
 
     const input = screen.getByLabelText("Answer text");
     await user.type(input, "This is my answer.");
-    await user.click(screen.getByRole("button", { name: "Send" }));
+    await user.click(screen.getByRole("button", { name: "Send reply" }));
 
     expect(onReply).toHaveBeenCalledWith(
       "root-comment",
@@ -234,6 +234,40 @@ describe("CommentThreadCard", () => {
       "answer",
     );
     expect(input).toHaveValue("");
+  });
+
+  it("uses reply behavior when no action is selected", () => {
+    render(
+      <CommentThreadCard
+        thread={makeQuestionThread().thread}
+        top={0}
+        onClose={vi.fn()}
+        onReply={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Reply" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Action" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Answer text")).toHaveAttribute(
+      "placeholder",
+      "Write an answer...",
+    );
+    for (const actionType of [
+      "fix",
+      "rewrite",
+      "expand",
+      "clarify",
+      "remove",
+    ]) {
+      expect(screen.getByRole("button", { name: actionType })).toHaveAttribute(
+        "aria-pressed",
+        "false",
+      );
+    }
   });
 
   it("submits a typed action from the thread composer", async () => {
@@ -249,18 +283,53 @@ describe("CommentThreadCard", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Action" }));
-    await user.click(screen.getByRole("button", { name: "remove" }));
+    const clarifyButton = screen.getByRole("button", { name: "clarify" });
+    await user.click(clarifyButton);
+    expect(clarifyButton).toHaveAttribute("aria-pressed", "true");
     const input = screen.getByLabelText("Answer text");
-    await user.type(input, "Delete BL-2.");
-    await user.click(screen.getByRole("button", { name: "Apply" }));
+    expect(input).toHaveAttribute(
+      "placeholder",
+      "Tell agent what to change...",
+    );
+    await user.type(input, "Explain BL-2.");
+    await user.click(screen.getByRole("button", { name: "Apply action" }));
 
     expect(onReply).toHaveBeenCalledWith(
       "root-comment",
-      "Delete BL-2.",
-      "remove",
+      "Explain BL-2.",
+      "clarify",
     );
     expect(input).toHaveValue("");
+  });
+
+  it("returns to reply behavior when the selected action is pressed again", async () => {
+    const user = userEvent.setup();
+    const onReply = vi.fn();
+
+    render(
+      <CommentThreadCard
+        thread={makeQuestionThread().thread}
+        top={0}
+        onClose={vi.fn()}
+        onReply={onReply}
+      />,
+    );
+
+    const removeButton = screen.getByRole("button", { name: "remove" });
+    await user.click(removeButton);
+    await user.click(removeButton);
+
+    expect(removeButton).toHaveAttribute("aria-pressed", "false");
+    const input = screen.getByLabelText("Answer text");
+    expect(input).toHaveAttribute("placeholder", "Write an answer...");
+    await user.type(input, "Keep it after all.");
+    await user.click(screen.getByRole("button", { name: "Send reply" }));
+
+    expect(onReply).toHaveBeenCalledWith(
+      "root-comment",
+      "Keep it after all.",
+      "answer",
+    );
   });
 
   it("keeps send disabled until the answer has text", async () => {
@@ -275,11 +344,53 @@ describe("CommentThreadCard", () => {
       />,
     );
 
-    const sendButton = screen.getByRole("button", { name: "Send" });
+    const sendButton = screen.getByRole("button", { name: "Send reply" });
     expect(sendButton).toBeDisabled();
 
     await user.type(screen.getByLabelText("Answer text"), "ok");
 
     expect(sendButton).toBeEnabled();
+  });
+
+  it("renders a compact one-row composer with an in-field send control", () => {
+    render(
+      <CommentThreadCard
+        thread={makeQuestionThread().thread}
+        top={0}
+        onClose={vi.fn()}
+        onReply={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Answer text")).toHaveAttribute("rows", "1");
+    expect(
+      screen.getByRole("button", { name: "Send reply" }),
+    ).toHaveTextContent("↑");
+  });
+
+  it("submits with Enter and keeps Shift+Enter available for a new line", async () => {
+    const user = userEvent.setup();
+    const onReply = vi.fn();
+
+    render(
+      <CommentThreadCard
+        thread={makeQuestionThread().thread}
+        top={0}
+        onClose={vi.fn()}
+        onReply={onReply}
+      />,
+    );
+
+    const input = screen.getByLabelText("Answer text");
+    await user.type(input, "First line");
+    fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
+    expect(onReply).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onReply).toHaveBeenCalledWith(
+      "root-comment",
+      "First line",
+      "answer",
+    );
   });
 });
