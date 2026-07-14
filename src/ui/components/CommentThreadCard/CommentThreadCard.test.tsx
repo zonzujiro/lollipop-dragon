@@ -256,18 +256,18 @@ describe("CommentThreadCard", () => {
       "placeholder",
       "Write an answer...",
     );
-    for (const actionType of [
-      "fix",
-      "rewrite",
-      "expand",
-      "clarify",
-      "remove",
-    ]) {
+    for (const actionType of ["clarify", "rewrite"]) {
       expect(screen.getByRole("button", { name: actionType })).toHaveAttribute(
         "aria-pressed",
         "false",
       );
     }
+    expect(
+      screen.queryByRole("button", { name: "fix" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "expand" }),
+    ).not.toBeInTheDocument();
   });
 
   it("submits a typed action from the thread composer", async () => {
@@ -315,11 +315,11 @@ describe("CommentThreadCard", () => {
       />,
     );
 
-    const removeButton = screen.getByRole("button", { name: "remove" });
-    await user.click(removeButton);
-    await user.click(removeButton);
+    const rewriteButton = screen.getByRole("button", { name: "rewrite" });
+    await user.click(rewriteButton);
+    await user.click(rewriteButton);
 
-    expect(removeButton).toHaveAttribute("aria-pressed", "false");
+    expect(rewriteButton).toHaveAttribute("aria-pressed", "false");
     const input = screen.getByLabelText("Answer text");
     expect(input).toHaveAttribute("placeholder", "Write an answer...");
     await user.type(input, "Keep it after all.");

@@ -2,7 +2,8 @@
 .peer-prompt__overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: color-mix(in srgb, var(--ink) 36%, transparent);
+  backdrop-filter: blur(9px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -12,21 +13,31 @@
 .peer-prompt {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  padding: 2rem;
-  width: 420px;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  padding: 2.25rem;
+  width: 460px;
   max-width: calc(100vw - 2rem);
   text-align: center;
 }
 
 .peer-prompt__dragon {
-  font-size: 3rem;
+  width: 58px;
+  height: 58px;
+  margin-bottom: 0.75rem;
+}
+
+.peer-prompt__eyebrow {
+  display: block;
   margin-bottom: 0.5rem;
+  color: var(--accent);
+  font: 650 0.7rem/1 var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
 .peer-prompt__title {
-  font-size: 1.125rem;
+  font-size: 1.35rem;
   font-weight: 600;
   color: var(--text);
   margin: 0 0 0.5rem;
@@ -50,7 +61,7 @@
   font-size: 1rem;
   padding: 10px 14px;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   background: var(--surface);
   color: var(--text);
   text-align: center;
@@ -68,7 +79,7 @@
   background: var(--accent);
   color: #fff;
   border: none;
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   cursor: pointer;
 }
 .peer-prompt__btn:hover {

@@ -288,9 +288,22 @@ function isPeerComment(value: unknown): value is PeerComment {
   if (!isRecord(value["blockRef"])) {
     return false;
   }
+  const blockRef = value["blockRef"];
+  const hasValidAnchorVersion =
+    blockRef["anchorVersion"] === undefined || blockRef["anchorVersion"] === 1;
+  const hasValidQuote =
+    blockRef["quote"] === undefined || typeof blockRef["quote"] === "string";
+  const hasValidOccurrence =
+    blockRef["occurrence"] === undefined ||
+    (typeof blockRef["occurrence"] === "number" &&
+      Number.isInteger(blockRef["occurrence"]) &&
+      blockRef["occurrence"] > 0);
   return (
-    typeof value["blockRef"]["blockIndex"] === "number" &&
-    typeof value["blockRef"]["contentPreview"] === "string"
+    typeof blockRef["blockIndex"] === "number" &&
+    typeof blockRef["contentPreview"] === "string" &&
+    hasValidAnchorVersion &&
+    hasValidQuote &&
+    hasValidOccurrence
   );
 }
 

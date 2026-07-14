@@ -93,6 +93,14 @@ Supported types:
 - **answer** — a reply linked to an existing `question:` thread root
 - **remove** — this should be deleted
 
+The file parser continues to support every type above for compatibility with
+existing CriticMarkup and comments created by external tools. In the app UI,
+new comments and user-authored action replies deliberately offer only
+**clarify** and **rewrite**. Edit controls use the same two choices, and the
+Comments panel exposes only those two taxonomy filters; **All** still includes
+legacy comment types. Keyboard shortcuts are `1` for clarify and `2` for
+rewrite.
+
 ### 6.3 Threaded Question / Answer Extension
 
 MarkReview extends the plain comment protocol for threaded review questions.
@@ -101,7 +109,7 @@ MarkReview extends the plain comment protocol for threaded review questions.
 - MarkReview writes hidden `[markreview ...]` metadata into app-created `question:` comments so a raw markdown file still carries stable thread identifiers.
 - Agents reply with a separate inline `answer:` CriticMarkup comment near the same text block.
 - Users can also reply directly from the thread card; MarkReview writes the same linked `answer:` CriticMarkup reply with `author="You"`.
-- The thread composer shows action buttons for `fix`, `rewrite`, `expand`, `clarify`, and `remove`. With no action selected, the message is a normal `answer:` reply. Selecting an action writes that type as a linked threaded CriticMarkup comment with `author="You"`; selecting the active action again returns to reply behavior.
+- The thread composer shows action buttons for `clarify` and `rewrite`. With no action selected, the message is a normal `answer:` reply. Selecting an action writes that type as a linked threaded CriticMarkup comment with `author="You"`; selecting the active action again returns to reply behavior.
 - Every reply reuses the root `thread` value. Its `replyTo` can reference the
   root question `id` or an earlier reply `id` when answering a follow-up.
 - The UI resolves reply ancestry within the same thread and renders every valid
@@ -139,11 +147,39 @@ Example action reply:
 {>>remove: Delete BL-2 from this section. [markreview id="mr-action-1" thread="mr-question-1" replyTo="mr-question-1" author="You"]<<}
 ```
 
-### 6.4 Why This Works
+### 6.4 Character-range anchors and overlaps
+
+Selecting 3–300 characters inside one rendered block opens a range-aware
+composer. The comment stores an exact quote, its 1-based occurrence within the
+block's rendered plain text, and derived start/end offsets. A clean range is
+serialized by wrapping the original markdown slice:
+
+```text
+{==selected text==}{>>fix: Tighten this claim.<<}
+```
+
+If the selected range intersects existing CriticMarkup, nesting is avoided. The
+new comment is appended to the block with a durable standalone anchor:
+
+```text
+{>>clarify: Explain the distinction. @@ "selected text" @2<<}
+```
+
+The parser re-resolves anchors whenever file content changes. It first uses the
+stored occurrence, then another exact occurrence, then a whitespace-normalized
+match. If none matches, the comment remains open as an orphan with its quote and
+an “anchor released” note; no text is mis-highlighted. Returning the quote to the
+block reattaches it automatically.
+
+Intersecting ranges render as constant-coverage segments. Shared segments stack
+their tints and underline stripes, expose all comment IDs through `data-cids`,
+and cycle the selected comment when activated repeatedly.
+
+### 6.5 Why This Works
 
 For standard comments, the LLM reads the file and sees comments as part of the content — no separate protocol to learn. CriticMarkup is well-represented in LLM training data, so models already understand it. For threaded `question:` comments, MarkReview adds a small metadata extension plus the unified review prompt so replies stay linked without introducing sidecar files. Comments and content still stay in sync because everything lives in the same file. Any text editor can view and edit the annotations. No sidecar files, no sync issues, no export/import steps.
 
-### 6.5 Editor Responsibilities
+### 6.6 Editor Responsibilities
 
 The editor parses CriticMarkup and hides it from the rendered view. Comments are displayed as UI elements — colored indicators in the margin that expand into comment cards. Highlights are shown as subtle background colors on the referenced text. When the user adds a comment through the UI, the editor inserts CriticMarkup at the correct position in the raw markdown. App-created `question:` comments receive hidden thread metadata so later `answer:` replies can link back to them. When the user deletes a comment, the editor removes the CriticMarkup from the file.
 
@@ -199,19 +235,48 @@ Standard markdown (CommonMark + GFM). Tables with proper alignment and clean sty
 
 Markdown files may start with YAML-style frontmatter metadata. The rendered
 review surface hides the raw frontmatter from the document body and displays it
-as a quiet metadata panel before the first rendered heading. Scalar values render
+as a quiet metadata panel before the first rendered heading. Its compact title
+keeps the panel's standard padding and must not inherit the document heading's
+size or top margin. Scalar values render
 as label/value rows, while list-style fields such as participants, tags, extends,
 amends, and relates render as compact chips. Comment anchors and inserted
 CriticMarkup comments still target the rendered document body, not the hidden
 metadata block.
 
-### 8.3 Block-Level Commenting UI
+The reading surface follows the available review pane instead of using a narrow
+article column. The viewer occupies 90% of the pane up to 1498px, reserving a
+48px comment lane and leaving up to 1450px for document content. The filename
+kicker and metadata panel align with the prose. Opening navigation or comment
+rails shrinks the surface fluidly without horizontal overflow.
 
-Every rendered block (paragraph, heading, table, code block, diagram, list item) is commentable. On hover, a visible comment icon appears in the left margin. Clicking opens a floating comment popup with a type selector and text input. Existing comments show as colored markers in the margin — color-coded by type, with a stronger selected state so their document anchor is clear. The hover comment icon and existing comment markers occupy separate margin lanes so neither control covers the other. Clicking a marker expands the same floating popup with the saved comment card. Clicking a comment in the right sidebar opens the same floating popup at the related document block. The comment popup can be dragged around the viewport in both add and view modes, and it resets to its anchored position when another comment or add form opens. The right sidebar shows all comments still present in the markdown, in document order, with optional filters by comment type. Removed comments are not presented as a resolved archive. Bulk deletion requires a confirmation step instead of deleting directly from the panel header.
+### 8.3 Block and range commenting UI
+
+Every rendered block (paragraph, heading, table, code block, diagram, list item) is commentable. On hover, a 26px dashed rounded-square `+` appears in the left margin; it uses the quiet paper surface until hover or keyboard focus applies the accent color. Selecting text inside a block opens the same composer with the selected quote, range-safe CriticMarkup serialization, type shortcuts `1` for clarify and `2` for rewrite, and a clear notice that the comment is written into the file. Existing comments use 26px raised rounded-square markers with an 8px taxonomy-colored center; selecting one applies a taxonomy-colored border and soft focus ring. Anchored ranges also render overlap-aware highlights and underline stripes. Clicking a shared highlight cycles through its comments. Clicking a marker opens the comment rail when needed, selects the matching rail card and highlight, and does not create a duplicate floating thread popup. Only the add-comment composer floats and remains draggable. The right rail shows open comments in document order, supports clarify and rewrite filters, and exposes view-only resolved history for the current tab. Its shortcut footer renders `J`, `K`, `C`, and `⌘K` as individual bordered keycaps. Orphaned range comments keep their quote and display the anchor-released note. Bulk resolution requires confirmation.
+
+The click emitted by the browser after a drag selection must not dismiss the newly opened range composer. Once the selection collapses, normal outside-click dismissal resumes. This interaction is verified with the full `mouseup` then `click` browser event sequence; block-level comment creation remains independently covered.
+
+Keyboard navigation follows the same ordering: `J`/`K` select the next or previous open comment across files, `C` opens a block composer, and `Cmd+K`/`Ctrl+K` opens the command palette. `Esc` closes the topmost palette, composer, or selection.
+
+#### Code fences and Mermaid diagrams
+
+Code ranges use the fence's plain text, independent of syntax-highlight spans.
+The hover gutter displays line numbers with CSS counters so numbers never enter
+`textContent`; activating a focusable line target anchors the trimmed whole line.
+Fence comments always use standalone `@@ "quote" @n` markup after the closing
+fence, leaving the fenced bytes unchanged.
+
+Mermaid blocks expose diagram/source chips outside the anchored source root.
+Source view behaves like a code fence. In diagram view, activating a focusable
+node anchors its label occurrence in the Mermaid source. Resolved node anchors
+project as taxonomy-colored node rings and focusable corner pins; selected
+comments use a stronger ring and stacked comments receive separate pins. The
+view choice and rendered coordinates are never persisted. Renaming a label
+releases the anchor without moving it elsewhere, and restoring the label
+reattaches it. Host and peer comments share this model.
 
 ### 8.4 Design
 
-Typeform-inspired: the content is the interface. Light mode default with dark mode. Neutral palette — warm grays, off-white background, single accent color for interactive elements. The global header uses the Lollipop Dragon mark instead of repeating whether the active tab is a file or folder review; the tab bar and file tree already provide that context. Comment indicators are subtle until hovered. Focus mode — hide sidebar and comment margin, just the rendered document. Smooth transitions and micro-animations for comment interactions. Responsive layout for desktop and tablet.
+Typeform-inspired: the content is the interface. Light mode default with dark mode. Neutral palette — warm grays, off-white background, single accent color for interactive elements. The document pane uses the lighter raised reading surface, while both side rails use the warm page background; the darker sunken token is reserved for wells and secondary controls. The global header uses the Lollipop Dragon mark instead of repeating whether the active tab is a file or folder review; the tab bar and file tree already provide that context. Comment indicators are subtle until hovered. Focus mode — hide sidebar and comment margin, just the rendered document. Smooth transitions and micro-animations for comment interactions. Responsive layout for desktop and tablet.
 
 ---
 

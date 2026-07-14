@@ -1,6 +1,8 @@
 /* ── Markdown viewer (flex row: margin column + body) ────────── */
 .markdown-scroll-area {
   position: relative;
+  --document-body-width: 1450px;
+  --document-viewer-width: 1498px;
 }
 
 .restore-access-banner,
@@ -57,17 +59,50 @@
 .markdown-viewer {
   display: flex;
   position: relative;
-  width: 90%;
+  width: min(90%, var(--document-viewer-width));
   margin: 0 auto;
+}
+
+.document-kicker {
+  width: min(calc(90% - 3rem), var(--document-body-width));
+  margin: 0 auto 18px;
+  color: var(--ink-muted);
+  font: 11px/1.4 var(--font-mono);
+  letter-spacing: 0.04em;
 }
 
 /* ── Markdown body ───────────────────────────────────────────── */
 .markdown-body {
   flex: 1;
   min-width: 0;
-  color: var(--text);
-  font-size: var(--text-body);
-  line-height: var(--leading);
+  max-width: var(--document-body-width);
+  margin: 0 auto;
+  color: var(--ink);
+  font-family: var(--font-doc);
+  font-size: 17px;
+  line-height: 1.68;
+}
+
+.comment-highlight {
+  border-radius: 2px;
+  cursor: pointer;
+  transition:
+    filter 120ms ease,
+    outline-color 120ms ease;
+}
+
+.comment-highlight:hover {
+  filter: saturate(1.15);
+}
+
+.comment-highlight[data-selected="true"] {
+  outline: 3px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  outline-offset: 1px;
+}
+
+.comment-highlight:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .markdown-metadata {
@@ -79,7 +114,7 @@
   color: var(--text);
 }
 
-.markdown-metadata__title {
+.markdown-body .markdown-metadata__title {
   margin: 0 0 0.75rem;
   color: var(--text-muted);
   font-size: 0.95rem;
@@ -138,26 +173,27 @@
 .markdown-body h4,
 .markdown-body h5,
 .markdown-body h6 {
-  color: var(--text);
+  color: var(--ink);
+  font-family: var(--font-doc);
   line-height: 1.3;
   margin-top: 2em;
   margin-bottom: 0.5em;
 }
 
 .markdown-body h1 {
-  font-size: 2rem;
+  font-size: 34px;
   font-weight: 700;
   letter-spacing: -0.02em;
   padding-bottom: 0.4rem;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 0;
 }
 
 .markdown-body h2 {
-  font-size: 1.5rem;
+  font-size: 23px;
   font-weight: 600;
   letter-spacing: -0.01em;
   padding-bottom: 0.3rem;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 0;
 }
 
 .markdown-body h3 {
@@ -333,60 +369,6 @@
   color: var(--text-muted);
 }
 
-.markdown-body .mermaid-diagram {
-  margin: 1rem 0;
-  text-align: center;
-  border-radius: var(--radius);
-  overflow: hidden;
-  position: relative;
-}
-
-.markdown-body .mermaid-diagram svg {
-  max-width: 100%;
-  height: auto;
-}
-
-.mermaid-dir-btn {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  font-family: var(--font-mono);
-  background-color: var(--surface);
-  color: var(--text-primary);
-  border: 1px solid var(--border-light);
-  border-radius: 4px;
-  cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition:
-    color 0.15s,
-    border-color 0.15s,
-    box-shadow 0.15s;
-}
-
-.mermaid-dir-btn:hover {
-  color: var(--accent);
-  border-color: var(--accent);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
-}
-
-.markdown-body .mermaid-error {
-  border: 1px solid var(--c-red);
-  background-color: var(--accent-bg);
-  border-radius: var(--radius);
-  padding: 1em 1.25em;
-  margin: 1rem 0;
-}
-
-.markdown-body .mermaid-error-msg {
-  color: var(--c-red);
-  font-size: 0.875rem;
-  margin: 0.5em 0 0;
-  font-style: italic;
-}
-
 /* ── Block highlight (comment hover) ─────────────────────────── */
 [data-highlight-type] {
   border-radius: 4px;
@@ -441,4 +423,24 @@
     font-size: 0.8125rem;
     padding: 1em;
   }
+}
+.markdown-body[data-agent-status="queued"],
+.markdown-body[data-agent-status="running"],
+.markdown-body[data-agent-status="needs_attention"] {
+  --agent-gutter: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.markdown-body [data-agent-changed="true"] {
+  position: relative;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+.markdown-body [data-agent-changed="true"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -0.65rem;
+  width: 3px;
+  border-radius: 99px;
+  background: var(--agent-gutter, var(--accent));
 }

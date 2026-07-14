@@ -1,5 +1,5 @@
 import "./CommentPanel.css";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildCommentThreadGroups } from "../../../markup";
 import {
   getActiveAgentRunForTab,
@@ -16,32 +16,16 @@ import {
 import type { AgentRuntimeCapability } from "../../../runtime";
 import { useAppStore } from "../../../store";
 import { useActiveTab } from "../../../store/selectors";
-import { COMMENT_TYPE_COLOR } from "../../../types/criticmarkup";
 import type { Comment, CommentType } from "../../../types/criticmarkup";
 import type { PeerComment } from "../../../types/share";
 import type { TabState } from "../../../types/tab";
 import { canEditComment } from "../../../utils/commentPermissions";
+import {
+  normalizeUserCommentType,
+  USER_COMMENT_TYPES,
+} from "../../commentTypes";
 import { AgentTerminal } from "../AgentTerminal";
 
-const ALL_TYPES: CommentType[] = [
-  "fix",
-  "rewrite",
-  "expand",
-  "clarify",
-  "question",
-  "answer",
-  "remove",
-  "note",
-];
-const COMMENT_TYPES: CommentType[] = [
-  "note",
-  "fix",
-  "rewrite",
-  "expand",
-  "clarify",
-  "question",
-  "remove",
-];
 const EDITABLE_CRITIC_TYPES: Comment["criticType"][] = ["comment", "highlight"];
 const ACTIVE_AGENT_RUN_STATUSES = new Set<AgentRunStatus>([
   "queued",
@@ -91,6 +75,9 @@ interface DisplayComment {
   type: CommentType;
   text: string;
   blockIndex: number | undefined;
+  quote: string | undefined;
+  authorLabel: string;
+  createdAt: string;
 }
 
 function peerCommentToDisplay(comment: PeerComment): DisplayComment {
@@ -99,7 +86,26 @@ function peerCommentToDisplay(comment: PeerComment): DisplayComment {
     type: comment.commentType,
     text: comment.text,
     blockIndex: comment.blockRef.blockIndex,
+    quote: comment.blockRef.quote,
+    authorLabel: comment.peerName,
+    createdAt: comment.createdAt,
   };
+}
+
+function formatRelativeTime(createdAt: string): string {
+  const elapsedMilliseconds = Date.now() - new Date(createdAt).getTime();
+  const elapsedMinutes = Math.max(0, Math.floor(elapsedMilliseconds / 60000));
+  if (elapsedMinutes < 1) {
+    return "now";
+  }
+  if (elapsedMinutes < 60) {
+    return `${elapsedMinutes} min`;
+  }
+  const elapsedHours = Math.floor(elapsedMinutes / 60);
+  if (elapsedHours < 24) {
+    return `${elapsedHours} h`;
+  }
+  return `${Math.floor(elapsedHours / 24)} d`;
 }
 
 function formatAgentRunTargets(targetPaths: string[]): string {
@@ -199,21 +205,29 @@ export function CommentPanel({ peerMode = false }: Props) {
     () => getRootOnlyComments(comments),
     [comments],
   );
+  const resolvedComments = tab?.resolvedComments ?? EMPTY_COMMENTS;
   const answeredQuestionIds = useMemo(
     () => getAnsweredQuestionIds(comments),
     [comments],
   );
-  const activeCommentId = tab?.activeCommentId ?? null;
+  const peerActiveCommentId = useAppStore((state) => state.peerActiveCommentId);
+  const activeCommentId = peerMode
+    ? peerActiveCommentId
+    : (tab?.activeCommentId ?? null);
   const activeRootCommentId = useMemo(
     () => getActiveRootCommentId(comments, activeCommentId),
     [activeCommentId, comments],
   );
   const commentFilter = tab?.commentFilter ?? "all";
   const effectiveCommentFilter =
-    commentFilter === "resolved" ? "all" : commentFilter;
+    commentFilter === "clarify" ||
+    commentFilter === "rewrite" ||
+    commentFilter === "resolved"
+      ? commentFilter
+      : "all";
+  const resolvedView = !peerMode && effectiveCommentFilter === "resolved";
   const setActiveCommentId = useAppStore((state) => state.setActiveCommentId);
   const setCommentFilter = useAppStore((state) => state.setCommentFilter);
-  const toggleCommentPanel = useAppStore((state) => state.toggleCommentPanel);
   const showToast = useAppStore((state) => state.showToast);
   const openAgentSettings = useAppStore((state) => state.openAgentSettings);
   const agentSettingsOpen = useAppStore((state) => state.agentSettingsOpen);
@@ -227,7 +241,6 @@ export function CommentPanel({ peerMode = false }: Props) {
   const navigateToComment = useAppStore((state) => state.navigateToComment);
   const editComment = useAppStore((state) => state.editComment);
   const deleteComment = useAppStore((state) => state.deleteComment);
-  const deleteAllComments = useAppStore((state) => state.deleteAllComments);
   const editPeerComment = useAppStore((state) => state.editPeerComment);
   const deletePeerComment = useAppStore((state) => state.deletePeerComment);
   const selectPeerFile = useAppStore((state) => state.selectPeerFile);
@@ -244,15 +257,44 @@ export function CommentPanel({ peerMode = false }: Props) {
     (state) => state.activeAgentRunIdByTabId,
   );
   const sharedContent = useAppStore((state) => state.sharedContent);
-  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const [agentRunTerminalOpen, setAgentRunTerminalOpen] = useState(false);
   const [agentCapability, setAgentCapability] = useState(
     INITIAL_AGENT_CAPABILITY,
   );
+  const previousAgentRunRef = useRef<{
+    id: string;
+    status: AgentRunStatus;
+  } | null>(null);
 
   const isFolderMode = fileTree.length > 0 && !peerMode;
   const isPeerMultiFile =
     peerMode && !!sharedContent && Object.keys(sharedContent.tree).length > 1;
+
+  useEffect(() => {
+    const previousRun = previousAgentRunRef.current;
+    if (
+      activeAgentRun &&
+      previousRun?.id === activeAgentRun.id &&
+      ACTIVE_AGENT_RUN_STATUSES.has(previousRun.status) &&
+      !ACTIVE_AGENT_RUN_STATUSES.has(activeAgentRun.status)
+    ) {
+      const messages: Record<
+        Exclude<AgentRunStatus, "queued" | "running" | "needs_attention">,
+        string
+      > = {
+        completed: "Agent run complete · review the updated file",
+        failed: "Agent run failed · open the run card for details",
+        stopped: "Agent run stopped",
+      };
+      const message = messages[activeAgentRun.status];
+      if (message) {
+        showToast(message);
+      }
+    }
+    previousAgentRunRef.current = activeAgentRun
+      ? { id: activeAgentRun.id, status: activeAgentRun.status }
+      : null;
+  }, [activeAgentRun, showToast]);
 
   // Shared mapping: group peer comments by path as DisplayComment[], computed once
   const peerDisplayByPath: Record<string, DisplayComment[]> = useMemo(() => {
@@ -280,7 +322,11 @@ export function CommentPanel({ peerMode = false }: Props) {
     return activeFilePath ? (peerDisplayByPath[activeFilePath] ?? []) : [];
   }, [peerMode, isPeerMultiFile, peerDisplayByPath, activeFilePath]);
 
-  const sourceComments = peerMode ? peerDisplayComments : hostRootComments;
+  const sourceComments = peerMode
+    ? peerDisplayComments
+    : resolvedView
+      ? resolvedComments
+      : hostRootComments;
 
   // Build peer cross-file entries from the shared grouped map
   const peerCrossFileEntries = useMemo(() => {
@@ -363,11 +409,15 @@ export function CommentPanel({ peerMode = false }: Props) {
     return typeCounts;
   }, [allCommentsFlat]);
 
-  const activeTypes = ALL_TYPES.filter((type) => (counts[type] ?? 0) > 0);
+  const activeTypes = USER_COMMENT_TYPES.filter(
+    (type) => (counts[type] ?? 0) > 0,
+  );
 
   // For single-file mode: visible list
   const visible =
-    effectiveCommentFilter === "all" || effectiveCommentFilter === "pending"
+    effectiveCommentFilter === "all" ||
+    effectiveCommentFilter === "pending" ||
+    effectiveCommentFilter === "resolved"
       ? sourceComments
       : sourceComments.filter(
           (comment) => comment.type === effectiveCommentFilter,
@@ -612,38 +662,72 @@ export function CommentPanel({ peerMode = false }: Props) {
     }
   }, [activeCommentId, activeRootCommentId, peerMode]);
 
-  const displayCount =
-    isPeerMultiFile || isFolderMode
+  const openCount = peerMode
+    ? sourceComments.length
+    : isFolderMode
+      ? totalCrossFileCount
+      : hostRootComments.length;
+  const displayCount = resolvedView
+    ? resolvedComments.length
+    : isPeerMultiFile || isFolderMode
       ? totalCrossFileCount
       : sourceComments.length;
-  const showTypeFilters = activeTypes.length > 1;
+  const showTypeFilters = activeTypes.length > 0;
 
   return (
     <aside className="comment-panel" aria-label="Comments">
       <div className="comment-panel__header">
         <span className="comment-panel__title">
           Comments
-          {displayCount > 0 && (
-            <span className="comment-panel__count">{displayCount}</span>
+          <span className="comment-panel__open-count">{openCount} open</span>
+          {!peerMode && resolvedComments.length > 0 && (
+            <span className="comment-panel__resolved-count">
+              · {resolvedComments.length} resolved
+            </span>
           )}
         </span>
-        {!peerMode && displayCount > 0 && (
-          <button
-            className="comment-panel__danger-trigger"
-            onClick={() => setConfirmDeleteAll(true)}
-            title="Review before deleting all comments from the file"
-          >
-            Clear
-          </button>
-        )}
-        <button
-          className="comment-panel__close"
-          onClick={toggleCommentPanel}
-          aria-label="Close comments panel"
-        >
-          ×
-        </button>
       </div>
+
+      {(showTypeFilters || (!peerMode && resolvedComments.length > 0)) && (
+        <div className="comment-panel__filters">
+          <button
+            className={`comment-panel__filter${effectiveCommentFilter === "all" || effectiveCommentFilter === "pending" ? " comment-panel__filter--active" : ""}`}
+            onClick={() => setCommentFilter("all")}
+          >
+            All{" "}
+            <span className="comment-panel__filter-count">{displayCount}</span>
+          </button>
+          {activeTypes.map((type) => (
+            <button
+              key={type}
+              className={`comment-panel__filter${effectiveCommentFilter === type ? " comment-panel__filter--active" : ""}`}
+              data-comment-type={type}
+              onClick={() =>
+                setCommentFilter(effectiveCommentFilter === type ? "all" : type)
+              }
+            >
+              <span className="comment-panel__filter-swatch" />
+              {type}{" "}
+              <span className="comment-panel__filter-count">
+                {counts[type]}
+              </span>
+            </button>
+          ))}
+          {!peerMode && resolvedComments.length > 0 && (
+            <button
+              className={`comment-panel__filter${resolvedView ? " comment-panel__filter--active" : ""}`}
+              onClick={() =>
+                setCommentFilter(resolvedView ? "all" : "resolved")
+              }
+            >
+              Resolved{" "}
+              <span className="comment-panel__filter-count">
+                {resolvedComments.length}
+              </span>
+            </button>
+          )}
+        </div>
+      )}
 
       {showAgentRunStatus && (
         <div className="comment-panel__agent-run" role="status">
@@ -656,6 +740,26 @@ export function CommentPanel({ peerMode = false }: Props) {
                 {activeAgentRunScope}
               </span>
             )}
+            <div
+              className="comment-panel__agent-steps"
+              aria-label="Agent run progress"
+            >
+              <span className="is-done">Preparing</span>
+              <span
+                className={activeAgentRun.status === "queued" ? "" : "is-done"}
+              >
+                Editing
+              </span>
+              <span
+                className={
+                  !ACTIVE_AGENT_RUN_STATUSES.has(activeAgentRun.status)
+                    ? "is-done"
+                    : ""
+                }
+              >
+                Review
+              </span>
+            </div>
             {activeAgentRun.errorMessage && (
               <span className="comment-panel__agent-run-error">
                 {activeAgentRun.errorMessage}
@@ -788,64 +892,20 @@ export function CommentPanel({ peerMode = false }: Props) {
         </div>
       )}
 
-      {confirmDeleteAll && (
-        <div className="comment-panel__danger-confirm" role="alert">
-          <span>Delete all comments from this file?</span>
-          <button
-            className="comment-panel__danger-confirm-delete"
-            onClick={() => {
-              void deleteAllComments();
-              setConfirmDeleteAll(false);
-            }}
-          >
-            Delete all
-          </button>
-          <button
-            className="comment-panel__danger-confirm-cancel"
-            onClick={() => setConfirmDeleteAll(false)}
-          >
-            Cancel
-          </button>
-        </div>
-      )}
-
-      {showTypeFilters && (
-        <div className="comment-panel__filters">
-          <button
-            className={`comment-panel__filter${effectiveCommentFilter === "all" || effectiveCommentFilter === "pending" ? " comment-panel__filter--active" : ""}`}
-            onClick={() => setCommentFilter("all")}
-          >
-            All{" "}
-            <span className="comment-panel__filter-count">{displayCount}</span>
-          </button>
-          {activeTypes.map((type) => (
-            <button
-              key={type}
-              className={`comment-panel__filter${effectiveCommentFilter === type ? " comment-panel__filter--active" : ""}`}
-              data-comment-type={type}
-              style={
-                effectiveCommentFilter === type
-                  ? {
-                      borderColor: COMMENT_TYPE_COLOR[type],
-                      color: COMMENT_TYPE_COLOR[type],
-                    }
-                  : {}
-              }
-              onClick={() =>
-                setCommentFilter(effectiveCommentFilter === type ? "all" : type)
-              }
-            >
-              {type}{" "}
-              <span className="comment-panel__filter-count">
-                {counts[type]}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-
       <div className="comment-panel__list">
-        {isPeerMultiFile ? (
+        {resolvedView ? (
+          <SingleFileList
+            visible={visible}
+            peerMode={false}
+            activeCommentId={activeRootCommentId}
+            sourceComments={sourceComments}
+            onEntryClick={handleEntryClick}
+            onEdit={handleEditHostComment}
+            onDelete={handleDeleteHostComment}
+            answeredCommentIds={EMPTY_ANSWERED_COMMENT_IDS}
+            resolvedView
+          />
+        ) : isPeerMultiFile ? (
           <CrossFileList
             entries={filteredPeerCrossFile}
             activeFilePath={activeFilePath}
@@ -882,6 +942,26 @@ export function CommentPanel({ peerMode = false }: Props) {
           />
         )}
       </div>
+      {!peerMode && !resolvedView && resolvedComments.length > 0 && (
+        <button
+          className="comment-panel__resolved-strip"
+          onClick={() => setCommentFilter("resolved")}
+        >
+          {resolvedComments.length} resolved — kept for history
+        </button>
+      )}
+      <footer className="comment-panel__shortcut-hints">
+        <span>
+          <kbd>J</kbd>
+          <kbd>K</kbd> next / prev
+        </span>
+        <span>
+          <kbd>C</kbd> comment
+        </span>
+        <span>
+          <kbd>⌘K</kbd> commands
+        </span>
+      </footer>
     </aside>
   );
 }
@@ -897,7 +977,9 @@ function InlineEditForm({
   onSave: (type: CommentType, text: string) => void;
   onCancel: () => void;
 }) {
-  const [editType, setEditType] = useState<CommentType>(comment.type);
+  const [editType, setEditType] = useState<CommentType>(
+    normalizeUserCommentType(comment.type),
+  );
   const [editText, setEditText] = useState(comment.text);
 
   function handleSubmit(event: React.FormEvent) {
@@ -916,7 +998,7 @@ function InlineEditForm({
       onClick={(event) => event.stopPropagation()}
     >
       <div className="comment-add-form__types">
-        {COMMENT_TYPES.map((commentType) => (
+        {USER_COMMENT_TYPES.map((commentType) => (
           <button
             key={commentType}
             type="button"
@@ -990,6 +1072,7 @@ function CommentEntry({
   isOtherFile,
   canEdit,
   answered,
+  resolved = false,
   onClick,
   onEdit,
   onDelete,
@@ -999,6 +1082,7 @@ function CommentEntry({
   isOtherFile: boolean;
   canEdit: boolean;
   answered: boolean;
+  resolved?: boolean;
   onClick: () => void;
   onEdit?: (id: string, type: CommentType, text: string) => void;
   onDelete?: (id: string) => void;
@@ -1014,6 +1098,11 @@ function CommentEntry({
     (isFullComment ? comment.from : undefined) ||
     "";
   const displayText = label.length > 72 ? label.slice(0, 72) + "…" : label;
+  const quote = isFullComment
+    ? (comment.anchor?.quote ?? comment.highlightedText)
+    : comment.quote;
+  const displayQuote =
+    quote && quote.length > 72 ? quote.slice(0, 72) + "…" : quote;
   const isEditable =
     canEdit &&
     (!isFullComment ||
@@ -1053,9 +1142,10 @@ function CommentEntry({
   return (
     <div
       data-comment-id={comment.id}
+      data-comment-type={comment.type}
       role="button"
       tabIndex={0}
-      className={`comment-panel__entry${isActive ? " comment-panel__entry--active" : ""}${isOtherFile ? " comment-panel__entry--other-file" : ""}`}
+      className={`comment-panel__entry${isActive ? " comment-panel__entry--active" : ""}${isOtherFile ? " comment-panel__entry--other-file" : ""}${resolved ? " comment-panel__entry--resolved" : ""}`}
       onClick={onClick}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -1072,17 +1162,16 @@ function CommentEntry({
       }}
       onMouseLeave={() => setHighlight(null)}
     >
-      <span
-        className="comment-panel__badge"
-        style={{
-          backgroundColor: COMMENT_TYPE_COLOR[comment.type],
-          color: "#fff",
-        }}
-      >
-        {comment.type}
+      <span className="comment-panel__badge">{comment.type}</span>
+      <span className="comment-panel__author">
+        {isFullComment
+          ? (comment.thread?.authorLabel ?? "You")
+          : comment.authorLabel}
       </span>
-      {comment.blockIndex !== undefined && (
-        <span className="comment-panel__ref">¶{comment.blockIndex + 1}</span>
+      {!isFullComment && (
+        <span className="comment-panel__time">
+          {formatRelativeTime(comment.createdAt)}
+        </span>
       )}
       {answered && (
         <span
@@ -1092,6 +1181,7 @@ function CommentEntry({
           answered
         </span>
       )}
+      {resolved && <span className="comment-panel__status">resolved</span>}
       {canEdit && (
         <span
           className="comment-panel__entry-actions"
@@ -1115,7 +1205,15 @@ function CommentEntry({
           </button>
         </span>
       )}
+      {displayQuote && (
+        <span className="comment-panel__quote">“{displayQuote}”</span>
+      )}
       <span className="comment-panel__text">{displayText}</span>
+      {isFullComment && comment.anchor?.orphaned ? (
+        <span className="comment-panel__orphan">
+          ⚠ text changed underneath — anchor released, quote kept
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -1161,7 +1259,9 @@ function CrossFileList({
         return (
           <div key={entry.filePath}>
             <div className="comment-panel__file-header">
-              <span className="comment-panel__file-name">{entry.filePath}</span>
+              <span className="comment-panel__file-name" title={entry.filePath}>
+                {entry.filePath}
+              </span>
               <span className="comment-panel__file-count">
                 {entry.comments.length}
               </span>
@@ -1210,6 +1310,7 @@ function SingleFileList({
   onEdit,
   onDelete,
   answeredCommentIds,
+  resolvedView = false,
 }: {
   visible: (Comment | DisplayComment)[];
   peerMode: boolean;
@@ -1219,6 +1320,7 @@ function SingleFileList({
   onEdit: (id: string, type: CommentType, text: string) => void;
   onDelete: (id: string) => void;
   answeredCommentIds: ReadonlySet<string>;
+  resolvedView?: boolean;
 }) {
   if (visible.length === 0) {
     return (
@@ -1240,7 +1342,8 @@ function SingleFileList({
           comment={comment}
           isActive={activeCommentId === comment.id}
           isOtherFile={false}
-          canEdit={true}
+          canEdit={!resolvedView}
+          resolved={resolvedView}
           answered={answeredCommentIds.has(comment.id)}
           onClick={() => onEntryClick(comment.id, comment.blockIndex)}
           onEdit={onEdit}

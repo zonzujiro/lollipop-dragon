@@ -1,62 +1,106 @@
-/* ── Design tokens — light ───────────────────────────────────── */
+/* Reading Room design tokens. Legacy aliases remain while components migrate. */
 :root {
-  --bg: #f8f9fa;
-  --surface: #ffffff;
-  --surface-alt: #f1f3f5;
-  --border: #dee2e6;
-  --border-light: #e9ecef;
-  --text: #212529;
-  --text-secondary: #495057;
-  --text-muted: #868e96;
-  --accent: #4263eb;
-  --accent-light: #5c7cfa;
-  --accent-bg: rgba(66, 99, 235, 0.06);
+  --brand-red: #d93030;
+  --brand-red-deep: #b02323;
+  --brand-teal: #2e9678;
+  --brand-pink: #f19ca1;
+  --brand-cream: #fbedd3;
 
-  --c-green: #2b8a3e;
-  --c-green-bg: #d3f9d8;
-  --c-red: #e03131;
-  --c-orange: #e67700;
-  --c-purple: #7048e8;
-  --c-cyan: #1098ad;
+  --bg: #f6f2e9;
+  --bg-sunken: #efeadd;
+  --surface: #fffdf8;
+  --surface-raised: #ffffff;
+  --ink: #211d18;
+  --ink-secondary: #575046;
+  --ink-muted: #8a8175;
+  --line: #e4dccb;
+  --line-strong: #cfc5b0;
+  --accent: var(--brand-red);
+  --accent-soft: rgba(217, 48, 48, 0.08);
+  --agent: var(--brand-teal);
+  --agent-soft: rgba(46, 150, 120, 0.1);
 
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.12);
+  --c-fix: #d93030;
+  --c-rewrite: #bb7410;
+  --c-expand: #2563eb;
+  --c-clarify: #7c4fd0;
+  --c-question: #0e8a9e;
+  --c-answer: #2e9678;
+  --c-remove: #6e6659;
+  --c-fix-soft: rgba(217, 48, 48, 0.1);
+  --c-rewrite-soft: rgba(192, 122, 16, 0.12);
+  --c-expand-soft: rgba(37, 99, 235, 0.1);
+  --c-clarify-soft: rgba(124, 79, 208, 0.1);
+  --c-question-soft: rgba(14, 138, 158, 0.1);
+  --c-answer-soft: rgba(46, 150, 120, 0.12);
+  --c-remove-soft: rgba(110, 102, 89, 0.12);
 
-  --radius: 8px;
-  --radius-lg: 12px;
+  --font-ui: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --font-doc: ui-serif, "New York", "Iowan Old Style", Georgia, serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  --radius-s: 6px;
+  --radius-m: 10px;
+  --radius-l: 14px;
+  --header-h: 52px;
+  --shadow-pop:
+    0 8px 28px rgba(33, 29, 24, 0.14), 0 2px 6px rgba(33, 29, 24, 0.08);
+  --shadow-card: 0 1px 2px rgba(33, 29, 24, 0.05);
 
-  --font-body:
-    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono:
-    "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
-
-  --text-body: 1rem;
-  --leading: 1.7;
+  /* Compatibility aliases for surfaces not yet migrated to canonical names. */
+  --surface-alt: var(--bg-sunken);
+  --border: var(--line);
+  --border-light: var(--line);
+  --text: var(--ink);
+  --text-primary: var(--ink);
+  --text-secondary: var(--ink-secondary);
+  --text-muted: var(--ink-muted);
+  --accent-light: var(--brand-red-deep);
+  --accent-bg: var(--accent-soft);
+  --c-green: var(--c-answer);
+  --c-green-bg: var(--c-answer-soft);
+  --c-red: var(--c-fix);
+  --c-orange: var(--c-rewrite);
+  --c-purple: var(--c-clarify);
+  --c-cyan: var(--c-question);
+  --shadow-sm: var(--shadow-card);
+  --shadow-md: var(--shadow-pop);
+  --shadow-lg: var(--shadow-pop);
+  --radius: var(--radius-s);
+  --radius-lg: var(--radius-m);
+  --font-body: var(--font-ui);
+  --text-body: 17px;
+  --leading: 1.68;
 }
 
-/* ── Design tokens — dark (Monokai Pro) ──────────────────────── */
 .dark {
-  --bg: #2d2a2e;
-  --surface: #363337;
-  --surface-alt: #403e41;
-  --border: #525053;
-  --border-light: #403e41;
-  --text: #fcfcfa;
-  --text-secondary: #c1c0c0;
-  --text-muted: #727072;
-  --accent: #78dce8;
-  --accent-light: #a0e7f0;
-  --accent-bg: rgba(120, 220, 232, 0.1);
+  --bg: #171412;
+  --bg-sunken: #100e0c;
+  --surface: #1f1b18;
+  --surface-raised: #262220;
+  --ink: #ede6d9;
+  --ink-secondary: #b5ac9e;
+  --ink-muted: #7e766a;
+  --line: #322d28;
+  --line-strong: #453e37;
+  --accent: #e85a5a;
+  --accent-soft: rgba(232, 90, 90, 0.14);
+  --agent: #4cba9a;
+  --agent-soft: rgba(76, 186, 154, 0.14);
+  --shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.35);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
 
-  --c-green: #a9dc76;
-  --c-green-bg: rgba(169, 220, 118, 0.15);
-  --c-red: #ff6188;
-  --c-orange: #fc9867;
-  --c-purple: #ab9df2;
-  --c-cyan: #78dce8;
-
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.6);
+  --c-fix: #f07272;
+  --c-rewrite: #e0a33e;
+  --c-expand: #6d9bf5;
+  --c-clarify: #a98be8;
+  --c-question: #4fb8cb;
+  --c-answer: #4cba9a;
+  --c-remove: #97907f;
+  --c-fix-soft: rgba(240, 114, 114, 0.15);
+  --c-rewrite-soft: rgba(224, 163, 62, 0.15);
+  --c-expand-soft: rgba(109, 155, 245, 0.15);
+  --c-clarify-soft: rgba(169, 139, 232, 0.15);
+  --c-question-soft: rgba(79, 184, 203, 0.15);
+  --c-answer-soft: rgba(76, 186, 154, 0.16);
+  --c-remove-soft: rgba(151, 144, 127, 0.16);
 }

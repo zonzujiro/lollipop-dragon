@@ -8,13 +8,13 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  background: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: 999px;
   padding: 0.5rem 0.75rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   font-size: 0.85rem;
-  color: var(--text);
+  color: var(--surface);
   white-space: nowrap;
 }
 
@@ -26,7 +26,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--text-muted);
+  color: var(--surface);
   font-size: 1rem;
   padding: 0 0.1rem;
   line-height: 1;

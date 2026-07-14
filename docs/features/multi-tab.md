@@ -125,13 +125,14 @@ All existing actions that modify tab-scoped fields use this helper.
 
 ## 5. Tab Management Actions
 
-| Action                    | Behavior                                                                                                                                              |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `addTab(tab)`             | Create tab with new UUID, push to `tabs[]`, set as `activeTabId`                                                                                      |
-| `removeTab(tabId)`        | Stop polling, remove from `tabs[]`, switch to adjacent tab or show FilePicker if last                                                                 |
-| `switchTab(tabId)`        | Set `activeTabId` — no save/restore needed, all state lives in `tabs[]`                                                                               |
-| `openFileInNewTab()`      | Show file picker dialog; if a tab with the same file is already open (compared via `isSameEntry`), focus it instead of creating a duplicate           |
-| `openDirectoryInNewTab()` | Show directory picker dialog; if a tab with the same directory is already open (compared via `isSameEntry`), focus it instead of creating a duplicate |
+| Action                                | Behavior                                                                                                                                              |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `addTab(tab)`                         | Create tab with new UUID, push to `tabs[]`, set as `activeTabId`                                                                                      |
+| `removeTab(tabId)`                    | Stop polling, remove from `tabs[]`, switch to adjacent tab or show FilePicker if last                                                                 |
+| `switchTab(tabId)`                    | Set `activeTabId` — no save/restore needed, all state lives in `tabs[]`                                                                               |
+| `openFileInNewTab()`                  | Show file picker dialog; if a tab with the same file is already open (compared via `isSameEntry`), focus it instead of creating a duplicate           |
+| `openDirectoryInNewTab()`             | Show directory picker dialog; if a tab with the same directory is already open (compared via `isSameEntry`), focus it instead of creating a duplicate |
+| `openDirectoryHandleInNewTab(handle)` | Open a dropped directory handle directly; apply the same duplicate detection and tab creation behavior as the directory picker path                   |
 
 Existing `openFile()` and `openDirectory()` become wrappers that create new tabs.
 
@@ -139,18 +140,22 @@ Existing `openFile()` and `openDirectory()` become wrappers that create new tabs
 
 ## 6. Tab Bar UI
 
-### 6.1 Component: `src/components/TabBar.tsx`
+### 6.1 Components: `src/ui/components/Header/Header.tsx` and `src/ui/components/TabBar/TabBar.tsx`
 
-- Horizontal flexbox strip between `<Header>` and `<div className="app-body">`
-- Each tab renders as a button showing the tab label and a close (×) button
-- Active tab has accent bottom border and distinct background
-- "+" button at the right end opens a dropdown to choose file or folder
+- The tab bar renders inline in the global header after the logo and connection status
+- Each tab renders as a button showing its folder/file icon, tab label, open-comment count, and a close (×) button
+- Active tab uses the raised reading-surface treatment
+- A single `+` control at the right end opens the file picker, matching the redesign; folders remain available from the workspace picker and command palette
 - Tabs scroll horizontally if they overflow
 - Reads `tabs`, `activeTabId` from store; calls `switchTab`, `removeTab`
 
 The global header shows the Lollipop Dragon logo in both host and peer modes. It
 does not repeat generic `File review` or `Folder review` labels because the tab
 and file-tree context already identify the current workspace.
+
+The browser favicon uses the same current Lollipop Dragon artwork as the app
+header. The production build must fingerprint that source asset so a logo update
+is not hidden behind a stale legacy favicon URL.
 
 ### 6.2 Tab Label
 
@@ -160,7 +165,7 @@ and file-tree context already identify the current workspace.
 
 ### 6.3 CSS
 
-New BEM classes in `src/index.css`: `.tab-bar`, `.tab-bar__tab`, `.tab-bar__tab--active`, `.tab-bar__close`, `.tab-bar__add`. Light and dark theme variants using existing CSS variables.
+Component styles live with the tab bar in `src/ui/components/TabBar/TabBar.css`. Light and dark variants use the shared Reading Room tokens.
 
 ---
 
@@ -170,7 +175,7 @@ Three paths (peer mode unchanged):
 
 1. **Peer mode** → full-screen takeover, no tabs shown
 2. **No tabs** (`tabs.length === 0`) → `<FilePicker />`
-3. **Has tabs** → `<Header>` + `<TabBar>` + active tab content (sidebar, markdown renderer, comment panel, shared panel)
+3. **Has tabs** → `<Header>` containing `<TabBar>` + active tab content (sidebar, markdown renderer, comment panel, shared panel)
 
 The active tab's state drives which sidebar, comments, and panels are shown.
 
@@ -188,6 +193,10 @@ The active tab's state drives which sidebar, comments, and panels are shown.
 The visible collapse control is owned by the file-tree header. When the active
 host folder sidebar is collapsed, a compact control at the document's left edge
 restores it without moving the control back into the global header.
+
+The open folder rail uses the redesign's fixed 248px width. Legacy persisted
+resize values are ignored, and the rail overlays the document below 920px so it
+cannot squeeze the document title and reading column out of the viewport.
 
 ---
 
@@ -250,21 +259,21 @@ The active tab's directory and open file are watched for external changes (e.g.,
 
 ## 11. Component Impact
 
-| Component                  | Scope of change                                                                  |
-| -------------------------- | -------------------------------------------------------------------------------- |
-| `App.tsx`                  | Add TabBar, update selectors to use activeTab, update FileSystemObserver effects |
-| `Header.tsx`               | Switch all tab-scoped selectors to useActiveTab, open-in-new-tab actions         |
-| `FilePicker.tsx`           | Use `openFileInNewTab` / `openDirectoryInNewTab`                                 |
-| `MarkdownRenderer.tsx`     | Update selectors to read from active tab                                         |
-| `CommentPanel.tsx`         | Update selectors to read from active tab                                         |
-| `CommentMargin.tsx`        | Update selectors to read from active tab                                         |
-| `SharedPanel.tsx`          | Update selectors to read from active tab                                         |
-| `ShareDialog.tsx`          | Update selectors to read from active tab                                         |
-| `UndoToast.tsx`            | Update selectors to read from active tab                                         |
-| `PendingCommentReview.tsx` | Update selectors to read from active tab                                         |
-| `PeerCommentCard.tsx`      | Update selectors to read from active tab                                         |
-| `Toast.tsx`                | No change (global state)                                                         |
-| `PeerNamePrompt.tsx`       | No change (global state)                                                         |
+| Component                  | Scope of change                                                                                        |
+| -------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `App.tsx`                  | Supply tab and file-tree context, update selectors to use activeTab, update FileSystemObserver effects |
+| `Header.tsx`               | Host the inline TabBar, history, connection status, and global actions                                 |
+| `FilePicker.tsx`           | Use `openFileInNewTab`, `openDirectoryInNewTab`, and direct dropped-directory opening                  |
+| `MarkdownRenderer.tsx`     | Update selectors to read from active tab                                                               |
+| `CommentPanel.tsx`         | Update selectors to read from active tab                                                               |
+| `CommentMargin.tsx`        | Update selectors to read from active tab                                                               |
+| `SharedPanel.tsx`          | Update selectors to read from active tab                                                               |
+| `ShareDialog.tsx`          | Update selectors to read from active tab                                                               |
+| `UndoToast.tsx`            | Update selectors to read from active tab                                                               |
+| `PendingCommentReview.tsx` | Update selectors to read from active tab                                                               |
+| `PeerCommentCard.tsx`      | Update selectors to read from active tab                                                               |
+| `Toast.tsx`                | No change (global state)                                                                               |
+| `PeerNamePrompt.tsx`       | No change (global state)                                                                               |
 
 ---
 

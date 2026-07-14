@@ -1,4 +1,11 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -124,11 +131,23 @@ describe("App — no file open", () => {
       screen.getByRole("heading", { name: /lollipop\s+dragon/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getAllByRole("button", { name: /open file/i }).length,
+      screen.getAllByRole("button", { name: /open a file/i }).length,
     ).toBeGreaterThan(0);
     expect(
-      screen.getAllByRole("button", { name: /open folder/i }).length,
+      screen.getAllByRole("button", { name: /open a folder/i }).length,
     ).toBeGreaterThan(0);
+  });
+
+  it("uses the poster landing layout and the reduced comment taxonomy", () => {
+    resetTestStore();
+    const { container } = render(<App />);
+
+    expect(container.querySelector(".landing-hero__art")).toBeInTheDocument();
+    expect(container.querySelector(".landing-duo")).toBeInTheDocument();
+    expect(screen.getByText("clarify")).toBeInTheDocument();
+    expect(screen.getByText("rewrite")).toBeInTheDocument();
+    expect(screen.queryByText("expand")).not.toBeInTheDocument();
+    expect(screen.queryByText("fix")).not.toBeInTheDocument();
   });
 
   it("calls openFileInNewTab on the store when the button is clicked", async () => {
@@ -139,7 +158,9 @@ describe("App — no file open", () => {
     useAppStore.setState({ openFileInNewTab: mockOpen });
 
     render(<App />);
-    await user.click(screen.getAllByRole("button", { name: /open file/i })[0]);
+    await user.click(
+      screen.getAllByRole("button", { name: /open a file/i })[0],
+    );
 
     expect(mockOpen).toHaveBeenCalledOnce();
   });
@@ -153,10 +174,34 @@ describe("App — no file open", () => {
 
     render(<App />);
     await user.click(
-      screen.getAllByRole("button", { name: /open folder/i })[0],
+      screen.getAllByRole("button", { name: /open a folder/i })[0],
     );
 
     expect(mockOpen).toHaveBeenCalledOnce();
+  });
+
+  it("opens a dropped folder handle directly", async () => {
+    resetTestStore();
+    const mockOpenDroppedFolder = vi.fn().mockResolvedValue(undefined);
+    const droppedDirectory = { kind: "directory", name: "notes" };
+    useAppStore.setState({
+      openDirectoryHandleInNewTab: mockOpenDroppedFolder,
+    });
+
+    render(<App />);
+    fireEvent.drop(screen.getByRole("region", { name: /lollipop dragon/i }), {
+      dataTransfer: {
+        items: [
+          {
+            getAsFileSystemHandle: vi.fn().mockResolvedValue(droppedDirectory),
+          },
+        ],
+      },
+    });
+
+    await waitFor(() => {
+      expect(mockOpenDroppedFolder).toHaveBeenCalledWith(droppedDirectory);
+    });
   });
 });
 
@@ -196,14 +241,14 @@ describe("App — single file open", () => {
     expect(screen.queryByText(/access needed/i)).not.toBeInTheDocument();
   });
 
-  it('shows "Open file" and "Open folder" buttons in the header', () => {
+  it("shows the single add-tab control in the header", () => {
     render(<App />);
     expect(
-      screen.getByRole("button", { name: /open file/i }),
+      screen.getByRole("button", { name: "Open file in new tab" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /open folder/i }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "Open folder in new tab" }),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -301,14 +346,14 @@ describe("App — folder open", () => {
     expect(screen.queryByText("Folder review")).not.toBeInTheDocument();
   });
 
-  it('shows "Open file" and "Open folder" buttons in folder mode', () => {
+  it("shows the single add-tab control in folder mode", () => {
     render(<App />);
     expect(
-      screen.getByRole("button", { name: /open file/i }),
+      screen.getByRole("button", { name: "Open file in new tab" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /open folder/i }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "Open folder in new tab" }),
+    ).not.toBeInTheDocument();
   });
 
   it("hides the sidebar when sidebar toggle is clicked", async () => {
@@ -353,18 +398,21 @@ describe("App — folder open", () => {
 
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: "Share folder" }));
+    await user.click(screen.getByRole("button", { name: "Share" }));
 
     expect(
-      screen.getByRole("heading", { name: 'Share "my-docs"' }),
+      screen.getByRole("heading", { name: "Share for review" }),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Generate link" }));
+    await user.click(await screen.findByRole("button", { name: "Copy link" }));
 
-    expect(shareContent).toHaveBeenCalledWith({
-      ttl: 604800,
-      label: "my-docs",
-    });
+    expect(shareContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ttl: 604800,
+        label: "my-docs",
+        preparedIdentity: expect.any(Object),
+      }),
+    );
   });
 });
 
@@ -420,22 +468,24 @@ describe("App — focus mode", () => {
     );
   });
 
-  it("hides the header in focus mode", async () => {
-    const user = userEvent.setup();
+  it("hides the header in focus mode", () => {
     render(<App />);
 
     expect(screen.getByRole("banner")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Enter focus mode" }));
+    act(() => {
+      useAppStore.getState().toggleFocusMode();
+    });
 
     expect(screen.queryByRole("banner")).not.toBeInTheDocument();
   });
 
-  it("shows an exit button in focus mode", async () => {
-    const user = userEvent.setup();
+  it("shows an exit button in focus mode", () => {
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: "Enter focus mode" }));
+    act(() => {
+      useAppStore.getState().toggleFocusMode();
+    });
 
     expect(
       screen.getByRole("button", { name: "Exit focus mode" }),
@@ -446,7 +496,9 @@ describe("App — focus mode", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: "Enter focus mode" }));
+    act(() => {
+      useAppStore.getState().toggleFocusMode();
+    });
     await user.click(screen.getByRole("button", { name: "Exit focus mode" }));
 
     expect(screen.getByRole("banner")).toBeInTheDocument();

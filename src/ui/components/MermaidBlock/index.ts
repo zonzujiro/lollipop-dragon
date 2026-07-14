@@ -1,1 +1,1 @@
-export { MermaidBlock } from './MermaidBlock';
+export { MermaidBlock } from "./MermaidBlock";

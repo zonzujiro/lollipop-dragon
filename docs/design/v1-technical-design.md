@@ -116,6 +116,13 @@ interface Comment {
   type: CommentType; // 'fix' | 'rewrite' | 'expand' | 'clarify' | 'question' | 'remove' | 'note'
   text: string; // The comment body (after type prefix)
   highlightedText?: string; // The text between {== ==} if present
+  anchor?: {
+    quote: string; // Durable rendered plain-text excerpt
+    occurrence: number; // 1-based occurrence inside the block
+    start: number; // Derived plain-text offset, never serialized
+    end: number; // Derived plain-text offset, never serialized
+    orphaned?: boolean; // Quote could not be resolved after a file change
+  };
   rawMarkup: string; // Original CriticMarkup string (for reinsertion)
   position: {
     startOffset: number; // Character offset in raw markdown
@@ -265,13 +272,26 @@ react-markdown
     │
     ▼
 Custom component overrides:
-    ├── code block → CodeBlock (shiki) or MermaidBlock (if lang=mermaid)
+    ├── code block → CodeCommentSurface (Shiki content + CSS-counter gutter)
+    ├── mermaid fence → MermaidBlock (diagram/source toggle, source anchors)
     ├── p, h1-h6, table, ul, ol, blockquote → wrapped with data-block-index
     └── all blocks → CommentMargin dot injection
     │
     ▼
 Rendered Document with margin indicators
 ```
+
+Fence comments resolve offsets against the code element's plain text, never its
+syntax-highlight wrapper spans. Whole-line gutter actions are converted into the
+same quote/occurrence anchor as a drag selection. They serialize as standalone
+anchored comments after the closing fence, preserving fence bytes and preventing
+CriticMarkup from being inserted into executable examples.
+
+Mermaid comments also anchor to source text. Node activation finds the label's
+occurrence in the source; diagram rings and pins are projections of that anchor,
+not persisted coordinates. Switching to source view renders the same anchor as a
+normal range highlight and exposes the code gutter. View and layout choices are
+per-block runtime state only.
 
 ---
 
@@ -284,7 +304,7 @@ Typography:
   h2:           1.5rem, 600 weight
   h3:           1.25rem, 600 weight
   code:         14px, JetBrains Mono / Fira Code
-  max-width:    720px content column (centered)
+  max-width:    1450px content area inside a 90%-wide fluid viewer (centered)
 
 Colors (light):
   background:   #FAFAF9 (warm off-white)

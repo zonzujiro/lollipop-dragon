@@ -3,16 +3,10 @@ import { useState } from "react";
 import { COMMENT_TYPE_COLOR } from "../../../types/criticmarkup";
 import type { Comment, CommentType } from "../../../types/criticmarkup";
 import { canEditComment } from "../../../utils/commentPermissions";
-
-const COMMENT_TYPES: CommentType[] = [
-  "note",
-  "fix",
-  "rewrite",
-  "expand",
-  "clarify",
-  "question",
-  "remove",
-];
+import {
+  normalizeUserCommentType,
+  USER_COMMENT_TYPES,
+} from "../../commentTypes";
 
 function CardBody({ comment }: { comment: Comment }) {
   if (comment.criticType === "addition") {
@@ -41,8 +35,15 @@ function CardBody({ comment }: { comment: Comment }) {
   // 'comment' or 'highlight'
   return (
     <>
-      {comment.highlightedText && (
-        <p className="comment-card__highlight">"{comment.highlightedText}"</p>
+      {(comment.anchor?.quote || comment.highlightedText) && (
+        <p className="comment-card__highlight">
+          "{comment.anchor?.quote ?? comment.highlightedText}"
+        </p>
+      )}
+      {comment.anchor?.orphaned && (
+        <p className="comment-card__orphan" role="note">
+          ⚠ text changed underneath — anchor released, quote kept
+        </p>
       )}
       {comment.text && <p className="comment-card__content">{comment.text}</p>}
     </>
@@ -68,7 +69,9 @@ export function CommentCard({
 }: Props) {
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [editType, setEditType] = useState<CommentType>(comment.type);
+  const [editType, setEditType] = useState<CommentType>(
+    normalizeUserCommentType(comment.type),
+  );
   const [editText, setEditText] = useState(comment.text);
 
   function handleEditSubmit(e: React.FormEvent) {
@@ -82,7 +85,7 @@ export function CommentCard({
   }
 
   function handleEditCancel() {
-    setEditType(comment.type);
+    setEditType(normalizeUserCommentType(comment.type));
     setEditText(comment.text);
     setEditing(false);
   }
@@ -162,7 +165,7 @@ export function CommentCard({
       {editing ? (
         <form className="comment-card__edit-form" onSubmit={handleEditSubmit}>
           <div className="comment-add-form__types">
-            {COMMENT_TYPES.map((t) => (
+            {USER_COMMENT_TYPES.map((t) => (
               <button
                 key={t}
                 type="button"

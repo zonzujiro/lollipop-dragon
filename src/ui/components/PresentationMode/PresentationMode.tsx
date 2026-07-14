@@ -1,4 +1,4 @@
-import './PresentationMode.css'
+import "./PresentationMode.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -210,6 +210,9 @@ export function PresentationMode() {
       </button>
 
       <div className="presentation__viewport" ref={viewportRef}>
+        <div className="presentation__kicker">
+          {tab?.fileName ?? "Document"} · slide {currentSlide + 1}
+        </div>
         <div className="presentation__slide markdown-body">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
@@ -220,6 +223,11 @@ export function PresentationMode() {
           </ReactMarkdown>
         </div>
       </div>
+
+      <div className="presentation__counter">
+        {currentSlide + 1} / {slides.length}
+      </div>
+      <div className="presentation__keys">← → navigate · Esc exit</div>
 
       {slides.length > 1 && (
         <nav className="presentation__dots" aria-label="Slide navigation">

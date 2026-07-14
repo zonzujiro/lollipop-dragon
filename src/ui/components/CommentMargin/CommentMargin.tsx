@@ -9,24 +9,27 @@ import { useAppStore } from "../../../store";
 import { getActiveTab, useActiveTabField } from "../../../store/selectors";
 import { selectDocumentUpdateAvailable } from "../../../modules/relay";
 import { selectPeerDraftCommentOpen } from "../../../modules/peer-review";
-import { CommentThreadCard } from "../CommentThreadCard";
 import { peerColor, initials } from "../../../utils/peerDisplay";
-import { COMMENT_TYPE_COLOR } from "../../../types/criticmarkup";
-import type { Comment, CommentType } from "../../../types/criticmarkup";
+import type {
+  Comment,
+  CommentAnchorDraft,
+  CommentType,
+} from "../../../types/criticmarkup";
 import type { PeerComment } from "../../../types/share";
-
-const COMMENT_TYPES: CommentType[] = [
-  "note",
-  "fix",
-  "rewrite",
-  "expand",
-  "clarify",
-  "question",
-  "remove",
-];
+import { USER_COMMENT_TYPES } from "../../commentTypes";
 
 const EMPTY_COMMENTS: Comment[] = [];
 const EMPTY_PEER_COMMENTS: PeerComment[] = [];
+const COMMENT_TYPE_HINTS: Record<CommentType, string> = {
+  fix: "something is wrong — correct it",
+  rewrite: "right idea, wrong words",
+  expand: "true but incomplete — go deeper",
+  clarify: "ambiguous — make it precise",
+  question: "needs an answer, opens a thread",
+  answer: "provide a direct answer",
+  note: "add context for the reviewer",
+  remove: "doesn’t belong — cut it",
+};
 
 interface AddCommentFormProps {
   top: number;
@@ -37,6 +40,8 @@ interface AddCommentFormProps {
   onSubmit: (type: CommentType, text: string) => void;
   onCancel: () => void;
   disabled?: boolean;
+  anchor?: CommentAnchorDraft;
+  peerMode?: boolean;
 }
 
 function AddCommentForm({
@@ -48,8 +53,10 @@ function AddCommentForm({
   onSubmit,
   onCancel,
   disabled = false,
+  anchor,
+  peerMode = false,
 }: AddCommentFormProps) {
-  const [type, setType] = useState<CommentType>("note");
+  const [type, setType] = useState<CommentType>("clarify");
   const [text, setText] = useState("");
   const formStyle: React.CSSProperties = dragPosition
     ? {
@@ -68,42 +75,77 @@ function AddCommentForm({
     onSubmit(type, text.trim());
   }
 
+  function handleKeyDown(event: React.KeyboardEvent<HTMLFormElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      onCancel();
+      return;
+    }
+    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+      event.preventDefault();
+      if (text.trim()) {
+        onSubmit(type, text.trim());
+      }
+      return;
+    }
+    if (event.target instanceof HTMLTextAreaElement) {
+      return;
+    }
+    const typeIndex = Number(event.key) - 1;
+    const selectedType = USER_COMMENT_TYPES[typeIndex];
+    if (selectedType) {
+      event.preventDefault();
+      setType(selectedType);
+    }
+  }
+
   return (
     <form
       ref={formRef}
       className={`comment-add-form${dragging ? " comment-add-form--dragging" : ""}`}
+      data-comment-type={type}
       style={formStyle}
       onSubmit={handleSubmit}
+      onKeyDown={handleKeyDown}
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="comment-add-form__header">
-        <div
-          className="comment-add-form__drag-handle"
-          onPointerDown={onDragStart}
-          title="Drag comment panel"
-        >
-          <span className="comment-add-form__title">Add comment</span>
-        </div>
-        <span className="comment-add-form__meta">{type}</span>
+      <div
+        className="comment-add-form__drag-handle"
+        onPointerDown={onDragStart}
+        title="Drag comment panel"
+      >
+        <span aria-hidden="true" />
       </div>
+      {anchor && (
+        <blockquote className="comment-add-form__quote">
+          “{anchor.quote}”
+        </blockquote>
+      )}
       <div className="comment-add-form__types">
-        {COMMENT_TYPES.map((t) => (
+        {USER_COMMENT_TYPES.map((commentType, index) => (
           <button
-            key={t}
+            key={commentType}
             type="button"
-            className={`comment-add-form__type${type === t ? " comment-add-form__type--active" : ""}`}
-            data-comment-type={t}
-            aria-pressed={type === t}
-            onClick={() => setType(t)}
+            className={`comment-add-form__type${type === commentType ? " comment-add-form__type--active" : ""}`}
+            data-comment-type={commentType}
+            aria-pressed={type === commentType}
+            onClick={() => setType(commentType)}
             disabled={disabled}
           >
-            {t}
+            {type === commentType && (
+              <span
+                className="comment-add-form__type-mark"
+                aria-hidden="true"
+              />
+            )}
+            {commentType}
+            <kbd>{index + 1}</kbd>
           </button>
         ))}
       </div>
       <textarea
         className="comment-add-form__input"
-        placeholder="Add a comment…"
+        placeholder={`${COMMENT_TYPE_HINTS[type]}…`}
         aria-label="Comment text"
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -112,19 +154,18 @@ function AddCommentForm({
         disabled={disabled}
       />
       <div className="comment-add-form__actions">
+        <span className="comment-add-form__honesty">
+          {peerMode
+            ? "Sent to the host — encrypted"
+            : "Written into the file as CriticMarkup"}
+        </span>
         <button
           type="submit"
           className="comment-add-form__save"
           disabled={disabled || !text.trim()}
+          aria-label="Save"
         >
-          Save
-        </button>
-        <button
-          type="button"
-          className="comment-add-form__cancel"
-          onClick={onCancel}
-        >
-          Cancel
+          Comment <kbd>⌘↵</kbd>
         </button>
       </div>
     </form>
@@ -146,16 +187,63 @@ interface FloatingCardDragState {
   offsetLeft: number;
 }
 
+interface CommentMarkerProps {
+  active: boolean;
+  label: string;
+  type: CommentType;
+  onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+}
+
+function CommentMarker({ active, label, type, onClick }: CommentMarkerProps) {
+  return (
+    <button
+      className={`comment-margin__dot${active ? " comment-margin__dot--active" : ""}`}
+      data-comment-type={type}
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+    >
+      <span className="comment-margin__dot-mark" aria-hidden="true" />
+    </button>
+  );
+}
+
+function hasSelectionInside(container: HTMLElement | null): boolean {
+  const selection = window.getSelection();
+  if (!container || !selection || selection.isCollapsed) {
+    return false;
+  }
+  const anchorInside = selection.anchorNode
+    ? container.contains(selection.anchorNode)
+    : false;
+  const focusInside = selection.focusNode
+    ? container.contains(selection.focusNode)
+    : false;
+  return anchorInside || focusInside;
+}
+
 interface Props {
   containerRef: React.RefObject<HTMLDivElement | null>;
   hoveredBlock: { index: number; top: number } | null;
-  onAddComment: (blockIndex: number, type: CommentType, text: string) => void;
+  onAddComment: (
+    blockIndex: number,
+    type: CommentType,
+    text: string,
+    anchor?: CommentAnchorDraft,
+  ) => void;
   peerMode?: boolean;
   onPostPeerComment?: (
     blockIndex: number,
     type: CommentType,
     text: string,
+    anchor?: CommentAnchorDraft,
   ) => void;
+  selectionDraft?: {
+    blockIndex: number;
+    top: number;
+    anchor: CommentAnchorDraft;
+  } | null;
+  onDismissSelection?: () => void;
 }
 
 export function CommentMargin({
@@ -164,18 +252,27 @@ export function CommentMargin({
   onAddComment,
   peerMode,
   onPostPeerComment,
+  selectionDraft = null,
+  onDismissSelection,
 }: Props) {
-  const editCommentAction = useAppStore((s) => s.editComment);
-  const deleteCommentAction = useAppStore((s) => s.deleteComment);
-  const replyToCommentThreadAction = useAppStore((s) => s.replyToCommentThread);
   const [addingBlock, setAddingBlock] = useState<{
     index: number;
     top: number;
+    anchor?: CommentAnchorDraft;
   } | null>(null);
-  const allComments = useActiveTabField("comments") ?? EMPTY_COMMENTS;
-  const commentFilter = useActiveTabField("commentFilter") ?? "all";
-  const activeId = useActiveTabField("activeCommentId") ?? null;
+  const hostComments = useActiveTabField("comments") ?? EMPTY_COMMENTS;
+  const allComments = peerMode ? EMPTY_COMMENTS : hostComments;
+  const hostCommentFilter = useActiveTabField("commentFilter") ?? "all";
+  const commentFilter = peerMode ? "all" : hostCommentFilter;
+  const hostActiveId = useActiveTabField("activeCommentId") ?? null;
+  const hostCommentPanelOpen = useActiveTabField("commentPanelOpen") ?? false;
+  const peerActiveId = useAppStore((state) => state.peerActiveCommentId);
+  const peerCommentPanelOpen = useAppStore(
+    (state) => state.peerCommentPanelOpen,
+  );
+  const activeId = peerMode ? peerActiveId : hostActiveId;
   const setActiveId = useAppStore((s) => s.setActiveCommentId);
+  const toggleCommentPanel = useAppStore((state) => state.toggleCommentPanel);
   const hostPendingPeerComments = useAppStore(
     useShallow((state) => {
       const tab = getActiveTab(state);
@@ -223,14 +320,29 @@ export function CommentMargin({
     [allThreadGroups, commentFilter],
   );
   const [groups, setGroups] = useState<DotGroup[]>([]);
-  const [floatingTop, setFloatingTop] = useState<number | null>(null);
   const [floatingCardPosition, setFloatingCardPosition] =
     useState<FloatingCardPosition | null>(null);
   const [floatingCardDragState, setFloatingCardDragState] =
     useState<FloatingCardDragState | null>(null);
   const measureRef = useRef<() => void>(() => {});
-  const activeCardRef = useRef<HTMLDivElement | null>(null);
   const addFormRef = useRef<HTMLFormElement | null>(null);
+  const suppressSelectionClickRef = useRef(false);
+
+  useEffect(() => {
+    if (!selectionDraft) {
+      return;
+    }
+    suppressSelectionClickRef.current = true;
+    setActiveId(null);
+    setAddingBlock({
+      index: selectionDraft.blockIndex,
+      top: selectionDraft.top,
+      anchor: selectionDraft.anchor,
+    });
+    if (peerMode) {
+      setPeerDraftCommentOpen(true);
+    }
+  }, [peerMode, selectionDraft, setActiveId, setPeerDraftCommentOpen]);
 
   // In peer mode, show the peer's own comments as dots
   const myPeerComments = useAppStore((s) => s.myPeerComments);
@@ -268,10 +380,71 @@ export function CommentMargin({
 
   // Close card when clicking outside
   useEffect(() => {
-    const onDocClick = () => setActiveId(null);
+    const onDocClick = (event: MouseEvent) => {
+      const target = event.target;
+      const clickInsideViewer =
+        target instanceof Node &&
+        Boolean(containerRef.current?.contains(target));
+      if (suppressSelectionClickRef.current && clickInsideViewer) {
+        suppressSelectionClickRef.current = false;
+        return;
+      }
+      suppressSelectionClickRef.current = false;
+      if (hasSelectionInside(containerRef.current)) {
+        return;
+      }
+      setActiveId(null);
+      setAddingBlock(null);
+      onDismissSelection?.();
+    };
     document.addEventListener("click", onDocClick);
     return () => document.removeEventListener("click", onDocClick);
-  }, [setActiveId]);
+  }, [containerRef, onDismissSelection, setActiveId]);
+
+  useEffect(() => {
+    function openComposer(event: Event) {
+      if (!(event instanceof CustomEvent)) {
+        return;
+      }
+      const detail: unknown = event.detail;
+      if (!detail || typeof detail !== "object" || !("blockIndex" in detail)) {
+        return;
+      }
+      const blockIndex = detail.blockIndex;
+      if (typeof blockIndex !== "number") {
+        return;
+      }
+      const block = containerRef.current?.querySelector<HTMLElement>(
+        `[data-block-index="${blockIndex}"]`,
+      );
+      if (!block) {
+        return;
+      }
+      setActiveId(null);
+      setAddingBlock({ index: blockIndex, top: block.offsetTop });
+    }
+    function closeTopLayer(event: KeyboardEvent) {
+      if (event.defaultPrevented || event.key !== "Escape") {
+        return;
+      }
+      if (addingBlock) {
+        event.preventDefault();
+        setAddingBlock(null);
+        onDismissSelection?.();
+        return;
+      }
+      if (activeId) {
+        event.preventDefault();
+        setActiveId(null);
+      }
+    }
+    window.addEventListener("markreview:open-composer", openComposer);
+    window.addEventListener("keydown", closeTopLayer);
+    return () => {
+      window.removeEventListener("markreview:open-composer", openComposer);
+      window.removeEventListener("keydown", closeTopLayer);
+    };
+  }, [activeId, addingBlock, containerRef, onDismissSelection, setActiveId]);
 
   useEffect(() => {
     return () => {
@@ -303,6 +476,13 @@ export function CommentMargin({
         threadsForBlock.push(thread);
         byBlock.set(thread.root.blockIndex, threadsForBlock);
       }
+      for (const threadsForBlock of byBlock.values()) {
+        threadsForBlock.sort((leftThread, rightThread) => {
+          const leftStart = leftThread.root.anchor?.start ?? -1;
+          const rightStart = rightThread.root.anchor?.start ?? -1;
+          return leftStart - rightStart;
+        });
+      }
 
       const next: DotGroup[] = [];
       const tops = new Map<number, number>();
@@ -332,80 +512,12 @@ export function CommentMargin({
     return () => ro.disconnect();
   }, [containerRef, threadGroups]);
 
-  const activeThreadData = useMemo(() => {
-    for (const group of groups) {
-      const activeThread =
-        group.threads.find(
-          (thread) =>
-            thread.root.id === activeId ||
-            thread.replies.some((reply) => reply.id === activeId),
-        ) ?? null;
-      if (activeThread) {
-        return { top: group.top, thread: activeThread };
-      }
-    }
-    return null;
-  }, [activeId, groups]);
-
-  useEffect(() => {
-    if (!activeThreadData) {
-      setFloatingTop(null);
-      return;
-    }
-
-    function updateFloatingTop() {
-      const viewer = containerRef.current;
-      const card = activeCardRef.current;
-      const scrollArea = viewer?.parentElement;
-      if (!viewer || !card || !(scrollArea instanceof HTMLElement)) {
-        setFloatingTop(activeThreadData.top);
-        return;
-      }
-
-      const padding = 8;
-      const preferredTop = activeThreadData.top;
-      const visibleTop = scrollArea.scrollTop + padding;
-      const visibleBottom = scrollArea.scrollTop + scrollArea.clientHeight;
-      const maxTop = Math.max(
-        visibleTop,
-        visibleBottom - card.offsetHeight - padding,
-      );
-
-      setFloatingTop(Math.min(Math.max(preferredTop, visibleTop), maxTop));
-    }
-
-    updateFloatingTop();
-
-    const viewer = containerRef.current;
-    const scrollArea = viewer?.parentElement;
-    if (!(scrollArea instanceof HTMLElement)) {
-      return;
-    }
-
-    const resizeObserver = new ResizeObserver(() => updateFloatingTop());
-    resizeObserver.observe(scrollArea);
-    if (activeCardRef.current) {
-      resizeObserver.observe(activeCardRef.current);
-    }
-
-    scrollArea.addEventListener("scroll", updateFloatingTop, {
-      passive: true,
-    });
-    window.addEventListener("resize", updateFloatingTop);
-
-    return () => {
-      resizeObserver.disconnect();
-      scrollArea.removeEventListener("scroll", updateFloatingTop);
-      window.removeEventListener("resize", updateFloatingTop);
-    };
-  }, [activeThreadData, containerRef]);
-
   const addingBlockIndex = addingBlock?.index ?? null;
 
   useEffect(() => {
     setFloatingCardPosition(null);
     setFloatingCardDragState(null);
-  }, [activeId, addingBlockIndex]);
+  }, [addingBlockIndex]);
 
   useEffect(() => {
     if (!floatingCardDragState) {
@@ -413,7 +525,7 @@ export function CommentMargin({
     }
 
     function handlePointerMove(event: PointerEvent) {
-      const popup = addFormRef.current ?? activeCardRef.current;
+      const popup = addFormRef.current;
       if (!popup) {
         return;
       }
@@ -457,14 +569,14 @@ export function CommentMargin({
     };
   }, [floatingCardDragState]);
 
-  function handleFloatingPopupDragStart(event: React.PointerEvent) {
+  function handleComposerDragStart(event: React.PointerEvent) {
     if (event.button > 0) {
       return;
     }
     if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) {
       return;
     }
-    const popup = addFormRef.current ?? activeCardRef.current;
+    const popup = addFormRef.current;
     if (!popup) {
       return;
     }
@@ -480,6 +592,20 @@ export function CommentMargin({
       offsetTop: event.clientY - rect.top,
       offsetLeft: event.clientX - rect.left,
     });
+  }
+
+  function selectComment(commentId: string) {
+    const commentPanelOpen = peerMode
+      ? peerCommentPanelOpen
+      : hostCommentPanelOpen;
+    if (!commentPanelOpen) {
+      toggleCommentPanel();
+    }
+    setAddingBlock(null);
+    if (peerMode) {
+      setPeerDraftCommentOpen(false);
+    }
+    setActiveId(commentId);
   }
 
   return (
@@ -503,19 +629,7 @@ export function CommentMargin({
                 }
               }}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
+              <span aria-hidden="true">+</span>
             </button>
           </div>
         )}
@@ -525,32 +639,39 @@ export function CommentMargin({
           dragPosition={floatingCardPosition}
           dragging={!!floatingCardDragState}
           formRef={addFormRef}
-          onDragStart={handleFloatingPopupDragStart}
+          onDragStart={handleComposerDragStart}
           onSubmit={(type, text) => {
             if (peerMode && onPostPeerComment) {
-              onPostPeerComment(addingBlock.index, type, text);
+              onPostPeerComment(
+                addingBlock.index,
+                type,
+                text,
+                addingBlock.anchor,
+              );
               setPeerDraftCommentOpen(false);
             } else {
-              onAddComment(addingBlock.index, type, text);
+              if (addingBlock.anchor) {
+                onAddComment(addingBlock.index, type, text, addingBlock.anchor);
+              } else {
+                onAddComment(addingBlock.index, type, text);
+              }
             }
             setAddingBlock(null);
+            onDismissSelection?.();
           }}
           onCancel={() => {
             if (peerMode) {
               setPeerDraftCommentOpen(false);
             }
             setAddingBlock(null);
+            onDismissSelection?.();
           }}
           disabled={peerMode && documentUpdateAvailable}
+          anchor={addingBlock.anchor}
+          peerMode={peerMode}
         />
       )}
       {groups.map(({ top, threads }, i) => {
-        const activeThread =
-          threads.find(
-            (thread) =>
-              thread.root.id === activeId ||
-              thread.replies.some((reply) => reply.id === activeId),
-          ) ?? null;
         // Find peer comments for the same block
         const blockIdx = threads[0]?.root.blockIndex;
         const peerForBlock =
@@ -563,82 +684,53 @@ export function CommentMargin({
                   thread.root.id === activeId ||
                   thread.replies.some((reply) => reply.id === activeId);
                 return (
-                  <button
+                  <CommentMarker
                     key={thread.root.id}
-                    className={`comment-margin__dot${isActive ? " comment-margin__dot--active" : ""}`}
-                    style={{
-                      backgroundColor: COMMENT_TYPE_COLOR[thread.root.type],
-                    }}
-                    aria-label={`${thread.root.type}: ${thread.root.text}`}
-                    title={`${thread.root.type}: ${thread.root.text}`}
+                    active={isActive}
+                    type={thread.root.type}
+                    label={`${thread.root.type}: ${thread.root.text}`}
                     onClick={(e) => {
                       e.stopPropagation();
-                      setAddingBlock(null);
-                      if (peerMode) {
-                        setPeerDraftCommentOpen(false);
-                      }
-                      setActiveId(isActive ? null : thread.root.id);
+                      selectComment(thread.root.id);
                     }}
                   />
                 );
               })}
-              {peerForBlock.map((pc) => (
-                <button
-                  key={pc.id}
-                  className="comment-margin__peer-dot"
-                  style={{ backgroundColor: peerColor(pc.peerName) }}
-                  title={`${pc.peerName}: ${pc.text}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    document
-                      .querySelector(
-                        `[data-block-index="${pc.blockRef.blockIndex}"]`,
-                      )
-                      ?.scrollIntoView({ behavior: "smooth", block: "center" });
-                  }}
-                >
-                  {initials(pc.peerName)[0]}
-                </button>
-              ))}
+              {peerForBlock.map((peerComment) =>
+                peerMode ? (
+                  <CommentMarker
+                    key={peerComment.id}
+                    active={peerComment.id === activeId}
+                    type={peerComment.commentType}
+                    label={`${peerComment.commentType}: ${peerComment.text}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      selectComment(peerComment.id);
+                    }}
+                  />
+                ) : (
+                  <button
+                    key={peerComment.id}
+                    className="comment-margin__peer-dot"
+                    style={{ backgroundColor: peerColor(peerComment.peerName) }}
+                    title={`${peerComment.peerName}: ${peerComment.text}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      document
+                        .querySelector(
+                          `[data-block-index="${peerComment.blockRef.blockIndex}"]`,
+                        )
+                        ?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "center",
+                        });
+                    }}
+                  >
+                    {initials(peerComment.peerName)[0]}
+                  </button>
+                ),
+              )}
             </div>
-            {activeThread && (
-              <CommentThreadCard
-                thread={activeThread}
-                top={floatingTop ?? top}
-                dragPosition={floatingCardPosition}
-                dragging={!!floatingCardDragState}
-                cardRef={activeCardRef}
-                onDragStart={handleFloatingPopupDragStart}
-                onClose={() => setActiveId(null)}
-                onEdit={(id, type, text) => {
-                  editCommentAction(id, type, text).catch((error) => {
-                    console.error(
-                      "[CommentMargin] failed to edit comment:",
-                      error,
-                    );
-                  });
-                }}
-                onDelete={(id) => {
-                  deleteCommentAction(id).catch((error) => {
-                    console.error(
-                      "[CommentMargin] failed to delete comment:",
-                      error,
-                    );
-                  });
-                  setActiveId(null);
-                }}
-                onReply={(rootCommentId, text, type) => {
-                  replyToCommentThreadAction(rootCommentId, text, type).catch(
-                    (error) => {
-                      console.error(
-                        "[CommentMargin] failed to reply to thread:",
-                        error,
-                      );
-                    },
-                  );
-                }}
-              />
-            )}
           </div>
         );
       })}
@@ -657,24 +749,40 @@ export function CommentMargin({
         return (
           <div key={`peer-${blockIdx}`}>
             <div className="comment-margin__dots" style={{ top }}>
-              {peerComments.map((pc) => (
-                <button
-                  key={pc.id}
-                  className="comment-margin__peer-dot"
-                  style={{ backgroundColor: peerColor(pc.peerName) }}
-                  title={`${pc.peerName}: ${pc.text}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    document
-                      .querySelector(
-                        `[data-block-index="${pc.blockRef.blockIndex}"]`,
-                      )
-                      ?.scrollIntoView({ behavior: "smooth", block: "center" });
-                  }}
-                >
-                  {initials(pc.peerName)[0]}
-                </button>
-              ))}
+              {peerComments.map((peerComment) =>
+                peerMode ? (
+                  <CommentMarker
+                    key={peerComment.id}
+                    active={peerComment.id === activeId}
+                    type={peerComment.commentType}
+                    label={`${peerComment.commentType}: ${peerComment.text}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      selectComment(peerComment.id);
+                    }}
+                  />
+                ) : (
+                  <button
+                    key={peerComment.id}
+                    className="comment-margin__peer-dot"
+                    style={{ backgroundColor: peerColor(peerComment.peerName) }}
+                    title={`${peerComment.peerName}: ${peerComment.text}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      document
+                        .querySelector(
+                          `[data-block-index="${peerComment.blockRef.blockIndex}"]`,
+                        )
+                        ?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "center",
+                        });
+                    }}
+                  >
+                    {initials(peerComment.peerName)[0]}
+                  </button>
+                ),
+              )}
             </div>
           </div>
         );

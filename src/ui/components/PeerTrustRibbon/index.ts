@@ -1,0 +1,1 @@
+export { PeerTrustRibbon } from "./PeerTrustRibbon";

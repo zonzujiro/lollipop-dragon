@@ -1,0 +1,81 @@
+.code-comment-surface {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.35rem minmax(0, 1fr);
+  margin: 1.25rem 0;
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+
+.code-comment-surface__gutter {
+  counter-reset: code-comment-line;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 0 1rem 0.2rem;
+  border-right: 1px solid transparent;
+  background: color-mix(in srgb, var(--ink) 3%, var(--bg-sunken));
+  opacity: 0;
+  transition: opacity 0.14s;
+}
+
+.code-comment-surface:hover .code-comment-surface__gutter,
+.code-comment-surface:focus-within .code-comment-surface__gutter {
+  border-right-color: var(--border-light);
+  opacity: 1;
+}
+
+.code-comment-surface__line {
+  counter-increment: code-comment-line;
+  display: grid;
+  width: 2rem;
+  min-width: 24px;
+  height: 1.65em;
+  min-height: 24px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font: 600 0.66rem/1 var(--font-mono);
+}
+
+.code-comment-surface__line::before {
+  content: counter(code-comment-line);
+}
+
+.code-comment-surface__line:not(:disabled):hover::before,
+.code-comment-surface__line:not(:disabled):focus-visible::before {
+  content: "+";
+  color: var(--accent);
+}
+
+.code-comment-surface__line:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.code-comment-surface__line:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.code-comment-surface__pre {
+  min-width: 0;
+  margin: 0;
+  padding: 1rem;
+  overflow: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.code-comment-surface__pre code {
+  display: block;
+  min-height: 1.65em;
+  font-family: var(--font-mono);
+  line-height: 1.65;
+}

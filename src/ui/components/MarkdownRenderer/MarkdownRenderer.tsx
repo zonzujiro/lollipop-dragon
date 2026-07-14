@@ -1,5 +1,9 @@
 import "./MarkdownRenderer.css";
 import {
+  Children,
+  createContext,
+  isValidElement,
+  type ReactNode,
   type ComponentPropsWithoutRef,
   memo,
   useCallback,
@@ -7,22 +11,35 @@ import {
   useMemo,
   useRef,
   useState,
+  useContext,
 } from "react";
+import type { PluggableList } from "unified";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { MermaidBlock } from "../MermaidBlock";
+import type { MermaidComment } from "../MermaidBlock/MermaidBlock";
+import { CodeCommentSurface } from "../CodeCommentSurface";
 import { CommentMargin } from "../CommentMargin";
 import { useAppStore } from "../../../store";
 import { useActiveTabField } from "../../../store/selectors";
 import {
   assignBlockIndices,
+  applyCommentHighlights,
+  findQuoteOccurrences,
+  getBlockPlainTextMap,
+  getBlockPositions,
   isCommentType,
   parseMarkdownFrontmatter,
   parseCriticMarkup,
   shiftCommentRawOffsets,
+  removeCommentHighlights,
+  resolveCommentAnchor,
   useShikiRehypePlugin,
 } from "../../../markup";
+import { getActiveAgentRunForTab } from "../../../modules/agent-workflow";
 import type { MarkdownMetadataField } from "../../../markup";
+import type { Comment, CommentAnchorDraft } from "../../../types/criticmarkup";
+import type { PeerComment } from "../../../types/share";
 import {
   getRestoreAccessActionLabel,
   shouldRenderRestoreBanner,
@@ -45,33 +62,213 @@ function rehypeBlockIndex() {
   };
 }
 
+interface SpecialBlockContextValue {
+  activeCommentId: string | null;
+  comments: Comment[];
+  onCreateAnchor: (blockIndex: number, anchor: CommentAnchorDraft) => void;
+  onSelectComment: (commentId: string) => void;
+  onViewChange: () => void;
+}
+
+const SpecialBlockContext = createContext<SpecialBlockContextValue | null>(
+  null,
+);
+
+function textFromReactNode(node: ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") {
+    return String(node);
+  }
+  if (Array.isArray(node)) {
+    return node.map(textFromReactNode).join("");
+  }
+  if (isValidElement<{ children?: ReactNode }>(node)) {
+    return textFromReactNode(node.props.children);
+  }
+  return "";
+}
+
 export function CodeBlock({
   className,
   children,
 }: ComponentPropsWithoutRef<"code">) {
-  if (className?.includes("language-mermaid")) {
-    return <MermaidBlock code={String(children).replace(/\n$/, "")} />;
-  }
   return <code className={className}>{children}</code>;
 }
 
-// Unwrap <pre> for mermaid blocks to avoid invalid <pre><div> nesting.
-// react-markdown passes a CodeBlock element as the child of pre; we check
-// its className prop to detect mermaid before it renders.
-export function PreBlock({ children }: ComponentPropsWithoutRef<"pre">) {
-  const child = Array.isArray(children) ? children[0] : children;
-  if (
-    child &&
-    typeof child === "object" &&
-    "props" in child &&
-    child.props?.className?.includes("language-mermaid")
-  ) {
-    return <>{children}</>;
+interface PreBlockProps extends ComponentPropsWithoutRef<"pre"> {
+  "data-block-index"?: number | string;
+}
+
+export function PreBlock({ children, ...props }: PreBlockProps) {
+  const specialBlock = useContext(SpecialBlockContext);
+  const child = Children.toArray(children)[0];
+  if (!isValidElement<{ className?: string; children?: ReactNode }>(child)) {
+    return <pre>{children}</pre>;
   }
-  return <pre>{children}</pre>;
+  const rawBlockIndex = props["data-block-index"];
+  const blockIndex = Number(rawBlockIndex);
+  if (!specialBlock || !Number.isInteger(blockIndex)) {
+    return <pre data-block-index={rawBlockIndex}>{children}</pre>;
+  }
+  const className = child.props.className;
+  const plainText = textFromReactNode(child.props.children).replace(/\n$/, "");
+  const blockComments = specialBlock.comments.filter(
+    (comment) => comment.blockIndex === blockIndex && !!comment.anchor,
+  );
+  const onCreateAnchor = (anchor: CommentAnchorDraft) => {
+    specialBlock.onCreateAnchor(blockIndex, anchor);
+  };
+  if (className?.includes("language-mermaid")) {
+    const mermaidComments: MermaidComment[] = blockComments.map((comment) => ({
+      id: comment.id,
+      type: comment.type,
+      anchor: comment.anchor,
+      authorLabel: comment.thread?.authorLabel ?? "You",
+    }));
+    return (
+      <MermaidBlock
+        activeCommentId={specialBlock.activeCommentId}
+        blockIndex={blockIndex}
+        code={plainText}
+        comments={mermaidComments}
+        onCreateAnchor={onCreateAnchor}
+        onSelectComment={specialBlock.onSelectComment}
+        onViewChange={specialBlock.onViewChange}
+      />
+    );
+  }
+  return (
+    <div className="code-comment-block" data-block-index={blockIndex}>
+      <CodeCommentSurface
+        plainText={plainText}
+        languageClassName={className}
+        onCreateAnchor={onCreateAnchor}
+      >
+        {child.props.children}
+      </CodeCommentSurface>
+    </div>
+  );
 }
 
 const markdownComponents = { code: CodeBlock, pre: PreBlock };
+
+interface RangeCommentDraft {
+  blockIndex: number;
+  top: number;
+  anchor: CommentAnchorDraft;
+}
+
+function offsetWithinBlock(root: HTMLElement, node: Node, offset: number) {
+  const range = document.createRange();
+  range.selectNodeContents(root);
+  range.setEnd(node, offset);
+  return range.toString().length;
+}
+
+function captureRangeCommentDraft(
+  selection: Selection,
+): RangeCommentDraft | null {
+  if (selection.isCollapsed || selection.rangeCount === 0) {
+    return null;
+  }
+  const range = selection.getRangeAt(0);
+  const startElement =
+    range.startContainer instanceof HTMLElement
+      ? range.startContainer
+      : range.startContainer.parentElement;
+  const block = startElement?.closest<HTMLElement>("[data-block-index]");
+  if (!block) {
+    return null;
+  }
+  const anchorRoot =
+    block.querySelector<HTMLElement>("[data-anchor-root]") ?? block;
+  if (!anchorRoot.contains(range.startContainer)) {
+    return null;
+  }
+  let start = offsetWithinBlock(
+    anchorRoot,
+    range.startContainer,
+    range.startOffset,
+  );
+  let end = anchorRoot.contains(range.endContainer)
+    ? offsetWithinBlock(anchorRoot, range.endContainer, range.endOffset)
+    : (anchorRoot.textContent?.length ?? 0);
+  const plainText = anchorRoot.textContent ?? "";
+  while (start < end && /\s/.test(plainText[start])) {
+    start += 1;
+  }
+  while (end > start && /\s/.test(plainText[end - 1])) {
+    end -= 1;
+  }
+  const quote = plainText.slice(start, end);
+  if (quote.length < 3 || quote.length > 300) {
+    return null;
+  }
+  const occurrences = findQuoteOccurrences(plainText, quote);
+  const occurrence = Math.max(occurrences.indexOf(start) + 1, 1);
+  const blockIndex = Number(block.dataset.blockIndex);
+  if (!Number.isInteger(blockIndex)) {
+    return null;
+  }
+  return {
+    blockIndex,
+    top: block.offsetTop,
+    anchor: { quote, occurrence, start, end },
+  };
+}
+
+function getCleanMarkdownBlocks(rawContent: string): string[] {
+  const document = parseMarkdownFrontmatter(rawContent);
+  const cleanMarkdown = parseCriticMarkup(document.body).cleanMarkdown;
+  return getBlockPositions(cleanMarkdown).map((block) =>
+    cleanMarkdown.slice(block.start, block.end),
+  );
+}
+
+function buildPeerRangeComments(input: {
+  comments: PeerComment[];
+  activeFilePath: string | null;
+  cleanMarkdown: string;
+}): Comment[] {
+  return input.comments.flatMap((peerComment, commentIndex) => {
+    if (
+      peerComment.path !== input.activeFilePath ||
+      !peerComment.blockRef.quote
+    ) {
+      return [];
+    }
+    const blockMap = getBlockPlainTextMap(
+      input.cleanMarkdown,
+      peerComment.blockRef.blockIndex,
+    );
+    if (!blockMap) {
+      return [];
+    }
+    const anchor = resolveCommentAnchor(blockMap.plainText, {
+      quote: peerComment.blockRef.quote,
+      occurrence: peerComment.blockRef.occurrence ?? 1,
+    });
+    return [
+      {
+        id: peerComment.id,
+        criticType: "comment",
+        type: peerComment.commentType,
+        text: peerComment.text,
+        raw: "",
+        rawStart: commentIndex,
+        rawEnd: commentIndex,
+        cleanStart: 0,
+        cleanEnd: 0,
+        blockIndex: peerComment.blockRef.blockIndex,
+        thread: {
+          commentId: peerComment.id,
+          threadId: peerComment.id,
+          authorLabel: peerComment.peerName,
+        },
+        anchor,
+      },
+    ];
+  });
+}
 
 const CHIP_FIELDS = new Set([
   "participants",
@@ -198,7 +395,6 @@ function MarkdownRendererContent({
   restoreTabState,
   writeAllowed,
 }: MarkdownRendererContentProps) {
-
   const setComments = useAppStore((s) => s.setComments);
   const addCommentAction = useAppStore((s) => s.addComment);
   const postPeerCommentAction = useAppStore((s) => s.postPeerComment);
@@ -207,17 +403,67 @@ function MarkdownRendererContent({
     (s) => s.clearPendingScrollTarget,
   );
   const setActiveCommentId = useAppStore((s) => s.setActiveCommentId);
+  const showToast = useAppStore((s) => s.showToast);
+  const hostActiveCommentId = useActiveTabField("activeCommentId") ?? null;
+  const peerActiveCommentId = useAppStore((s) => s.peerActiveCommentId);
+  const myPeerComments = useAppStore((s) => s.myPeerComments);
+  const activeCommentId = isPeerMode
+    ? peerActiveCommentId
+    : hostActiveCommentId;
+  const activeAgentRun = useAppStore((state) =>
+    hostTabId ? getActiveAgentRunForTab(state, hostTabId) : null,
+  );
   const shikiPlugin = useShikiRehypePlugin();
   const viewerRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
   const [hoveredBlock, setHoveredBlock] = useState<{
     index: number;
     top: number;
   } | null>(null);
+  const [rangeCommentDraft, setRangeCommentDraft] =
+    useState<RangeCommentDraft | null>(null);
+  const agentBaselineRef = useRef<{ runId: string; blocks: string[] } | null>(
+    null,
+  );
+  const [agentChangedBlocks, setAgentChangedBlocks] = useState<Set<number>>(
+    new Set(),
+  );
+  const [specialBlockRevision, setSpecialBlockRevision] = useState(0);
   const showRestoreBanner =
     !isPeerMode && shouldRenderRestoreBanner(restoreTabState);
 
   const canComment = writeAllowed || isPeerMode;
   const shouldTrackHover = canComment;
+
+  useEffect(() => {
+    if (!activeAgentRun) {
+      agentBaselineRef.current = null;
+      setAgentChangedBlocks((currentBlocks) =>
+        currentBlocks.size === 0 ? currentBlocks : new Set(),
+      );
+      return;
+    }
+    if (agentBaselineRef.current?.runId !== activeAgentRun.id) {
+      agentBaselineRef.current = {
+        runId: activeAgentRun.id,
+        blocks: getCleanMarkdownBlocks(rawContent),
+      };
+      setAgentChangedBlocks((currentBlocks) =>
+        currentBlocks.size === 0 ? currentBlocks : new Set(),
+      );
+      return;
+    }
+    const nextBlocks = getCleanMarkdownBlocks(rawContent);
+    const changedBlocks = new Set<number>();
+    const baselineBlocks = agentBaselineRef.current.blocks;
+    const blockCount = Math.max(baselineBlocks.length, nextBlocks.length);
+    for (let blockIndex = 0; blockIndex < blockCount; blockIndex += 1) {
+      if (baselineBlocks[blockIndex] !== nextBlocks[blockIndex]) {
+        changedBlocks.add(blockIndex);
+      }
+    }
+    setAgentChangedBlocks(changedBlocks);
+  }, [activeAgentRun, rawContent]);
 
   const handleBodyMouseOver = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -246,23 +492,55 @@ function MarkdownRendererContent({
 
   const handleBodyMouseLeave = useCallback(() => setHoveredBlock(null), []);
 
+  const handleBodyMouseUp = useCallback(() => {
+    if (!canComment) {
+      return;
+    }
+    const selection = window.getSelection();
+    if (!selection) {
+      return;
+    }
+    const draft = captureRangeCommentDraft(selection);
+    if (draft) {
+      setRangeCommentDraft(draft);
+    }
+  }, [canComment]);
+
   const handleAddComment = useCallback(
-    (blockIndex: number, type: string, text: string) => {
+    (
+      blockIndex: number,
+      type: string,
+      text: string,
+      anchor?: CommentAnchorDraft,
+    ) => {
       if (!isCommentType(type)) {
         return;
       }
-      void addCommentAction(blockIndex, type, text);
+      void addCommentAction(blockIndex, type, text, anchor);
     },
     [addCommentAction],
   );
 
   const handlePostPeerComment = useCallback(
-    (blockIndex: number, type: string, text: string) => {
+    (
+      blockIndex: number,
+      type: string,
+      text: string,
+      anchor?: CommentAnchorDraft,
+    ) => {
       if (!isCommentType(type)) {
         return;
       }
       const path = activeFilePath ?? fileName ?? "";
-      void postPeerCommentAction(blockIndex, type, text, path);
+      void postPeerCommentAction({
+        blockIndex,
+        type,
+        text,
+        path,
+        anchor: anchor
+          ? { quote: anchor.quote, occurrence: anchor.occurrence }
+          : undefined,
+      });
     },
     [postPeerCommentAction, activeFilePath, fileName],
   );
@@ -278,14 +556,76 @@ function MarkdownRendererContent({
       metadata: document.metadata,
     };
   }, [rawContent]);
+  const peerRangeComments = useMemo(
+    () =>
+      isPeerMode
+        ? buildPeerRangeComments({
+            comments: myPeerComments,
+            activeFilePath,
+            cleanMarkdown,
+          })
+        : [],
+    [activeFilePath, cleanMarkdown, isPeerMode, myPeerComments],
+  );
+  const visibleRangeComments = isPeerMode ? peerRangeComments : comments;
 
-  // Sync parsed comments into the store during render to avoid an extra
-  // render cycle from a useEffect chain.
+  const handleSpecialBlockAnchor = useCallback(
+    (blockIndex: number, anchor: CommentAnchorDraft) => {
+      const block = bodyRef.current?.querySelector<HTMLElement>(
+        `[data-block-index="${blockIndex}"]`,
+      );
+      if (!block) {
+        return;
+      }
+      setRangeCommentDraft({
+        blockIndex,
+        top: block.offsetTop,
+        anchor,
+      });
+    },
+    [],
+  );
+  const specialBlockContext = useMemo<SpecialBlockContextValue>(
+    () => ({
+      activeCommentId,
+      comments: visibleRangeComments,
+      onCreateAnchor: handleSpecialBlockAnchor,
+      onSelectComment: setActiveCommentId,
+      onViewChange: () => {
+        setSpecialBlockRevision((revision) => revision + 1);
+      },
+    }),
+    [
+      activeCommentId,
+      handleSpecialBlockAnchor,
+      setActiveCommentId,
+      visibleRangeComments,
+    ],
+  );
+
+  useEffect(() => {
+    const body = bodyRef.current;
+    if (!body) {
+      return;
+    }
+    const blocks = body.querySelectorAll<HTMLElement>("[data-block-index]");
+    for (const block of blocks) {
+      const blockIndex = Number(block.dataset.blockIndex);
+      if (agentChangedBlocks.has(blockIndex)) {
+        block.dataset.agentChanged = "true";
+      } else {
+        delete block.dataset.agentChanged;
+      }
+    }
+  }, [agentChangedBlocks, cleanMarkdown]);
+
   const prevCommentsRef = useRef(comments);
-  if (prevCommentsRef.current !== comments) {
-    prevCommentsRef.current = comments;
-    setComments(comments);
-  }
+  useEffect(() => {
+    if (!isPeerMode && prevCommentsRef.current !== comments) {
+      prevCommentsRef.current = comments;
+      setComments(comments);
+    }
+  }, [comments, isPeerMode, setComments]);
 
   // Handle cross-file navigation: after switching to target file, find comment and scroll
   useEffect(() => {
@@ -347,9 +687,36 @@ function MarkdownRendererContent({
     };
   }, [hoveredBlockHighlight]);
 
-  const rehypePlugins = shikiPlugin
-    ? ([rehypeBlockIndex, shikiPlugin] as const)
-    : ([rehypeBlockIndex] as const);
+  useEffect(() => {
+    const body = bodyRef.current;
+    if (!body) {
+      return;
+    }
+    applyCommentHighlights({
+      container: body,
+      comments: visibleRangeComments,
+      activeCommentId,
+      onSelect: (commentId, sharedCount) => {
+        setActiveCommentId(commentId);
+        if (sharedCount > 1 && activeCommentId === null) {
+          showToast(
+            `${sharedCount} comments share this span — click again to cycle`,
+          );
+        }
+      },
+    });
+    return () => removeCommentHighlights(body);
+  }, [
+    activeCommentId,
+    setActiveCommentId,
+    showToast,
+    specialBlockRevision,
+    visibleRangeComments,
+  ]);
+
+  const rehypePlugins: PluggableList = shikiPlugin
+    ? [rehypeBlockIndex, shikiPlugin]
+    : [rehypeBlockIndex];
 
   return (
     <div className="markdown-scroll-area">
@@ -374,6 +741,9 @@ function MarkdownRendererContent({
           filesystem. Comments cannot be saved to disk.
         </div>
       )}
+      <div className="document-kicker">
+        {activeFilePath ?? fileName ?? "Untitled document"}
+      </div>
       <div
         className="markdown-viewer"
         ref={viewerRef}
@@ -385,16 +755,29 @@ function MarkdownRendererContent({
           onAddComment={handleAddComment}
           peerMode={isPeerMode}
           onPostPeerComment={handlePostPeerComment}
+          selectionDraft={rangeCommentDraft}
+          onDismissSelection={() => {
+            setRangeCommentDraft(null);
+            window.getSelection()?.removeAllRanges();
+          }}
         />
-        <div className="markdown-body" onMouseOver={handleBodyMouseOver}>
+        <div
+          className="markdown-body"
+          data-agent-status={activeAgentRun?.status}
+          ref={bodyRef}
+          onMouseOver={handleBodyMouseOver}
+          onMouseUp={handleBodyMouseUp}
+        >
           <MetadataPanel fields={metadata} />
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={rehypePlugins}
-            components={markdownComponents}
-          >
-            {cleanMarkdown}
-          </ReactMarkdown>
+          <SpecialBlockContext.Provider value={specialBlockContext}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={rehypePlugins}
+              components={markdownComponents}
+            >
+              {cleanMarkdown}
+            </ReactMarkdown>
+          </SpecialBlockContext.Provider>
         </div>
       </div>
     </div>
@@ -403,5 +786,9 @@ function MarkdownRendererContent({
 
 export const MarkdownRenderer = memo(function MarkdownRenderer() {
   const isPeerMode = useAppStore((s) => s.isPeerMode);
-  return isPeerMode ? <PeerMarkdownRendererView /> : <HostMarkdownRendererView />;
+  return isPeerMode ? (
+    <PeerMarkdownRendererView />
+  ) : (
+    <HostMarkdownRendererView />
+  );
 });

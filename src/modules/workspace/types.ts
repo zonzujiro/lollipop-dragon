@@ -15,6 +15,9 @@ export interface WorkspaceActions {
   switchTab: (tabId: string) => Promise<void>;
   openFileInNewTab: () => Promise<void>;
   openDirectoryInNewTab: () => Promise<void>;
+  openDirectoryHandleInNewTab: (
+    handle: FileSystemDirectoryHandle,
+  ) => Promise<void>;
   reopenTab: (tabId: string) => Promise<void>;
   reopenFromHistory: (entryId: string) => Promise<void>;
   removeHistoryEntry: (entryId: string) => void;

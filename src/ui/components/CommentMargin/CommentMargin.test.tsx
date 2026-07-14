@@ -9,8 +9,10 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, it, expect, vi } from "vitest";
 import { CommentMargin } from "./index";
 import { useAppStore } from "../../../store";
+import { getActiveTab } from "../../../store/selectors";
 import {
   makeComment,
+  makePeerComment,
   setTestState,
   resetTestStore,
 } from "../../../testing/testHelpers";
@@ -105,9 +107,10 @@ describe("CommentMargin — add button", () => {
         onAddComment={vi.fn()}
       />,
     );
-    expect(
-      screen.getByRole("button", { name: "Add comment" }),
-    ).toBeInTheDocument();
+    const addButton = screen.getByRole("button", { name: "Add comment" });
+    expect(addButton).toBeInTheDocument();
+    expect(addButton).toHaveTextContent("+");
+    expect(addButton.querySelector("svg")).toBeNull();
   });
 
   it("does not show the add button when hoveredBlock is null", () => {
@@ -133,7 +136,15 @@ describe("CommentMargin — add button", () => {
       />,
     );
     await user.click(screen.getByRole("button", { name: "Add comment" }));
-    expect(screen.getByPlaceholderText("Add a comment…")).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText("ambiguous — make it precise…"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Cancel" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Add comment", { selector: "span" }),
+    ).not.toBeInTheDocument();
   });
 
   it("hides the add button while the form is open", async () => {
@@ -189,45 +200,72 @@ describe("CommentMargin — AddCommentForm", () => {
 
   it("Save button enables after typing text", async () => {
     const { user } = await openForm();
-    await user.type(screen.getByPlaceholderText("Add a comment…"), "hello");
+    await user.type(
+      screen.getByPlaceholderText("ambiguous — make it precise…"),
+      "hello",
+    );
     expect(screen.getByRole("button", { name: "Save" })).not.toBeDisabled();
   });
 
-  it("calls onAddComment with blockIndex, type, and text on submit", async () => {
+  it("offers only clarify and rewrite and submits the selected type", async () => {
+    const onAddComment = vi.fn();
+    const { user } = await openForm(onAddComment);
+    expect(
+      screen.getByRole("button", { name: /^clarify/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^rewrite/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "fix" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "expand" }),
+    ).not.toBeInTheDocument();
+    await user.type(
+      screen.getByPlaceholderText("ambiguous — make it precise…"),
+      "rewrite this please",
+    );
+    await user.click(screen.getByRole("button", { name: /^rewrite/ }));
+    expect(
+      screen.getByPlaceholderText("right idea, wrong words…"),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(onAddComment).toHaveBeenCalledWith(
+      2,
+      "rewrite",
+      "rewrite this please",
+    );
+  });
+
+  it('defaults to "clarify" type', async () => {
     const onAddComment = vi.fn();
     const { user } = await openForm(onAddComment);
     await user.type(
-      screen.getByPlaceholderText("Add a comment…"),
-      "fix this please",
+      screen.getByPlaceholderText("ambiguous — make it precise…"),
+      "clarify this",
     );
-    // Select 'fix' type
-    await user.click(screen.getByRole("button", { name: "fix" }));
     await user.click(screen.getByRole("button", { name: "Save" }));
-    expect(onAddComment).toHaveBeenCalledWith(2, "fix", "fix this please");
+    expect(onAddComment).toHaveBeenCalledWith(2, "clarify", "clarify this");
   });
 
-  it('defaults to "note" type if no type is selected', async () => {
-    const onAddComment = vi.fn();
-    const { user } = await openForm(onAddComment);
-    await user.type(screen.getByPlaceholderText("Add a comment…"), "a note");
-    await user.click(screen.getByRole("button", { name: "Save" }));
-    expect(onAddComment).toHaveBeenCalledWith(2, "note", "a note");
-  });
-
-  it("hides the form when Cancel is clicked", async () => {
+  it("hides the form when Escape is pressed", async () => {
     const { user } = await openForm();
-    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await user.keyboard("{Escape}");
     expect(
-      screen.queryByPlaceholderText("Add a comment…"),
+      screen.queryByPlaceholderText("ambiguous — make it precise…"),
     ).not.toBeInTheDocument();
   });
 
   it("hides the form after successful submit", async () => {
     const { user } = await openForm();
-    await user.type(screen.getByPlaceholderText("Add a comment…"), "done");
+    await user.type(
+      screen.getByPlaceholderText("ambiguous — make it precise…"),
+      "done",
+    );
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(
-      screen.queryByPlaceholderText("Add a comment…"),
+      screen.queryByPlaceholderText("ambiguous — make it precise…"),
     ).not.toBeInTheDocument();
   });
 
@@ -244,7 +282,7 @@ describe("CommentMargin — AddCommentForm", () => {
       />,
     );
     await user.click(screen.getByRole("button", { name: "Add comment" }));
-    await user.type(screen.getByPlaceholderText("Add a comment…"), "draft");
+    await user.type(screen.getByLabelText("Comment text"), "draft");
 
     useAppStore.setState({ documentUpdateAvailable: true });
     rerender(
@@ -268,7 +306,7 @@ describe("CommentMargin — AddCommentForm", () => {
     });
     await waitFor(() => {
       const form = screen
-        .getByPlaceholderText("Add a comment…")
+        .getByLabelText("Comment text")
         .closest(".comment-add-form");
       expect(form).not.toBeNull();
       if (form) {
@@ -281,7 +319,7 @@ describe("CommentMargin — AddCommentForm", () => {
     fireEvent.pointerUp(window);
 
     const form = screen
-      .getByPlaceholderText("Add a comment…")
+      .getByLabelText("Comment text")
       .closest(".comment-add-form");
     expect(form).not.toBeNull();
     if (form) {
@@ -292,11 +330,11 @@ describe("CommentMargin — AddCommentForm", () => {
       });
     }
 
-    await user.type(screen.getByPlaceholderText("Add a comment…"), "still ok");
+    await user.type(screen.getByLabelText("Comment text"), "still ok");
     expect(screen.getByRole("button", { name: "Save" })).not.toBeDisabled();
   });
 
-  it("closes the active comment card when the add form opens", async () => {
+  it("clears the active comment when the add form opens", async () => {
     const user = userEvent.setup();
     setTestState({
       activeCommentId: "fix-root",
@@ -318,11 +356,13 @@ describe("CommentMargin — AddCommentForm", () => {
       />,
     );
 
-    expect(await screen.findByText("Fix this paragraph")).toBeInTheDocument();
+    expect(getActiveTab(useAppStore.getState())?.activeCommentId).toBe(
+      "fix-root",
+    );
     await user.click(screen.getByRole("button", { name: "Add comment" }));
 
-    expect(screen.getByPlaceholderText("Add a comment…")).toBeInTheDocument();
-    expect(screen.queryByText("Fix this paragraph")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Comment text")).toBeInTheDocument();
+    expect(getActiveTab(useAppStore.getState())?.activeCommentId).toBeNull();
   });
 
   it("keeps the add button visible alongside existing comment dots", () => {
@@ -354,7 +394,7 @@ describe("CommentMargin — AddCommentForm", () => {
     ).toBeInTheDocument();
   });
 
-  it("closes the add form when an existing comment opens", async () => {
+  it("closes the add form and selects an existing comment", async () => {
     const user = userEvent.setup();
     setTestState({
       comments: [
@@ -376,18 +416,18 @@ describe("CommentMargin — AddCommentForm", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Add comment" }));
-    expect(screen.getByPlaceholderText("Add a comment…")).toBeInTheDocument();
+    expect(screen.getByLabelText("Comment text")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /fix:/i }));
 
-    expect(
-      screen.queryByPlaceholderText("Add a comment…"),
-    ).not.toBeInTheDocument();
-    expect(await screen.findByText("Fix this paragraph")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Comment text")).not.toBeInTheDocument();
+    expect(getActiveTab(useAppStore.getState())?.activeCommentId).toBe(
+      "fix-root",
+    );
   });
 });
 
-describe("CommentMargin — floating comment card", () => {
-  it("opens the floating card for the active comment", async () => {
+describe("CommentMargin — existing comment markers", () => {
+  it("uses the redesign marker and does not render a floating thread card", async () => {
     setTestState({
       activeCommentId: "fix-root",
       comments: [
@@ -408,12 +448,20 @@ describe("CommentMargin — floating comment card", () => {
       />,
     );
 
-    expect(await screen.findByText("Fix this paragraph")).toBeInTheDocument();
+    const marker = await screen.findByRole("button", {
+      name: "fix: Fix this paragraph",
+    });
+    expect(marker).toHaveAttribute("data-comment-type", "fix");
+    expect(marker).toHaveClass("comment-margin__dot--active");
+    expect(marker.querySelector(".comment-margin__dot-mark")).not.toBeNull();
+    expect(document.querySelector(".comment-thread-card")).toBeNull();
   });
 
-  it("drags the floating card around the viewport", async () => {
+  it("opens the comment rail and selects the matching comment", async () => {
+    const user = userEvent.setup();
     setTestState({
-      activeCommentId: "fix-root",
+      activeCommentId: null,
+      commentPanelOpen: false,
       comments: [
         makeComment({
           id: "fix-root",
@@ -432,94 +480,53 @@ describe("CommentMargin — floating comment card", () => {
       />,
     );
 
-    await screen.findByText("Fix this paragraph");
-    act(() => {
-      dispatchPointerDown(screen.getByTitle("Drag comment panel"), 20, 20);
-    });
-    await waitFor(() => {
-      const card = screen
-        .getByText("Fix this paragraph")
-        .closest(".comment-thread-card");
-      expect(card).not.toBeNull();
-      if (card) {
-        expect(card).toHaveClass("comment-thread-card--dragging");
-      }
-    });
-    act(() => {
-      dispatchPointerMove(140, 180);
-    });
-    fireEvent.pointerUp(window);
+    await user.click(
+      await screen.findByRole("button", {
+        name: "fix: Fix this paragraph",
+      }),
+    );
 
-    const card = screen
-      .getByText("Fix this paragraph")
-      .closest(".comment-thread-card");
-    expect(card).not.toBeNull();
-    if (card) {
-      expect(card).toHaveStyle({
-        position: "fixed",
-        left: "120px",
-        top: "160px",
-      });
-    }
+    const activeTab = getActiveTab(useAppStore.getState());
+    expect(activeTab?.activeCommentId).toBe("fix-root");
+    expect(activeTab?.commentPanelOpen).toBe(true);
+    expect(document.querySelector(".comment-thread-card")).toBeNull();
   });
 
-  it("resets the dragged position when another comment opens", async () => {
-    setTestState({
-      activeCommentId: "fix-root",
-      comments: [
-        makeComment({
-          id: "fix-root",
-          type: "fix",
-          text: "Fix this paragraph",
-          blockIndex: 0,
-        }),
-        makeComment({
-          id: "note-root",
-          type: "note",
-          text: "Check this paragraph",
-          blockIndex: 1,
-        }),
-      ],
-    });
+  it("uses the same marker selection behavior in peer mode", async () => {
+    const user = userEvent.setup();
+    setTestState(
+      {},
+      {
+        isPeerMode: true,
+        peerActiveFilePath: "readme.md",
+        peerCommentPanelOpen: false,
+        myPeerComments: [
+          makePeerComment({
+            id: "peer-fix",
+            commentType: "fix",
+            text: "Fix this peer paragraph",
+          }),
+        ],
+      },
+    );
 
     render(
       <CommentMargin
-        containerRef={createContainerRef([96, 180])}
+        containerRef={createContainerRef([96])}
         hoveredBlock={null}
         onAddComment={vi.fn()}
+        onPostPeerComment={vi.fn()}
+        peerMode
       />,
     );
 
-    await screen.findByText("Fix this paragraph");
-    act(() => {
-      dispatchPointerDown(screen.getByTitle("Drag comment panel"), 20, 20);
+    const marker = await screen.findByRole("button", {
+      name: "fix: Fix this peer paragraph",
     });
-    await waitFor(() => {
-      const card = screen
-        .getByText("Fix this paragraph")
-        .closest(".comment-thread-card");
-      expect(card).not.toBeNull();
-      if (card) {
-        expect(card).toHaveClass("comment-thread-card--dragging");
-      }
-    });
-    act(() => {
-      dispatchPointerMove(140, 180);
-    });
-    fireEvent.pointerUp(window);
+    expect(marker).toHaveAttribute("data-comment-type", "fix");
+    await user.click(marker);
 
-    act(() => {
-      useAppStore.getState().setActiveCommentId("note-root");
-    });
-
-    expect(await screen.findByText("Check this paragraph")).toBeInTheDocument();
-    const card = screen
-      .getByText("Check this paragraph")
-      .closest(".comment-thread-card");
-    expect(card).not.toBeNull();
-    if (card) {
-      expect(card).not.toHaveStyle({ position: "fixed" });
-      expect(card).toHaveStyle({ top: "180px" });
-    }
+    expect(useAppStore.getState().peerActiveCommentId).toBe("peer-fix");
+    expect(useAppStore.getState().peerCommentPanelOpen).toBe(true);
   });
 });

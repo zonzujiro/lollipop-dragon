@@ -2,8 +2,12 @@ import type { Comment } from "../types/criticmarkup";
 
 // Return rawContent with the comment's raw markup removed entirely.
 export function applyDelete(rawContent: string, comment: Comment): string {
+  const replacement =
+    comment.criticType === "highlight" ? (comment.highlightedText ?? "") : "";
   return (
-    rawContent.slice(0, comment.rawStart) + rawContent.slice(comment.rawEnd)
+    rawContent.slice(0, comment.rawStart) +
+    replacement +
+    rawContent.slice(comment.rawEnd)
   );
 }
 

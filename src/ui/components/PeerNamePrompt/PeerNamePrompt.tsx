@@ -1,27 +1,43 @@
-import './PeerNamePrompt.css'
-import { useState } from 'react'
-import { useAppStore } from '../../../store'
+import "./PeerNamePrompt.css";
+import { useState } from "react";
+import lollipopDragonLogo from "../../../assets/lollipop-dragon-logo.svg";
+import { useAppStore } from "../../../store";
 
 export function PeerNamePrompt() {
-  const setPeerName = useAppStore((s) => s.setPeerName)
-  const [name, setName] = useState('')
+  const setPeerName = useAppStore((state) => state.setPeerName);
+  const sharedContent = useAppStore((state) => state.sharedContent);
+  const [name, setName] = useState("");
 
   function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    const trimmed = name.trim()
+    e.preventDefault();
+    const trimmed = name.trim();
     if (!trimmed) {
-      return
+      return;
     }
-    setPeerName(trimmed)
+    setPeerName(trimmed);
   }
 
   return (
-    <div className="peer-prompt__overlay" role="dialog" aria-modal="true" aria-label="Enter your name">
+    <div
+      className="peer-prompt__overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Enter your name"
+    >
       <div className="peer-prompt">
-        <div className="peer-prompt__dragon" aria-hidden="true">🐉</div>
-        <h2 className="peer-prompt__title">You've been invited to review a document</h2>
+        <img className="peer-prompt__dragon" src={lollipopDragonLogo} alt="" />
+        <span className="peer-prompt__eyebrow">
+          Encrypted review invitation
+        </span>
+        <h2 className="peer-prompt__title">
+          You’ve been invited to review{" "}
+          {Object.keys(sharedContent?.tree ?? {}).length > 1
+            ? "a workspace"
+            : "a document"}
+        </h2>
         <p className="peer-prompt__desc">
-          Enter your name so the author knows who left the comments.
+          Enter your name so the author knows who left each comment. Your name
+          is only attached to feedback you submit.
         </p>
         <form onSubmit={handleSubmit} className="peer-prompt__form">
           <input
@@ -43,5 +59,5 @@ export function PeerNamePrompt() {
         </form>
       </div>
     </div>
-  )
+  );
 }

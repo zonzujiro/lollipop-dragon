@@ -1,4 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MarkdownRenderer } from "./index";
 import { useAppStore } from "../../../store";
@@ -21,6 +23,23 @@ beforeEach(() => {
 });
 
 describe("MarkdownRenderer — CommonMark", () => {
+  it("keeps the active file title visible above the document", () => {
+    setTestState({
+      fileName: "overview.md",
+      activeFilePath: "database/overview.md",
+      rawContent: "# Overview",
+    });
+
+    render(<MarkdownRenderer />);
+
+    expect(screen.getByText("database/overview.md")).toHaveClass(
+      "document-kicker",
+    );
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Overview" }),
+    ).toBeInTheDocument();
+  });
+
   it("renders headings h1–h3", () => {
     setContent("# H1\n## H2\n### H3");
     render(<MarkdownRenderer />);
@@ -128,6 +147,102 @@ describe("MarkdownRenderer — CommonMark", () => {
   });
 });
 
+describe("MarkdownRenderer — commenting", () => {
+  it("opens a whole-line composer from a code gutter without polluting code text", async () => {
+    setContent("```ts\nconst first = 1;\nconst second = 2;\n```");
+    const { container } = render(<MarkdownRenderer />);
+
+    const code = container.querySelector("code[data-anchor-root]");
+    expect(code?.textContent).toBe("const first = 1;\nconst second = 2;\n");
+    expect(container.querySelector(".code-comment-surface")?.textContent).toBe(
+      "const first = 1;\nconst second = 2;\n",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Comment on line 2" }));
+
+    expect(await screen.findByText("“const second = 2;”")).toBeInTheDocument();
+  });
+
+  it("carries the same whole-line code anchor in peer mode", async () => {
+    resetTestStore();
+    setTestState(
+      {},
+      {
+        isPeerMode: true,
+        peerName: "Marta",
+        peerRawContent: "```js\nrepeat();\nrepeat();\n```",
+        peerFileName: "sample.md",
+        peerActiveFilePath: "sample.md",
+        sharedContent: {
+          version: "2.0",
+          created_at: new Date().toISOString(),
+          tree: { "sample.md": "```js\nrepeat();\nrepeat();\n```" },
+        },
+      },
+    );
+    render(<MarkdownRenderer />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Comment on line 2" }));
+    await userEvent.type(
+      await screen.findByLabelText("Comment text"),
+      "Check the repeated call.",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(useAppStore.getState().myPeerComments[0]?.blockRef).toMatchObject({
+      blockIndex: 0,
+      anchorVersion: 1,
+      quote: "repeat();",
+      occurrence: 2,
+    });
+  });
+
+  it("keeps the range composer open through the click emitted after selection", async () => {
+    setContent("Select this exact phrase for review.");
+    render(<MarkdownRenderer />);
+    const paragraph = screen.getByText("Select this exact phrase for review.");
+    const textNode = paragraph.firstChild;
+    if (!textNode) {
+      throw new Error("Expected the paragraph to contain a text node");
+    }
+
+    const range = document.createRange();
+    range.setStart(textNode, 7);
+    range.setEnd(textNode, 24);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+
+    fireEvent.mouseUp(paragraph);
+    expect(await screen.findByText("“this exact phrase”")).toBeInTheDocument();
+
+    fireEvent.click(paragraph);
+
+    expect(screen.getByText("“this exact phrase”")).toBeInTheDocument();
+    expect(screen.getByLabelText("Comment text")).toBeInTheDocument();
+
+    fireEvent.click(document.body);
+    expect(screen.queryByLabelText("Comment text")).not.toBeInTheDocument();
+  });
+});
+
+describe("MarkdownRenderer — responsive reading width", () => {
+  it("uses most of the reading pane while preserving the comment lane", () => {
+    const markdownRendererCss = readFileSync(
+      "src/ui/components/MarkdownRenderer/MarkdownRenderer.css",
+      "utf8",
+    );
+    expect(markdownRendererCss).toContain("--document-body-width: 1450px");
+    expect(markdownRendererCss).toContain("--document-viewer-width: 1498px");
+    expect(markdownRendererCss).toContain(
+      "width: min(90%, var(--document-viewer-width))",
+    );
+    expect(markdownRendererCss).toContain(
+      "width: min(calc(90% - 3rem), var(--document-body-width))",
+    );
+  });
+});
+
 describe("MarkdownRenderer — GFM extras", () => {
   it("renders GFM tables", () => {
     setContent("| Name | Age |\n|------|-----|\n| Alice | 30 |\n| Bob | 25 |");
@@ -218,7 +333,7 @@ describe("MarkdownRenderer — read-only banner", () => {
     expect(screen.getByRole("status").textContent).toMatch(/read-only/i);
   });
 
-  it("shows a restore banner instead of the generic read-only banner when access must be reopened", async () => {
+  it("shows a restore banner instead of the generic read-only banner when access must be reopened", () => {
     const reopenTab = vi.fn();
     useAppStore.setState({ reopenTab });
     setTestState({
