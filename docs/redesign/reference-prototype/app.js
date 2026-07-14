@@ -60,7 +60,17 @@ function freshDocs() {
       { t: "h1", h: "Migration Risks" },
       { t: "p", h: "Three risks dominate the cutover plan: replication lag during the sync phase, split-brain writes if the proxy flips early, and silent schema drift between the prototype and production." },
       { t: "h2", h: "Failure Modes" },
-      { t: "html", h: MERMAID_SVG },
+      { t: "mermaid", view: "diagram",
+        src: "flowchart LR\n  sync[sync running] --> lag{lag > 30 s}\n  lag -->|abort| halt[halt cutover]\n  lag -->|wait| retry[retry window]",
+        h: `<div class="mermaid-box" style="border:1px solid var(--line);border-radius:10px;background:var(--bg-sunken);padding:24px 22px;display:flex;justify-content:center;">
+<svg width="470" height="182" viewBox="0 0 470 182" font-family="-apple-system" font-size="12.5">
+  <path d="M144 46h28M304 46h28M230 66v40" stroke="var(--ink-muted)" stroke-width="1.5" fill="none"/>
+  <path d="M176 46l-7-4v8zM336 46l-7-4v8zM230 110l-4-7h8z" fill="var(--ink-muted)"/>
+  <g class="mnode" data-label="sync running"><rect x="20" y="26" width="124" height="40" rx="8" fill="var(--surface)" stroke="var(--line-strong)" stroke-width="1.5"/><text x="82" y="50" text-anchor="middle" fill="currentColor">sync running</text></g>
+  <g class="mnode" data-label="lag &gt; 30 s"><rect x="176" y="26" width="108" height="40" rx="8" fill="var(--surface)" stroke="var(--line-strong)" stroke-width="1.5"/><text x="230" y="50" text-anchor="middle" fill="currentColor">lag &gt; 30 s</text></g>
+  <g class="mnode" data-label="halt cutover"><rect x="336" y="26" width="114" height="40" rx="8" fill="var(--surface)" stroke="var(--line-strong)" stroke-width="1.5"/><text x="393" y="50" text-anchor="middle" fill="currentColor">halt cutover</text></g>
+  <g class="mnode" data-label="retry window"><rect x="168" y="114" width="124" height="40" rx="8" fill="var(--surface)" stroke="var(--line-strong)" stroke-width="1.5"/><text x="230" y="138" text-anchor="middle" fill="currentColor">retry window</text></g>
+</svg></div>` },
       { t: "p", h: "The replication watchdog aborts automatically when lag stays above the threshold for two consecutive checks. Manual intervention is expected to be rare and is limited to the on-call runbook." },
       { t: "pre", h: "<span style='color:var(--ink-muted)'># watchdog thresholds</span>\nlag_abort_seconds: 30\ndrift_check: on_schema_change" },
     ]},
@@ -120,6 +130,14 @@ function freshComments() {
     { id: "c3", file: "database/comparison.md", block: 8, type: "expand", author: "Alex", when: "1 h",
       quote: "keeping the SQLite file read-only for 14 days",
       text: "Add the exact alert thresholds and who owns the rollback decision.",
+      state: "open", thread: [] },
+    { id: "c8", file: "database/comparison.md", block: 7, type: "fix", author: "You", when: "10 min",
+      quote: "--schema map.yaml --target $PG_URL",
+      text: "The --schema flag died in v2 — the schema map is auto-detected now. Drop it from the command.",
+      state: "open", thread: [] },
+    { id: "c7", file: "database/migration-risks.md", block: 3, type: "question", author: "Marta", when: "25 min",
+      quote: "retry window",
+      text: "What's the max retry budget before we abort for the day?",
       state: "open", thread: [] },
     { id: "c6", file: "database/comparison.md", block: 3, type: "clarify", author: "Alex", when: "35 min",
       quote: "the best choice for this project given the relational access patterns",
@@ -274,11 +292,20 @@ function renderTree() {
   });
 }
 
+function preLines(html) {
+  const lines = html.split("\n");
+  const body = lines.map((line, i) =>
+    `<span class="cl" data-line="${i}">${line}${i < lines.length - 1 ? "\n" : ""}</span>`
+  ).join("");
+  return `<pre class="numbered">${body}</pre>`;
+}
+
 function blockHTML(b) {
   if (b.t === "h1") return `<h1>${b.h}</h1>`;
   if (b.t === "h2") return `<h2>${b.h}</h2>`;
   if (b.t === "p") return `<p>${b.h}</p>`;
-  if (b.t === "pre") return `<pre>${b.h}</pre>`;
+  if (b.t === "pre") return preLines(b.h);
+  if (b.t === "mermaid") return b.view === "source" ? preLines(esc(b.src)) : b.h;
   if (b.t === "table") return `<table>${b.h}</table>`;
   if (b.t === "ul") return `<ul style="padding-left:22px;display:flex;flex-direction:column;gap:6px;">${b.h}</ul>`;
   if (b.t === "quote") return `<blockquote>${b.h}</blockquote>`;
@@ -291,7 +318,9 @@ const _plainDiv = document.createElement("div");
 function plainOf(html) { _plainDiv.innerHTML = html; return _plainDiv.textContent; }
 function blockPlain(file, block) {
   const b = DOCS[file] && DOCS[file].blocks[block];
-  return b ? plainOf(b.h) : "";
+  if (!b) return "";
+  // mermaid comments anchor against the SOURCE — that's what lives in the file
+  return b.t === "mermaid" ? b.src : plainOf(b.h);
 }
 
 // derive {start,end} ranges for seed comments that only carry a quote
@@ -360,6 +389,29 @@ function applyHighlights(root, comments) {
   });
 }
 
+// diagram view: a comment whose quote equals a node label rings that node and pins a dot to it
+function decorateMermaid(blk, comments) {
+  const body = blk.querySelector(".blk-body");
+  const blkBox = blk.getBoundingClientRect();
+  comments.filter(c => !isOrphan(c)).forEach(c => {
+    const node = Array.from(body.querySelectorAll(".mnode"))
+      .find(n => n.dataset.label === c.quote);
+    if (!node) return; // e.g. a source-line comment — margin marker only
+    const rect = node.querySelector("rect");
+    rect.style.stroke = `var(--c-${c.type})`;
+    rect.style.strokeWidth = c.id === state.sel ? "4" : "2.5";
+    const box = rect.getBoundingClientRect();
+    const pin = document.createElement("span");
+    pin.className = "mpin" + (c.id === state.sel ? " sel" : "") + (c.fresh ? " fresh" : "");
+    pin.dataset.cids = c.id;
+    pin.title = `${c.type} — ${c.author}`;
+    pin.style.background = `var(--c-${c.type})`;
+    pin.style.left = `${box.right - blkBox.left - 7}px`;
+    pin.style.top = `${box.top - blkBox.top - 7}px`;
+    blk.appendChild(pin);
+  });
+}
+
 // character offset of a DOM point within root
 function offsetIn(root, node, nodeOffset) {
   const r = document.createRange();
@@ -381,14 +433,23 @@ function renderDoc(container, file, opts) {
       `<span class="marker${c.id === state.sel ? " sel" : ""}${c.fresh ? " fresh" : ""}" data-cid="${c.id}" style="--mark-line:var(--c-${c.type})" title="${c.type}"><span class="dot" style="background:var(--c-${c.type})"></span></span>`
     ).join("");
     const lane = `<span class="blk-lane">${markers}<span class="blk-add" data-add="${i}" title="Comment on this block (C)">+</span></span>`;
-    out += `<div class="blk" data-i="${i}" data-file="${esc(file)}">${lane}<div class="blk-body">${blockHTML(b)}</div></div>`;
+    const tools = b.t === "mermaid"
+      ? `<span class="blk-tools"><button class="mchip ${b.view !== "source" ? "on" : ""}" data-mview="diagram" data-mblock="${i}">diagram</button><button class="mchip ${b.view === "source" ? "on" : ""}" data-mview="source" data-mblock="${i}">source</button></span>`
+      : "";
+    out += `<div class="blk" data-i="${i}" data-file="${esc(file)}">${lane}${tools}<div class="blk-body">${blockHTML(b)}</div></div>`;
   });
   container.innerHTML = out;
   // paint character-range highlights (overlap-aware) on top of the rendered DOM
   container.querySelectorAll(".blk").forEach(blk => {
     const i = parseInt(blk.dataset.i, 10);
+    const b = doc.blocks[i];
     const here = comments.filter(c => c.block === i && c.range);
-    if (here.length) applyHighlights(blk.querySelector(".blk-body"), here);
+    if (!here.length) return;
+    if (b.t === "mermaid" && b.view !== "source") {
+      decorateMermaid(blk, here);
+    } else {
+      applyHighlights(blk.querySelector(".blk-body"), here);
+    }
   });
   if (state.composer && state.composer.file === file && state.composer.peer === !!peer) {
     const blk = container.querySelector(`.blk[data-i="${state.composer.block}"]`);
@@ -894,7 +955,37 @@ function resetDemo() {
 /* ---------------- events ---------------- */
 
 document.addEventListener("click", (e) => {
-  const t = e.target.closest("[data-action],[data-file],[data-peer-file],[data-ws],[data-close],[data-add-tab],[data-cids],[data-cid],[data-add],[data-filter],[data-resolve],[data-type],[data-submit],[data-copy-link],[data-copy-slack],[data-revoke],[data-scope],[data-stop-agent],[data-dismiss-run],[data-copy-prompt],[data-slide],[data-pi]");
+  // mermaid node → composer anchored to the node's label text (maps to a source range)
+  const mnode = e.target.closest(".mnode");
+  if (mnode && (state.view === "host" || state.view === "peer")) {
+    const blk = mnode.closest(".blk");
+    const file = blk.dataset.file;
+    const bi = parseInt(blk.dataset.i, 10);
+    const label = mnode.dataset.label;
+    const src = blockPlain(file, bi);
+    const idx = src.indexOf(label);
+    openComposer(file, bi, label, state.view === "peer", idx !== -1 ? { start: idx, end: idx + label.length } : null);
+    return;
+  }
+  // code line gutter: a click on the line number / + zone comments that whole line
+  const codeLine = e.target.closest(".cl");
+  if (codeLine && e.offsetX < 0 && (state.view === "host" || state.view === "peer")) {
+    const blk = codeLine.closest(".blk");
+    const file = blk.dataset.file;
+    const bi = parseInt(blk.dataset.i, 10);
+    const plain = blockPlain(file, bi);
+    const lines = plain.split("\n");
+    const li = parseInt(codeLine.dataset.line, 10);
+    let lineStart = 0;
+    for (let k = 0; k < li; k++) { lineStart += lines[k].length + 1; }
+    const quote = lines[li].trim();
+    if (quote) {
+      const start = lineStart + lines[li].indexOf(quote);
+      openComposer(file, bi, quote, state.view === "peer", { start, end: start + quote.length });
+    }
+    return;
+  }
+  const t = e.target.closest("[data-action],[data-file],[data-peer-file],[data-ws],[data-close],[data-add-tab],[data-mview],[data-cids],[data-cid],[data-add],[data-filter],[data-resolve],[data-type],[data-submit],[data-copy-link],[data-copy-slack],[data-revoke],[data-scope],[data-stop-agent],[data-dismiss-run],[data-copy-prompt],[data-slide],[data-pi]");
   if (!t) {
     // click outside composer closes it
     if (state.composer && !e.target.closest(".composer")) closeComposer();
@@ -930,6 +1021,13 @@ document.addEventListener("click", (e) => {
     const other = state.openWs.includes("ws1") ? "ws2" : "ws1";
     if (!state.openWs.includes(other)) { enterHost(other); }
     else toast("In the real app this opens the OS file picker");
+    return;
+  }
+  if (a.mview) {
+    const blk = t.closest(".blk");
+    const doc = DOCS[blk.dataset.file];
+    doc.blocks[parseInt(a.mblock, 10)].view = a.mview;
+    rerenderDocs();
     return;
   }
   if (a.file) { ws().activeFile = a.file; state.composer = null; renderHost(); return; }
@@ -1134,6 +1232,12 @@ function boot() {
     if (h === "host-share") setTimeout(openShare, 300);
     if (h === "host-palette") setTimeout(openPalette, 300);
     if (h === "host-dark") document.body.classList.add("dark");
+    if (h === "host-mermaid" || h === "host-mermaid-src") {
+      WORKSPACES.ws1.activeFile = "database/migration-risks.md";
+      if (h === "host-mermaid-src") { DOCS["database/migration-risks.md"].blocks[3].view = "source"; }
+      renderHost();
+      setTimeout(() => selectComment("c7"), 300);
+    }
   } else if (h === "peer") {
     state.peerFile = "database/comparison.md";
     setView("peer");

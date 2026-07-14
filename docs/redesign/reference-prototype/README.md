@@ -12,6 +12,7 @@ The prototype demonstrates the full "Reading Room" design from the proposal deck
    - **Anchors are character-precise** — a word, half a sentence, anything. Not lines, not blocks.
    - **Overlaps are first-class** — select text that's already commented (try the Recommendation paragraph, which ships with a fix and a clarify sharing a span). Each comment keeps its own colored underline stripe; the shared span reads darker; clicking a shared span cycles through its comments.
    - **Orphan grace** — if the agent rewrites anchored text, the comment keeps its quote and shows "anchor released" instead of mis-highlighting or vanishing (visible mid-agent-run on the clarify comment).
+     3b. **Diagrams & code** — open `database/migration-risks.md`: click any Mermaid node to comment it (the anchor is the node's label; the comment draws as a ring + pin), and flip the `diagram / source` toggle to see the same comment highlighted in the source text. In any code block, hover to reveal line numbers and click one to comment that whole line.
 4. **Triage** — `J`/`K` walk comments across files; click a card or a highlight to jump either way; hover a card to **Resolve**; filter chips by type / Resolved.
 5. **Run agent** — the hero moment. Comments queue → in-progress → resolved, edits stream into the page as teal diffs, the terminal drawer narrates. Stop or dismiss when done.
 6. **Share** — the share sheet: scope, expiry, encrypted-link explanation, active shares with revoke.
@@ -36,7 +37,7 @@ The prototype demonstrates the full "Reading Room" design from the proposal deck
 
 ## Deep links (for demos & screenshots)
 
-`index.html#host` · `#peer` · `#present` · `#host-agent` (auto-runs the agent) · `#host-composer` · `#host-share` · `#host-palette` · `#host-dark`
+`index.html#host` · `#peer` · `#present` · `#host-agent` (auto-runs the agent) · `#host-composer` · `#host-share` · `#host-palette` · `#host-dark` · `#host-mermaid` (node comment) · `#host-mermaid-src` (same comment in source view)
 
 ## Files
 

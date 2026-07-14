@@ -92,3 +92,24 @@ Rules:
 ## 7. Navigation & ordering
 
 Comment order everywhere (rail grouping, J/K walk) = file order in the tree → block index → `range.start` (block-level = -1, first). J/K crosses file boundaries (switches the active file, scrolls the block to center, selects marker+card+spans).
+
+## 8. Special blocks: code fences & Mermaid
+
+Reference implementation: `reference-prototype/app.js` (`preLines`, `decorateMermaid`, the `.mnode`/`.cl` click handlers) and demo routes `#host-mermaid`, `#host-mermaid-src`.
+
+### Code fences
+
+- Selection anchoring works over the code text exactly like any block (offsets in the block's plain text = the fence content; inline syntax-highlight spans don't affect offsets).
+- **Line gutter:** line numbers fade in on block hover (CSS counters — they must never enter `textContent`); clicking a line number anchors a comment to that whole line (`quote` = the line, trimmed; range = its span in the block plain text). Line numbers are a UI affordance only — nothing line-based is persisted; the durable anchor stays `quote` + `occurrence`.
+- **Serialization is always the anchored-standalone form placed after the closing fence.** CriticMarkup is never written inside a fence — the parser already treats fence content as opaque, and code must stay copy-pasteable/executable.
+- Rendering: tints + underline stripes draw over the syntax highlighting; taxonomy colors must hold 3:1 against the code background (`--bg-sunken`) in both themes.
+
+### Mermaid diagrams
+
+Comments anchor against the **diagram source** — that is the text that actually lives in the markdown file. Three levels:
+
+1. **Block-level** via the margin `+` (unchanged).
+2. **Node-level:** clicking a rendered node opens the composer with `quote` = the node's label text; the range is that label's occurrence in the source. Rendering in diagram view: a type-colored ring on the node (stroke) plus a small corner **pin** (click → select; multiple comments on one node stack pins and the ring takes the first comment's color). In source view the very same comment renders as a normal text highlight.
+3. **Source view:** every Mermaid block gets a `diagram / source` toggle (chips rendered outside the anchored-text root so they never pollute offsets). In source view the block behaves exactly like a code fence — selection anchoring and the line gutter included.
+
+Orphaning: renaming a node label breaks the quote match → standard orphan grace (§4). Serialization: anchored-standalone after the block, same rule as code. Diagram re-layout can never break an anchor because nothing anchors to coordinates — only to source text.
