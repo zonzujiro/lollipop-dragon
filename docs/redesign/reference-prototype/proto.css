@@ -183,6 +183,13 @@ textarea {
   gap: 3vw;
   background: var(--bg);
 }
+.bh-stamp {
+  width: 46px;
+  height: 58px;
+  object-fit: contain;
+  display: block;
+  margin-bottom: 2.5vh;
+}
 .bh-kicker {
   display: flex;
   align-items: center;
@@ -444,6 +451,26 @@ textarea {
   font-size: 12.5px;
   font-weight: 700;
   letter-spacing: 0.04em;
+}
+.bh-locklist {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 52ch;
+}
+.bh-locklist li {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  font-size: 14.5px;
+  line-height: 1.55;
+  font-weight: 600;
+  text-transform: lowercase;
+  color: rgba(251, 237, 211, 0.88);
+}
+.bh-locklist .mk {
+  margin-top: 4px;
 }
 .bh-band--handoff {
   padding-bottom: 96px;
