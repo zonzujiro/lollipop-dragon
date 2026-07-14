@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { insertComment, insertThreadReply } from "./insertComment";
 import { makeComment } from "../testing/testHelpers";
+import { assignBlockIndices } from "./blockIndex";
+import { parseCriticMarkup } from "./criticmarkup";
 
 describe("insertComment — plain content (no existing markup)", () => {
   it("appends a note comment (no prefix) after the first paragraph", () => {
@@ -80,6 +82,125 @@ describe("insertComment — plain content (no existing markup)", () => {
     expect(result).toMatch(
       /Only paragraph\.\{>>question: Why is this here\? \[markreview id="mr-[^"]+" thread="mr-[^"]+"\]<<}/,
     );
+  });
+});
+
+describe("insertComment range anchors", () => {
+  it("keeps fence bytes intact and serializes a repeated-line anchor after the fence", () => {
+    const fence = [
+      "```ts",
+      "const target = read();",
+      "const target = read();",
+      "```",
+    ].join("\n");
+    const rawContent = `${fence}\n\nAfter.`;
+    const parsed = parseCriticMarkup(rawContent);
+    const result = insertComment({
+      rawContent,
+      existingComments: parsed.comments,
+      cleanMarkdown: parsed.cleanMarkdown,
+      blockIndex: 0,
+      type: "fix",
+      text: "Use a distinct name.",
+      anchor: {
+        quote: "const target = read();",
+        occurrence: 2,
+        start: 23,
+        end: 45,
+      },
+    });
+
+    expect(result.slice(0, fence.length)).toBe(fence);
+    expect(result).toBe(
+      `${fence}\n{>>fix: Use a distinct name. @@ "const target = read();" @2<<}\n\nAfter.`,
+    );
+    const reparsed = parseCriticMarkup(result);
+    const [comment] = assignBlockIndices(
+      reparsed.comments,
+      reparsed.cleanMarkdown,
+    );
+    expect(comment.blockIndex).toBe(0);
+    expect(comment.anchor).toMatchObject({
+      quote: "const target = read();",
+      occurrence: 2,
+      start: 23,
+      end: 45,
+      orphaned: false,
+    });
+  });
+
+  it("wraps an unoccupied mid-sentence range while preserving markdown", () => {
+    const rawContent = "Read **this exact text** now.";
+    const parsed = parseCriticMarkup(rawContent);
+    const result = insertComment({
+      rawContent,
+      existingComments: parsed.comments,
+      cleanMarkdown: parsed.cleanMarkdown,
+      blockIndex: 0,
+      type: "fix",
+      text: "Tighten this.",
+      anchor: {
+        quote: "this exact text",
+        occurrence: 1,
+        start: 5,
+        end: 20,
+      },
+    });
+
+    expect(result).toBe(
+      "Read **{==this exact text==}{>>fix: Tighten this.<<}** now.",
+    );
+    const reparsed = parseCriticMarkup(result);
+    const [comment] = assignBlockIndices(
+      reparsed.comments,
+      reparsed.cleanMarkdown,
+    );
+    expect(comment.anchor?.quote).toBe("this exact text");
+  });
+
+  it("uses anchored standalone form when ranges overlap", () => {
+    const rawContent = "One {==shared range==}{>>fix: first<<} here.";
+    const parsed = parseCriticMarkup(rawContent);
+    const result = insertComment({
+      rawContent,
+      existingComments: parsed.comments,
+      cleanMarkdown: parsed.cleanMarkdown,
+      blockIndex: 0,
+      type: "clarify",
+      text: "second",
+      anchor: {
+        quote: "shared range",
+        occurrence: 1,
+        start: 4,
+        end: 16,
+      },
+    });
+
+    expect(result).toBe(
+      'One {==shared range==}{>>fix: first<<} here.{>>clarify: second @@ "shared range"<<}',
+    );
+    expect(parseCriticMarkup(result).comments).toHaveLength(2);
+  });
+
+  it("escapes anchored quotes and keeps occurrence identity", () => {
+    const rawContent = 'Say "yes" and {=="yes"==}{>>note: existing<<}.';
+    const parsed = parseCriticMarkup(rawContent);
+    const result = insertComment({
+      rawContent,
+      existingComments: parsed.comments,
+      cleanMarkdown: parsed.cleanMarkdown,
+      blockIndex: 0,
+      type: "question",
+      text: "Why?",
+      anchor: {
+        quote: '"yes"',
+        occurrence: 2,
+        start: 14,
+        end: 19,
+      },
+    });
+
+    expect(result).toContain('@@ "\\"yes\\"" @2');
   });
 });
 

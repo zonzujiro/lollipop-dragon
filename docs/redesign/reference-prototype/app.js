@@ -206,6 +206,7 @@ const state = {
   agent: null,               // {statuses, progress, doneCount, finished}
   peerName: "Marta",
   peerComments: [],
+  restoreLock: false,       // browser dropped the folder handle — read-only until restored
   present: null,             // {slides, i}
   sidebar: true,
   rail: true,
@@ -507,6 +508,12 @@ function renderRail() {
   // list
   const list = $("#rail-list");
   list.innerHTML = "";
+  if (state.restoreLock) {
+    const lockStrip = document.createElement("div");
+    lockStrip.className = "resolved-strip";
+    lockStrip.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--c-rewrite)" stroke-width="2.4"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg> read-only until folder access is restored`;
+    list.appendChild(lockStrip);
+  }
   const pool = state.filter === "resolved" ? resolved : open.filter(c => state.filter === "all" || c.type === state.filter);
   const byFile = w.files.filter(f => pool.some(c => c.file === f));
   if (!pool.length) {
@@ -561,6 +568,9 @@ function renderHost() {
   renderTree();
   renderDoc($("#doc-col"), ws().activeFile, {});
   renderRail();
+  $("#restore-banner").hidden = !state.restoreLock;
+  $("#host-pane").classList.toggle("locked", state.restoreLock);
+  $("#btn-agent").classList.toggle("dimmed", state.restoreLock);
   $("#file-rail").classList.toggle("collapsed", !state.sidebar || ws().kind === "file");
   $("#sidebar-restore").classList.toggle("show", !state.sidebar && ws().kind !== "file");
   $("#rail").classList.toggle("collapsed", !state.rail);
@@ -632,6 +642,10 @@ function buildComposer() {
 }
 
 function openComposer(file, block, quote, peer, range) {
+  if (state.restoreLock && !peer) {
+    toast("Read-only — restore folder access first");
+    return;
+  }
   state.composer = { file, block, quote: quote || null, range: range || null, type: state.composer && state.composer.type || "fix", peer: !!peer, draft: "" };
   rerenderDocs();
 }
@@ -711,6 +725,7 @@ function nav(dir) {
 /* ---------------- agent run ---------------- */
 
 function runAgent() {
+  if (state.restoreLock) { toast("Read-only — restore folder access first"); return; }
   if (state.agent && !state.agent.finished) return;
   const open = COMMENTS.filter(c => c.state === "open");
   if (!open.length) { toast("No open comments — the review is clean"); return; }
@@ -796,6 +811,7 @@ function rerenderHostSoft() { if (state.view === "host") renderHost(); }
 /* ---------------- share sheet ---------------- */
 
 function openShare() {
+  if (state.restoreLock) { toast("Share management resumes once folder access is restored"); return; }
   const w = ws();
   const sheet = $("#share-sheet");
   sheet.innerHTML = `
@@ -1008,6 +1024,13 @@ document.addEventListener("click", (e) => {
   if (a.action === "toggle-sidebar") { state.sidebar = !state.sidebar; renderHost(); return; }
   if (a.action === "toggle-term") { $("#term").classList.toggle("collapsed"); return; }
   if (a.action === "save-copy") { toast("Saved research-notes.zip — CriticMarkup included", true); return; }
+  if (a.action === "restore-access") {
+    state.restoreLock = false;
+    renderHost();
+    toast("Access restored — commenting is back", true);
+    return;
+  }
+  if (a.action === "restore-other") { toast("In the real app this opens the OS folder picker"); return; }
 
   if (a.ws) { state.activeWs = a.ws; renderHost(); return; }
   if (a.close) {
@@ -1232,6 +1255,10 @@ function boot() {
     if (h === "host-share") setTimeout(openShare, 300);
     if (h === "host-palette") setTimeout(openPalette, 300);
     if (h === "host-dark") document.body.classList.add("dark");
+    if (h === "host-restore") {
+      state.restoreLock = true;
+      renderHost();
+    }
     if (h === "host-mermaid" || h === "host-mermaid-src") {
       WORKSPACES.ws1.activeFile = "database/migration-risks.md";
       if (h === "host-mermaid-src") { DOCS["database/migration-risks.md"].blocks[3].view = "source"; }

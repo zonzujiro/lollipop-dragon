@@ -28,6 +28,9 @@ export interface PeerComment {
   blockRef: {
     blockIndex: number;
     contentPreview: string; // first 80 chars of block text
+    anchorVersion?: 1;
+    quote?: string;
+    occurrence?: number;
   };
   commentType: CommentType;
   text: string;

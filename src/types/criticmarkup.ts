@@ -36,6 +36,19 @@ export interface CommentThreadMetadata {
   authorLabel?: string;
 }
 
+export interface CommentAnchor {
+  quote: string;
+  occurrence: number;
+  start: number;
+  end: number;
+  orphaned?: boolean;
+}
+
+export type CommentAnchorDraft = Pick<
+  CommentAnchor,
+  "quote" | "occurrence" | "start" | "end"
+>;
+
 export interface Comment {
   id: string;
   criticType: CriticType;
@@ -54,4 +67,5 @@ export interface Comment {
   blockIndex?: number; // nearest top-level block index (step 2.4)
   filePath?: string; // set when aggregating comments across files
   thread?: CommentThreadMetadata;
+  anchor?: CommentAnchor;
 }

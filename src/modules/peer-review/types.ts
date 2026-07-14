@@ -17,18 +17,25 @@ export interface PeerReviewState {
   peerResolvedComments: Comment[];
   peerComments: Comment[];
   peerCommentPanelOpen: boolean;
+  peerActiveCommentId: string | null;
 }
 
 export interface PeerReviewActions {
   setPeerName: (name: string) => void;
-  loadSharedContent: (options?: { discardUnsubmitted?: boolean }) => Promise<void>;
+  loadSharedContent: (options?: {
+    discardUnsubmitted?: boolean;
+  }) => Promise<void>;
   selectPeerFile: (path: string) => void;
-  postPeerComment: (
-    blockIndex: number,
-    type: CommentType,
-    text: string,
-    path: string,
-  ) => void;
+  postPeerComment: (input: {
+    blockIndex: number;
+    type: CommentType;
+    text: string;
+    path: string;
+    anchor?: {
+      quote: string;
+      occurrence: number;
+    };
+  }) => void;
   deletePeerComment: (commentId: string) => void;
   editPeerComment: (commentId: string, type: CommentType, text: string) => void;
   setPeerDraftCommentOpen: (open: boolean) => void;

@@ -12,6 +12,7 @@
   position: absolute;
   inset: 0;
   background: rgb(15 23 42 / 0.35);
+  backdrop-filter: blur(8px);
 }
 
 .agent-settings__panel {
@@ -25,9 +26,9 @@
   gap: 1rem;
   padding: 1rem;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-xl);
   background: var(--surface);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-xl);
 }
 
 .agent-settings__header {

@@ -9,7 +9,7 @@
 | `J` / `K`                       | host                                  | next / previous open comment (crosses files; ordering per 03 §7)                           |
 | `C`                             | host, peer                            | open composer on the hovered block (fallback: selected comment's block, else first block)  |
 | text selection                  | host, peer                            | opens composer with a character-range anchor                                               |
-| `1`–`6`                         | composer open, focus outside textarea | set comment type (fix/rewrite/expand/clarify/question/remove)                              |
+| `1`–`2`                         | composer open, focus outside textarea | set comment type (`1` = clarify, `2` = rewrite)                                            |
 | `⌘↵`                            | composer textarea                     | submit comment                                                                             |
 | `⌘↵`                            | host, no composer                     | run agent on open comments (desktop runtime)                                               |
 | `⌘K`                            | everywhere                            | command palette (toggle)                                                                   |

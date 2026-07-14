@@ -1,23 +1,27 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { ConnectionStatus } from "./index";
-import { makeShare, resetTestStore, setTestState } from "../../../testing/testHelpers";
+import {
+  makeShare,
+  resetTestStore,
+  setTestState,
+} from "../../../testing/testHelpers";
 
 beforeEach(() => {
   resetTestStore();
 });
 
 describe("ConnectionStatus - peer mode", () => {
-  it("hides the healthy connected state in peer mode", () => {
+  it("renders the healthy live state in peer mode", () => {
     setTestState({}, { isPeerMode: true, relayStatus: "connected" });
-    const { container } = render(<ConnectionStatus />);
-    expect(container.firstChild).toBeNull();
+    render(<ConnectionStatus />);
+    expect(screen.getByText("Live")).toBeInTheDocument();
   });
 
   it('renders "Connecting..." when relayStatus is connecting in peer mode', () => {
     setTestState({}, { isPeerMode: true, relayStatus: "connecting" });
     render(<ConnectionStatus />);
-    expect(screen.getByText("Connecting...")).toBeInTheDocument();
+    expect(screen.getByText("Connecting…")).toBeInTheDocument();
   });
 
   it('renders "Offline" when relayStatus is disconnected in peer mode', () => {
@@ -30,14 +34,14 @@ describe("ConnectionStatus - peer mode", () => {
     setTestState({}, { isPeerMode: true, relayStatus: "connecting" });
     render(<ConnectionStatus />);
     const statusElement = screen
-      .getByText("Connecting...")
+      .getByText("Connecting…")
       .closest(".connection-status");
     expect(statusElement).toHaveAttribute("data-status", "connecting");
   });
 });
 
 describe("ConnectionStatus - host mode with active shares", () => {
-  it("hides the healthy connected state when active tab has a non-expired share", () => {
+  it("renders the healthy live state when active tab has a non-expired share", () => {
     const activeShare = makeShare({
       expiresAt: new Date(Date.now() + 86400000).toISOString(),
     });
@@ -45,8 +49,8 @@ describe("ConnectionStatus - host mode with active shares", () => {
       { shares: [activeShare] },
       { isPeerMode: false, relayStatus: "connected" },
     );
-    const { container } = render(<ConnectionStatus />);
-    expect(container.firstChild).toBeNull();
+    render(<ConnectionStatus />);
+    expect(screen.getByText("Live")).toBeInTheDocument();
   });
 
   it("renders non-healthy status when active tab has a non-expired share", () => {
@@ -58,7 +62,7 @@ describe("ConnectionStatus - host mode with active shares", () => {
       { isPeerMode: false, relayStatus: "connecting" },
     );
     render(<ConnectionStatus />);
-    expect(screen.getByText("Connecting...")).toBeInTheDocument();
+    expect(screen.getByText("Connecting…")).toBeInTheDocument();
   });
 
   it("does not render when active tab only has expired shares", () => {

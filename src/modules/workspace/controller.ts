@@ -585,6 +585,7 @@ export function createWorkspaceControllerActions<
   | "switchTab"
   | "openFileInNewTab"
   | "openDirectoryInNewTab"
+  | "openDirectoryHandleInNewTab"
   | "reopenTab"
   | "selectFile"
   | "refreshFile"
@@ -592,6 +593,39 @@ export function createWorkspaceControllerActions<
   | "restoreTabs"
 > {
   const { get, set, scanAllFileComments, showToast, syncActiveShares } = deps;
+
+  async function openDirectoryTargetInNewTab(
+    handle: DirectoryTarget,
+    name: string,
+  ) {
+    const existingTab = await findTabByHandle(get().tabs, handle, "directory");
+    if (existingTab) {
+      set({ activeTabId: existingTab.id });
+      return;
+    }
+
+    const tab = createDefaultTab({
+      label: name,
+      directoryHandle: handle,
+      directoryName: name,
+      sidebarOpen: true,
+    });
+
+    set((state) => ({
+      tabs: [...state.tabs, tab],
+      activeTabId: tab.id,
+    }));
+
+    await saveBrowserHandle(`tab:${tab.id}:directory`, handle);
+    const tree = await buildFileTree(handle);
+    set((state) => ({
+      tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({ fileTree: tree })),
+    }));
+
+    if (get().activeTabId === tab.id) {
+      await scanAllFileComments();
+    }
+  }
 
   return {
     reopenFromHistory: async (entryId) => {
@@ -902,41 +936,21 @@ export function createWorkspaceControllerActions<
           return;
         }
 
-        const existingTab = await findTabByHandle(
-          get().tabs,
-          result.handle,
-          "directory",
-        );
-        if (existingTab) {
-          set({ activeTabId: existingTab.id });
-          return;
-        }
-
-        const tab = createDefaultTab({
-          label: result.name,
-          directoryHandle: result.handle,
-          directoryName: result.name,
-          sidebarOpen: true,
-        });
-
-        set((state) => ({
-          tabs: [...state.tabs, tab],
-          activeTabId: tab.id,
-        }));
-
-        await saveBrowserHandle(`tab:${tab.id}:directory`, result.handle);
-        const tree = await buildFileTree(result.handle);
-        set((state) => ({
-          tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
-            fileTree: tree,
-          })),
-        }));
-
-        if (get().activeTabId === tab.id) {
-          await scanAllFileComments();
-        }
+        await openDirectoryTargetInNewTab(result.handle, result.name);
       } catch (error) {
         console.error("[openDirectoryInNewTab] failed to open folder:", error);
+        showToast("Folder could not be opened. Check the terminal logs.");
+      }
+    },
+
+    openDirectoryHandleInNewTab: async (handle) => {
+      try {
+        await openDirectoryTargetInNewTab(handle, handle.name);
+      } catch (error) {
+        console.error(
+          "[openDirectoryHandleInNewTab] failed to open folder:",
+          error,
+        );
         showToast("Folder could not be opened. Check the terminal logs.");
       }
     },
@@ -1080,7 +1094,15 @@ export function createWorkspaceControllerActions<
         set((state) => ({
           tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, () => ({
             rawContent: newRawContent,
-            resolvedComments: newlyResolvedComments,
+            resolvedComments: [
+              ...tab.resolvedComments,
+              ...newlyResolvedComments.filter(
+                (comment) =>
+                  !tab.resolvedComments.some(
+                    (resolved) => resolved.raw === comment.raw,
+                  ),
+              ),
+            ],
           })),
         }));
         if (changed) {

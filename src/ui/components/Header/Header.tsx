@@ -17,38 +17,15 @@ import { useActiveTab } from "../../../store/selectors";
 import { selectUnsubmittedPeerComments } from "../../../modules/peer-review";
 import { selectDocumentUpdateAvailable } from "../../../modules/relay";
 import { SunIcon, MoonIcon } from "../Icons";
-import { HistoryDropdown } from "../HistoryDropdown";
-import { TableOfContents } from "../TableOfContents";
 import { ConnectionStatus } from "../ConnectionStatus";
-import { WORKER_URL } from "../../../config";
+import { TabBar } from "../TabBar";
 import { syncActiveShares } from "../../../modules/sharing";
 import { canRunAgent } from "../../../runtime";
 import { downloadActiveFile } from "./downloadActiveFile";
 import { tabRequiresRestoreAccess } from "../../../types/tab";
+import { initials } from "../../../utils/peerDisplay";
 import type { Comment } from "../../../types/criticmarkup";
 import type { TabState } from "../../../types/tab";
-
-function FocusIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M3 7V5a2 2 0 0 1 2-2h2" />
-      <path d="M17 3h2a2 2 0 0 1 2 2v2" />
-      <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
-      <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
-    </svg>
-  );
-}
 
 function FloppyDiskIcon() {
   return (
@@ -71,45 +48,6 @@ function FloppyDiskIcon() {
   );
 }
 
-function OpenFileIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-      <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-    </svg>
-  );
-}
-
-function OpenFolderIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
-    </svg>
-  );
-}
-
 function ShareFileIcon() {
   return (
     <svg
@@ -124,51 +62,11 @@ function ShareFileIcon() {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-      <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-      <path d="M10 15l2-2 2 2" />
-      <path d="M12 17v-4" />
-    </svg>
-  );
-}
-
-function ShareFolderIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
-      <path d="M10 15l2-2 2 2" />
-      <path d="M12 17v-4" />
-    </svg>
-  );
-}
-
-function SharedLinksIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <path d="m8.6 10.5 6.8-4" />
+      <path d="m8.6 13.5 6.8 4" />
     </svg>
   );
 }
@@ -215,7 +113,7 @@ function SubmitIcon() {
   );
 }
 
-function CommentIcon() {
+function CommentRailIcon() {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -229,7 +127,8 @@ function CommentIcon() {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z" />
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M15 4v16" />
     </svg>
   );
 }
@@ -248,12 +147,8 @@ function AgentIcon() {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <path d="M12 8V4H8" />
-      <rect width="16" height="12" x="4" y="8" rx="2" />
-      <path d="M2 14h2" />
-      <path d="M20 14h2" />
-      <path d="M15 13v2" />
-      <path d="M9 13v2" />
+      <path d="m12 3-1.25 4.75L6 9l4.75 1.25L12 15l1.25-4.75L18 9l-4.75-1.25L12 3Z" />
+      <path d="m19 15-.7 2.3L16 18l2.3.7L19 21l.7-2.3L22 18l-2.3-.7L19 15Z" />
     </svg>
   );
 }
@@ -272,7 +167,10 @@ function PresentIcon() {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <path d="m5 3 14 9-14 9V3z" />
+      <rect x="3" y="4" width="18" height="14" rx="2" />
+      <path d="m10 9 4 2-4 2V9Z" />
+      <path d="M8 22h8" />
+      <path d="M12 18v4" />
     </svg>
   );
 }
@@ -323,18 +221,16 @@ export function Header({
   onPresent,
 }: Props) {
   const tab = useActiveTab();
-  const openFileInNewTab = useAppStore((s) => s.openFileInNewTab);
-  const openDirectoryInNewTab = useAppStore((s) => s.openDirectoryInNewTab);
   const theme = useAppStore((s) => s.theme);
   const setTheme = useAppStore((s) => s.setTheme);
-  const toggleFocusMode = useAppStore((s) => s.toggleFocusMode);
   const toggleCommentPanel = useAppStore((s) => s.toggleCommentPanel);
-  const toggleSharedPanel = useAppStore((s) => s.toggleSharedPanel);
   const syncPeerComments = useAppStore((s) => s.syncPeerComments);
   const documentUpdateAvailable = useAppStore(selectDocumentUpdateAvailable);
 
   const myPeerComments = useAppStore((s) => s.myPeerComments);
   const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
+  const peerName = useAppStore((s) => s.peerName);
+  const sharedContent = useAppStore((s) => s.sharedContent);
   const unsubmittedPeerCount = useAppStore(
     (s) => selectUnsubmittedPeerComments(s).length,
   );
@@ -350,7 +246,6 @@ export function Header({
     ? peerCommentPanelOpen
     : (tab?.commentPanelOpen ?? false);
   const shares = tab?.shares ?? EMPTY_SHARES;
-  const rawSharedPanelOpen = tab?.sharedPanelOpen ?? false;
   const hasActiveShares = shares.some(
     (share) => new Date(share.expiresAt) > new Date(),
   );
@@ -377,7 +272,6 @@ export function Header({
   const commentPanelOpen = disableHostReviewActions
     ? false
     : rawCommentPanelOpen;
-  const sharedPanelOpen = disableHostReviewActions ? false : rawSharedPanelOpen;
   const showToast = useAppStore((state) => state.showToast);
   const startAddressCommentsAgentRun = useAppStore(
     (state) => state.startAddressCommentsAgentRun,
@@ -461,85 +355,44 @@ export function Header({
     <>
       <header className="app-header">
         <div className="app-header__left">
-          <img
-            className="app-header__logo"
-            src={lollipopDragonLogo}
-            alt="Lollipop Dragon"
-          />
+          <div className="app-header__brand">
+            <img
+              className="app-header__logo"
+              src={lollipopDragonLogo}
+              alt="Lollipop Dragon"
+            />
+            <span className="app-header__wordmark">
+              Lollipop <em>Dragon</em>
+            </span>
+          </div>
           {peerMode && (
             <span className="app-header__peer-badge">Reviewing</span>
           )}
-          <ConnectionStatus />
+          {!peerMode && <TabBar />}
         </div>
 
         <div className="app-header__actions">
-          {!peerMode && (
-            <div className="app-header__group app-header__group--source">
-              <button
-                onClick={() => {
-                  void openFileInNewTab();
-                }}
-                className="app-header__btn app-header__btn--text"
-                title="Open file"
-              >
-                <OpenFileIcon />
-                <span className="app-header__btn-label">Open file</span>
-              </button>
-              <button
-                onClick={() => {
-                  void openDirectoryInNewTab();
-                }}
-                className="app-header__btn app-header__btn--text"
-                title="Open folder"
-              >
-                <OpenFolderIcon />
-                <span className="app-header__btn-label">Open folder</span>
-              </button>
+          <ConnectionStatus />
 
-              <HistoryDropdown />
-            </div>
-          )}
-
-          {!peerMode && WORKER_URL && hasContent && (
+          {!peerMode && hasContent && (
             <div className="app-header__group app-header__group--share">
-              {fileName && onShareFile && (
+              {(onShareFile || onShareFolder) && (
                 <button
                   className="app-header__btn app-header__btn--text app-header__btn--share"
-                  onClick={onShareFile}
-                  aria-label="Share file"
-                  title="Create a review link for the current file"
+                  onClick={hasFolderOpen ? onShareFolder : onShareFile}
+                  aria-label="Share"
+                  title="Create or manage encrypted review links"
                   disabled={disableHostReviewActions}
                 >
                   <ShareFileIcon />
-                  <span className="app-header__btn-label">Share file</span>
+                  <span className="app-header__btn-label">Share</span>
+                  {totalPending > 0 && (
+                    <span className="app-header__badge app-header__badge--pending">
+                      {totalPending}
+                    </span>
+                  )}
                 </button>
               )}
-              {hasFolderOpen && onShareFolder && (
-                <button
-                  className="app-header__btn app-header__btn--text app-header__btn--share"
-                  onClick={onShareFolder}
-                  aria-label="Share folder"
-                  title="Create a review link for the current folder"
-                  disabled={disableHostReviewActions}
-                >
-                  <ShareFolderIcon />
-                  <span className="app-header__btn-label">Share folder</span>
-                </button>
-              )}
-              <button
-                className={`app-header__btn app-header__btn--text${sharedPanelOpen ? " app-header__btn--active" : ""}`}
-                onClick={toggleSharedPanel}
-                title="Manage shared review links"
-                disabled={disableHostReviewActions}
-              >
-                <SharedLinksIcon />
-                <span className="app-header__btn-label">Shared links</span>
-                {totalPending > 0 && (
-                  <span className="app-header__badge app-header__badge--pending">
-                    {totalPending}
-                  </span>
-                )}
-              </button>
               {hasActiveShares && (
                 <button
                   onClick={() => {
@@ -556,23 +409,25 @@ export function Header({
             </div>
           )}
 
-          <div className="app-header__group app-header__group--view">
-            <TableOfContents peerMode={peerMode} />
-
-            <button
-              onClick={() => setTheme(isDark ? "light" : "dark")}
-              aria-label={
-                isDark ? "Switch to light mode" : "Switch to dark mode"
-              }
-              title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-              className="app-header__btn app-header__btn--icon"
-            >
-              {isDark ? <SunIcon /> : <MoonIcon />}
-            </button>
-          </div>
-
           {peerMode && (
             <div className="app-header__group app-header__group--peer">
+              {peerName && (
+                <div
+                  className="app-header__identity"
+                  title={`Reviewing as ${peerName}`}
+                >
+                  <span className="app-header__identity-avatar">
+                    {initials(peerName)}
+                  </span>
+                  <span>
+                    <strong>{peerName}</strong>
+                    <small>
+                      {Object.keys(sharedContent?.tree ?? {}).length} shared
+                      files
+                    </small>
+                  </span>
+                </div>
+              )}
               {unsubmittedPeerCount > 0 && (
                 <button
                   onClick={() => {
@@ -615,6 +470,26 @@ export function Header({
                 onReview={handleReviewAction}
               />
             )}
+            {!peerMode && hasContent && onPresent && (
+              <button
+                onClick={onPresent}
+                aria-label="Enter presentation mode"
+                title="Enter presentation mode"
+                className="app-header__btn app-header__btn--icon"
+              >
+                <PresentIcon />
+              </button>
+            )}
+            <button
+              onClick={() => setTheme(isDark ? "light" : "dark")}
+              aria-label={
+                isDark ? "Switch to light mode" : "Switch to dark mode"
+              }
+              title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              className="app-header__btn app-header__btn--icon"
+            >
+              {isDark ? <SunIcon /> : <MoonIcon />}
+            </button>
             <button
               onClick={toggleCommentPanel}
               aria-label={
@@ -627,37 +502,12 @@ export function Header({
                   ? "Close comments panel"
                   : "Open comments panel"
               }
-              className={`app-header__btn app-header__btn--text app-header__btn--review${commentPanelOpen ? " app-header__btn--active" : ""}`}
+              className={`app-header__btn app-header__btn--icon app-header__btn--rail${commentPanelOpen ? " app-header__btn--active" : ""}`}
               disabled={disableHostReviewActions}
             >
-              <CommentIcon />
-              <span className="app-header__btn-label">Comments</span>
-              {commentCount > 0 && (
-                <span className="app-header__badge">{commentCount}</span>
-              )}
+              <CommentRailIcon />
+              {commentCount > 0 && <span className="app-header__dot-badge" />}
             </button>
-
-            {!peerMode && hasContent && onPresent && (
-              <button
-                onClick={onPresent}
-                aria-label="Enter presentation mode"
-                title="Enter presentation mode"
-                className="app-header__btn app-header__btn--icon"
-              >
-                <PresentIcon />
-              </button>
-            )}
-
-            {!peerMode && (
-              <button
-                onClick={toggleFocusMode}
-                aria-label="Enter focus mode"
-                title="Enter focus mode"
-                className="app-header__btn app-header__btn--icon"
-              >
-                <FocusIcon />
-              </button>
-            )}
           </div>
         </div>
       </header>
@@ -674,12 +524,12 @@ function ReviewAgentButton({
   canRunAgent: boolean;
   onReview: () => Promise<void>;
 }) {
-  const label = canRunAgent ? "Review with agent" : "Copy review prompt";
+  const label = canRunAgent ? "Run agent" : "Copy prompt";
 
   return (
     <button
       type="button"
-      className="app-header__btn app-header__btn--icon app-header__btn--review"
+      className="app-header__btn app-header__btn--text app-header__btn--agent"
       aria-label={label}
       title={disabled ? "Wait for the active agent run to finish" : label}
       disabled={disabled}
@@ -688,6 +538,7 @@ function ReviewAgentButton({
       }}
     >
       <AgentIcon />
+      <span className="app-header__btn-label">{label}</span>
     </button>
   );
 }

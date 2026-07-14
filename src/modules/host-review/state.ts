@@ -16,6 +16,7 @@ interface HostReviewStoreState {
   activeTabId: string | null;
   isPeerMode: boolean;
   peerCommentPanelOpen: boolean;
+  peerActiveCommentId: string | null;
 }
 
 interface HostReviewActionDeps<StoreState extends HostReviewStoreState> {
@@ -84,6 +85,10 @@ export function createHostReviewActions<
     },
 
     setActiveCommentId: (id) => {
+      if (get().isPeerMode) {
+        set({ peerActiveCommentId: id });
+        return;
+      }
       set((state) => ({
         tabs: buildUpdatedActiveTabs(state.tabs, state.activeTabId, () => ({
           activeCommentId: id,

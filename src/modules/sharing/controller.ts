@@ -1,20 +1,17 @@
 import type { StoreApi } from "zustand";
 import {
+  getBlockPlainTextMap,
   insertComment as insertCommentService,
   parseMarkdownFrontmatter,
   parseCriticMarkup,
+  resolveCommentAnchor,
 } from "../../markup";
 import { WORKER_URL } from "../../config";
-import {
-  base64urlToKey,
-  docIdFromKey,
-  generateKey,
-  keyToBase64url,
-} from "../../services/crypto";
+import { base64urlToKey } from "../../services/crypto";
 import { readFile } from "../../runtime";
 import { isBrowserFileHandle } from "../../types/fileTree";
 import type { FileTreeNode } from "../../types/fileTree";
-import type { ShareRecord } from "../../types/share";
+import type { PeerComment, ShareRecord } from "../../types/share";
 import type { TabState } from "../../types/tab";
 import { buildShareUrlFromOrigin } from "../../utils/shareUrl";
 import { writeAndUpdate } from "../host-review";
@@ -28,6 +25,7 @@ import {
   replacePendingCommentsState,
 } from "./state";
 import { ShareStorage } from "./storage";
+import { prepareShareIdentity } from "./shareIdentity";
 import type { ShareContentOptions, SharingActions } from "./types";
 
 type SetState<StoreState> = StoreApi<StoreState>["setState"];
@@ -267,13 +265,12 @@ async function createShare(
     tree[path] = tab.rawContent;
   }
 
-  const key = await generateKey();
-  const docId = await docIdFromKey(key);
+  const identity = options.preparedIdentity ?? (await prepareShareIdentity());
+  const { docId, key, keyB64 } = identity;
   const { hostSecret } = await storage.uploadContent(docId, tree, key, {
     ttl: options.ttl,
     label,
   });
-  const keyB64 = await keyToBase64url(key);
   const record = buildShareRecord({
     docId,
     hostSecret,
@@ -334,6 +331,35 @@ function flushPendingCommentResolvesForDoc(
   for (const queuedId of queuedIds) {
     relayCommentResolve(docId, queuedId);
   }
+}
+
+export function buildMergedPeerCommentContent(
+  rawContent: string,
+  comment: PeerComment,
+): string {
+  const document = parseMarkdownFrontmatter(rawContent);
+  const parsed = parseCriticMarkup(document.body);
+  const blockMap = getBlockPlainTextMap(
+    parsed.cleanMarkdown,
+    comment.blockRef.blockIndex,
+  );
+  const peerAnchor =
+    blockMap && comment.blockRef.quote && comment.blockRef.occurrence
+      ? resolveCommentAnchor(blockMap.plainText, {
+          quote: comment.blockRef.quote,
+          occurrence: comment.blockRef.occurrence,
+        })
+      : undefined;
+  const newBody = insertCommentService({
+    rawContent: document.body,
+    existingComments: parsed.comments,
+    cleanMarkdown: parsed.cleanMarkdown,
+    blockIndex: comment.blockRef.blockIndex,
+    type: comment.commentType,
+    text: `${comment.text} — ${comment.peerName}`,
+    anchor: peerAnchor?.orphaned ? undefined : peerAnchor,
+  });
+  return rawContent.slice(0, document.bodyStart) + newBody;
 }
 
 export function createSharingControllerActions<
@@ -521,18 +547,7 @@ export function createSharingControllerActions<
         blockIndex: comment.blockRef.blockIndex,
       });
 
-      const document = parseMarkdownFrontmatter(tab.rawContent);
-      const parsed = parseCriticMarkup(document.body);
-      const attribution = ` — ${comment.peerName}`;
-      const newBody = insertCommentService({
-        rawContent: document.body,
-        existingComments: parsed.comments,
-        cleanMarkdown: parsed.cleanMarkdown,
-        blockIndex: comment.blockRef.blockIndex,
-        type: comment.commentType,
-        text: comment.text + attribution,
-      });
-      const newRaw = tab.rawContent.slice(0, document.bodyStart) + newBody;
+      const newRaw = buildMergedPeerCommentContent(tab.rawContent, comment);
       if (newRaw === tab.rawContent) {
         console.error("[mergeComment] insert had no effect", {
           blockIndex: comment.blockRef.blockIndex,

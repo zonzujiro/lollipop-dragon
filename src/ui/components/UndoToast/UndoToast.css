@@ -8,13 +8,13 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: var(--surface);
+  background: color-mix(in srgb, var(--ink) 90%, transparent);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 999px;
   padding: 0.5rem 0.75rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   font-size: 0.85rem;
-  color: var(--text);
+  color: white;
   white-space: nowrap;
 }
 
@@ -41,7 +41,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--text-muted);
+  color: color-mix(in srgb, white 65%, transparent);
   font-size: 1rem;
   padding: 0 0.1rem;
   line-height: 1;

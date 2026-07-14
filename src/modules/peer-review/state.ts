@@ -7,20 +7,34 @@ import type { PeerReviewActions, PeerReviewState } from "./types";
 type SetState<StoreState> = StoreApi<StoreState>["setState"];
 type GetState<StoreState> = StoreApi<StoreState>["getState"];
 
-function createPeerComment(
-  peerName: string | null,
-  blockIndex: number,
-  type: CommentType,
-  text: string,
-  path: string,
-): PeerComment {
+function createPeerComment(input: {
+  peerName: string | null;
+  blockIndex: number;
+  type: CommentType;
+  text: string;
+  path: string;
+  anchor?: {
+    quote: string;
+    occurrence: number;
+  };
+}): PeerComment {
   return {
     id: `c_${crypto.randomUUID()}`,
-    peerName: peerName ?? "Anonymous",
-    path,
-    blockRef: { blockIndex, contentPreview: "" },
-    commentType: type,
-    text,
+    peerName: input.peerName ?? "Anonymous",
+    path: input.path,
+    blockRef: {
+      blockIndex: input.blockIndex,
+      contentPreview: "",
+      ...(input.anchor
+        ? {
+            anchorVersion: 1,
+            quote: input.anchor.quote,
+            occurrence: input.anchor.occurrence,
+          }
+        : {}),
+    },
+    commentType: input.type,
+    text: input.text,
     createdAt: new Date().toISOString(),
   };
 }
@@ -42,11 +56,13 @@ export function createPeerReviewState(): PeerReviewState {
     peerResolvedComments: [],
     peerComments: [],
     peerCommentPanelOpen: false,
+    peerActiveCommentId: null,
   };
 }
 
 export function createPeerReviewActions<
-  StoreState extends PeerReviewState & Pick<RelayState, "documentUpdateAvailable">,
+  StoreState extends PeerReviewState &
+    Pick<RelayState, "documentUpdateAvailable">,
 >(
   set: SetState<StoreState>,
   get: GetState<StoreState>,
@@ -86,20 +102,18 @@ export function createPeerReviewActions<
         peerFileName: path,
         peerActiveFilePath: path,
         peerResolvedComments: [],
+        peerActiveCommentId: null,
       });
     },
 
-    postPeerComment: (blockIndex, type, text, path) => {
+    postPeerComment: (input) => {
       if (get().documentUpdateAvailable) {
         return;
       }
-      const comment = createPeerComment(
-        get().peerName,
-        blockIndex,
-        type,
-        text,
-        path,
-      );
+      const comment = createPeerComment({
+        ...input,
+        peerName: get().peerName,
+      });
       set((state) => ({
         myPeerComments: [comment, ...state.myPeerComments],
         peerDraftCommentOpen: false,
@@ -114,6 +128,10 @@ export function createPeerReviewActions<
         submittedPeerCommentIds: state.submittedPeerCommentIds.filter(
           (submittedId) => submittedId !== commentId,
         ),
+        peerActiveCommentId:
+          state.peerActiveCommentId === commentId
+            ? null
+            : state.peerActiveCommentId,
       }));
     },
 

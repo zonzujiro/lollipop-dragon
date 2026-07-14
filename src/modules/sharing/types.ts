@@ -25,6 +25,13 @@ export interface ShareContentOptions {
   ttl: number;
   nodes?: FileTreeNode[];
   label?: string;
+  preparedIdentity?: PreparedShareIdentity;
+}
+
+export interface PreparedShareIdentity {
+  docId: string;
+  key: CryptoKey;
+  keyB64: string;
 }
 
 export interface SharingActions {

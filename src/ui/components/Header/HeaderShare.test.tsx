@@ -32,38 +32,32 @@ describe("Header share buttons", () => {
   );
 
   describe("visibility", () => {
-    it("shows Share file when a file is open and handler is provided", () => {
+    it("shows Share when a file is open and handler is provided", () => {
       setTestState({ fileName: "readme.md" });
       render(<Header onShareFile={vi.fn()} onShareFolder={vi.fn()} />);
-      expect(
-        screen.getByRole("button", { name: "Share file" }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Share" })).toBeInTheDocument();
     });
 
-    it("hides Share file when no file is open", () => {
+    it("shows the unified Share action for a folder", () => {
       setTestState({
         fileName: null,
         directoryName: "my-folder",
         fileTree: [{ kind: "file", name: "a.md", path: "a.md" }],
       });
       render(<Header onShareFile={vi.fn()} onShareFolder={vi.fn()} />);
-      expect(
-        screen.queryByRole("button", { name: "Share file" }),
-      ).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Share" })).toBeInTheDocument();
     });
 
-    it("shows Share folder when a folder is open and handler is provided", () => {
+    it("uses one Share action when a folder is open", () => {
       setTestState({
         directoryName: "my-folder",
         fileTree: [{ kind: "file", name: "a.md", path: "a.md" }],
       });
       render(<Header onShareFile={vi.fn()} onShareFolder={vi.fn()} />);
-      expect(
-        screen.getByRole("button", { name: "Share folder" }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Share" })).toBeInTheDocument();
     });
 
-    it("hides Share folder when no folder is open", () => {
+    it("does not render duplicate scope-specific actions", () => {
       setTestState({ fileName: "readme.md", fileTree: [] });
       render(<Header onShareFile={vi.fn()} onShareFolder={vi.fn()} />);
       expect(
@@ -78,10 +72,7 @@ describe("Header share buttons", () => {
       });
       render(<Header peerMode onShareFile={vi.fn()} onShareFolder={vi.fn()} />);
       expect(
-        screen.queryByRole("button", { name: "Share file" }),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("button", { name: "Share folder" }),
+        screen.queryByRole("button", { name: "Share" }),
       ).not.toBeInTheDocument();
     });
 
@@ -93,10 +84,7 @@ describe("Header share buttons", () => {
       });
       render(<Header />);
       expect(
-        screen.queryByRole("button", { name: "Share file" }),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("button", { name: "Share folder" }),
+        screen.queryByRole("button", { name: "Share" }),
       ).not.toBeInTheDocument();
     });
 
@@ -109,10 +97,7 @@ describe("Header share buttons", () => {
 
       render(<Header onShareFile={vi.fn()} onShareFolder={vi.fn()} />);
 
-      expect(screen.getByRole("button", { name: "Share file" })).toBeDisabled();
-      expect(
-        screen.getByRole("button", { name: "Shared links" }),
-      ).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Share" })).toBeDisabled();
       expect(
         screen.getByRole("button", { name: "Open comments panel" }),
       ).toBeDisabled();
@@ -120,17 +105,17 @@ describe("Header share buttons", () => {
   });
 
   describe("click handlers", () => {
-    it("calls onShareFile when Share file button is clicked", async () => {
+    it("calls onShareFile when Share is clicked for a file", async () => {
       const user = userEvent.setup();
       const onShareFile = vi.fn();
       setTestState({ fileName: "readme.md" });
       render(<Header onShareFile={onShareFile} onShareFolder={vi.fn()} />);
 
-      await user.click(screen.getByRole("button", { name: "Share file" }));
+      await user.click(screen.getByRole("button", { name: "Share" }));
       expect(onShareFile).toHaveBeenCalledOnce();
     });
 
-    it("calls onShareFolder when Share folder button is clicked", async () => {
+    it("calls onShareFolder when Share is clicked for a folder", async () => {
       const user = userEvent.setup();
       const onShareFolder = vi.fn();
       setTestState({
@@ -139,7 +124,7 @@ describe("Header share buttons", () => {
       });
       render(<Header onShareFile={vi.fn()} onShareFolder={onShareFolder} />);
 
-      await user.click(screen.getByRole("button", { name: "Share folder" }));
+      await user.click(screen.getByRole("button", { name: "Share" }));
       expect(onShareFolder).toHaveBeenCalledOnce();
     });
   });
@@ -174,9 +159,7 @@ describe("Header review actions", () => {
     });
 
     render(<Header />);
-    await user.click(
-      screen.getByRole("button", { name: "Copy review prompt" }),
-    );
+    await user.click(screen.getByRole("button", { name: "Copy prompt" }));
 
     expect(writeText).toHaveBeenCalledOnce();
     const prompt = writeText.mock.calls[0]?.[0];
@@ -213,9 +196,7 @@ describe("Header review actions", () => {
     });
 
     render(<Header />);
-    await user.click(
-      screen.getByRole("button", { name: "Copy review prompt" }),
-    );
+    await user.click(screen.getByRole("button", { name: "Copy prompt" }));
 
     expect(writeText).toHaveBeenCalledOnce();
     const prompt = writeText.mock.calls[0]?.[0];

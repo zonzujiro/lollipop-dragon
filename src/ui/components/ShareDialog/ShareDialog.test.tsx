@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ShareDialog } from "./index";
@@ -16,48 +16,57 @@ beforeEach(() => {
 });
 
 describe("ShareDialog - initial render", () => {
-  it("shows the document label in the title", () => {
+  it("uses the redesign review title and explanation", () => {
     render(<ShareDialog onClose={vi.fn()} />);
     expect(
-      screen.getByRole("heading", { name: /Share "readme.md"/ }),
+      screen.getByRole("heading", { name: "Share for review" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Reviewers only need the link — no account, no install/),
     ).toBeInTheDocument();
   });
 
-  it("uses directoryName as label when set", () => {
+  it("shows the directory scope and file count when a folder is open", () => {
     setTestState({ directoryName: "my-project", fileName: "index.md" });
     render(<ShareDialog onClose={vi.fn()} />);
     expect(
-      screen.getByRole("heading", { name: /Share "my-project"/ }),
+      screen.getByRole("button", { name: /Whole folder · 0 files/ }),
     ).toBeInTheDocument();
   });
 
-  it("shows TTL select with default 7 days", () => {
+  it("shows 7 days as the default expiry tab", () => {
     render(<ShareDialog onClose={vi.fn()} />);
-    const select = screen.getByRole("combobox");
-    expect(select).toHaveValue("604800");
+    expect(screen.getByRole("button", { name: "7 days" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 
-  it("shows all TTL options", () => {
+  it("shows all expiry tabs and no access-level control", () => {
     render(<ShareDialog onClose={vi.fn()} />);
-    const options = screen.getAllByRole("option");
-    expect(options).toHaveLength(3);
-    expect(options[0]).toHaveTextContent("1 day");
-    expect(options[1]).toHaveTextContent("7 days");
-    expect(options[2]).toHaveTextContent("30 days");
+    expect(screen.getByRole("button", { name: "1 day" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "7 days" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "30 days" })).toBeInTheDocument();
+    expect(screen.queryByText("Reviewers can")).not.toBeInTheDocument();
   });
 
-  it("shows Generate link button", () => {
+  it("pre-generates the link without uploading content", async () => {
+    const shareContent = vi.fn();
+    useAppStore.setState({ shareContent });
     render(<ShareDialog onClose={vi.fn()} />);
+    expect(await screen.findByLabelText("Shareable link")).toHaveTextContent(
+      /#s=/,
+    );
     expect(
-      screen.getByRole("button", { name: "Generate link" }),
+      screen.getByRole("button", { name: "Copy link" }),
     ).toBeInTheDocument();
+    expect(shareContent).not.toHaveBeenCalled();
   });
 
-  it("calls onClose when Cancel is clicked", async () => {
-    const user = userEvent.setup();
+  it("calls onClose when Escape is pressed", async () => {
     const onClose = vi.fn();
     render(<ShareDialog onClose={onClose} />);
-    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(onClose).toHaveBeenCalledOnce();
   });
 
@@ -100,26 +109,32 @@ describe("ShareDialog - initial render", () => {
     );
 
     expect(
-      screen.getByText("This file already has an active share link."),
+      screen.getByText("Encrypted link — key never leaves the URL"),
     ).toBeInTheDocument();
   });
 });
 
 describe("ShareDialog - share flow", () => {
-  it("calls shareContent with selected TTL and shows link", async () => {
+  it("uploads with the selected expiry when Copy link is clicked", async () => {
     const shareContent = vi
       .fn()
       .mockResolvedValue("https://example.com/#share=abc&key=xyz");
     useAppStore.setState({ shareContent });
     const user = userEvent.setup();
     render(<ShareDialog onClose={vi.fn()} />);
-    await user.click(screen.getByRole("button", { name: "Generate link" }));
-    await waitFor(() => {
-      expect(
-        screen.getByRole("textbox", { name: "Shareable link" }),
-      ).toHaveValue("https://example.com/#share=abc&key=xyz");
-    });
-    expect(shareContent).toHaveBeenCalledWith({ ttl: 604800 });
+    await user.click(screen.getByRole("button", { name: "30 days" }));
+    await user.click(await screen.findByRole("button", { name: "Copy link" }));
+    expect(shareContent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ttl: 2592000,
+        label: "readme.md",
+        nodes: [],
+        preparedIdentity: expect.any(Object),
+      }),
+    );
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      "https://example.com/#share=abc&key=xyz",
+    );
   });
 
   it("shares the current folder without materializing subtree nodes", async () => {
@@ -145,13 +160,16 @@ describe("ShareDialog - share flow", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Generate link" }));
+    await user.click(await screen.findByRole("button", { name: "Copy link" }));
 
     await waitFor(() => {
-      expect(shareContent).toHaveBeenCalledWith({
-        ttl: 604800,
-        label: "my-project",
-      });
+      expect(shareContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ttl: 604800,
+          label: "my-project",
+          preparedIdentity: expect.any(Object),
+        }),
+      );
     });
   });
 
@@ -177,14 +195,17 @@ describe("ShareDialog - share flow", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Generate link" }));
+    await user.click(await screen.findByRole("button", { name: "Copy link" }));
 
     await waitFor(() => {
-      expect(shareContent).toHaveBeenCalledWith({
-        ttl: 604800,
-        label: "readme.md",
-        nodes: [],
-      });
+      expect(shareContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ttl: 604800,
+          label: "readme.md",
+          nodes: [],
+          preparedIdentity: expect.any(Object),
+        }),
+      );
     });
   });
 
@@ -193,13 +214,14 @@ describe("ShareDialog - share flow", () => {
     useAppStore.setState({ shareContent });
     const user = userEvent.setup();
     render(<ShareDialog onClose={vi.fn()} />);
-    await user.click(screen.getByRole("button", { name: "Generate link" }));
+    await user.click(await screen.findByRole("button", { name: "Copy link" }));
     await waitFor(() => {
       expect(screen.getByText("Worker offline")).toBeInTheDocument();
     });
+    expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
   });
 
-  it("shows Encrypting... while loading", async () => {
+  it("shows the upload state on the clicked copy action", async () => {
     let resolveShare: (url: string) => void = () => undefined;
     const shareContent = vi.fn().mockReturnValue(
       new Promise<string>((resolve) => {
@@ -209,19 +231,19 @@ describe("ShareDialog - share flow", () => {
     useAppStore.setState({ shareContent });
     const user = userEvent.setup();
     render(<ShareDialog onClose={vi.fn()} />);
-    await user.click(screen.getByRole("button", { name: "Generate link" }));
+    await user.click(await screen.findByRole("button", { name: "Copy link" }));
     expect(
-      screen.getByRole("button", { name: /Encrypting/ }),
+      screen.getByRole("button", { name: "Encrypting & uploading…" }),
     ).toBeInTheDocument();
     resolveShare("https://example.com/#share=abc&key=xyz");
     await waitFor(() => {
       expect(
-        screen.queryByRole("button", { name: /Encrypting/ }),
+        screen.queryByRole("button", { name: "Encrypting & uploading…" }),
       ).not.toBeInTheDocument();
     });
   });
 
-  it("copies link to clipboard and closes dialog on Copy button click", async () => {
+  it("copies link to clipboard and keeps the management sheet open", async () => {
     const shareContent = vi
       .fn()
       .mockResolvedValue("https://example.com/#share=abc&key=xyz");
@@ -229,15 +251,60 @@ describe("ShareDialog - share flow", () => {
     const onClose = vi.fn();
     const user = userEvent.setup();
     render(<ShareDialog onClose={onClose} />);
-    await user.click(screen.getByRole("button", { name: "Generate link" }));
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Copy" })).toBeInTheDocument();
-    });
-    await user.click(screen.getByRole("button", { name: "Copy" }));
+    await user.click(await screen.findByRole("button", { name: "Copy link" }));
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
       "https://example.com/#share=abc&key=xyz",
     );
-    expect(onClose).toHaveBeenCalledOnce();
+    expect(onClose).not.toHaveBeenCalled();
     expect(useAppStore.getState().toast).toBe("Link copied to clipboard");
+  });
+
+  it("uploads once and copies a Slack-ready message", async () => {
+    const shareContent = vi
+      .fn()
+      .mockResolvedValue("https://example.com/#share=abc&key=xyz");
+    useAppStore.setState({ shareContent });
+    const user = userEvent.setup();
+    render(<ShareDialog onClose={vi.fn()} />);
+
+    await user.click(
+      await screen.findByRole("button", { name: "Copy as Slack message" }),
+    );
+
+    expect(shareContent).toHaveBeenCalledOnce();
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      "Please review readme.md: https://example.com/#share=abc&key=xyz",
+    );
+  });
+
+  it("copies an existing active share without uploading it again", async () => {
+    const shareContent = vi.fn();
+    useAppStore.setState({ shareContent });
+    setTestState({
+      fileName: "readme.md",
+      activeFilePath: "readme.md",
+      shares: [
+        {
+          docId: "doc-1",
+          hostSecret: "secret",
+          label: "readme.md",
+          createdAt: "2026-04-01T00:00:00.000Z",
+          expiresAt: "2099-04-01T00:00:00.000Z",
+          pendingCommentCount: 0,
+          keyB64: "abc123",
+          fileCount: 1,
+          sharedPaths: ["readme.md"],
+        },
+      ],
+    });
+    const user = userEvent.setup();
+    render(<ShareDialog onClose={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "Copy link" }));
+
+    expect(shareContent).not.toHaveBeenCalled();
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      expect.stringContaining("#s=abc123"),
+    );
   });
 });

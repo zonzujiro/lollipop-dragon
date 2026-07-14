@@ -377,7 +377,7 @@ For records that have `sharedPaths`, the entity path is derived from that field.
 App
 ├── (all v1 components unchanged)
 ├── ShareButton               — header button; opens ShareDialog
-├── ShareDialog               — select file/folder, set expiry, trigger upload
+├── ShareDialog               — select file/folder, choose an expiry tab, upload on copy
 ├── SharedPanel               — right panel (or modal) listing active shares
 │   ├── ShareEntry            — one active share: label, expiry, pending count
 │   │   ├── RevokeButton
@@ -456,7 +456,7 @@ loadSharedContent: () => Promise<void>                       // peer mode init
 **2a.4 — Share dialog (host)**
 
 - "Share file" and "Share folder" icon buttons in header (each hidden when not applicable)
-- `ShareDialog` modal: shows file/folder name, expiry selector (1 day / 7 days / 30 days), "Generate Link" button
+- `ShareDialog` modal: prepares a local share identity on open, shows file/folder scope and 1-day / 7-day / 30-day expiry tabs, and uploads on the first Copy link or Copy as Slack message action. The clipboard is written only after upload succeeds.
 - On confirm: call `shareContent()`, copy link to clipboard, show toast "Link copied"
 - Store `ShareRecord` in localStorage
 - **Deliverable:** Host can generate a shareable link from the UI

@@ -1,92 +1,17 @@
 import "./FileTreeSidebar.css";
-import { useCallback, useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { SidebarTreeNode } from "../../../types/fileTree";
 import type { ShareRecord } from "../../../types/share";
 import { PanelLeftCloseIcon } from "../Icons";
 
-const MIN_WIDTH = 160;
-const MAX_WIDTH = 600;
-const DEFAULT_WIDTH = 240;
-const WIDTH_KEY = "markreview-sidebar-width";
-
-function loadWidth(): number {
-  try {
-    const v = localStorage.getItem(WIDTH_KEY);
-    if (v) {
-      const n = Number(v);
-      if (n >= MIN_WIDTH && n <= MAX_WIDTH) {
-        return n;
-      }
-    }
-  } catch {
-    /* ignore */
-  }
-  return DEFAULT_WIDTH;
-}
-
 function ChevronIcon({ expanded }: { expanded: boolean }) {
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="12"
-      height="12"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      style={{
-        transform: expanded ? "rotate(90deg)" : "none",
-        transition: "transform 0.15s",
-        flexShrink: 0,
-      }}
-    >
-      <path d="m9 18 6-6-6-6" />
-    </svg>
-  );
-}
-
-function FileIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="13"
-      height="13"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      style={{ flexShrink: 0, opacity: 0.5 }}
-    >
-      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-      <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-    </svg>
-  );
-}
-
-function ShareIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="12"
-      height="12"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+    <span
+      className={`tree-item__chevron${expanded ? " tree-item__chevron--expanded" : ""}`}
       aria-hidden="true"
     >
-      <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-      <polyline points="16 6 12 2 8 6" />
-      <line x1="12" x2="12" y1="2" y2="15" />
-    </svg>
+      ›
+    </span>
   );
 }
 
@@ -132,8 +57,8 @@ interface TreeItemProps {
   depth: number;
   activeFilePath: string | null;
   onSelect: (path: string) => void;
-  onShare?: (nodes: SidebarTreeNode[], label: string) => void;
   shares: ShareRecord[];
+  commentCounts: Record<string, number>;
 }
 
 function TreeItem({
@@ -141,46 +66,30 @@ function TreeItem({
   depth,
   activeFilePath,
   onSelect,
-  onShare,
   shares,
+  commentCounts,
 }: TreeItemProps) {
   const [expanded, setExpanded] = useState(true);
-  const indent = depth * 1 + 0.75;
+  const depthClass = `tree-item--depth-${Math.min(depth, 2)}`;
   const shared = isNodeShared(node, shares);
-
-  function handleShare(e: React.MouseEvent) {
-    e.stopPropagation();
-    if (node.kind === "file") {
-      onShare!([node], node.name);
-    } else if (node.kind === "directory") {
-      onShare!(node.children, node.name);
-    }
-  }
 
   if (node.kind === "file") {
     const isActive = activeFilePath === node.path;
     return (
       <div className="tree-item-row">
         <button
-          className={`tree-item tree-item--file${isActive ? " tree-item--active" : ""}`}
-          style={{ paddingLeft: `${indent}rem` }}
+          className={`tree-item tree-item--file ${depthClass}${isActive ? " tree-item--active" : ""}`}
           onClick={() => onSelect(node.path)}
           title={node.path}
         >
-          <FileIcon />
           <span className="tree-item__name">{node.name}</span>
+          {(commentCounts[node.path] ?? 0) > 0 && (
+            <span className="tree-item__comment-count">
+              {commentCounts[node.path]}
+            </span>
+          )}
           {shared && <SharedBadge />}
         </button>
-        {onShare && (
-          <button
-            className="tree-item-share-btn"
-            onClick={handleShare}
-            title={`Share ${node.name}`}
-            aria-label={`Share ${node.name}`}
-          >
-            <ShareIcon />
-          </button>
-        )}
       </div>
     );
   }
@@ -189,24 +98,13 @@ function TreeItem({
     <div className="tree-item-group">
       <div className="tree-item-row">
         <button
-          className="tree-item tree-item--dir"
-          style={{ paddingLeft: `${indent}rem` }}
+          className={`tree-item tree-item--dir ${depthClass}`}
           onClick={() => setExpanded((e) => !e)}
         >
           <ChevronIcon expanded={expanded} />
           <span className="tree-item__name">{node.name}</span>
           {shared && <SharedBadge />}
         </button>
-        {onShare && (
-          <button
-            className="tree-item-share-btn"
-            onClick={handleShare}
-            title={`Share ${node.name}`}
-            aria-label={`Share ${node.name}`}
-          >
-            <ShareIcon />
-          </button>
-        )}
       </div>
       {expanded && (
         <div>
@@ -217,8 +115,8 @@ function TreeItem({
               depth={depth + 1}
               activeFilePath={activeFilePath}
               onSelect={onSelect}
-              onShare={onShare}
               shares={shares}
+              commentCounts={commentCounts}
             />
           ))}
         </div>
@@ -235,8 +133,8 @@ export interface FileTreeSidebarProps {
     title: string;
     action?: { onClick: () => void; label: string; icon: ReactNode };
   };
-  onShare?: (nodes: SidebarTreeNode[], label: string) => void;
   shares?: ShareRecord[];
+  commentCounts?: Record<string, number>;
   onCollapse?: () => void;
 }
 
@@ -245,47 +143,12 @@ export function FileTreeSidebar({
   activeFilePath,
   onSelect,
   header,
-  onShare,
   shares = [],
+  commentCounts = {},
   onCollapse,
 }: FileTreeSidebarProps) {
-  const [width, setWidth] = useState(loadWidth);
-  const dragging = useRef(false);
-  const latestWidth = useRef(width);
-
-  const onPointerDown = useCallback(
-    (e: React.PointerEvent) => {
-      e.preventDefault();
-      dragging.current = true;
-      const startX = e.clientX;
-      const startW = width;
-
-      const onMove = (ev: PointerEvent) => {
-        const next = Math.min(
-          MAX_WIDTH,
-          Math.max(MIN_WIDTH, startW + ev.clientX - startX),
-        );
-        latestWidth.current = next;
-        setWidth(next);
-      };
-      const onUp = () => {
-        dragging.current = false;
-        document.removeEventListener("pointermove", onMove);
-        document.removeEventListener("pointerup", onUp);
-        try {
-          localStorage.setItem(WIDTH_KEY, String(latestWidth.current));
-        } catch {
-          /* ignore */
-        }
-      };
-      document.addEventListener("pointermove", onMove);
-      document.addEventListener("pointerup", onUp);
-    },
-    [width],
-  );
-
   return (
-    <aside className="file-tree-sidebar" style={{ width }}>
+    <aside className="file-tree-sidebar">
       <div className="file-tree-header">
         <span className="file-tree-header__name" title={header.title}>
           {header.title}
@@ -321,18 +184,11 @@ export function FileTreeSidebar({
             depth={0}
             activeFilePath={activeFilePath}
             onSelect={onSelect}
-            onShare={onShare}
             shares={shares}
+            commentCounts={commentCounts}
           />
         ))}
       </div>
-      <div
-        className="file-tree-resize"
-        onPointerDown={onPointerDown}
-        role="separator"
-        aria-orientation="vertical"
-        aria-label="Resize sidebar"
-      />
     </aside>
   );
 }

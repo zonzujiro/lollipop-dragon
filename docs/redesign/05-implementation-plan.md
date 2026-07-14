@@ -1,5 +1,10 @@
 # 05 — Implementation Plan
 
+**Status (14.07.2026): complete.** Phases 1–4 are implemented. Automated unit,
+component, typecheck, and production-build validation are the merge gate;
+cross-browser and native desktop interaction remain release-environment manual
+checks.
+
 Four phases, each independently shippable and demo-able. Work in this repo; follow `CLAUDE.md` and `docs/contributing.md`. Do not fork the UI per runtime — capability facades per `docs/features/desktop-agent-client.md`.
 
 ## Phase 1 — Tokens & the reading experience
@@ -8,7 +13,7 @@ Four phases, each independently shippable and demo-able. Work in this repo; foll
 
 - Replace `src/ui/styles/tokens.css` values with the Reading Room tokens (`assets/tokens.css`); keep the existing variable-name conventions and `.dark` override mechanism; migrate names where they differ rather than duplicating.
 - Re-skin the app shell: `Header` (merge `TabBar` into it — tab strip becomes header-inline; delete the standalone strip but keep all tab actions/shortcuts), `FileTreeSidebar` (248px, count badges, collapse/restore per spec), document column typography in `MarkdownRenderer` (serif 17/1.68, 632px measure, kicker line), `TableOfContents`, `Toast`, `RawViewer` untouched functionally.
-- Landing rebuild in `FilePicker`: hero (three doors + drop + recents) + recolored Bauhaus story per `02-screens.md` §1. Reuse existing `BauhausDragon`/Geo components where they fit; recolor to tokens.
+- Landing rebuild in `FilePicker`: asymmetric poster hero (three stacked actions + drop + recents), geometric product art, and numbered Bauhaus chapters per `02-screens.md` §1. Do not retain the legacy centered-card landing structure.
 - Presentation mode re-skin (`PresentationMode`).
 
 **Acceptance**
@@ -27,6 +32,10 @@ Four phases, each independently shippable and demo-able. Work in this repo; foll
 - Rendering: segment-based highlight layer in `MarkdownRenderer`/`CommentMargin` per `03 §3` (port `applyHighlights` from the prototype into a tested pure helper + a thin DOM layer; keep it framework-idiomatic — e.g. compute segments in TS, render spans via React rather than post-hoc DOM surgery if feasible).
 - Composer rework (selection capture per `03 §2`, type keys 1–6, quote line, honesty footer).
 - Rail rework (`CommentPanel`, `CommentThreadCard`, `CommentCard`): filters incl. Resolved history, grouping, selection sync, orphan note.
+- Special blocks (`MarkdownRenderer`, `CodeCommentSurface`, `MermaidBlock`):
+  code-fence line gutter with CSS-only numbers, fence-safe standalone
+  serialization, Mermaid diagram/source views, source-based node anchors, and
+  diagram rings/pins.
 - Keyboard: J/K, C, Esc chain; command palette component (new `src/ui/components/CommandPalette/`) with the action registry.
 
 **Acceptance**
@@ -35,6 +44,10 @@ Four phases, each independently shippable and demo-able. Work in this repo; foll
 - Overlap test: two comments on intersecting ranges → three visual segments; middle segment shows both tints + two stripes; click-cycle works; resolving one restores the other's clean rendering; file stays valid CriticMarkup throughout (second comment serialized as anchored standalone).
 - Orphan test: externally edit the anchored text → comment shows released note, no mis-highlight; restore text → re-attaches.
 - Parser edge suite extended: anchored suffix with quotes/escapes, occurrence >1, adjacent/nested-looking spans, CriticMarkup in code blocks still ignored.
+- Special-block round trips: fence bytes remain unchanged with the standalone
+  anchor after the closing fence; Mermaid node anchors resolve in both views,
+  orphan on rename, and reattach when restored. The same anchors work in peer
+  mode.
 - Perf: comment add/resolve re-render < 100ms on a 10k-line fixture (Vitest benchmark or manual profile note).
 
 ## Phase 3 — Sharing & peer mode

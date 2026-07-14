@@ -60,7 +60,8 @@ describe("store.addComment", () => {
 
     await useAppStore.getState().addComment(0, "note", "my note");
 
-    const expectedContent = "First paragraph.{>>my note<<}\n\nSecond paragraph.";
+    const expectedContent =
+      "First paragraph.{>>my note<<}\n\nSecond paragraph.";
     expect(mockWritable.write).toHaveBeenCalledWith(expectedContent);
     const tab = getActiveTab(useAppStore.getState());
     expect(tab?.rawContent).toBe(expectedContent);
@@ -78,6 +79,50 @@ describe("store.addComment", () => {
     expect(mockWritable.write).toHaveBeenCalledWith("Para.{>>fix: fix it<<}");
     const tab = getActiveTab(useAppStore.getState());
     expect(tab?.rawContent).toBe("Para.{>>fix: fix it<<}");
+  });
+
+  it("round-trips a mid-sentence range comment through CriticMarkup", async () => {
+    const mockWritable = createWritableStub();
+    setTestState({
+      fileHandle: createFileHandleStub(mockWritable),
+      rawContent: "Read this exact sentence carefully.",
+    });
+
+    await useAppStore.getState().addComment(0, "fix", "Tighten it.", {
+      quote: "this exact sentence",
+      occurrence: 1,
+      start: 5,
+      end: 24,
+    });
+
+    const expectedContent =
+      "Read {==this exact sentence==}{>>fix: Tighten it.<<} carefully.";
+    expect(mockWritable.write).toHaveBeenCalledWith(expectedContent);
+    expect(getActiveTab(useAppStore.getState())?.rawContent).toBe(
+      expectedContent,
+    );
+  });
+
+  it("writes a whole-line fence comment after the closing fence", async () => {
+    const mockWritable = createWritableStub();
+    const fence = "```ts\nconst value = 1;\n```";
+    setTestState({
+      fileHandle: createFileHandleStub(mockWritable),
+      rawContent: fence,
+    });
+
+    await useAppStore.getState().addComment(0, "fix", "Rename value.", {
+      quote: "const value = 1;",
+      occurrence: 1,
+      start: 0,
+      end: 16,
+    });
+
+    const expectedContent = `${fence}\n{>>fix: Rename value. @@ "const value = 1;"<<}`;
+    expect(mockWritable.write).toHaveBeenCalledWith(expectedContent);
+    expect(getActiveTab(useAppStore.getState())?.rawContent).toBe(
+      expectedContent,
+    );
   });
 
   it("inserts comments into the body when markdown starts with metadata", async () => {

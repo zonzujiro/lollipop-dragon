@@ -2,7 +2,8 @@ import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../../modules/sharing", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../../modules/sharing")>();
+  const actual =
+    await importOriginal<typeof import("../../../modules/sharing")>();
   return {
     ...actual,
     syncActiveShares: vi.fn(),
@@ -15,16 +16,20 @@ vi.mock("../../../config", () => ({
 }));
 
 vi.mock("../../../services/crypto", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../../services/crypto")>();
+  const actual =
+    await importOriginal<typeof import("../../../services/crypto")>();
   return {
     ...actual,
-    base64urlToKey: vi.fn().mockImplementation(async () => actual.generateKey()),
+    base64urlToKey: vi
+      .fn()
+      .mockImplementation(async () => actual.generateKey()),
     docIdFromKey: vi.fn().mockResolvedValue("mock-doc-id"),
   };
 });
 
 vi.mock("../../../modules/relay", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../../modules/relay")>();
+  const actual =
+    await importOriginal<typeof import("../../../modules/relay")>();
   return {
     ...actual,
     getRelay: () => ({

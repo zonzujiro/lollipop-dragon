@@ -1,5 +1,11 @@
 # Redesign Handoff Packet
 
+## Implementation status
+
+The four implementation phases were completed on 14.07.2026. The packet remains
+the design and behavior reference; current product contracts are also recorded
+in the owning feature and technical-design documents.
+
 This folder is a self-contained brief for implementing the **"Reading Room" redesign** of Lollipop Dragon. It is written for an AI coding agent (or any engineer) picking up the work with no prior context.
 
 ## Read in this order

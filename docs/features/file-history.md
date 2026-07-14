@@ -16,13 +16,13 @@ Users who share a document, close the tab, and later want to check for peer comm
 
 ## 3. User Decisions
 
-| Decision            | Choice                                                    |
-| ------------------- | --------------------------------------------------------- |
-| History storage     | IndexedDB for handles, localStorage for metadata          |
-| History limit       | Last 20 entries (oldest evicted on overflow)              |
-| Reopen UX           | Header history dropdown only (FilePicker stays untouched) |
-| Permission handling | Re-request on reopen; show status indicator               |
-| Share reconnection  | Automatic via stable key (already works)                  |
+| Decision            | Choice                                                              |
+| ------------------- | ------------------------------------------------------------------- |
+| History storage     | IndexedDB for handles, localStorage for metadata                    |
+| History limit       | Last 20 entries (oldest evicted on overflow)                        |
+| Reopen UX           | Header history dropdown plus recent items on the landing FilePicker |
+| Permission handling | Re-request on reopen; show status indicator                         |
+| Share reconnection  | Automatic via stable key (already works)                            |
 
 ---
 

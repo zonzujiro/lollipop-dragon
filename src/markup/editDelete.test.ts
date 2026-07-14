@@ -62,6 +62,20 @@ describe("replaceCommentMarkup", () => {
       '{>>answer: Updated answer [markreview id="mr-answer-1" thread="mr-question-1" replyTo="mr-question-1" author="Codex"]<<}',
     );
   });
+
+  it("preserves a standalone range anchor when editing", () => {
+    const comment = makeComment({
+      anchor: {
+        quote: 'say "yes"',
+        occurrence: 2,
+        start: 0,
+        end: 9,
+      },
+    });
+    expect(replaceCommentMarkup(comment, "clarify", "Explain.")).toBe(
+      '{>>clarify: Explain. @@ "say \\"yes\\"" @2<<}',
+    );
+  });
 });
 
 describe("applyEdit", () => {
@@ -95,6 +109,19 @@ describe("applyDelete", () => {
     const raw = "content{>>end<<}";
     const c = makeComment({ rawStart: 7, rawEnd: 16 });
     expect(applyDelete(raw, c)).toBe("content");
+  });
+
+  it("unwraps highlighted text instead of deleting document content", () => {
+    const raw = "Before {==kept words==}{>>fix: revise<<} after";
+    const markup = "{==kept words==}{>>fix: revise<<}";
+    const rawStart = raw.indexOf(markup);
+    const comment = makeComment({
+      criticType: "highlight",
+      highlightedText: "kept words",
+      rawStart,
+      rawEnd: rawStart + markup.length,
+    });
+    expect(applyDelete(raw, comment)).toBe("Before kept words after");
   });
 
   it("removes multiple comments using original raw offsets", () => {

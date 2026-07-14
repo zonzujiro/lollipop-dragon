@@ -5,25 +5,12 @@ import { COMMENT_TYPE_COLOR } from "../../../types/criticmarkup";
 import type { Comment, CommentType } from "../../../types/criticmarkup";
 import type { CommentThreadGroup } from "../../../markup";
 import { canEditComment } from "../../../utils/commentPermissions";
-
-const EDITABLE_COMMENT_TYPES: CommentType[] = [
-  "note",
-  "fix",
-  "rewrite",
-  "expand",
-  "clarify",
-  "question",
-  "remove",
-];
+import {
+  normalizeUserCommentType,
+  USER_COMMENT_TYPES,
+} from "../../commentTypes";
 
 const EDITABLE_CRITIC_TYPES: Comment["criticType"][] = ["comment", "highlight"];
-const ACTION_REPLY_TYPES: CommentType[] = [
-  "fix",
-  "rewrite",
-  "expand",
-  "clarify",
-  "remove",
-];
 
 function getThreadAuthorKind(comment: Comment): "mine" | "external" | "none" {
   if (!comment.thread?.replyTo) {
@@ -60,9 +47,14 @@ function CommentBody({ comment }: { comment: Comment }) {
 
   return (
     <>
-      {comment.highlightedText && (
+      {(comment.anchor?.quote || comment.highlightedText) && (
         <p className="comment-thread-card__highlight">
-          "{comment.highlightedText}"
+          "{comment.anchor?.quote ?? comment.highlightedText}"
+        </p>
+      )}
+      {comment.anchor?.orphaned && (
+        <p className="comment-thread-card__orphan" role="note">
+          ⚠ text changed underneath — anchor released, quote kept
         </p>
       )}
       {comment.text && (
@@ -81,12 +73,16 @@ function CommentEditForm({
   onSave: (type: CommentType, text: string) => void;
   onCancel: () => void;
 }) {
-  const [editType, setEditType] = useState<CommentType>(comment.type);
+  const [editType, setEditType] = useState<CommentType>(
+    comment.thread || comment.type === "answer"
+      ? comment.type
+      : normalizeUserCommentType(comment.type),
+  );
   const [editText, setEditText] = useState(comment.text);
   const availableTypes =
     comment.thread || comment.type === "answer"
       ? [comment.type]
-      : EDITABLE_COMMENT_TYPES;
+      : USER_COMMENT_TYPES;
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -408,7 +404,7 @@ export function CommentThreadCard({
             className="comment-thread-card__action-types"
             aria-label="Thread action type"
           >
-            {ACTION_REPLY_TYPES.map((commentType) => (
+            {USER_COMMENT_TYPES.map((commentType) => (
               <button
                 key={commentType}
                 type="button"

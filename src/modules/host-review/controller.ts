@@ -310,15 +310,30 @@ export function createHostReviewControllerActions<
         return;
       }
 
-      await writeAndUpdate({
+      const deletedComments = getDeletedCommentsForSelection(
+        tab.comments,
+        comment,
+      );
+      const written = await writeAndUpdate({
         set,
         buildUpdatedActiveTabs,
         fileHandle: tab.fileHandle,
-        newRawContent: applyDeleteMany(
-          tab.rawContent,
-          getDeletedCommentsForSelection(tab.comments, comment),
-        ),
+        newRawContent: applyDeleteMany(tab.rawContent, deletedComments),
       });
+      if (written) {
+        set((state) => ({
+          tabs: buildUpdatedActiveTabs(
+            state.tabs,
+            state.activeTabId,
+            (currentTab) => ({
+              resolvedComments: [
+                ...currentTab.resolvedComments,
+                ...deletedComments,
+              ],
+            }),
+          ),
+        }));
+      }
     },
 
     deleteAllComments: async () => {
@@ -336,12 +351,26 @@ export function createHostReviewControllerActions<
         nextRawContent = applyDelete(nextRawContent, comment);
       }
 
-      await writeAndUpdate({
+      const written = await writeAndUpdate({
         set,
         buildUpdatedActiveTabs,
         fileHandle: tab.fileHandle,
         newRawContent: nextRawContent,
       });
+      if (written) {
+        set((state) => ({
+          tabs: buildUpdatedActiveTabs(
+            state.tabs,
+            state.activeTabId,
+            (currentTab) => ({
+              resolvedComments: [
+                ...currentTab.resolvedComments,
+                ...tab.comments,
+              ],
+            }),
+          ),
+        }));
+      }
     },
 
     editComment: async (id, type, text) => {
@@ -365,7 +394,7 @@ export function createHostReviewControllerActions<
       });
     },
 
-    addComment: async (blockIndex, type, text) => {
+    addComment: async (blockIndex, type, text, anchor) => {
       const tab = getActiveTab(get);
       if (!tab?.fileHandle) {
         return;
@@ -380,6 +409,7 @@ export function createHostReviewControllerActions<
         blockIndex,
         type,
         text,
+        anchor,
       });
       const nextRawContent =
         tab.rawContent.slice(0, document.bodyStart) + nextBody;

@@ -1,4 +1,8 @@
-import type { Comment, CommentType } from "../../types/criticmarkup";
+import type {
+  Comment,
+  CommentAnchorDraft,
+  CommentType,
+} from "../../types/criticmarkup";
 
 export type HostCommentFilter = CommentType | "all" | "pending" | "resolved";
 
@@ -53,6 +57,7 @@ export interface HostReviewActions {
     blockIndex: number,
     type: CommentType,
     text: string,
+    anchor?: CommentAnchorDraft,
   ) => Promise<void>;
   editComment: (id: string, type: CommentType, text: string) => Promise<void>;
   deleteComment: (id: string) => Promise<void>;

@@ -240,6 +240,15 @@
     </div>
     <div class="doc-pane" id="host-pane">
       <button class="rail-restore" id="sidebar-restore" data-action="toggle-sidebar" title="Show files (⌘B)">▸</button>
+      <div class="restore-banner" id="restore-banner" hidden>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <circle cx="11" cy="13" r="2.2"/><path d="M13.2 13h4.3m-1.8 0v2"/>
+        </svg>
+        <div class="rb-text"><b>Live access to “research-notes” was dropped when the browser restarted.</b> Keep reading — commenting and agent runs resume once access is restored.</div>
+        <button class="btn inkfill" data-action="restore-access">Restore access</button>
+        <button class="btn subtle" data-action="restore-other">Open another folder…</button>
+      </div>
       <div class="doc-scroll" id="host-scroll"><div class="doc-col" id="doc-col"></div></div>
       <div class="term" id="term" hidden>
         <div class="tbar" data-action="toggle-term">

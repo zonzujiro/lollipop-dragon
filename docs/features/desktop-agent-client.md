@@ -264,8 +264,11 @@ outside this first desktop planning scope.
 - Finished agent runs remain as bounded per-tab history. The comment panel shows
   recent completed, failed, and stopped runs with prompt/output copy actions and
   an explicit dismiss action.
-- The active run panel shows the run task, target path summary, and selected
-  comment count.
+- The active run panel shows the run task, target path summary, selected comment
+  count, and preparing/editing/review progress states.
+- Markdown blocks changed during a visible run receive an accent gutter and
+  diff-style surface treatment. Completion, failure, and stop transitions
+  produce explicit toast feedback.
 - Native runner PTY output is captured into a bounded output tail. The active run
   panel exposes that tail through a collapsible xterm attachment for same-window
   observability.
@@ -284,8 +287,8 @@ outside this first desktop planning scope.
 - Folder tabs with scanned actionable comments use the same address-comments
   action. Desktop starts a run with a sorted, bounded set of file/comment targets
   from the active tab; website builds copy the same folder-scoped prompt.
-- Pending peer comment review has an agent action in the host shared-panel
-  review list. Desktop starts a `review_peer_comments` run for the selected
+- Pending peer comment review has an agent action in the unified Share sheet.
+  Desktop starts a `review_peer_comments` run for the selected
   share's pending comments; website builds copy the same prompt for manual
   agent handoff.
 - Agent starts are guarded to one active run per tab and three active runs

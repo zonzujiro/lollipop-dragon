@@ -1,8 +1,12 @@
 .connection-status {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   flex-shrink: 0;
+  min-height: 2rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  background: var(--surface-alt);
 }
 
 .connection-status__dot {
@@ -17,11 +21,25 @@
   background-color: #f59e0b;
 }
 
+.connection-status[data-status="connected"] .connection-status__dot {
+  background-color: var(--c-green);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-green) 14%, transparent);
+}
+
+.connection-status[data-status="connected"] {
+  background: color-mix(in srgb, var(--c-green) 10%, var(--surface));
+}
+
 .connection-status[data-status="disconnected"] .connection-status__dot {
   background-color: var(--text-muted, #868e96);
 }
 
 .connection-status__label {
-  font-size: 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
   color: var(--text-muted, #868e96);
+}
+
+.connection-status[data-status="connected"] .connection-status__label {
+  color: var(--c-green);
 }

@@ -5,6 +5,14 @@ import {
   createThreadReplyMetadata,
   serializeCommentBody,
 } from "./commentProtocol";
+import {
+  escapeAnchorQuote,
+  findQuoteOccurrences,
+  getBlockPlainTextMap,
+  plainRangeToMarkdownRange,
+  resolveCommentAnchor,
+} from "./commentAnchor";
+import type { CommentAnchor } from "../types/criticmarkup";
 
 // A segment maps a range of cleanMarkdown offsets to a range of raw offsets.
 // Plain segments are 1:1; replaced segments (CriticMarkup spans) map any
@@ -78,6 +86,25 @@ function cleanToRaw(cleanOffset: number, segments: Segment[]): number {
   return cleanOffset;
 }
 
+function insertStandaloneAnchor(input: {
+  rawContent: string;
+  rawPosition: number;
+  body: string;
+  quote: string;
+  occurrence: number;
+  afterFence: boolean;
+}): string {
+  const suffix = ` @@ "${escapeAnchorQuote(input.quote)}"${input.occurrence > 1 ? ` @${input.occurrence}` : ""}`;
+  const markup = `{>>${input.body}${suffix}<<}`;
+  const separator = input.afterFence ? "\n" : "";
+  return (
+    input.rawContent.slice(0, input.rawPosition) +
+    separator +
+    markup +
+    input.rawContent.slice(input.rawPosition)
+  );
+}
+
 // Insert a new CriticMarkup comment after the block at blockIndex.
 // Returns the updated raw content string.
 export function insertComment(input: {
@@ -87,6 +114,7 @@ export function insertComment(input: {
   blockIndex: number;
   type: CommentType;
   text: string;
+  anchor?: Pick<CommentAnchor, "quote" | "occurrence" | "start" | "end">;
 }): string {
   const blocks = getBlockPositions(input.cleanMarkdown);
   if (input.blockIndex < 0 || input.blockIndex >= blocks.length) {
@@ -97,17 +125,94 @@ export function insertComment(input: {
     return input.rawContent;
   }
 
-  const blockEnd = blocks[input.blockIndex].end;
+  const block = blocks[input.blockIndex];
+  const blockEnd = block.end;
   const segments = buildSegments(input.rawContent, input.existingComments);
-  const rawPos = cleanToRaw(blockEnd, segments);
 
   const thread =
     input.type === "question" ? createQuestionThreadMetadata() : undefined;
-  const markup = `{>>${serializeCommentBody({
+  const body = serializeCommentBody({
     type: input.type,
     text: input.text,
     thread,
-  })}<<}`;
+  });
+
+  if (input.anchor) {
+    const blockMap = getBlockPlainTextMap(
+      input.cleanMarkdown,
+      input.blockIndex,
+    );
+    if (blockMap) {
+      const resolved = resolveCommentAnchor(blockMap.plainText, input.anchor);
+      const selectedQuote = blockMap.plainText.slice(
+        input.anchor.start,
+        input.anchor.end,
+      );
+      const range = plainRangeToMarkdownRange(
+        blockMap,
+        input.anchor.start,
+        input.anchor.end,
+      );
+      const validSelection =
+        !resolved.orphaned &&
+        selectedQuote === input.anchor.quote &&
+        range !== null;
+      if (validSelection && range) {
+        const occurrences = findQuoteOccurrences(
+          blockMap.plainText,
+          input.anchor.quote,
+        );
+        const occurrence = Math.max(
+          occurrences.indexOf(input.anchor.start) + 1,
+          input.anchor.occurrence,
+        );
+        if (blockMap.kind === "code") {
+          return insertStandaloneAnchor({
+            rawContent: input.rawContent,
+            rawPosition: cleanToRaw(blockEnd, segments),
+            body,
+            quote: input.anchor.quote,
+            occurrence,
+            afterFence: true,
+          });
+        }
+        const intersectsMarkup = input.existingComments.some((comment) => {
+          const hasVisibleRange = comment.cleanEnd > comment.cleanStart;
+          if (hasVisibleRange) {
+            return (
+              comment.cleanStart < range.end && comment.cleanEnd > range.start
+            );
+          }
+          return (
+            comment.cleanStart > range.start && comment.cleanStart < range.end
+          );
+        });
+        if (!intersectsMarkup) {
+          const rawStart = cleanToRaw(range.start, segments);
+          const rawEnd = cleanToRaw(range.end, segments);
+          const rawSlice = input.rawContent.slice(rawStart, rawEnd);
+          const markup = `{==${rawSlice}==}{>>${body}<<}`;
+          return (
+            input.rawContent.slice(0, rawStart) +
+            markup +
+            input.rawContent.slice(rawEnd)
+          );
+        }
+
+        return insertStandaloneAnchor({
+          rawContent: input.rawContent,
+          rawPosition: cleanToRaw(blockEnd, segments),
+          body,
+          quote: input.anchor.quote,
+          occurrence,
+          afterFence: false,
+        });
+      }
+    }
+  }
+
+  const rawPos = cleanToRaw(blockEnd, segments);
+  const markup = `{>>${body}<<}`;
   return (
     input.rawContent.slice(0, rawPos) + markup + input.rawContent.slice(rawPos)
   );

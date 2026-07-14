@@ -1,5 +1,32 @@
-import type { Comment, CommentType, CriticType } from "../types/criticmarkup";
+import type {
+  Comment,
+  CommentAnchor,
+  CommentType,
+  CriticType,
+} from "../types/criticmarkup";
 import { parseStructuredCommentBody } from "./commentProtocol";
+
+const ANCHOR_SUFFIX_RE = / @@ "((?:\\.|[^"\\])*)"(?: @([1-9]\d*))?$/;
+
+function parseAnchorSuffix(body: string): {
+  body: string;
+  anchor?: CommentAnchor;
+} {
+  const match = ANCHOR_SUFFIX_RE.exec(body);
+  if (!match) {
+    return { body };
+  }
+  const quote = match[1].replace(/\\([\\"])/g, "$1");
+  return {
+    body: body.slice(0, match.index),
+    anchor: {
+      quote,
+      occurrence: Number(match[2] ?? "1"),
+      start: -1,
+      end: -1,
+    },
+  };
+}
 
 export { isCommentType, parseCommentType } from "./commentProtocol";
 
@@ -89,6 +116,7 @@ export function parseCriticMarkup(source: string): {
     let to: string | undefined;
     let cleanReplacement: string;
     let thread: Comment["thread"] = undefined;
+    let anchor: Comment["anchor"] = undefined;
 
     if (match[1] !== undefined) {
       criticType = "highlight";
@@ -97,7 +125,9 @@ export function parseCriticMarkup(source: string): {
       cleanReplacement = match[1];
     } else if (match[3] !== undefined) {
       criticType = "comment";
-      ({ type, text, thread } = parseStructuredCommentBody(match[3]));
+      const anchoredBody = parseAnchorSuffix(match[3]);
+      anchor = anchoredBody.anchor;
+      ({ type, text, thread } = parseStructuredCommentBody(anchoredBody.body));
       cleanReplacement = "";
     } else if (match[4] !== undefined) {
       criticType = "addition";
@@ -136,6 +166,7 @@ export function parseCriticMarkup(source: string): {
       cleanStart,
       cleanEnd,
       thread,
+      anchor,
     });
   }
 

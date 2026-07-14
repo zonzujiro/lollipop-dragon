@@ -610,6 +610,43 @@ textarea {
   display: flex;
 }
 
+/* degraded restore-access state: attention (amber), never error-red */
+.restore-banner {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 10px 16px;
+  flex-shrink: 0;
+  background: var(--c-rewrite-soft);
+  border-bottom: 1px solid var(--line);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+.restore-banner > svg {
+  flex-shrink: 0;
+  color: var(--c-rewrite);
+}
+.restore-banner .rb-text {
+  max-width: 62ch;
+}
+.restore-banner .btn {
+  flex-shrink: 0;
+}
+.restore-banner .btn.inkfill {
+  margin-left: auto;
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--bg);
+  font-weight: 700;
+}
+.locked .blk-add {
+  display: none;
+}
+#btn-agent.dimmed {
+  opacity: 0.45;
+}
+
 .theme-ic::before {
   content: "☾";
   font-size: 14px;

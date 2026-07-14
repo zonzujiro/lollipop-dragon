@@ -1,0 +1,91 @@
+.command-palette {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 110px 1rem 1rem;
+  background: color-mix(in srgb, var(--ink) 25%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.command-palette__dialog {
+  width: min(580px, 100%);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.command-palette__search {
+  width: 100%;
+  box-sizing: border-box;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 1.1rem;
+  background: transparent;
+  color: var(--text);
+  font:
+    600 1rem/1.4 "Jost",
+    sans-serif;
+  outline: none;
+}
+
+.command-palette__search:focus {
+  box-shadow: inset 0 -2px var(--accent);
+}
+
+.command-palette__list {
+  max-height: min(520px, calc(100vh - 230px));
+  overflow-y: auto;
+  padding: 0.45rem;
+}
+
+.command-palette__item {
+  display: flex;
+  width: 100%;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 0;
+  border-radius: var(--radius);
+  padding: 0.55rem 0.7rem;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.command-palette__item--selected {
+  background: var(--accent-soft);
+}
+
+.command-palette__item span {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.command-palette__item small {
+  color: var(--text-muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.command-palette__item kbd {
+  color: var(--text-muted);
+  font:
+    600 0.72rem/1 "IBM Plex Mono",
+    monospace;
+}
+
+.command-palette__empty {
+  margin: 0;
+  padding: 1.5rem;
+  color: var(--text-muted);
+  text-align: center;
+}

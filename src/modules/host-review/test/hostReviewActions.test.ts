@@ -126,6 +126,7 @@ describe("store.deleteComment", () => {
     const tab = getActiveTab(useAppStore.getState());
     expect(tab?.rawContent).toBe("HelloWorld");
     expect(tab?.undoState?.rawContent).toBe(rawContent);
+    expect(tab?.resolvedComments).toEqual([comment]);
   });
 
   it("removes a whole question thread when deleting the root question", async () => {
@@ -179,6 +180,7 @@ describe("store.deleteComment", () => {
     expect(tab?.rawContent).toBe(expectedContent);
     expect(tab?.rawContent).not.toContain("answer:");
     expect(tab?.undoState?.rawContent).toBe(rawContent);
+    expect(tab?.resolvedComments).toEqual([question, answer]);
   });
 
   it("removes only the selected answer when deleting a thread reply", async () => {

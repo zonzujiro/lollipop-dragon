@@ -136,10 +136,11 @@ Each comment posted to the Worker is an encrypted blob. Once decrypted:
   "peer_name": "Alex",
   "path": "database/comparison.md",
   "block_ref": {
-    "type": "paragraph",
+    "block_index": 2,
     "content_preview": "PostgreSQL is the best choice.",
-    "line_start": 14,
-    "line_end": 14
+    "anchor_version": 1,
+    "quote": "PostgreSQL is the best choice.",
+    "occurrence": 1
   },
   "comment_type": "fix",
   "text": "This claim needs evidence. Compare PostgreSQL, MySQL, and SQLite.",
@@ -147,7 +148,13 @@ Each comment posted to the Worker is an encrypted blob. Once decrypted:
 }
 ```
 
-The host's app converts this into CriticMarkup and inserts it into the local file:
+`anchor_version`, `quote`, and `occurrence` are additive. Older block-only
+comments remain valid. The host resolves a range anchor against the current
+plain text before converting it into CriticMarkup. If the range overlaps
+existing CriticMarkup, the host writes a standalone anchored comment rather
+than nesting markup.
+
+The host's app converts a non-overlapping range into CriticMarkup and inserts it into the local file:
 
 ```
 {==PostgreSQL is the best choice.==}{>>fix: This claim needs evidence. Compare PostgreSQL, MySQL, and SQLite. — Alex<<}
@@ -171,7 +178,10 @@ Peers open the link. The app fetches the encrypted blob from the Worker, decrypt
 
 ### 7.3 Async Commenting
 
-Peers can comment on any block, just like in v1. The app encrypts the comment and POSTs it to the Worker's comment endpoint. No auth, no account needed.
+Peers can comment on any block or a 3–300 character selection, just like the
+host. The app encrypts the block reference and optional durable range anchor,
+then POSTs the comment to the Worker's comment endpoint. No auth or account is
+needed.
 
 Next time the host opens the app, it fetches pending comments from the Worker, decrypts them, and offers to merge them into the local files as CriticMarkup. The host can accept or dismiss each comment.
 
@@ -195,7 +205,7 @@ Obsolete note:
 
 ### 7.5 Manage Shared Documents
 
-The host has a "Shared" panel showing all active shares:
+The host has one Share sheet for creation and management. It shows all active shares:
 
 - Document/folder name, creation date, expiry (TTL).
 - "Revoke" button — deletes the content and comments from the Worker immediately.
@@ -209,11 +219,29 @@ The host has a "Shared" panel showing all active shares:
 ### 8.1 Host Shares a Document
 
 1. Host opens folder in MarkReview, navigates to a file or folder.
-2. Host clicks the "Share file" or "Share folder" icon button in the header (each button is only visible when applicable).
-3. App opens the share dialog. Optional: set expiry (default 7 days).
-4. App encrypts content, uploads to Worker, generates link.
-5. Link is copied to clipboard. Toast: "Link copied. Share it with your reviewers."
-6. Host sends link via Slack/Telegram/email.
+2. Host clicks the unified "Share" action in the header.
+3. App opens the Share sheet and pre-generates the encryption key, document ID,
+   and URL locally. No content is uploaded yet.
+4. The host selects current file or whole folder and chooses a 1-day, 7-day, or
+   30-day expiry tab. There is no access-level control; every share is read and
+   comment.
+5. The host clicks **Copy link** or **Copy as Slack message**. The selected
+   action shows an encrypting/uploading state while the app encrypts the content
+   and uploads it to the Worker.
+6. Only after a successful upload does the app copy the raw link or Slack-ready
+   message. A failed upload copies nothing and leaves the action available to
+   retry.
+7. Host sends link via Slack/Telegram/email.
+
+The header action is the only file/folder share entry point. File-tree rows do
+not expose a second hover share icon; their trailing area is reserved for the
+open-comment count and active-share status so those indicators never overlap.
+
+The management sheet follows the redesign layout in
+`docs/redesign/02-screens.md`: compact 560px card, scope segment, expiry tabs,
+teal encrypted-link panel, fragment security note, and a sunken workspace share
+list. The URL identity is prepared locally when the sheet opens; either copy
+action performs the first upload before writing to the clipboard.
 
 Share creation must keep the post-upload UI responsive even for large rendered
 documents. After the Worker accepts the encrypted blob, saving share metadata

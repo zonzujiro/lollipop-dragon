@@ -21,9 +21,9 @@ function makeComment(
 }
 
 const comments: Comment[] = [
-  makeComment("0", "fix", "fix the intro", 0),
+  makeComment("0", "clarify", "clarify the intro", 0),
   makeComment("1", "rewrite", "rewrite paragraph", 1),
-  makeComment("2", "fix", "another fix", 2),
+  makeComment("2", "clarify", "another clarification", 2),
 ];
 
 beforeEach(() => {
@@ -39,6 +39,16 @@ beforeEach(() => {
 });
 
 describe("CommentPanel — list rendering", () => {
+  it("renders shortcut hints as individual keycaps", () => {
+    const { container } = render(<CommentPanel />);
+    const footer = container.querySelector(".comment-panel__shortcut-hints");
+    expect(footer).not.toBeNull();
+    const keycaps = Array.from(footer?.querySelectorAll("kbd") ?? []).map(
+      (keycap) => keycap.textContent,
+    );
+    expect(keycaps).toEqual(["J", "K", "C", "⌘K"]);
+  });
+
   it("shows empty state when there are no comments", () => {
     render(<CommentPanel />);
     expect(
@@ -49,9 +59,9 @@ describe("CommentPanel — list rendering", () => {
   it('shows all comments when filter is "all"', () => {
     setTestState({ comments });
     render(<CommentPanel />);
-    expect(screen.getByText("fix the intro")).toBeInTheDocument();
+    expect(screen.getByText("clarify the intro")).toBeInTheDocument();
     expect(screen.getByText("rewrite paragraph")).toBeInTheDocument();
-    expect(screen.getByText("another fix")).toBeInTheDocument();
+    expect(screen.getByText("another clarification")).toBeInTheDocument();
   });
 
   it("shows type badges for each comment", () => {
@@ -60,18 +70,19 @@ describe("CommentPanel — list rendering", () => {
     expect(screen.getByText("fix")).toBeInTheDocument();
   });
 
-  it("shows block ref for each comment", () => {
+  it("shows the local author instead of an implementation block reference", () => {
     setTestState({ comments: [makeComment("0", "note", "note", 3)] });
     render(<CommentPanel />);
-    expect(screen.getByText("¶4")).toBeInTheDocument();
+    expect(screen.getByText("You")).toBeInTheDocument();
+    expect(screen.queryByText("¶4")).not.toBeInTheDocument();
   });
 
   it("shows the total comment count", () => {
     setTestState({ comments });
     const { container } = render(<CommentPanel />);
-    expect(container.querySelector(".comment-panel__count")?.textContent).toBe(
-      "3",
-    );
+    expect(
+      container.querySelector(".comment-panel__open-count")?.textContent,
+    ).toBe("3 open");
   });
 });
 
@@ -82,39 +93,45 @@ describe("CommentPanel — filtering", () => {
 
   it("shows filter buttons when multiple types are present", () => {
     render(<CommentPanel />);
-    // Filter button accessible names include the count: "All 3", "fix 2", "rewrite 1"
+    // Filter button accessible names include the count.
     expect(
       screen.getByRole("button", { name: /^All\s+\d/ }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /^fix\s+\d/ }),
+      screen.getByRole("button", { name: /^clarify\s+\d/ }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /^rewrite\s+\d/ }),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^fix\s+\d/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^expand\s+\d/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("filters comments by type when a filter button is clicked", async () => {
     const user = userEvent.setup();
     render(<CommentPanel />);
-    await user.click(screen.getByRole("button", { name: /^fix\s+\d/ }));
-    expect(screen.getByText("fix the intro")).toBeInTheDocument();
-    expect(screen.getByText("another fix")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /^clarify\s+\d/ }));
+    expect(screen.getByText("clarify the intro")).toBeInTheDocument();
+    expect(screen.getByText("another clarification")).toBeInTheDocument();
     expect(screen.queryByText("rewrite paragraph")).not.toBeInTheDocument();
   });
 
-  it('shows "no comments match" message when filter yields nothing after store change', () => {
-    // Set filter to 'expand' (no expand comments in the list)
+  it("falls back to All for a persisted legacy type filter", () => {
     setTestState({ commentFilter: "expand" });
     render(<CommentPanel />);
-    expect(screen.getByText(/No comments match/)).toBeInTheDocument();
+    expect(screen.getByText("clarify the intro")).toBeInTheDocument();
+    expect(screen.getByText("rewrite paragraph")).toBeInTheDocument();
   });
 
   it("resets to all when clicking an active filter", async () => {
     const user = userEvent.setup();
-    setTestState({ commentFilter: "fix" });
+    setTestState({ commentFilter: "clarify" });
     render(<CommentPanel />);
-    await user.click(screen.getAllByRole("button", { name: /^fix/ })[0]);
+    await user.click(screen.getAllByRole("button", { name: /^clarify/ })[0]);
     const tab = getActiveTab(useAppStore.getState());
     expect(tab?.commentFilter).toBe("all");
   });
@@ -133,7 +150,7 @@ describe("CommentPanel — active entry", () => {
     const user = userEvent.setup();
     setTestState({ comments });
     render(<CommentPanel />);
-    await user.click(screen.getByText("fix the intro"));
+    await user.click(screen.getByText("clarify the intro"));
     const tab = getActiveTab(useAppStore.getState());
     expect(tab?.activeCommentId).toBe("0");
   });
@@ -142,7 +159,7 @@ describe("CommentPanel — active entry", () => {
     const user = userEvent.setup();
     setTestState({ comments, activeCommentId: "0" });
     render(<CommentPanel />);
-    await user.click(screen.getByText("fix the intro"));
+    await user.click(screen.getByText("clarify the intro"));
     const tab = getActiveTab(useAppStore.getState());
     expect(tab?.activeCommentId).toBe("0");
   });
@@ -221,16 +238,15 @@ describe("CommentPanel — active entry", () => {
   });
 });
 
-describe("CommentPanel — close", () => {
-  it("calls toggleCommentPanel when close button is clicked", async () => {
-    const user = userEvent.setup();
-    const mockToggle = vi.fn();
-    useAppStore.setState({ toggleCommentPanel: mockToggle });
+describe("CommentPanel — prototype chrome", () => {
+  it("keeps close and destructive controls out of the rail", () => {
     render(<CommentPanel />);
-    await user.click(
-      screen.getByRole("button", { name: "Close comments panel" }),
-    );
-    expect(mockToggle).toHaveBeenCalledOnce();
+    expect(
+      screen.queryByRole("button", { name: "Close comments panel" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Clear" }),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -446,8 +462,8 @@ describe("CommentPanel — agent prompt", () => {
   });
 });
 
-describe("CommentPanel — legacy resolved filter", () => {
-  it("shows current comments and no status controls for persisted resolved state", () => {
+describe("CommentPanel — resolved history", () => {
+  it("shows persisted resolved comments as view-only history", () => {
     setTestState({
       comments,
       resolvedComments: [
@@ -462,13 +478,12 @@ describe("CommentPanel — legacy resolved filter", () => {
 
     render(<CommentPanel />);
 
-    expect(screen.getByText("fix the intro")).toBeInTheDocument();
-    expect(screen.queryByText("already removed")).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /^Pending/ }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /^Resolved/ }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("clarify the intro")).not.toBeInTheDocument();
+    expect(screen.getByText("already removed")).toBeInTheDocument();
+    expect(screen.getByText("resolved")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Resolved 1/ })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Edit comment" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Delete comment" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Clear" })).toBeNull();
   });
 });

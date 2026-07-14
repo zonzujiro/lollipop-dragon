@@ -3,20 +3,21 @@ import { useAppStore } from "../store";
 import { useActiveTab } from "../store/selectors";
 import { FilePicker } from "./components/FilePicker";
 import { Header } from "./components/Header";
-import { TabBar } from "./components/TabBar";
 import { MarkdownRenderer } from "./components/MarkdownRenderer";
 import { FileTreeSidebar } from "./components/FileTreeSidebar";
 import { ShareDialog } from "./components/ShareDialog";
 import type { ShareDialogScope } from "./components/ShareDialog";
 import { CommentPanel } from "./components/CommentPanel";
-import { SharedPanel } from "./components/SharedPanel";
 import { PresentationMode } from "./components/PresentationMode";
+import { CommandPalette } from "./components/CommandPalette";
 import { UndoToast } from "./components/UndoToast";
 import { Toast } from "./components/Toast";
 import { AgentSettingsDialog } from "./components/AgentSettingsDialog";
 import { PeerNamePrompt } from "./components/PeerNamePrompt";
+import { PeerTrustRibbon } from "./components/PeerTrustRibbon";
 import { buildVirtualTree } from "../types/fileTree";
-import { findLiveFileInTree, toFileTreeNodes } from "../types/fileTree";
+import { buildCommentThreadGroups } from "../markup";
+import { findLiveFileInTree } from "../types/fileTree";
 import type { SidebarTreeNode } from "../types/fileTree";
 import { RestoreError } from "./components/RestoreError";
 import { ContentUpdateBanner } from "./components/ContentUpdateBanner";
@@ -27,7 +28,6 @@ import {
   shouldRenderRestorePlaceholder,
   tabRequiresRestoreAccess,
 } from "../types/tab";
-import { WORKER_URL } from "../config";
 import { stopRelay } from "../modules/relay";
 import { workspaceRuntime } from "../runtime";
 import { shouldShowBrowserUnsupported } from "./browserSupport";
@@ -205,13 +205,6 @@ function App() {
     [tab, selectFile, showToast, switchTab],
   );
 
-  const handleHostShare = useCallback(
-    (nodes: SidebarTreeNode[], label: string) => {
-      setShareScope({ kind: "nodes", nodes: toFileTreeNodes(nodes), label });
-    },
-    [],
-  );
-
   const hostTree = useMemo<SidebarTreeNode[]>(() => {
     const fileTree = tab?.fileTree ?? [];
     if (!tab || !tab.directoryName || fileTree.length === 0) {
@@ -225,6 +218,19 @@ function App() {
         children: fileTree,
       },
     ];
+  }, [tab]);
+
+  const hostCommentCounts = useMemo(() => {
+    if (!tab) {
+      return {};
+    }
+    return Object.values(tab.allFileComments).reduce<Record<string, number>>(
+      (counts, entry) => ({
+        ...counts,
+        [entry.filePath]: buildCommentThreadGroups(entry.comments).length,
+      }),
+      {},
+    );
   }, [tab]);
 
   const hostHeader = useMemo(
@@ -283,6 +289,7 @@ function App() {
     }
     return (
       <div className="app-layout">
+        <PeerTrustRibbon />
         <Header peerMode />
         <div className="app-body">
           {sharedContent && Object.keys(sharedContent.tree).length > 1 && (
@@ -300,6 +307,7 @@ function App() {
           {peerCommentPanelOpen && <CommentPanel peerMode />}
         </div>
         <Toast />
+        <CommandPalette />
       </div>
     );
   }
@@ -345,6 +353,7 @@ function App() {
       <>
         <FilePicker />
         <Toast />
+        <CommandPalette />
         {agentSettingsOpen && <AgentSettingsDialog />}
       </>
     );
@@ -352,7 +361,12 @@ function App() {
 
   // ── Presentation mode (fullscreen slideshow) ──
   if (presentationMode) {
-    return <PresentationMode />;
+    return (
+      <>
+        <PresentationMode />
+        <CommandPalette />
+      </>
+    );
   }
 
   // ── Host mode with tabs ──
@@ -380,7 +394,6 @@ function App() {
           onPresent={enterPresentationMode}
         />
       )}
-      {!focusMode && <TabBar />}
       <div className="app-body">
         {hasFolderOpen && tab?.sidebarOpen && !focusMode && (
           <FileTreeSidebar
@@ -388,8 +401,8 @@ function App() {
             activeFilePath={tab?.activeFilePath ?? null}
             onSelect={handleHostSelect}
             header={hostHeader}
-            onShare={WORKER_URL ? handleHostShare : undefined}
             shares={tab?.shares}
+            commentCounts={hostCommentCounts}
             onCollapse={toggleSidebar}
           />
         )}
@@ -424,15 +437,20 @@ function App() {
         {tab?.commentPanelOpen && !focusMode && !disableReviewPanels && (
           <CommentPanel />
         )}
-        {tab?.sharedPanelOpen && !focusMode && !disableReviewPanels && (
-          <SharedPanel />
-        )}
       </div>
       {shareScope && (
         <ShareDialog onClose={() => setShareScope(null)} scope={shareScope} />
       )}
       <UndoToast />
       <Toast />
+      <CommandPalette
+        onShare={() =>
+          setShareScope({
+            kind: "current-file",
+            label: tab?.fileName ?? "document",
+          })
+        }
+      />
       {agentSettingsOpen && <AgentSettingsDialog />}
       {focusMode && (
         <button
