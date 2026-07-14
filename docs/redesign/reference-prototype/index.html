@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lollipop Dragon — Design Prototype</title>
+<link rel="icon" href="lollipop-dragon-logo.svg">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="proto.css">
+</head>
+<body>
+
+<!-- ================= LANDING ================= -->
+<div class="view" id="view-landing">
+<div class="land-scroll">
+  <div class="land">
+    <svg class="bau-bg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <circle cx="120" cy="140" r="170" fill="none" stroke="var(--brand-teal)" stroke-width="2" opacity=".28"/>
+      <circle cx="1490" cy="220" r="90" fill="var(--accent)" opacity=".10"/>
+      <path d="M0 1000 L0 840 A160 160 0 0 1 160 1000 Z" fill="var(--c-rewrite)" opacity=".16"/>
+      <path d="M1600 1000 L1600 760 L1360 1000 Z" fill="var(--brand-teal)" opacity=".14"/>
+      <rect x="1476" y="470" width="76" height="76" fill="none" stroke="var(--c-rewrite)" stroke-width="2" opacity=".3" transform="rotate(12 1514 508)"/>
+    </svg>
+    <img class="mark" src="lollipop-dragon-logo.svg" alt="Lollipop Dragon">
+    <h1>Lollipop Dragon</h1>
+    <div class="tag">Read what your agent wrote. Say what to change. Watch it happen.</div>
+    <div class="entry">
+      <div class="card hero" data-action="open-folder">
+        <div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+        <h3>Open a folder</h3>
+        <p>Review every markdown file in a project. Comment counts appear on the tree.</p>
+        <div class="k"><kbd>⌘O</kbd></div>
+      </div>
+      <div class="card" data-action="open-file">
+        <div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg></div>
+        <h3>Open a file</h3>
+        <p>One document, rendered beautifully, ready for margin comments.</p>
+        <div class="k"><kbd>⌘⇧O</kbd></div>
+      </div>
+      <div class="card" data-action="open-link">
+        <div class="ic t"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg></div>
+        <h3>Paste a review link</h3>
+        <p>Got a link from a teammate? It opens right here — nothing to install.</p>
+        <div class="k">try the peer experience →</div>
+      </div>
+    </div>
+    <div class="drop">…or drop a folder anywhere on this window</div>
+    <div class="recent">
+      <div class="lab">Recent</div>
+      <div class="items">
+        <span class="pill" data-action="open-folder"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg> research-notes <span class="n" id="recent-count">5</span></span>
+        <span class="pill" data-action="open-file"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg> release-plan.md</span>
+      </div>
+    </div>
+    <div class="browsers">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+      Local folders need Chrome or Edge · review links work everywhere
+    </div>
+    <a class="scroll-hint" href="#landing-features">what it does ↓</a>
+  </div>
+
+  <!-- ── features (from the classic bauhaus landing) ── -->
+  <section class="lb lb-cream" id="landing-features">
+    <div class="lb-inner lb-row">
+      <div class="lb-art" aria-hidden="true">
+        <svg viewBox="0 0 340 300">
+          <rect x="70" y="30" width="200" height="250" rx="6" fill="var(--surface-raised)" stroke="var(--line-strong)"/>
+          <rect x="92" y="60" width="120" height="10" rx="3" fill="var(--ink)" opacity=".8"/>
+          <rect x="92" y="86" width="156" height="7" rx="3" fill="var(--ink-muted)" opacity=".5"/>
+          <rect x="92" y="102" width="140" height="7" rx="3" fill="var(--ink-muted)" opacity=".5"/>
+          <rect x="92" y="118" width="150" height="7" rx="3" fill="var(--c-fix-soft)" stroke="var(--c-fix)" stroke-width="1.5"/>
+          <rect x="92" y="134" width="96" height="7" rx="3" fill="var(--c-clarify-soft)" stroke="var(--c-clarify)" stroke-width="1.5"/>
+          <circle cx="56" cy="122" r="9" fill="var(--c-fix)"/>
+          <rect x="47" y="132" width="18" height="18" fill="var(--c-clarify)" transform="rotate(45 56 141)"/>
+          <rect x="92" y="170" width="156" height="52" rx="6" fill="var(--bg-sunken)" stroke="var(--line)"/>
+          <rect x="104" y="184" width="90" height="6" rx="3" fill="var(--agent)"/>
+          <rect x="104" y="198" width="120" height="6" rx="3" fill="var(--ink-muted)" opacity=".5"/>
+          <circle cx="290" cy="52" r="34" fill="none" stroke="var(--brand-teal)" stroke-width="2.5"/>
+          <path d="M290 240 l38 44 h-76 Z" fill="var(--c-rewrite)" opacity=".85"/>
+        </svg>
+      </div>
+      <div class="lb-copy">
+        <h2 class="lb-h">reads everything<br>your agent writes</h2>
+        <ul class="lb-features">
+          <li><i class="mk mk-sq" style="background:var(--accent)"></i>inline criticmarkup comments</li>
+          <li><i class="mk mk-ci" style="background:var(--brand-teal)"></i>threaded questions &amp; answers</li>
+          <li><i class="mk mk-tr" style="border-bottom-color:var(--c-rewrite)"></i>mermaid diagrams &amp; code</li>
+          <li><i class="mk mk-sq" style="background:var(--brand-teal)"></i>gfm tables &amp; task lists</li>
+          <li><i class="mk mk-ci" style="background:var(--c-rewrite)"></i>tabs for files &amp; folders</li>
+          <li><i class="mk mk-tr" style="border-bottom-color:var(--accent)"></i>encrypted file or folder sharing</li>
+          <li><i class="mk mk-sq" style="background:var(--c-rewrite)"></i>live peer comments</li>
+          <li><i class="mk mk-ci" style="background:var(--accent)"></i>local review works offline</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── two ways to collaborate ── -->
+  <section class="lb lb-black">
+    <h2 class="lb-h lb-h--band">two ways to collaborate</h2>
+  </section>
+
+  <div class="lb-split">
+    <section class="lb lb-teal">
+      <div class="lb-collab">
+        <svg class="lb-geo" viewBox="0 0 120 120" aria-hidden="true">
+          <circle cx="42" cy="42" r="30" fill="rgba(255,255,255,.92)"/>
+          <rect x="58" y="58" width="44" height="44" fill="rgba(20,17,14,.85)"/>
+          <path d="M20 104 l20 -28 20 28 Z" fill="var(--c-rewrite)"/>
+        </svg>
+        <h3 class="lb-sub">with ai</h3>
+        <ul class="lb-features lb-features--light">
+          <li><i class="mk mk-sq" style="background:#FBEDD3"></i>comments live in the markdown</li>
+          <li><i class="mk mk-ci" style="background:var(--c-rewrite)"></i>any agent can read criticmarkup</li>
+          <li><i class="mk mk-tr" style="border-bottom-color:#FBEDD3"></i>copy instructions for questions</li>
+          <li><i class="mk mk-ci" style="background:#14110E"></i>answers render as inline threads</li>
+        </ul>
+      </div>
+    </section>
+    <section class="lb lb-red">
+      <div class="lb-collab">
+        <svg class="lb-geo" viewBox="0 0 120 120" aria-hidden="true">
+          <rect x="16" y="16" width="52" height="52" fill="rgba(255,255,255,.92)" transform="rotate(10 42 42)"/>
+          <circle cx="84" cy="78" r="26" fill="rgba(20,17,14,.85)"/>
+          <path d="M14 106 h40 l-20 -26 Z" fill="var(--brand-teal)"/>
+        </svg>
+        <h3 class="lb-sub">with people</h3>
+        <ul class="lb-features lb-features--light">
+          <li><i class="mk mk-sq" style="background:#FBEDD3"></i>one encrypted share link</li>
+          <li><i class="mk mk-ci" style="background:#14110E"></i>live reviewer comments</li>
+          <li><i class="mk mk-tr" style="border-bottom-color:#FBEDD3"></i>no account needed</li>
+          <li><i class="mk mk-ci" style="background:var(--c-rewrite)"></i>merge or dismiss with one click</li>
+        </ul>
+      </div>
+    </section>
+  </div>
+
+  <!-- ── footer easter egg ── -->
+  <footer class="lb-footer">
+    <p class="lb-footer__title">dragon’s favorite lollipop</p>
+    <p class="lb-footer__recipe">Melt 1 cup sugar with 1/3 cup corn syrup and 2 tbsp water over medium heat. Do not stir. At 300°F add a drop of teal food coloring and a pinch of chili flakes (dragons like it spicy). Pour into molds, insert sticks, and let cool. Yields 12 lollipops. Hide at least 3 from the dragon.</p>
+    <svg class="lb-footer__geo" viewBox="0 0 160 60" aria-hidden="true">
+      <circle cx="30" cy="30" r="22" fill="var(--accent)"/>
+      <circle cx="30" cy="30" r="10" fill="var(--brand-cream)"/>
+      <rect x="70" y="12" width="36" height="36" fill="var(--brand-teal)" transform="rotate(14 88 30)"/>
+      <path d="M120 48 l18 -34 18 34 Z" fill="var(--c-rewrite)"/>
+    </svg>
+  </footer>
+</div>
+</div>
+
+<!-- ================= HOST ================= -->
+<div class="view" id="view-host">
+  <div class="header">
+    <div class="brand" data-action="go-landing" title="Back to start">
+      <img src="lollipop-dragon-logo.svg" alt="">
+      <span class="word">Lollipop<em>&nbsp;Dragon</em></span>
+    </div>
+    <div class="doc-tabs" id="tabs"></div>
+    <div class="header-actions">
+      <span class="conn" id="host-conn"><span class="pulse"></span>2 peers online</span>
+      <div class="presence"><span class="avatar av-p1">MK</span><span class="avatar av-p2">AL</span></div>
+      <button class="btn" data-action="share">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.7l6.8-3.4M8.6 13.3l6.8 3.4"/></svg> Share
+      </button>
+      <button class="btn primary" id="btn-agent" data-action="run-agent">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 3l2.1 5.6L20 10l-5.9 1.4L12 17l-2.1-5.6L4 10l5.9-1.4z"/></svg> <span id="btn-agent-label">Run agent</span>
+      </button>
+      <div class="icon-btn" data-action="present" title="Present (⌘P)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M10 9l4 2-4 2z" fill="currentColor" stroke="none"/><path d="M8 21h8"/></svg>
+      </div>
+      <div class="icon-btn" data-action="theme" title="Toggle theme"><span class="theme-ic"></span></div>
+      <div class="icon-btn" data-action="toggle-rail" title="Toggle comments (⌘\)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M15 3v18"/></svg>
+      </div>
+    </div>
+  </div>
+  <div class="app-body">
+    <div class="file-rail" id="file-rail">
+      <div class="rail-head"><span id="ws-name">research-notes</span>
+        <span class="icon-btn mini" data-action="toggle-sidebar" title="Hide files (⌘B)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></span>
+      </div>
+      <div class="tree" id="tree"></div>
+    </div>
+    <div class="doc-pane" id="host-pane">
+      <button class="rail-restore" id="sidebar-restore" data-action="toggle-sidebar" title="Show files (⌘B)">▸</button>
+      <div class="doc-scroll" id="host-scroll"><div class="doc-col" id="doc-col"></div></div>
+      <div class="term" id="term" hidden>
+        <div class="tbar" data-action="toggle-term">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 17l6-5-6-5M12 19h8"/></svg>
+          claude-code · terminal <span class="chev">▾</span>
+        </div>
+        <div class="tlines" id="tlines"></div>
+      </div>
+    </div>
+    <div class="comment-rail" id="rail">
+      <div id="run-slot"></div>
+      <div class="rail-top">
+        <div class="rail-title"><h3>Comments</h3><span class="n" id="rail-count"></span></div>
+        <div class="filters" id="filters"></div>
+      </div>
+      <div class="rail-list" id="rail-list"></div>
+      <div class="hintbar">
+        <span><kbd>J</kbd><kbd>K</kbd> next / prev</span>
+        <span><kbd>C</kbd> comment</span>
+        <span><kbd>⌘K</kbd> commands</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= PEER ================= -->
+<div class="view" id="view-peer">
+  <div class="share-ribbon">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--agent)" stroke-width="2.4"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+    Shared by <b>&nbsp;Ivan&nbsp;</b> · end-to-end encrypted · expires in 6 days · read &amp; comment
+    <button class="ribbon-exit" data-action="exit-peer">Exit peer preview</button>
+  </div>
+  <div class="header">
+    <div class="brand"><img src="lollipop-dragon-logo.svg" alt=""><span class="word">Lollipop<em>&nbsp;Dragon</em></span></div>
+    <div class="doc-tabs"><span style="font-size:13px;font-weight:650;color:var(--ink)">research-notes</span>&nbsp;<span style="font-size:12px;color:var(--ink-muted)">· 7 files</span></div>
+    <div class="header-actions">
+      <span class="conn"><span class="pulse"></span>Live · host online</span>
+      <span class="idchip"><span class="avatar av-p1" id="peer-avatar">MK</span> Reviewing as <b>&nbsp;<span id="peer-name-label">Marta</span></b></span>
+      <button class="btn" data-action="save-copy">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v12m0 0l-4-4m4 4l4-4"/><path d="M4 19h16"/></svg> Save copy
+      </button>
+      <div class="icon-btn" data-action="theme"><span class="theme-ic"></span></div>
+    </div>
+  </div>
+  <div class="app-body">
+    <div class="file-rail">
+      <div class="rail-head"><span>shared files</span></div>
+      <div class="tree" id="peer-tree"></div>
+    </div>
+    <div class="doc-pane">
+      <div class="doc-scroll" id="peer-scroll"><div class="doc-col" id="peer-doc-col"></div></div>
+    </div>
+    <div class="comment-rail">
+      <div class="rail-top">
+        <div class="rail-title"><h3>Your comments</h3><span class="n" id="peer-tray-count"></span></div>
+      </div>
+      <div class="rail-list" id="peer-tray"></div>
+      <div class="hintbar"><span>No account needed · encrypted end-to-end</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= OVERLAYS ================= -->
+<div class="scrim" id="share-overlay" hidden>
+  <div class="sheet" id="share-sheet"></div>
+</div>
+
+<div class="scrim palette-scrim" id="palette-overlay" hidden>
+  <div class="palette">
+    <div class="input">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--ink-muted)" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input id="palette-input" type="text" placeholder="Type a command or file name…" autocomplete="off">
+      <span><kbd>Esc</kbd></span>
+    </div>
+    <div id="palette-list"></div>
+    <div class="foot"><span><kbd>↑</kbd><kbd>↓</kbd> select</span><span><kbd>↵</kbd> run</span><span style="margin-left:auto">every action is reachable from here</span></div>
+  </div>
+</div>
+
+<div id="present-overlay" hidden>
+  <div class="stage">
+    <div class="pslide-wrap" id="pslide-wrap"></div>
+    <div class="dots" id="pdots"></div>
+    <div class="exit" data-action="exit-present">×</div>
+    <div class="theme-fab" data-action="theme"><span class="theme-ic"></span></div>
+    <div class="counter" id="pcounter"></div>
+    <div class="navhint"><span><kbd>←</kbd><kbd>→</kbd> navigate</span><span><kbd>Esc</kbd> exit</span></div>
+  </div>
+</div>
+
+<div class="scrim" id="name-overlay" hidden>
+  <div class="sheet name-sheet">
+    <div class="head"><h2>Join the review</h2>
+      <div class="sub">Ivan shared <b>research-notes</b> with you. Pick a name so your comments have a face.</div>
+    </div>
+    <div class="name-row">
+      <input id="peer-name-input" type="text" placeholder="Your name" maxlength="24" autocomplete="off">
+      <button class="btn primary" data-action="join-peer">Start reviewing</button>
+    </div>
+    <div class="keynote" style="margin:14px 22px 20px">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--agent)" stroke-width="2.2" style="flex-shrink:0;margin-top:1px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <span>No account is created. Your name travels with your comments — nothing else does.</span>
+    </div>
+  </div>
+</div>
+
+<div id="toast-wrap"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
