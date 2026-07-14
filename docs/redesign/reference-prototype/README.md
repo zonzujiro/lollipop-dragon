@@ -6,7 +6,7 @@ The prototype demonstrates the full "Reading Room" design from the proposal deck
 
 ## The demo script (2 minutes)
 
-1. **Landing** → click **Open a folder**. (Scroll down first if you like — the classic Bauhaus feature story lives below the fold: shape-marked feature list, "two ways to collaborate" teal/red split, and the lollipop-recipe footer, all retuned to the new palette.)
+1. **Landing** → click **open a folder**. The landing is a Bauhaus poster: asymmetric hero (outlined wordmark, hard-shadow action buttons, geometric lollipop-dragon), then "what it does" in numbered chapters — 01 reads like a book · 02 say it with types · 03 hand it off — ending in a start-reading CTA and the recipe footer.
 2. **Read** — click files in the tree; comment counts live on the tree, tabs, and rail.
 3. **Comment** — select any span of text (or hover a block and press the `+`, or hit `C`). Pick a type with keys `1–6`, write, `⌘↵`. Watch the marker, rail card, and counts appear.
    - **Anchors are character-precise** — a word, half a sentence, anything. Not lines, not blocks.

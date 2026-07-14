@@ -4,25 +4,21 @@ Every surface, its layout and states. Pixel truth: `reference-prototype/` (open 
 
 ## 1. Landing (`FilePicker`)
 
-A single scrollable page combining a functional hero with the classic Bauhaus feature story.
+**Concept: a Bauhaus poster that works.** A ground-up redesign — do not port the old landing's sections. It keeps two ideas from it: the Bauhaus design language, and "what it does" feature storytelling. Landing-only visual rules: **sharp corners (no border-radius), 3px ink rules, flat color planes, hard offset shadows (`5px 5px 0 ink`), lowercase 800–900-weight display type, square/circle/triangle as the only ornament**. Palette = the app tokens (accent red / teal / amber / cream / ink); the old `#E63946/#FFB800/#1D3557` palette is retired.
 
-**Above the fold (100vh hero):**
+**Hero (100vh, asymmetric two-column grid):**
 
-- Quiet Bauhaus geometry in the background corners (outlined teal circle, soft red disc, amber quarter-circle, teal triangle — low opacity, never behind the cards).
-- Centered: dragon logo → serif "Lollipop Dragon" → tagline "Read what your agent wrote. Say what to change. Watch it happen."
-- Three entry cards: **Open a folder** (accent-ringed, primary), **Open a file**, **Paste a review link** (teal icon; opens peer flow). Cards show ⌘O / ⌘⇧O hints.
-- Dashed drop-zone hint ("…or drop a folder anywhere on this window") — drag-and-drop of a directory must work.
-- Recents row (from file history, `HistoryDropdown` data): pills with type icon, name, open-comment badge, share count.
-- Top-right: honest browser note. Bottom-center: "what it does ↓" anchor link scrolling to the feature story.
+- Left: mono kicker "■ local-first markdown review" → giant lowercase wordmark, "lollipop" solid ink over "dragon" as red outlined type (`-webkit-text-stroke`) → tagline → three stacked flat action buttons with hard shadows: **open a folder** (red, ⌘O), **open a file** (outline, ⌘⇧O), **paste a review link** (teal, "no install" — opens the peer flow). Shape glyph per action (■ ● ▲). Hover: translate(−2,−2) + deeper shadow; active: pressed. Below: "recent" chips (from file history, `HistoryDropdown` data) with open-comment count.
+- Right: geometric lollipop-dragon composition (SVG from brand primitives: teal/cream/red concentric circles on an amber stick, triangle wings) beside a bordered page miniature that already shows **two overlapping comment ranges** (red + violet translucent bars with separate underline stubs) — the product thesis drawn as art.
+- Bottom edge: full-width ink strip — left "what it does ↓" (anchors to `#landing-features`), right the honest browser note. Directory drag-and-drop onto the window must still work.
 
-**Below the fold (Bauhaus story — keep existing copy):**
+**"What it does" — numbered chapters (fresh copy, not the old feature list):**
 
-- Cream band, id `landing-features`: heading "reads everything your agent writes" (lowercase, 800 weight) + geometric document illustration + 8-item feature list with rotating square/circle/triangle markers in accent/teal/amber: inline criticmarkup comments · threaded questions & answers · mermaid diagrams & code · gfm tables & task lists · tabs for files & folders · encrypted file or folder sharing · live peer comments · local review works offline.
-- Black band: "two ways to collaborate".
-- Split band: teal **with ai** (comments live in the markdown · any agent can read criticmarkup · copy instructions for questions · answers render as inline threads) and dragon-red **with people** (one encrypted share link · live reviewer comments · no account needed · merge or dismiss with one click), each with a small geometric composition.
-- Black footer: "dragon's favorite lollipop" + the recipe easter egg + shape trio. Keep it.
-
-The old landing's `bauhaus` palette (`#E63946/#FFB800/#1D3557`) is **retired** — reuse the copy and geometry language, recolored to accent/teal/amber tokens.
+- **01 · reads like a book** (cream band, giant ink numeral): rendering copy; six bordered feature tiles with shape markers — mermaid diagrams · highlighted code · gfm tables & task lists · tabs for files & folders · presentation mode · local & offline; geometric page art.
+- **02 · say it with types** (black band, outlined numeral): comments-as-instructions copy; the six taxonomy chips as flat color blocks (fix/rewrite/expand/clarify/question/remove); a second line selling range anchoring — "anchor to half a sentence… overlaps are welcome"; overlap art (two translucent bars crossing text bars, intersection reading darker).
+- **03 · hand it off** (cream band): two hard-shadow panels — teal **to your agent** (one keystroke sends every open comment · watch edits stream back in, live · answers come back as threads) and red **to your people** (one encrypted link, no accounts · comments land in your margin live · merge or dismiss with one click); the red panel staggered lower for asymmetry.
+- **CTA band**: giant "start reading" + the red open-a-folder button again.
+- **Footer** (ink): shape trio + "dragon's favorite lollipop" + the recipe easter egg in small mono.
 
 ## 2. Host frame
 
