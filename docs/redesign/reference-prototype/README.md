@@ -37,7 +37,7 @@ The prototype demonstrates the full "Reading Room" design from the proposal deck
 
 ## Deep links (for demos & screenshots)
 
-`index.html#host` · `#peer` · `#present` · `#host-agent` (auto-runs the agent) · `#host-composer` · `#host-share` · `#host-palette` · `#host-dark` · `#host-mermaid` (node comment) · `#host-mermaid-src` (same comment in source view)
+`index.html#host` · `#peer` · `#present` · `#host-agent` (auto-runs the agent) · `#host-composer` · `#host-share` · `#host-palette` · `#host-dark` · `#host-mermaid` (node comment) · `#host-mermaid-src` (same comment in source view) · `#host-restore` (degraded folder access)
 
 ## Files
 
