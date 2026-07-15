@@ -189,6 +189,21 @@ function App() {
     [tab, selectFile, showToast, switchTab],
   );
 
+  const handleHostSelectSafely = useCallback(
+    (path: string) => {
+      handleHostSelect(path).catch((error: unknown) => {
+        console.error("[App] failed to open file from tree:", error);
+      });
+    },
+    [handleHostSelect],
+  );
+
+  const handleOpenFolderSafely = useCallback(() => {
+    openDirectoryInNewTab().catch((error: unknown) => {
+      console.error("[App] failed to open folder:", error);
+    });
+  }, [openDirectoryInNewTab]);
+
   const hostTree = useMemo<SidebarTreeNode[]>(() => {
     const fileTree = tab?.fileTree ?? [];
     if (!tab || !tab.directoryName || fileTree.length === 0) {
@@ -377,7 +392,7 @@ function App() {
           <FileTreeSidebar
             tree={hostTree}
             activeFilePath={tab?.activeFilePath ?? null}
-            onSelect={handleHostSelect}
+            onSelect={handleHostSelectSafely}
             header={hostHeader}
             shares={tab?.shares}
             commentCounts={hostCommentCounts}
@@ -417,7 +432,7 @@ function App() {
             <NoFileSelected
               directoryName={tab?.directoryName ?? null}
               fileCount={countFiles(hostTree)}
-              onOpenFolder={openDirectoryInNewTab}
+              onOpenFolder={handleOpenFolderSafely}
             />
           )}
         </main>
