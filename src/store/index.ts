@@ -88,11 +88,13 @@ interface AppState
   hoveredBlockHighlight: {
     blockIndex: number;
     commentType: CommentType;
+    commentId?: string;
   } | null;
   setHoveredBlockHighlight: (
     highlight: {
       blockIndex: number;
       commentType: CommentType;
+      commentId?: string;
     } | null,
   ) => void;
 }

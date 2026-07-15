@@ -24,9 +24,9 @@ import { ContentUpdateBanner } from "./components/ContentUpdateBanner";
 import { PanelLeftOpenIcon } from "./components/Icons";
 import {
   getRestoreAccessActionLabel,
+  getRestoreOpenOtherLabel,
   getRestoreAccessTitle,
   shouldRenderRestorePlaceholder,
-  tabRequiresRestoreAccess,
 } from "../types/tab";
 import { stopRelay } from "../modules/relay";
 import { workspaceRuntime } from "../runtime";
@@ -39,23 +39,6 @@ import {
 } from "./hooks";
 
 const PEER_HEADER = { title: "Shared files" };
-
-const folderIcon = (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="14"
-    height="14"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
-  </svg>
-);
 
 function countFiles(nodes: SidebarTreeNode[]): number {
   return nodes.reduce((total, node) => {
@@ -155,6 +138,7 @@ function App() {
   const selectFile = useAppStore((s) => s.selectFile);
   const showToast = useAppStore((s) => s.showToast);
   const openDirectoryInNewTab = useAppStore((s) => s.openDirectoryInNewTab);
+  const openFileInNewTab = useAppStore((s) => s.openFileInNewTab);
   const refreshFile = useAppStore((s) => s.refreshFile);
   const refreshFileTree = useAppStore((s) => s.refreshFileTree);
   const switchTab = useAppStore((s) => s.switchTab);
@@ -205,6 +189,21 @@ function App() {
     [tab, selectFile, showToast, switchTab],
   );
 
+  const handleHostSelectSafely = useCallback(
+    (path: string) => {
+      handleHostSelect(path).catch((error: unknown) => {
+        console.error("[App] failed to open file from tree:", error);
+      });
+    },
+    [handleHostSelect],
+  );
+
+  const handleOpenFolderSafely = useCallback(() => {
+    openDirectoryInNewTab().catch((error: unknown) => {
+      console.error("[App] failed to open folder:", error);
+    });
+  }, [openDirectoryInNewTab]);
+
   const hostTree = useMemo<SidebarTreeNode[]>(() => {
     const fileTree = tab?.fileTree ?? [];
     if (!tab || !tab.directoryName || fileTree.length === 0) {
@@ -236,13 +235,8 @@ function App() {
   const hostHeader = useMemo(
     () => ({
       title: tab?.directoryName ?? "",
-      action: {
-        onClick: openDirectoryInNewTab,
-        label: "Open another folder",
-        icon: folderIcon,
-      },
     }),
-    [tab?.directoryName, openDirectoryInNewTab],
+    [tab?.directoryName],
   );
 
   const peerTree = useMemo(() => {
@@ -372,7 +366,6 @@ function App() {
   // ── Host mode with tabs ──
   const hasFolderOpen = (tab?.fileTree.length ?? 0) > 0;
   const showRestorePlaceholder = shouldRenderRestorePlaceholder(tab);
-  const disableReviewPanels = tabRequiresRestoreAccess(tab);
 
   return (
     <div className="app-layout">
@@ -399,7 +392,7 @@ function App() {
           <FileTreeSidebar
             tree={hostTree}
             activeFilePath={tab?.activeFilePath ?? null}
-            onSelect={handleHostSelect}
+            onSelect={handleHostSelectSafely}
             header={hostHeader}
             shares={tab?.shares}
             commentCounts={hostCommentCounts}
@@ -420,9 +413,18 @@ function App() {
           {showRestorePlaceholder ? (
             <RestoreError
               title={getRestoreAccessTitle(tab)}
-              message={tab.restoreError}
               actionLabel={getRestoreAccessActionLabel(tab)}
-              onReopen={() => reopenTab(tab.id)}
+              secondaryActionLabel={getRestoreOpenOtherLabel(tab)}
+              onReopen={() => {
+                void reopenTab(tab.id);
+              }}
+              onOpenOther={() => {
+                if (tab.directoryName) {
+                  void openDirectoryInNewTab();
+                  return;
+                }
+                void openFileInNewTab();
+              }}
             />
           ) : tab?.fileName ? (
             <MarkdownRenderer />
@@ -430,13 +432,11 @@ function App() {
             <NoFileSelected
               directoryName={tab?.directoryName ?? null}
               fileCount={countFiles(hostTree)}
-              onOpenFolder={openDirectoryInNewTab}
+              onOpenFolder={handleOpenFolderSafely}
             />
           )}
         </main>
-        {tab?.commentPanelOpen && !focusMode && !disableReviewPanels && (
-          <CommentPanel />
-        )}
+        {tab?.commentPanelOpen && !focusMode && <CommentPanel />}
       </div>
       {shareScope && (
         <ShareDialog onClose={() => setShareScope(null)} scope={shareScope} />

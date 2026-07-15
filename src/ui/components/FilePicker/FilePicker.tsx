@@ -1,4 +1,4 @@
-import { type DragEvent } from "react";
+import { useState, type DragEvent } from "react";
 import "../../styles/landing.css";
 import { canRunAgent } from "../../../runtime";
 import { useAppStore } from "../../../store";
@@ -305,21 +305,32 @@ export function FilePicker() {
   const history = useAppStore((state) => state.history);
   const reopenFromHistory = useAppStore((state) => state.reopenFromHistory);
 
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [linkValue, setLinkValue] = useState("");
+  const [linkError, setLinkError] = useState<string | null>(null);
+
   function openReviewLink() {
-    const reviewLink = window.prompt("Paste a Lollipop Dragon review link");
-    if (!reviewLink) {
-      return;
-    }
+    setLinkValue("");
+    setLinkError(null);
+    setLinkDialogOpen(true);
+  }
+
+  function submitReviewLink() {
     try {
-      const parsedLink = new URL(reviewLink);
+      const parsedLink = new URL(linkValue.trim());
       if (!parsedLink.hash) {
-        window.alert("That link does not include an encrypted review key.");
+        setLinkError(
+          "that link is missing its encrypted key — copy the full link, # part included",
+        );
         return;
       }
+      setLinkDialogOpen(false);
       window.location.hash = parsedLink.hash;
     } catch (error) {
       console.warn("[FilePicker] invalid review link:", error);
-      window.alert("That does not look like a valid review link.");
+      setLinkError(
+        "that doesn't look like a link — paste the whole review url",
+      );
     }
   }
 
@@ -436,8 +447,9 @@ export function FilePicker() {
               <h2 className="landing-heading">reads like a book</h2>
               <p className="landing-copy">
                 your agent writes faster than you can read. every file renders
-                as a well-set page with everything technical intact — so
-                reviewing feels like reading, not decoding.
+                as a well-set page — a 66-character serif column with everything
+                technical intact — so reviewing feels like reading, not
+                decoding.
               </p>
               <div className="landing-tiles">
                 <span>
@@ -480,7 +492,7 @@ export function FilePicker() {
               <p className="landing-copy landing-copy--cream">
                 comments here are instructions, not chat. pick a verb, and any
                 agent knows exactly what to do — they live inside the markdown
-                as criticmarkup.
+                as criticmarkup, so nothing is lost between you and the model.
               </p>
               <div className="landing-types">
                 <span>clarify</span>
@@ -549,12 +561,13 @@ export function FilePicker() {
                 <li>
                   <Mark shape="square" color="accent" />
                   your files stay on this device — reviewing happens in your
-                  browser, straight from disk.
+                  browser, straight from disk. no upload, works offline.
                 </li>
                 <li>
                   <Mark shape="circle" color="teal" />
                   sharing is end-to-end encrypted — the key lives in the link
-                  and storage sees only noise.
+                  itself and is never sent to any server. storage sees only
+                  noise, and purges it when the share expires.
                 </li>
                 <li>
                   <Mark shape="triangle" color="rewrite" />
@@ -580,14 +593,101 @@ export function FilePicker() {
           </button>
         </section>
         <footer className="landing-footer">
+          <svg
+            className="landing-footer__shapes"
+            viewBox="0 0 120 40"
+            aria-hidden="true"
+          >
+            <circle cx="20" cy="20" r="16" className="landing-fill-accent" />
+            <circle cx="20" cy="20" r="7" fill="#fbedd3" />
+            <rect
+              x="52"
+              y="6"
+              width="28"
+              height="28"
+              className="landing-fill-teal"
+              transform="rotate(14 66 20)"
+            />
+            <path
+              d="M92 34 L106 8 L120 34 Z"
+              className="landing-fill-rewrite"
+            />
+          </svg>
           <p className="landing-footer__label">dragon’s favorite lollipop</p>
           <p className="landing-footer__recipe">
-            melt sugar with corn syrup and water. at 300°f add teal food
-            coloring and chili flakes — dragons like it spicy. pour, insert
-            sticks, cool. hide at least three from the dragon.
+            melt 1 cup sugar with 1/3 cup corn syrup and 2 tbsp water. do not
+            stir. at 300°f add a drop of teal food coloring and a pinch of chili
+            flakes — dragons like it spicy. pour, insert sticks, cool. yields
+            12. hide at least 3 from the dragon.
           </p>
         </footer>
       </div>
+
+      {linkDialogOpen && (
+        <div
+          className="landing-link-scrim"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setLinkDialogOpen(false);
+            }
+          }}
+        >
+          <div
+            className="landing-link-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Paste a review link"
+          >
+            <h2 className="landing-link-dialog__title">paste a review link</h2>
+            <p className="landing-link-dialog__hint">
+              the whole url — the part after # carries the encrypted key and
+              never reaches any server
+            </p>
+            <input
+              className="landing-link-dialog__input"
+              type="url"
+              value={linkValue}
+              placeholder="https://…/#doc=…&key=…"
+              autoFocus
+              spellCheck={false}
+              onChange={(event) => {
+                setLinkValue(event.target.value);
+                setLinkError(null);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  submitReviewLink();
+                }
+                if (event.key === "Escape") {
+                  setLinkDialogOpen(false);
+                }
+              }}
+            />
+            {linkError && (
+              <p className="landing-link-dialog__error" role="alert">
+                {linkError}
+              </p>
+            )}
+            <div className="landing-link-dialog__actions">
+              <button
+                type="button"
+                className="landing-link-dialog__cancel"
+                onClick={() => setLinkDialogOpen(false)}
+              >
+                cancel
+              </button>
+              <button
+                type="button"
+                className="landing-link-dialog__join"
+                disabled={!linkValue.trim()}
+                onClick={submitReviewLink}
+              >
+                join the review
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

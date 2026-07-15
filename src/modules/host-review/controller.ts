@@ -299,7 +299,7 @@ export function createHostReviewControllerActions<
 
     deleteComment: async (id) => {
       const tab = getActiveTab(get);
-      if (!tab?.fileHandle) {
+      if (!tab?.fileHandle || tab.restoreError) {
         return;
       }
 
@@ -338,7 +338,7 @@ export function createHostReviewControllerActions<
 
     deleteAllComments: async () => {
       const tab = getActiveTab(get);
-      if (!tab?.fileHandle || tab.comments.length === 0) {
+      if (!tab?.fileHandle || tab.restoreError || tab.comments.length === 0) {
         return;
       }
 
@@ -375,7 +375,7 @@ export function createHostReviewControllerActions<
 
     editComment: async (id, type, text) => {
       const tab = getActiveTab(get);
-      if (!tab?.fileHandle) {
+      if (!tab?.fileHandle || tab.restoreError) {
         return;
       }
 
@@ -396,7 +396,7 @@ export function createHostReviewControllerActions<
 
     addComment: async (blockIndex, type, text, anchor) => {
       const tab = getActiveTab(get);
-      if (!tab?.fileHandle) {
+      if (!tab?.fileHandle || tab.restoreError) {
         return;
       }
 
@@ -424,7 +424,7 @@ export function createHostReviewControllerActions<
 
     replyToCommentThread: async (rootCommentId, text, type = "answer") => {
       const tab = getActiveTab(get);
-      if (!tab?.fileHandle) {
+      if (!tab?.fileHandle || tab.restoreError) {
         return;
       }
 
@@ -460,7 +460,7 @@ export function createHostReviewControllerActions<
 
     undo: async () => {
       const tab = getActiveTab(get);
-      if (!tab?.undoState || !tab.fileHandle) {
+      if (!tab?.undoState || !tab.fileHandle || tab.restoreError) {
         return;
       }
 

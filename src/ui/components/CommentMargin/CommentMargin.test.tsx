@@ -137,7 +137,7 @@ describe("CommentMargin — add button", () => {
     );
     await user.click(screen.getByRole("button", { name: "Add comment" }));
     expect(
-      screen.getByPlaceholderText("ambiguous — make it precise…"),
+      screen.getByPlaceholderText("needs an answer, opens a thread…"),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Cancel" }),
@@ -201,21 +201,25 @@ describe("CommentMargin — AddCommentForm", () => {
   it("Save button enables after typing text", async () => {
     const { user } = await openForm();
     await user.type(
-      screen.getByPlaceholderText("ambiguous — make it precise…"),
+      screen.getByPlaceholderText("needs an answer, opens a thread…"),
       "hello",
     );
     expect(screen.getByRole("button", { name: "Save" })).not.toBeDisabled();
   });
 
-  it("offers only clarify and rewrite and submits the selected type", async () => {
+  it("offers question, clarify, rewrite, remove and submits the selected type", async () => {
     const onAddComment = vi.fn();
     const { user } = await openForm(onAddComment);
+    expect(
+      screen.getByRole("button", { name: /^question/ }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /^clarify/ }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /^rewrite/ }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^remove/ })).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "fix" }),
     ).not.toBeInTheDocument();
@@ -223,7 +227,7 @@ describe("CommentMargin — AddCommentForm", () => {
       screen.queryByRole("button", { name: "expand" }),
     ).not.toBeInTheDocument();
     await user.type(
-      screen.getByPlaceholderText("ambiguous — make it precise…"),
+      screen.getByPlaceholderText("needs an answer, opens a thread…"),
       "rewrite this please",
     );
     await user.click(screen.getByRole("button", { name: /^rewrite/ }));
@@ -238,34 +242,34 @@ describe("CommentMargin — AddCommentForm", () => {
     );
   });
 
-  it('defaults to "clarify" type', async () => {
+  it('defaults to "question" type', async () => {
     const onAddComment = vi.fn();
     const { user } = await openForm(onAddComment);
     await user.type(
-      screen.getByPlaceholderText("ambiguous — make it precise…"),
+      screen.getByPlaceholderText("needs an answer, opens a thread…"),
       "clarify this",
     );
     await user.click(screen.getByRole("button", { name: "Save" }));
-    expect(onAddComment).toHaveBeenCalledWith(2, "clarify", "clarify this");
+    expect(onAddComment).toHaveBeenCalledWith(2, "question", "clarify this");
   });
 
   it("hides the form when Escape is pressed", async () => {
     const { user } = await openForm();
     await user.keyboard("{Escape}");
     expect(
-      screen.queryByPlaceholderText("ambiguous — make it precise…"),
+      screen.queryByPlaceholderText("needs an answer, opens a thread…"),
     ).not.toBeInTheDocument();
   });
 
   it("hides the form after successful submit", async () => {
     const { user } = await openForm();
     await user.type(
-      screen.getByPlaceholderText("ambiguous — make it precise…"),
+      screen.getByPlaceholderText("needs an answer, opens a thread…"),
       "done",
     );
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(
-      screen.queryByPlaceholderText("ambiguous — make it precise…"),
+      screen.queryByPlaceholderText("needs an answer, opens a thread…"),
     ).not.toBeInTheDocument();
   });
 

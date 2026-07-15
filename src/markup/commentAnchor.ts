@@ -72,23 +72,64 @@ function collectPlainText(
   }
 }
 
+// Node types that produce no rendered top-level element: link/footnote
+// definitions are hoisted (footnotes into one trailing section), raw HTML is
+// dropped without rehype-raw, yaml is frontmatter. Block indices must count
+// only what the renderer counts, or every index after them drifts.
+const UNRENDERED_BLOCK_TYPES = new Set([
+  "footnoteDefinition",
+  "definition",
+  "html",
+  "yaml",
+]);
+
+export interface RenderedBlocks {
+  nodes: Nodes[];
+  footnoteDefinitions: Nodes[];
+}
+
+export function getRenderedBlocks(markdown: string): RenderedBlocks {
+  const tree = unified().use(remarkParse).use(remarkGfm).parse(markdown);
+  const nodes: Nodes[] = [];
+  const footnoteDefinitions: Nodes[] = [];
+  for (const child of tree.children) {
+    if (child.type === "footnoteDefinition") {
+      footnoteDefinitions.push(child);
+    } else if (!UNRENDERED_BLOCK_TYPES.has(child.type)) {
+      nodes.push(child);
+    }
+  }
+  return { nodes, footnoteDefinitions };
+}
+
 export function getBlockPlainTextMap(
   markdown: string,
   blockIndex: number,
 ): BlockPlainTextMap | null {
-  const tree = unified().use(remarkParse).use(remarkGfm).parse(markdown);
-  const block = tree.children[blockIndex];
-  if (!block) {
-    return null;
-  }
+  const { nodes, footnoteDefinitions } = getRenderedBlocks(markdown);
   const values: string[] = [];
   const characters: PlainCharacter[] = [];
-  collectPlainText(block, markdown, values, characters);
-  return {
-    plainText: values.join(""),
-    characters,
-    kind: block.type === "code" ? "code" : "other",
-  };
+  const block = nodes[blockIndex];
+  if (block) {
+    collectPlainText(block, markdown, values, characters);
+    return {
+      plainText: values.join(""),
+      characters,
+      kind: block.type === "code" ? "code" : "other",
+    };
+  }
+  // one virtual block past the rendered ones = the collected footnotes section
+  if (blockIndex === nodes.length && footnoteDefinitions.length > 0) {
+    for (const definition of footnoteDefinitions) {
+      collectPlainText(definition, markdown, values, characters);
+    }
+    return {
+      plainText: values.join(""),
+      characters,
+      kind: "other",
+    };
+  }
+  return null;
 }
 
 export function getPlainText(markdown: string): string {

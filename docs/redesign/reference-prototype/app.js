@@ -126,7 +126,14 @@ function freshComments() {
     { id: "c2", file: "database/comparison.md", block: 6, type: "question", author: "Marta", when: "18 min",
       quote: "completed in a single maintenance window",
       text: "What happens to writes that land during the WAL replay?",
-      state: "open", thread: [] },
+      state: "open", thread: [
+        { author: "claude-code", text: "Writes are queued at the proxy and replayed after cutover — added §3.2 covering the buffer window." },
+        { author: "Marta", text: "Does the buffer have a size limit? A burst during cutover could overflow it." },
+        { author: "You", text: "Good point — capped at 10k writes today. Beyond that the proxy rejects with a retry hint." },
+        { author: "claude-code", text: "Documented the 10k cap and the retry-after behaviour in §3.2.1, with a link to the proxy config." },
+        { author: "Alex", text: "Can we surface a metric for buffer depth? Otherwise we only learn about pressure from rejects." },
+        { author: "You", text: "Yes — adding buffer_depth to the cutover dashboard before the drill." },
+      ] },
     { id: "c3", file: "database/comparison.md", block: 8, type: "expand", author: "Alex", when: "1 h",
       quote: "keeping the SQLite file read-only for 14 days",
       text: "Add the exact alert thresholds and who owns the rollback decision.",
@@ -474,17 +481,41 @@ function commentCard(c, opts) {
   else if (c.state === "resolved") right = `<span class="state done">✓ ${c.doneLabel || "resolved"}</span>`;
   else right = `<span class="when">${c.when || "now"}</span>`;
   const who = peer ? esc(c.file) : esc(c.author);
+  const answered = c.type === "question" && c.thread.length > 0 && !state.agent && c.state === "open";
+  if (answered) {
+    right = `<span class="answered-chip">✓ answered · ${c.thread.length}</span>`;
+  }
   let html = `<div class="top"><span class="type-tag">${c.type}</span><span class="who">${who}</span>${right}</div>`;
   if (c.quote) html += `<div class="quote">“${esc(c.quote)}”</div>`;
   if (c.state === "open" && isOrphan(c)) {
     html += `<div class="orphan-note">text changed underneath — anchor released, quote kept</div>`;
   }
   html += `<div class="body">${esc(c.text)}</div>`;
-  c.thread.forEach(r => {
-    const [cls, ini] = AV[r.author] || ["av-you", "?"];
-    html += `<div class="thread"><span class="avatar ${cls}">${ini}</span><span><b style="color:var(--ink)">${esc(r.author)}</b> — ${esc(r.text)}</span></div>`;
-  });
+  if (c.thread.length) {
+    const renderReply = (r) => {
+      const [cls, ini] = AV[r.author] || ["av-you", "?"];
+      return `<div class="thread"><span class="avatar ${cls}">${ini}</span><span><b style="color:var(--ink)">${esc(r.author)}</b> — ${esc(r.text)}</span></div>`;
+    };
+    let rows;
+    if (!c.threadExpanded && c.thread.length > 3) {
+      rows = [
+        renderReply(c.thread[0]),
+        `<button class="thread-collapse" data-expand-thread="${c.id}">⌄ ${c.thread.length - 2} more replies</button>`,
+        renderReply(c.thread[c.thread.length - 1]),
+      ];
+    } else {
+      rows = c.thread.map(renderReply);
+      if (c.thread.length > 3) {
+        rows.push(`<button class="thread-collapse" data-expand-thread="${c.id}">⌃ collapse thread</button>`);
+      }
+    }
+    html += `<div class="thread-list">${rows.join("")}</div>`;
+  }
+  if (!peer && c.state === "open" && c.type === "question" && c.id === state.sel && !state.agent) {
+    html += `<div class="reply-row"><input data-reply-input="${c.id}" placeholder="Reply — Enter to send" maxlength="200"></div>`;
+  }
   if (!peer && c.state === "open" && !state.agent) {
+    card.classList.add("actionable");
     html += `<div class="actions"><button data-resolve="${c.id}">✓ Resolve</button></div>`;
   }
   card.innerHTML = html;
@@ -1001,7 +1032,7 @@ document.addEventListener("click", (e) => {
     }
     return;
   }
-  const t = e.target.closest("[data-action],[data-file],[data-peer-file],[data-ws],[data-close],[data-add-tab],[data-mview],[data-cids],[data-cid],[data-add],[data-filter],[data-resolve],[data-type],[data-submit],[data-copy-link],[data-copy-slack],[data-revoke],[data-scope],[data-stop-agent],[data-dismiss-run],[data-copy-prompt],[data-slide],[data-pi]");
+  const t = e.target.closest("[data-action],[data-file],[data-peer-file],[data-ws],[data-close],[data-add-tab],[data-mview],[data-expand-thread],[data-reply-input],[data-cids],[data-cid],[data-add],[data-filter],[data-resolve],[data-type],[data-submit],[data-copy-link],[data-copy-slack],[data-revoke],[data-scope],[data-stop-agent],[data-dismiss-run],[data-copy-prompt],[data-slide],[data-pi]");
   if (!t) {
     // click outside composer closes it
     if (state.composer && !e.target.closest(".composer")) closeComposer();
@@ -1063,6 +1094,15 @@ document.addEventListener("click", (e) => {
     if (c) { c.state = "resolved"; if (state.sel === c.id) state.sel = null; renderHost(); toast("Resolved — kept in history", true); }
     return;
   }
+  if (a.replyInput !== undefined) { return; }
+  if (a.expandThread) {
+    const comment = COMMENTS.find(x => x.id === a.expandThread);
+    if (comment) {
+      comment.threadExpanded = !comment.threadExpanded;
+      renderHost();
+    }
+    return;
+  }
   if (a.cids) {
     // a highlight segment: cycle through the comments covering it
     if (state.view === "peer") return;
@@ -1121,6 +1161,28 @@ $("#palette-overlay").addEventListener("click", (e) => { if (e.target === e.curr
 document.addEventListener("mouseover", (e) => {
   const blk = e.target.closest(".blk");
   if (blk) state.hoverBlock = { file: blk.dataset.file, i: parseInt(blk.dataset.i, 10) };
+  // spotlight: hovering a rail card focuses its spans, mutes the others;
+  // focused spans drop every other comment's tint/stripe while spotlit
+  const card = e.target.closest(".c-card[data-cid]");
+  const hoveredId = card ? card.dataset.cid : null;
+  const hoveredComment = hoveredId ? COMMENTS.find((x) => x.id === hoveredId) : null;
+  document.querySelectorAll(".hl2").forEach((span) => {
+    if (span.dataset.obg !== undefined) {
+      span.style.backgroundImage = span.dataset.obg;
+      span.style.boxShadow = span.dataset.osh;
+      delete span.dataset.obg;
+      delete span.dataset.osh;
+    }
+    const covers = hoveredId && (span.dataset.cids || "").split(",").includes(hoveredId);
+    span.classList.toggle("hl2-focus", !!covers);
+    span.classList.toggle("hl2-muted", !!hoveredId && !covers);
+    if (covers && hoveredComment) {
+      span.dataset.obg = span.style.backgroundImage;
+      span.dataset.osh = span.style.boxShadow;
+      span.style.backgroundImage = `linear-gradient(var(--c-${hoveredComment.type}-soft), var(--c-${hoveredComment.type}-soft))`;
+      span.style.boxShadow = `inset 0 -2px 0 var(--c-${hoveredComment.type})`;
+    }
+  });
 });
 
 // text selection → composer with a character-precise range (sub-sentence anchoring)
@@ -1158,6 +1220,18 @@ $("#palette-input").addEventListener("input", () => { paletteSel = 0; renderPale
 // keyboard
 document.addEventListener("keydown", (e) => {
   const meta = e.metaKey || e.ctrlKey;
+  const active = document.activeElement;
+  if (e.key === "Enter" && active && active.dataset && active.dataset.replyInput) {
+    const comment = COMMENTS.find(x => x.id === active.dataset.replyInput);
+    const text = active.value.trim();
+    if (comment && text) {
+      comment.thread.push({ author: "You", text });
+      comment.threadExpanded = true;
+      renderHost();
+      toast("Reply added to the thread", true);
+    }
+    return;
+  }
   const inInput = /INPUT|TEXTAREA/.test(document.activeElement.tagName);
 
   // palette
@@ -1255,6 +1329,13 @@ function boot() {
     if (h === "host-share") setTimeout(openShare, 300);
     if (h === "host-palette") setTimeout(openPalette, 300);
     if (h === "host-dark") document.body.classList.add("dark");
+    if (h === "host-thread" || h === "host-thread-open") {
+      if (h === "host-thread-open") {
+        const threaded = COMMENTS.find(x => x.id === "c2");
+        if (threaded) { threaded.threadExpanded = true; }
+      }
+      setTimeout(() => selectComment("c2"), 300);
+    }
     if (h === "host-restore") {
       state.restoreLock = true;
       renderHost();

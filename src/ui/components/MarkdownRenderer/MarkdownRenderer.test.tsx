@@ -1,4 +1,10 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -348,8 +354,97 @@ describe("MarkdownRenderer — read-only banner", () => {
 
     expect(screen.getByRole("status").textContent).toMatch(/live access/i);
     expect(
-      screen.getByRole("button", { name: "Re-open current file" }),
+      screen.getByRole("button", { name: "Restore access" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Open another file…" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("status").textContent).not.toMatch(/read-only/i);
+  });
+});
+
+describe("MarkdownRenderer — GFM footnotes", () => {
+  it("renders footnote refs and the trailing section on aligned block indices", () => {
+    setContent("Uses a note.[^a]\n\nSecond paragraph.\n\n[^a]: The note body.");
+    render(<MarkdownRenderer />);
+    expect(screen.getByText("The note body.")).toBeInTheDocument();
+    const reference = document.querySelector("[data-footnote-ref]");
+    expect(reference).not.toBeNull();
+    const section = document.querySelector("[data-footnotes]");
+    expect(section).not.toBeNull();
+    // two rendered paragraphs (0, 1), then the footnotes section (2) — the
+    // definition itself must not shift rendered block indices
+    expect(section?.getAttribute("data-block-index")).toBe("2");
+  });
+});
+
+describe("MarkdownRenderer — margin markers", () => {
+  it("renders a margin square for block-level and range comments", async () => {
+    setContent(
+      'Alpha paragraph body.{>>question: Why is this so?<<}\n\nBeta paragraph body. {>>clarify: Tighten this. @@ "Beta paragraph body."<<}',
+    );
+    const { container } = render(<MarkdownRenderer />);
+    await waitFor(() => {
+      expect(container.querySelectorAll(".comment-margin__dot").length).toBe(2);
+    });
+  });
+});
+
+describe("MarkdownRenderer — hover spotlight", () => {
+  it("focuses the hovered comment's spans and mutes every other highlight", async () => {
+    setContent(
+      'Alpha beta gamma delta. {>>clarify: First. @@ "Alpha beta gamma"<<} {>>rewrite: Second. @@ "beta gamma delta"<<}',
+    );
+    const { container } = render(<MarkdownRenderer />);
+    await waitFor(() => {
+      expect(
+        container.querySelectorAll(".comment-highlight").length,
+      ).toBeGreaterThanOrEqual(3);
+    });
+    const spans = [
+      ...container.querySelectorAll<HTMLElement>(".comment-highlight"),
+    ];
+    const soloSpan = spans.find(
+      (span) => (span.dataset.cids ?? "").split(" ").length === 1,
+    );
+    if (!soloSpan) {
+      throw new Error("Expected a span covered by a single comment");
+    }
+    const hoveredId = soloSpan.dataset.cids ?? "";
+
+    act(() => {
+      useAppStore.getState().setHoveredBlockHighlight({
+        blockIndex: 0,
+        commentType: "clarify",
+        commentId: hoveredId,
+      });
+    });
+
+    const sharedSpan = spans.find(
+      (span) => (span.dataset.cids ?? "").split(" ").length > 1,
+    );
+    if (!sharedSpan) {
+      throw new Error("Expected a span shared by two comments");
+    }
+
+    for (const span of spans) {
+      const covers = (span.dataset.cids ?? "").split(" ").includes(hoveredId);
+      expect(span.classList.contains("comment-highlight--focus")).toBe(covers);
+      expect(span.classList.contains("comment-highlight--muted")).toBe(!covers);
+    }
+    // while spotlit, the shared segment renders only the hovered comment's
+    // stripe (the stacked styles are parked on the dataset for restore)
+    expect(sharedSpan.dataset.spotlightShadow).toBeDefined();
+    expect(sharedSpan.style.boxShadow).toBe("inset 0 -2px 0 var(--c-clarify)");
+
+    act(() => {
+      useAppStore.getState().setHoveredBlockHighlight(null);
+    });
+    for (const span of spans) {
+      expect(span.classList.contains("comment-highlight--focus")).toBe(false);
+      expect(span.classList.contains("comment-highlight--muted")).toBe(false);
+    }
+    // stacked styles restored after unhover
+    expect(sharedSpan.dataset.spotlightShadow).toBeUndefined();
   });
 });

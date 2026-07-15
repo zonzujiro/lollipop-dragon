@@ -7,7 +7,7 @@
 
 .comment-margin__dots {
   position: absolute;
-  right: 0.2rem;
+  right: 20px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -47,9 +47,12 @@
   --comment-marker-color: var(--c-orange);
 }
 
-.comment-margin__dot[data-comment-type="expand"],
+.comment-margin__dot[data-comment-type="expand"] {
+  --comment-marker-color: var(--c-expand);
+}
+
 .comment-margin__dot[data-comment-type="answer"] {
-  --comment-marker-color: var(--accent);
+  --comment-marker-color: var(--c-answer);
 }
 
 .comment-margin__dot[data-comment-type="clarify"] {
@@ -65,7 +68,7 @@
 }
 
 .comment-margin__dot[data-comment-type="remove"] {
-  --comment-marker-color: var(--ink-muted);
+  --comment-marker-color: var(--c-remove);
 }
 
 .comment-margin__dot:hover,
@@ -86,9 +89,9 @@
 }
 
 .comment-margin__add-wrapper {
+  /* same lane as the markers, stacked beneath them (design 02-screens §2) */
   position: absolute;
-  left: -0.45rem;
-  margin-top: -6px;
+  right: 20px;
 }
 
 .comment-margin__add {
@@ -161,7 +164,7 @@
 
 /* ── Add comment form ────────────────────────────────────────── */
 .comment-add-form {
-  --comment-type-color: var(--c-clarify);
+  --comment-type-color: var(--c-question);
   position: absolute;
   left: calc(100% + 0.75rem);
   z-index: 60;
@@ -179,8 +182,16 @@
   font: 14px/1.4 var(--font-ui);
 }
 
+.comment-add-form[data-comment-type="clarify"] {
+  --comment-type-color: var(--c-clarify);
+}
+
 .comment-add-form[data-comment-type="rewrite"] {
   --comment-type-color: var(--c-rewrite);
+}
+
+.comment-add-form[data-comment-type="remove"] {
+  --comment-type-color: var(--c-remove);
 }
 
 .comment-add-form--dragging {
@@ -253,6 +264,11 @@
     border-color 120ms;
 }
 
+.comment-add-form__type[data-comment-type="question"] {
+  --comment-chip-color: var(--c-question);
+  --comment-chip-soft: var(--c-question-soft);
+}
+
 .comment-add-form__type[data-comment-type="clarify"] {
   --comment-chip-color: var(--c-clarify);
   --comment-chip-soft: var(--c-clarify-soft);
@@ -261,6 +277,11 @@
 .comment-add-form__type[data-comment-type="rewrite"] {
   --comment-chip-color: var(--c-rewrite);
   --comment-chip-soft: var(--c-rewrite-soft);
+}
+
+.comment-add-form__type[data-comment-type="remove"] {
+  --comment-chip-color: var(--c-remove);
+  --comment-chip-soft: var(--c-remove-soft);
 }
 
 .comment-add-form__type-mark {

@@ -39,9 +39,11 @@ import {
 import { getActiveAgentRunForTab } from "../../../modules/agent-workflow";
 import type { MarkdownMetadataField } from "../../../markup";
 import type { Comment, CommentAnchorDraft } from "../../../types/criticmarkup";
+import { COMMENT_TYPE_COLOR } from "../../../types/criticmarkup";
 import type { PeerComment } from "../../../types/share";
 import {
-  getRestoreAccessActionLabel,
+  getRestoreOpenOtherLabel,
+  getRestoreWorkspaceName,
   shouldRenderRestoreBanner,
 } from "../../../types/tab";
 import type { TabState } from "../../../types/tab";
@@ -67,12 +69,22 @@ interface SpecialBlockContextValue {
   comments: Comment[];
   onCreateAnchor: (blockIndex: number, anchor: CommentAnchorDraft) => void;
   onSelectComment: (commentId: string) => void;
-  onViewChange: () => void;
+  onViewChange: (blockIndex: number, view: "diagram" | "source") => void;
+  specialViews: Map<number, "diagram" | "source">;
 }
 
 const SpecialBlockContext = createContext<SpecialBlockContextValue | null>(
   null,
 );
+
+// djb2 — cheap, stable content fingerprint for the remount key
+function hashContentKey(value: string): string {
+  let hash = 5381;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 33) ^ value.charCodeAt(index);
+  }
+  return (hash >>> 0).toString(36);
+}
 
 function textFromReactNode(node: ReactNode): string {
   if (typeof node === "string" || typeof node === "number") {
@@ -130,9 +142,10 @@ export function PreBlock({ children, ...props }: PreBlockProps) {
         blockIndex={blockIndex}
         code={plainText}
         comments={mermaidComments}
+        initialView={specialBlock.specialViews.get(blockIndex)}
         onCreateAnchor={onCreateAnchor}
         onSelectComment={specialBlock.onSelectComment}
-        onViewChange={specialBlock.onViewChange}
+        onViewChange={(view) => specialBlock.onViewChange(blockIndex, view)}
       />
     );
   }
@@ -399,6 +412,8 @@ function MarkdownRendererContent({
   const addCommentAction = useAppStore((s) => s.addComment);
   const postPeerCommentAction = useAppStore((s) => s.postPeerComment);
   const reopenTab = useAppStore((s) => s.reopenTab);
+  const openDirectoryInNewTab = useAppStore((s) => s.openDirectoryInNewTab);
+  const openFileInNewTab = useAppStore((s) => s.openFileInNewTab);
   const clearPendingScrollTarget = useAppStore(
     (s) => s.clearPendingScrollTarget,
   );
@@ -492,6 +507,29 @@ function MarkdownRendererContent({
 
   const handleBodyMouseLeave = useCallback(() => setHoveredBlock(null), []);
 
+  // Footnote refs/backrefs navigate within the scroll pane. Letting the
+  // browser follow them would write #user-content-fn… into the URL, which is
+  // reserved for share links.
+  const handleBodyClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+    const footnoteLink = target.closest(
+      "[data-footnote-ref], [data-footnote-backref]",
+    );
+    if (!(footnoteLink instanceof HTMLAnchorElement)) {
+      return;
+    }
+    e.preventDefault();
+    const hash = footnoteLink.getAttribute("href");
+    if (!hash || !hash.startsWith("#")) {
+      return;
+    }
+    const destination = document.getElementById(hash.slice(1));
+    destination?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
+
   const handleBodyMouseUp = useCallback(() => {
     if (!canComment) {
       return;
@@ -556,6 +594,11 @@ function MarkdownRendererContent({
       metadata: document.metadata,
     };
   }, [rawContent]);
+  const contentKey = useMemo(
+    () =>
+      `${activeFilePath ?? fileName ?? ""}:${cleanMarkdown.length}:${hashContentKey(cleanMarkdown)}`,
+    [activeFilePath, fileName, cleanMarkdown],
+  );
   const peerRangeComments = useMemo(
     () =>
       isPeerMode
@@ -585,15 +628,21 @@ function MarkdownRendererContent({
     },
     [],
   );
+  // Diagram/source choices survive the content-keyed remount of the markdown
+  // subtree (indices may shift on structural edits, which resets the choice —
+  // acceptable).
+  const specialViewsRef = useRef(new Map<number, "diagram" | "source">());
   const specialBlockContext = useMemo<SpecialBlockContextValue>(
     () => ({
       activeCommentId,
       comments: visibleRangeComments,
       onCreateAnchor: handleSpecialBlockAnchor,
       onSelectComment: setActiveCommentId,
-      onViewChange: () => {
+      onViewChange: (blockIndex, view) => {
+        specialViewsRef.current.set(blockIndex, view);
         setSpecialBlockRevision((revision) => revision + 1);
       },
+      specialViews: specialViewsRef.current,
     }),
     [
       activeCommentId,
@@ -619,7 +668,9 @@ function MarkdownRendererContent({
     }
   }, [agentChangedBlocks, cleanMarkdown]);
 
-  const prevCommentsRef = useRef(comments);
+  // null sentinel: the initial mount must push too — a restored tab arrives
+  // with content already in place, and the margin/panel read the store.
+  const prevCommentsRef = useRef<Comment[] | null>(null);
   useEffect(() => {
     if (!isPeerMode && prevCommentsRef.current !== comments) {
       prevCommentsRef.current = comments;
@@ -669,12 +720,57 @@ function MarkdownRendererContent({
     clearPendingScrollTarget,
   ]);
 
-  // Highlight the block when hovering a comment in the panel
+  // Hovering a rail card spotlights that comment: its own spans focus, every
+  // other highlight washes out, so overlapping ranges stay tellable apart.
+  // Comments without a range fall back to tinting the whole block.
   const hoveredBlockHighlight = useAppStore((s) => s.hoveredBlockHighlight);
   useEffect(() => {
     if (!hoveredBlockHighlight) {
       return;
     }
+    const hoveredId = hoveredBlockHighlight.commentId;
+    const body = bodyRef.current;
+    const spans = hoveredId
+      ? body?.querySelectorAll<HTMLElement>(".comment-highlight")
+      : undefined;
+    let spotlit = false;
+    if (spans && hoveredId) {
+      const color = COMMENT_TYPE_COLOR[hoveredBlockHighlight.commentType];
+      const soloTint = `linear-gradient(color-mix(in srgb, ${color} 14%, transparent), color-mix(in srgb, ${color} 14%, transparent))`;
+      for (const span of spans) {
+        const covers = (span.dataset.cids ?? "").split(" ").includes(hoveredId);
+        span.classList.toggle("comment-highlight--focus", covers);
+        span.classList.toggle("comment-highlight--muted", !covers);
+        if (covers) {
+          // shared segments stack every covering comment's tint and stripe —
+          // while spotlit, only the hovered comment may speak
+          span.dataset.spotlightBackground = span.style.backgroundImage;
+          span.dataset.spotlightShadow = span.style.boxShadow;
+          span.style.backgroundImage = soloTint;
+          span.style.boxShadow = `inset 0 -2px 0 ${color}`;
+          spotlit = true;
+        }
+      }
+      if (spotlit) {
+        return () => {
+          for (const span of spans) {
+            span.classList.remove(
+              "comment-highlight--focus",
+              "comment-highlight--muted",
+            );
+            if (span.dataset.spotlightBackground !== undefined) {
+              span.style.backgroundImage = span.dataset.spotlightBackground;
+              delete span.dataset.spotlightBackground;
+            }
+            if (span.dataset.spotlightShadow !== undefined) {
+              span.style.boxShadow = span.dataset.spotlightShadow;
+              delete span.dataset.spotlightShadow;
+            }
+          }
+        };
+      }
+    }
+    // block-level fallback (no range, or range not rendered)
     const el = viewerRef.current?.querySelector(
       `[data-block-index="${hoveredBlockHighlight.blockIndex}"]`,
     );
@@ -708,6 +804,7 @@ function MarkdownRendererContent({
     return () => removeCommentHighlights(body);
   }, [
     activeCommentId,
+    contentKey,
     setActiveCommentId,
     showToast,
     specialBlockRevision,
@@ -722,17 +819,48 @@ function MarkdownRendererContent({
     <div className="markdown-scroll-area">
       {showRestoreBanner && hostTabId ? (
         <div className="restore-access-banner" role="status">
-          <span className="restore-access-banner__text">
-            {restoreTabState.restoreError}
-          </span>
-          <button
-            className="restore-access-banner__btn"
-            onClick={() => {
-              void reopenTab(hostTabId);
-            }}
+          <svg
+            className="restore-access-banner__icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
           >
-            {getRestoreAccessActionLabel(restoreTabState)}
-          </button>
+            <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <circle cx="11" cy="13" r="2.2" />
+            <path d="M13.2 13h4.3m-1.8 0v2" />
+          </svg>
+          <span className="restore-access-banner__text">
+            <strong>
+              Live access to “{getRestoreWorkspaceName(restoreTabState)}” was
+              dropped when the browser restarted.
+            </strong>{" "}
+            Keep reading — commenting and agent runs resume once access is
+            restored.
+          </span>
+          <div className="restore-access-banner__actions">
+            <button
+              className="restore-access-banner__btn restore-access-banner__btn--primary"
+              onClick={() => {
+                void reopenTab(hostTabId);
+              }}
+            >
+              Restore access
+            </button>
+            <button
+              className="restore-access-banner__btn"
+              onClick={() => {
+                if (restoreTabState.directoryName) {
+                  void openDirectoryInNewTab();
+                  return;
+                }
+                void openFileInNewTab();
+              }}
+            >
+              {getRestoreOpenOtherLabel(restoreTabState)}
+            </button>
+          </div>
         </div>
       ) : null}
       {!writeAllowed && !isPeerMode && !showRestoreBanner && (
@@ -765,19 +893,26 @@ function MarkdownRendererContent({
           className="markdown-body"
           data-agent-status={activeAgentRun?.status}
           ref={bodyRef}
+          onClick={handleBodyClick}
           onMouseOver={handleBodyMouseOver}
           onMouseUp={handleBodyMouseUp}
         >
           <MetadataPanel fields={metadata} />
-          <SpecialBlockContext.Provider value={specialBlockContext}>
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={rehypePlugins}
-              components={markdownComponents}
-            >
-              {cleanMarkdown}
-            </ReactMarkdown>
-          </SpecialBlockContext.Provider>
+          {/* Key by document identity + content: the highlight layer mutates
+              text nodes inside this subtree, so React must never diff it in
+              place across content changes — a changed key swaps the whole
+              subtree, which only removes untouched root nodes. */}
+          <div className="markdown-content" key={contentKey}>
+            <SpecialBlockContext.Provider value={specialBlockContext}>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={rehypePlugins}
+                components={markdownComponents}
+              >
+                {cleanMarkdown}
+              </ReactMarkdown>
+            </SpecialBlockContext.Provider>
+          </div>
         </div>
       </div>
     </div>

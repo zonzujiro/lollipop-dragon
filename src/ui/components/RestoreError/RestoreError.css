@@ -4,27 +4,21 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: min(560px, calc(100% - 2rem));
+  width: min(620px, calc(100% - 2rem));
   height: auto;
   margin: auto;
-  gap: 0.75rem;
+  gap: 1rem;
   text-align: center;
-  padding: 2.5rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  background: var(--surface-alt);
-  box-shadow: var(--shadow-sm);
+  padding: 3rem 2.5rem;
 }
 
 .restore-error__icon {
-  color: var(--text-muted);
-  opacity: 0.5;
+  color: var(--c-rewrite);
   margin-bottom: 0.5rem;
 }
 
 .restore-error__title {
-  font-size: 1.25rem;
-  font-weight: 600;
+  font: 700 2rem/1.1 var(--font-display);
   color: var(--text-primary);
   margin: 0;
 }
@@ -38,23 +32,40 @@
 }
 
 .restore-error__btn {
-  margin-top: 0.5rem;
-  padding: 0.5rem 1.25rem;
-  background-color: var(--surface-alt);
-  border: 1px solid var(--border-light);
+  padding: 0.65rem 1.1rem;
+  background: transparent;
+  border: 1px solid var(--border);
   cursor: pointer;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-sm);
   color: var(--text-secondary);
-  font-size: 0.85rem;
-  font-weight: 500;
+  font-size: 0.82rem;
+  font-weight: 700;
   transition:
     background-color 0.15s,
     color 0.15s,
     border-color 0.15s;
 }
 
+.restore-error__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.65rem;
+  margin-top: 0.5rem;
+}
+
+.restore-error__btn--primary {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--bg);
+}
+
 .restore-error__btn:hover {
-  background-color: var(--accent);
-  color: #ffffff;
-  border-color: var(--accent);
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.restore-error__btn--primary:hover {
+  background: var(--ink-secondary);
+  color: var(--bg);
 }

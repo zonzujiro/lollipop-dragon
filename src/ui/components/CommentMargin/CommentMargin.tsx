@@ -16,7 +16,10 @@ import type {
   CommentType,
 } from "../../../types/criticmarkup";
 import type { PeerComment } from "../../../types/share";
-import { USER_COMMENT_TYPES } from "../../commentTypes";
+import {
+  DEFAULT_USER_COMMENT_TYPE,
+  USER_COMMENT_TYPES,
+} from "../../commentTypes";
 
 const EMPTY_COMMENTS: Comment[] = [];
 const EMPTY_PEER_COMMENTS: PeerComment[] = [];
@@ -56,7 +59,7 @@ function AddCommentForm({
   anchor,
   peerMode = false,
 }: AddCommentFormProps) {
-  const [type, setType] = useState<CommentType>("clarify");
+  const [type, setType] = useState<CommentType>(DEFAULT_USER_COMMENT_TYPE);
   const [text, setText] = useState("");
   const formStyle: React.CSSProperties = dragPosition
     ? {
@@ -512,6 +515,15 @@ export function CommentMargin({
     return () => ro.disconnect();
   }, [containerRef, threadGroups]);
 
+  // the dashed + sits underneath whatever markers the hovered block already has
+  const MARKER_STACK_STEP = 30; // 26px marker + 4px gap
+  const hoveredBlockStackHeight = hoveredBlock
+    ? (groups.find((group) => group.top === hoveredBlock.top)?.threads.length ??
+        0) *
+        MARKER_STACK_STEP +
+      (peerDotGroups.get(hoveredBlock.index)?.length ?? 0) * MARKER_STACK_STEP
+    : 0;
+
   const addingBlockIndex = addingBlock?.index ?? null;
 
   useEffect(() => {
@@ -615,7 +627,7 @@ export function CommentMargin({
         !(peerMode && documentUpdateAvailable) && (
           <div
             className="comment-margin__add-wrapper"
-            style={{ top: hoveredBlock.top }}
+            style={{ top: hoveredBlock.top + hoveredBlockStackHeight }}
           >
             <button
               className="comment-margin__add"

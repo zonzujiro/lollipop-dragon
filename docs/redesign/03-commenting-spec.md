@@ -113,3 +113,7 @@ Comments anchor against the **diagram source** — that is the text that actuall
 3. **Source view:** every Mermaid block gets a `diagram / source` toggle (chips rendered outside the anchored-text root so they never pollute offsets). In source view the block behaves exactly like a code fence — selection anchoring and the line gutter included.
 
 Orphaning: renaming a node label breaks the quote match → standard orphan grace (§4). Serialization: anchored-standalone after the block, same rule as code. Diagram re-layout can never break an anchor because nothing anchors to coordinates — only to source text.
+
+### Hover spotlight (dense-overlap legibility)
+
+Hovering a rail card must make that comment's exact range unmistakable even when many highlights overlap: the hovered comment's spans gain a ring (`--focus`) **and temporarily render only the hovered comment's tint and underline stripe** (stacked styles are parked and restored on unhover — otherwise a shared segment keeps shouting in the other comment's color), while **every other highlight in the document washes out** (`filter: saturate(0.1) opacity(0.3)`, ~140ms transition). Dimming the rest is what creates certainty — brightening alone cannot win against stacked tints. Comments without a range fall back to tinting their whole block. Leaving the card restores everything.

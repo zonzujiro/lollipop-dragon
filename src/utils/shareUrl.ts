@@ -3,6 +3,23 @@ export interface ShareUrlParams {
   name?: string;
 }
 
+const SHARE_URL_DISPLAY_LENGTH = 56;
+const SHARE_URL_DISPLAY_TAIL_LENGTH = 6;
+
+/**
+ * Keep a share URL recognizable without allowing its secret-bearing fragment
+ * to stretch the share sheet. Copy actions must continue to use the full URL.
+ */
+export function truncateShareUrlForDisplay(url: string): string {
+  if (url.length <= SHARE_URL_DISPLAY_LENGTH) {
+    return url;
+  }
+
+  const headLength =
+    SHARE_URL_DISPLAY_LENGTH - SHARE_URL_DISPLAY_TAIL_LENGTH - 1;
+  return `${url.slice(0, headLength)}…${url.slice(-SHARE_URL_DISPLAY_TAIL_LENGTH)}`;
+}
+
 /**
  * Build a share URL from the given base URL and share parameters.
  * Format: `${base}#s=${keyB64}&n=${name}`

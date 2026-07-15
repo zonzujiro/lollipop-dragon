@@ -5,7 +5,10 @@ import { useActiveTab } from "../../../store/selectors";
 import type { ShareContentOptions } from "../../../modules/sharing/types";
 import type { PreparedShareIdentity } from "../../../modules/sharing/types";
 import { prepareShareIdentity } from "../../../modules/sharing/shareIdentity";
-import { buildShareUrlFromOrigin } from "../../../utils/shareUrl";
+import {
+  buildShareUrlFromOrigin,
+  truncateShareUrlForDisplay,
+} from "../../../utils/shareUrl";
 import type { FileTreeNode } from "../../../types/fileTree";
 import type { ShareRecord } from "../../../types/share";
 import { PendingCommentReview } from "../PendingCommentReview";
@@ -169,6 +172,23 @@ function ShieldIcon() {
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
     </svg>
+  );
+}
+
+// The readable origin stays ink; the secret fragment is dimmed — it is the
+// part that never reaches a server (02-screens §4).
+function ShareUrlPreview({ link }: { link: string }) {
+  const display = truncateShareUrlForDisplay(link);
+  const hashIndex = display.indexOf("#");
+  const base = hashIndex === -1 ? display : display.slice(0, hashIndex);
+  const fragment = hashIndex === -1 ? null : display.slice(hashIndex);
+  return (
+    <p className="share-dialog__url" aria-label="Shareable link">
+      {base}
+      {fragment && (
+        <span className="share-dialog__url-fragment">{fragment}</span>
+      )}
+    </p>
   );
 }
 
@@ -446,9 +466,7 @@ export function ShareDialog({ onClose, scope }: Props) {
               <LockIcon /> Encrypted link — key never leaves the URL
             </p>
             {link ? (
-              <p className="share-dialog__url" aria-label="Shareable link">
-                {link}
-              </p>
+              <ShareUrlPreview link={link} />
             ) : (
               <p className="share-dialog__preparing">
                 {identityStatus === "failed"

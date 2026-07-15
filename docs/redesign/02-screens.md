@@ -21,6 +21,10 @@ Every surface, its layout and states. Pixel truth: `reference-prototype/` (open 
 - **CTA band**: giant "start reading" + the red open-a-folder button again.
 - **Footer** (ink): shape trio + "dragon's favorite lollipop" + the recipe easter egg in small mono.
 
+The landing surface scrolls vertically through every chapter, CTA, and footer
+while clipping horizontal overflow. A viewport-height hero must never make the
+later sections unreachable.
+
 ## 2. Host frame
 
 `Header` (52px): brand mark+wordmark (left) · **workspace tabs inline in the header** (replaces the separate `TabBar` strip) · right actions: peers-online chip + presence avatars (only when a share with connected peers exists), Share button, **Run agent** (primary, desktop runtime only; Copy prompt on web), Present icon, theme toggle, comment-rail toggle. Text actions and icon actions are 32px high. Share remains visible whenever a host document is open; missing relay configuration is reported inside the share flow rather than hiding the action. Tabs: folder/file icon, label, open-comment count badge (accent pill), ×, and a `+` tab. Active tab = raised surface + hairline.
@@ -33,7 +37,7 @@ Right **comment rail** (332px, `CommentPanel`): "Comments · N open (· M resolv
 
 ## 3. Composer (replaces `AddCommentPopover`-style popup)
 
-Floating card (390px, raised surface, drag handle) anchored under the target block: italic serif quote line with type-colored left rule (when a range is anchored) → type chip row (clarify/rewrite, keys 1–2, selected chip fills with type-soft) → textarea → footer: honesty line **"Written into the file as CriticMarkup"** (peer mode: "Sent to the host — encrypted") + primary button `Comment ⌘↵`. Esc dismisses; click-outside dismisses; one composer at a time (opening another closes the first — matches the existing single-active-input rule). Legacy comment types remain readable but are not offered for new comments.
+Floating card (390px, raised surface, drag handle) anchored under the target block: italic serif quote line with type-colored left rule (when a range is anchored) → type chip row (question/clarify/rewrite/remove, keys 1–4, **question is the default**, selected chip fills with type-soft; remove is destructive red) → textarea → footer: honesty line **"Written into the file as CriticMarkup"** (peer mode: "Sent to the host — encrypted") + primary button `Comment ⌘↵`. Esc dismisses; click-outside dismisses; one composer at a time (opening another closes the first — matches the existing single-active-input rule). Legacy comment types (fix/expand) remain readable but are not offered for new comments. Question comments open threads: replies render under the root beneath a teal thread rule (avatar + author + text per reply), agent replies are read-only, and the root gains a `✓ answered · N` chip. **Long threads collapse to first reply + "⌄ N more replies" + last reply** (expand/collapse toggles); the selected question card shows an inline "Reply — Enter to send" input. Prototype routes: `#host-thread` (collapsed), `#host-thread-open` (expanded).
 
 Visual verification: the composer has no legacy `Add comment` title row or
 separate Cancel button; dismissal remains available through Esc and
@@ -41,7 +45,7 @@ click-outside behavior.
 
 ## 4. Share sheet (`ShareDialog` + `SharedPanel`, merged)
 
-One centered sheet (560px) over a blur scrim: "Share for review" heading + reviewer explanation → scope segmented control (This file / Whole folder · N files) → **1 day / 7 days / 30 days** expiry tabs (no access-level control; all shares allow reading and commenting) → teal link box: lock label "Encrypted link — key never leaves the URL", locally pre-generated mono URL with dimmed fragment, **Copy link** + "Copy as Slack message" → shield keynote explaining the #fragment in one sentence → sunken "Active shares · this workspace" list: rows with name, meta (kind · created · expires), pending-comment / peers-viewing badge, Revoke link. Opening the sheet generates only the local key, document ID, and URL. The first copy action shows "Encrypting & uploading…", uploads the selected content, and copies only after success; failure copies nothing and permits retry. Existing active shares copy immediately. Copy actions morph label to "Copied ✓" + toast.
+One centered sheet (560px) over a blur scrim: "Share for review" heading + reviewer explanation → scope segmented control (This file / Whole folder · N files) → **1 day / 7 days / 30 days** expiry tabs (no access-level control; all shares allow reading and commenting) → teal link box: lock label "Encrypted link — key never leaves the URL", locally pre-generated mono URL with a stable middle ellipsis so it remains on one line, **Copy link** + "Copy as Slack message" → shield keynote explaining the #fragment in one sentence → sunken "Active shares · this workspace" list: rows with name, meta (kind · created · expires), pending-comment / peers-viewing badge, Revoke link. The display-only truncation must never alter the complete URL copied by either action. Opening the sheet generates only the local key, document ID, and URL. The first copy action shows "Encrypting & uploading…", uploads the selected content, and copies only after success; failure copies nothing and permits retry. Existing active shares copy immediately. Copy actions morph label to "Copied ✓" + toast.
 
 ## 5. Agent run (desktop runtime; `AgentTerminal` + run card)
 

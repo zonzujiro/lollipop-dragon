@@ -21,19 +21,19 @@
   --agent-soft: rgba(46, 150, 120, 0.1);
 
   --c-fix: #d93030;
-  --c-rewrite: #bb7410;
+  --c-rewrite: #c07a10;
   --c-expand: #2563eb;
   --c-clarify: #7c4fd0;
   --c-question: #0e8a9e;
   --c-answer: #2e9678;
-  --c-remove: #6e6659;
+  --c-remove: #d93030;
   --c-fix-soft: rgba(217, 48, 48, 0.1);
   --c-rewrite-soft: rgba(192, 122, 16, 0.12);
   --c-expand-soft: rgba(37, 99, 235, 0.1);
   --c-clarify-soft: rgba(124, 79, 208, 0.1);
   --c-question-soft: rgba(14, 138, 158, 0.1);
   --c-answer-soft: rgba(46, 150, 120, 0.12);
-  --c-remove-soft: rgba(110, 102, 89, 0.12);
+  --c-remove-soft: rgba(217, 48, 48, 0.12);
 
   --font-ui: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
   --font-doc: ui-serif, "New York", "Iowan Old Style", Georgia, serif;
@@ -95,12 +95,12 @@
   --c-clarify: #a98be8;
   --c-question: #4fb8cb;
   --c-answer: #4cba9a;
-  --c-remove: #97907f;
+  --c-remove: #f07272;
   --c-fix-soft: rgba(240, 114, 114, 0.15);
   --c-rewrite-soft: rgba(224, 163, 62, 0.15);
   --c-expand-soft: rgba(109, 155, 245, 0.15);
   --c-clarify-soft: rgba(169, 139, 232, 0.15);
   --c-question-soft: rgba(79, 184, 203, 0.15);
   --c-answer-soft: rgba(76, 186, 154, 0.16);
-  --c-remove-soft: rgba(151, 144, 127, 0.16);
+  --c-remove-soft: rgba(240, 114, 114, 0.16);
 }

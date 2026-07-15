@@ -148,6 +148,12 @@ describe("App — no file open", () => {
     expect(screen.getByText("rewrite")).toBeInTheDocument();
     expect(screen.queryByText("expand")).not.toBeInTheDocument();
     expect(screen.queryByText("fix")).not.toBeInTheDocument();
+    expect(screen.getByText("reads like a book")).toBeInTheDocument();
+    expect(screen.getByText("hand it off")).toBeInTheDocument();
+    expect(screen.getByText("private by construction")).toBeInTheDocument();
+    expect(
+      container.querySelector(".landing-footer__shapes"),
+    ).toBeInTheDocument();
   });
 
   it("calls openFileInNewTab on the store when the button is clicked", async () => {
@@ -319,10 +325,13 @@ describe("App — folder open", () => {
     render(<App />);
 
     expect(
-      screen.getByRole("heading", { name: "Folder access needed" }),
+      screen.getByRole("heading", { name: "Reconnect “my-docs”" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Re-open current folder" }),
+      screen.getByRole("button", { name: "Re-open folder" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Open another folder…" }),
     ).toBeInTheDocument();
     expect(screen.queryByTestId("markdown-renderer")).not.toBeInTheDocument();
   });

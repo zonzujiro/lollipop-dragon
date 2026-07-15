@@ -242,10 +242,8 @@ export async function restoreDirectoryTabState<
         fileName: restoredFile.fileName,
         rawContent: restoredFile.rawContent,
         writeAllowed: restoredFile.restoreMessage === null,
-        commentPanelOpen:
-          restoredFile.restoreMessage === null ? tab.commentPanelOpen : false,
-        sharedPanelOpen:
-          restoredFile.restoreMessage === null ? tab.sharedPanelOpen : false,
+        commentPanelOpen: tab.commentPanelOpen,
+        sharedPanelOpen: tab.sharedPanelOpen,
         restoreError: restoredFile.restoreMessage,
       })),
     }));
@@ -418,8 +416,6 @@ function buildRestoreAccessState(message: string): Partial<TabState> {
   return {
     fileHandle: null,
     writeAllowed: false,
-    commentPanelOpen: false,
-    sharedPanelOpen: false,
     restoreError: message,
   };
 }
@@ -973,7 +969,7 @@ export function createWorkspaceControllerActions<
                 }),
               })),
             }));
-            showToast("Folder access was not restored");
+            showToast("The browser did not grant folder access");
             return;
           }
 
@@ -995,14 +991,8 @@ export function createWorkspaceControllerActions<
               fileName: restoredFile.fileName,
               rawContent: restoredFile.rawContent,
               writeAllowed: restoredFile.restoreMessage === null,
-              commentPanelOpen:
-                restoredFile.restoreMessage === null
-                  ? tab.commentPanelOpen
-                  : false,
-              sharedPanelOpen:
-                restoredFile.restoreMessage === null
-                  ? tab.sharedPanelOpen
-                  : false,
+              commentPanelOpen: tab.commentPanelOpen,
+              sharedPanelOpen: tab.sharedPanelOpen,
               restoreError: restoredFile.restoreMessage,
             })),
           }));
@@ -1013,6 +1003,9 @@ export function createWorkspaceControllerActions<
             restoredFile.restoreMessage === null
           ) {
             await scanAllFileComments();
+          }
+          if (restoredFile.restoreMessage === null) {
+            showToast("Access restored — commenting is back");
           }
         } catch (error) {
           console.error(
@@ -1039,7 +1032,7 @@ export function createWorkspaceControllerActions<
               ),
             })),
           }));
-          showToast("File access was not restored");
+          showToast("The browser did not grant file access");
           return;
         }
 
@@ -1055,6 +1048,7 @@ export function createWorkspaceControllerActions<
             restoreError: null,
           })),
         }));
+        showToast("Access restored — commenting is back");
       } catch (error) {
         console.error("[reopenTab] failed to reopen file tab:", tabId, error);
         set((state) => ({
@@ -1128,14 +1122,8 @@ export function createWorkspaceControllerActions<
                 fileName: restoredFile.fileName,
                 rawContent: restoredFile.rawContent,
                 writeAllowed: restoredFile.restoreMessage === null,
-                commentPanelOpen:
-                  restoredFile.restoreMessage === null
-                    ? tab.commentPanelOpen
-                    : false,
-                sharedPanelOpen:
-                  restoredFile.restoreMessage === null
-                    ? tab.sharedPanelOpen
-                    : false,
+                commentPanelOpen: tab.commentPanelOpen,
+                sharedPanelOpen: tab.sharedPanelOpen,
                 restoreError: restoredFile.restoreMessage,
               })),
             }));
@@ -1183,14 +1171,8 @@ export function createWorkspaceControllerActions<
             fileName: restoredFile.fileName,
             rawContent: restoredFile.rawContent,
             writeAllowed: restoredFile.restoreMessage === null,
-            commentPanelOpen:
-              restoredFile.restoreMessage === null
-                ? tab.commentPanelOpen
-                : false,
-            sharedPanelOpen:
-              restoredFile.restoreMessage === null
-                ? tab.sharedPanelOpen
-                : false,
+            commentPanelOpen: tab.commentPanelOpen,
+            sharedPanelOpen: tab.sharedPanelOpen,
             restoreError: restoredFile.restoreMessage,
           })),
         }));
@@ -1297,8 +1279,8 @@ export function createWorkspaceControllerActions<
               tabs: buildUpdatedTabs(state.tabs, tab.id, () => ({
                 fileHandle: hasReadAccess ? handle : null,
                 writeAllowed: hasWriteAccess,
-                commentPanelOpen: hasWriteAccess ? tab.commentPanelOpen : false,
-                sharedPanelOpen: hasWriteAccess ? tab.sharedPanelOpen : false,
+                commentPanelOpen: tab.commentPanelOpen,
+                sharedPanelOpen: tab.sharedPanelOpen,
                 restoreError: restoreMessage,
                 ...(restoredRawContent !== null
                   ? { rawContent: restoredRawContent }

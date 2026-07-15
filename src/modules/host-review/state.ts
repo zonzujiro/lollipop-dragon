@@ -1,7 +1,6 @@
 import type { StoreApi } from "zustand";
 import type { Comment } from "../../types/criticmarkup";
 import type { TabState } from "../../types/tab";
-import { tabRequiresRestoreAccess } from "../../types/tab";
 import type {
   FileCommentEntry,
   HostCommentFilter,
@@ -101,11 +100,6 @@ export function createHostReviewActions<
         set((state) => ({
           peerCommentPanelOpen: !state.peerCommentPanelOpen,
         }));
-        return;
-      }
-
-      const tab = getActiveTab(get);
-      if (tabRequiresRestoreAccess(tab)) {
         return;
       }
 

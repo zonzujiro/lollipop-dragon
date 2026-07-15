@@ -235,13 +235,13 @@ On page load:
 When a tab's file or folder cannot be accessed after a browser reopen, the UI keeps as much context visible as it safely can:
 
 - **File tab, last content available**: keep rendering the persisted markdown content
-- **Banner**: sticky restore-access banner at the top of the document with a "Re-open current file" / "Re-open current folder" action
-- **Disabled actions**: comment creation, comment merge/review panels, and share-management actions stay disabled until access is restored
-- **No renderable file context**: show the full restore placeholder with a "Re-open current file" / "Re-open current folder" button
+- **Cached-content banner**: keep the persisted document and comment rail readable, and dock the amber restore-access banner at the top of the document with **Restore access** and **Open another file/folder…** actions
+- **Guarded mutations**: hide block-add affordances and guard comment creation/edit/delete, agent runs, and share management until access is restored; existing comments, highlights, filters, and navigation remain usable, with a dashed read-only strip in the rail
+- **No renderable file context**: show the named `Reconnect “workspace”` placeholder with **Re-open file/folder** and **Open another file/folder…** actions
 - **Saved-target reopen**: when the user reopens a degraded tab, first reuse the saved file or folder handle/path and request permission from that button click instead of opening a picker
 - **Manual folder reopen**: when the user reopens a degraded folder tab and the last active file path still exists, restore that file immediately instead of dropping back to an empty folder view
 
-While `restoreError` is set, host-side review actions are disabled because the tab no longer has confirmed live write access.
+While `restoreError` is set, host-side mutations are blocked because the tab no longer has confirmed live write access. Read-only review surfaces remain available. Successful restoration reports `Access restored — commenting is back`; refusal keeps the restore state visible and reports the browser denial.
 
 The `restoreError` field is runtime-only (not persisted to localStorage). On each app load, restoration is re-attempted from IndexedDB handles.
 

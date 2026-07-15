@@ -18,6 +18,25 @@
   gap: 0.5rem;
 }
 
+.comment-panel__read-only {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.65rem 0.75rem 0;
+  padding: 0.55rem 0.65rem;
+  border: 1px dashed var(--c-rewrite);
+  color: var(--ink-secondary);
+  font: 600 0.68rem/1.35 var(--font-mono);
+  text-transform: lowercase;
+}
+
+.comment-panel__read-only svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  color: var(--c-rewrite);
+}
+
 .comment-panel__title {
   min-width: 0;
   font-size: 14px;
@@ -331,17 +350,17 @@
   font-weight: 600;
   border: 1px solid var(--border);
   border-radius: 99px;
-  background: none;
+  background: var(--surface);
   color: var(--text-secondary);
   cursor: pointer;
   transition:
-    border-color 0.1s,
-    color 0.1s,
-    background-color 0.1s;
+    border-color 0.12s,
+    color 0.12s,
+    background-color 0.12s;
 }
 
 .comment-panel__filter:hover {
-  background-color: var(--surface-alt);
+  border-color: var(--line-strong);
 }
 
 .comment-panel__filter[data-comment-type="remove"] {
@@ -409,27 +428,22 @@
   border-radius: var(--radius-m);
   cursor: pointer;
   text-align: left;
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 4%, transparent);
+  box-shadow: var(--shadow-card);
   transition:
-    border-color 0.14s,
-    box-shadow 0.14s,
-    transform 0.14s;
+    border-color 0.12s,
+    box-shadow 0.12s;
 }
 
+/* quiet hover, straight from the prototype: the whole border (taxonomy
+   left edge included) goes neutral and the Resolve action appears. */
 .comment-panel__entry:hover {
-  border-color: color-mix(
-    in srgb,
-    var(--comment-color, var(--border)) 58%,
-    var(--border)
-  );
-  box-shadow: var(--shadow-sm);
-  transform: translateY(-1px);
+  border-color: var(--line-strong);
 }
 
 .comment-panel__entry--active {
   border-color: var(--comment-color, var(--accent));
-  box-shadow: 0 0 0 2px
-    color-mix(in srgb, var(--comment-color, var(--accent)) 18%, transparent);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--comment-color, var(--accent)) 14%, transparent);
 }
 
 .comment-panel__entry[data-comment-type="fix"] {
@@ -440,10 +454,13 @@
   --comment-color: var(--c-orange);
   --comment-soft: var(--c-rewrite-soft);
 }
-.comment-panel__entry[data-comment-type="expand"],
-.comment-panel__entry[data-comment-type="answer"] {
-  --comment-color: var(--accent);
+.comment-panel__entry[data-comment-type="expand"] {
+  --comment-color: var(--c-expand);
   --comment-soft: var(--c-expand-soft);
+}
+.comment-panel__entry[data-comment-type="answer"] {
+  --comment-color: var(--c-answer);
+  --comment-soft: var(--c-answer-soft);
 }
 .comment-panel__entry[data-comment-type="clarify"] {
   --comment-color: var(--c-purple);
@@ -454,7 +471,7 @@
   --comment-soft: var(--c-question-soft);
 }
 .comment-panel__entry[data-comment-type="remove"] {
-  --comment-color: var(--text-muted);
+  --comment-color: var(--c-remove);
   --comment-soft: var(--c-remove-soft);
 }
 .comment-panel__entry[data-comment-type="note"] {
@@ -491,8 +508,8 @@
 .comment-panel__quote {
   width: 100%;
   overflow: hidden;
-  color: var(--text-secondary);
-  font-family: var(--font-serif);
+  color: var(--ink-muted);
+  font-family: var(--font-doc);
   padding-left: 8px;
   border-left: 2px solid var(--line-strong);
   font-size: 12px;
@@ -540,16 +557,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.55rem 0.15rem 0.45rem;
-  font: 650 0.67rem/1.35 var(--font-mono);
+  padding: 8px 2px 4px;
+  font: 650 10.5px/1.35 var(--font-mono);
   color: var(--text-muted);
-  text-transform: uppercase;
   letter-spacing: 0.04em;
-  border-top: 1px solid var(--border-light);
-}
-
-.comment-panel__file-header:first-child {
-  border-top: none;
 }
 
 .comment-panel__file-name {
@@ -573,32 +584,50 @@
   opacity: 1;
 }
 
+.comment-panel__entry {
+  position: relative;
+}
+
+/* Hover actions replace the right-side meta (time / answered chip) so the
+   two can never collide; visibility keeps the row from reflowing. */
 .comment-panel__entry-actions {
+  position: absolute;
+  top: 8px;
+  right: 10px;
   display: flex;
   align-items: center;
   gap: 0.2rem;
-  flex-shrink: 0;
-  margin-left: auto;
   opacity: 0;
+  pointer-events: none;
   transition: opacity 0.12s;
+}
+
+.comment-panel__entry--actionable:hover .comment-panel__time,
+.comment-panel__entry--actionable:hover .comment-panel__status,
+.comment-panel__entry--actionable:focus-within .comment-panel__time,
+.comment-panel__entry--actionable:focus-within .comment-panel__status {
+  visibility: hidden;
 }
 
 .comment-panel__entry:hover .comment-panel__entry-actions,
 .comment-panel__entry:focus-within .comment-panel__entry-actions {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .comment-panel__entry-edit,
+.comment-panel__entry-resolve,
 .comment-panel__entry-delete {
-  padding: 0.1rem 0.35rem;
-  font-size: 0.6rem;
-  font-weight: 600;
+  height: 22px;
+  padding: 0 8px;
+  font-size: 10.5px;
+  font-weight: 700;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 6px;
   background: var(--surface);
   color: var(--text-secondary);
   cursor: pointer;
-  line-height: 1.3;
+  line-height: 1;
 }
 
 .comment-panel__entry-edit:hover {
@@ -611,6 +640,12 @@
   background-color: rgba(224, 49, 49, 0.08);
   border-color: var(--c-red);
   color: var(--c-red);
+}
+
+.comment-panel__entry-resolve:hover {
+  background-color: var(--agent-soft);
+  border-color: var(--agent);
+  color: var(--agent);
 }
 
 .comment-panel__inline-edit {
@@ -677,7 +712,6 @@
   color: var(--ink-muted);
   display: flex;
   align-items: center;
-  justify-content: center;
   flex-wrap: wrap;
   gap: 6px 14px;
   font-size: 11px;
@@ -708,14 +742,14 @@
 
 .comment-panel__resolved-strip {
   flex-shrink: 0;
-  margin: 0 0.65rem 0.55rem;
-  padding: 0.48rem 0.65rem;
-  border: 1px dashed var(--border);
-  border-radius: 7px;
+  margin: 2px 12px 10px;
+  padding: 8px 12px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-m);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 0.7rem;
+  font-size: 12px;
   text-align: left;
 }
 

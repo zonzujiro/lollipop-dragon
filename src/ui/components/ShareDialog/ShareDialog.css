@@ -201,9 +201,11 @@
 }
 
 .share-dialog__url {
+  overflow: hidden;
   color: var(--ink);
   font: 400 12px/1.4 var(--font-mono);
-  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   user-select: none;
 }
 
@@ -384,4 +386,8 @@
   .share-dialog__overlay {
     backdrop-filter: none;
   }
+}
+
+.share-dialog__url-fragment {
+  color: var(--ink-muted);
 }

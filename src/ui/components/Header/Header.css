@@ -91,7 +91,6 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  min-height: 2.25rem;
   flex-shrink: 0;
   white-space: nowrap;
   transition:
@@ -142,9 +141,9 @@
 
 .app-header__btn--share {
   background-color: var(--surface-raised);
-  border-color: var(--border);
+  border-color: var(--line-strong);
   color: var(--ink);
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 5%, transparent);
+  box-shadow: var(--shadow-card);
 }
 
 .app-header__btn--share:hover {
@@ -238,12 +237,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.1em;
-  height: 1.1em;
-  padding: 0 0.25em;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
   margin-left: 0.35rem;
-  border-radius: 99px;
-  font-size: 0.7rem;
+  border-radius: 9px;
+  font-size: 10.5px;
   font-weight: 700;
   background-color: var(--accent);
   color: #fff;
@@ -360,4 +359,8 @@
 .app-header__identity small {
   color: var(--text-muted);
   font-size: 0.58rem;
+}
+.app-header__btn--guarded,
+.app-header__btn[aria-disabled="true"] {
+  opacity: 0.48;
 }

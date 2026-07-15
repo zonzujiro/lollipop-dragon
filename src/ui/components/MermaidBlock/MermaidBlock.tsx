@@ -51,9 +51,10 @@ interface Props {
   blockIndex?: number;
   code: string;
   comments?: MermaidComment[];
+  initialView?: MermaidView;
   onCreateAnchor?: (anchor: CommentAnchorDraft) => void;
   onSelectComment?: (commentId: string) => void;
-  onViewChange?: () => void;
+  onViewChange?: (view: MermaidView) => void;
 }
 
 function ignoreAnchor() {}
@@ -117,6 +118,7 @@ export function MermaidBlock({
   blockIndex = 0,
   code,
   comments = EMPTY_MERMAID_COMMENTS,
+  initialView,
   onCreateAnchor = ignoreAnchor,
   onSelectComment = ignoreCommentSelection,
   onViewChange = ignoreViewChange,
@@ -128,7 +130,7 @@ export function MermaidBlock({
   const [directionOverride, setDirectionOverride] = useState<Direction | null>(
     null,
   );
-  const [view, setView] = useState<MermaidView>("diagram");
+  const [view, setView] = useState<MermaidView>(initialView ?? "diagram");
   const [nodePositions, setNodePositions] = useState<NodePosition[]>([]);
 
   const originalDirection = parseDirection(code);
@@ -298,7 +300,7 @@ export function MermaidBlock({
 
   const selectView = (nextView: MermaidView) => {
     setView(nextView);
-    onViewChange();
+    onViewChange(nextView);
   };
 
   const visibleView: MermaidView = error ? "source" : view;

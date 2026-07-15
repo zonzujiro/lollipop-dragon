@@ -67,11 +67,15 @@ function buildHighlightSpan(
   span.textContent = value;
   span.dataset.cids = commentIds.join(" ");
   span.dataset.overlapCount = String(comments.length);
-  span.dataset.selected = comments.some(
+  const selectedComment = comments.find(
     (comment) => comment.id === activeCommentId,
-  )
-    ? "true"
-    : "false";
+  );
+  span.dataset.selected = selectedComment ? "true" : "false";
+  // the selection ring takes the selected comment's taxonomy color
+  span.style.setProperty(
+    "--hl-color",
+    COMMENT_TYPE_COLOR[(selectedComment ?? comments[0]).type],
+  );
   span.setAttribute("role", "button");
   span.tabIndex = 0;
   const labels = comments.map(

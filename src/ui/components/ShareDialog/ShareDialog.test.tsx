@@ -63,6 +63,14 @@ describe("ShareDialog - initial render", () => {
     expect(shareContent).not.toHaveBeenCalled();
   });
 
+  it("truncates the displayed URL", async () => {
+    render(<ShareDialog onClose={vi.fn()} />);
+
+    expect(await screen.findByLabelText("Shareable link")).toHaveTextContent(
+      "…",
+    );
+  });
+
   it("calls onClose when Escape is pressed", async () => {
     const onClose = vi.fn();
     render(<ShareDialog onClose={onClose} />);
