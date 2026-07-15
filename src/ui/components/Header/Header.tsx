@@ -19,7 +19,6 @@ import { selectDocumentUpdateAvailable } from "../../../modules/relay";
 import { SunIcon, MoonIcon } from "../Icons";
 import { ConnectionStatus } from "../ConnectionStatus";
 import { TabBar } from "../TabBar";
-import { DocumentOutline } from "../DocumentOutline";
 import { syncActiveShares } from "../../../modules/sharing";
 import { canRunAgent } from "../../../runtime";
 import { downloadActiveFile } from "./downloadActiveFile";
@@ -360,7 +359,6 @@ export function Header({
                 }}
               />
             )}
-            {hasContent && <DocumentOutline peerMode={peerMode} />}
             {!peerMode && hasContent && onPresent && (
               <button
                 onClick={onPresent}
