@@ -2,196 +2,35 @@ import "./ShareDialog.css";
 import { useEffect, useMemo, useState } from "react";
 import { useAppStore } from "../../../store";
 import { useActiveTab } from "../../../store/selectors";
-import type { ShareContentOptions } from "../../../modules/sharing/types";
 import type { PreparedShareIdentity } from "../../../modules/sharing/types";
 import { prepareShareIdentity } from "../../../modules/sharing/shareIdentity";
-import {
-  buildShareUrlFromOrigin,
-  truncateShareUrlForDisplay,
-} from "../../../utils/shareUrl";
-import type { FileTreeNode } from "../../../types/fileTree";
-import type { ShareRecord } from "../../../types/share";
+import { buildShareUrlFromOrigin } from "../../../utils/shareUrl";
 import { PendingCommentReview } from "../PendingCommentReview";
-
-const TTL_OPTIONS = [
-  { label: "1 day", value: 86400 },
-  { label: "7 days", value: 604800 },
-  { label: "30 days", value: 2592000 },
-];
-const EMPTY_SHARES: ShareRecord[] = [];
+import {
+  FileScopeIcon,
+  FolderScopeIcon,
+  LockIcon,
+  ShareUrlPreview,
+  ShieldIcon,
+} from "./ShareDialogVisuals";
+import {
+  buildShareOptions,
+  countFiles,
+  EMPTY_SHARES,
+  entityPathFromScope,
+  formatCreated,
+  formatExpiry,
+  isExistingShareMatch,
+  TTL_OPTIONS,
+  type ShareDialogScope,
+} from "./shareDialogModel";
 
 interface Props {
   onClose: () => void;
   scope?: ShareDialogScope;
 }
 
-export type ShareDialogScope =
-  | { kind: "current-file"; label?: string }
-  | { kind: "current-folder"; label?: string; entityPath: string }
-  | { kind: "nodes"; label?: string; nodes: FileTreeNode[] };
-
-function buildShareOptions(
-  ttl: number,
-  scope: ShareDialogScope | undefined,
-  preparedIdentity?: PreparedShareIdentity,
-): ShareContentOptions {
-  const options: ShareContentOptions = { ttl, preparedIdentity };
-  if (scope?.label) {
-    options.label = scope.label;
-  }
-  if (scope?.kind === "nodes") {
-    options.nodes = scope.nodes;
-  }
-  if (scope?.kind === "current-file") {
-    options.nodes = [];
-  }
-  return options;
-}
-
-function collectFilePaths(nodes: FileTreeNode[]): string[] {
-  const paths: string[] = [];
-  for (const node of nodes) {
-    if (node.kind === "file") {
-      paths.push(node.path);
-    } else {
-      paths.push(...collectFilePaths(node.children));
-    }
-  }
-  return paths;
-}
-
-function commonPathPrefix(paths: string[]): string {
-  if (paths.length === 0) {
-    return "";
-  }
-  let prefix = paths[0];
-  for (const path of paths.slice(1)) {
-    while (prefix.length > 0 && !path.startsWith(prefix)) {
-      const lastSlash = prefix.lastIndexOf("/");
-      prefix = lastSlash >= 0 ? prefix.slice(0, lastSlash + 1) : "";
-    }
-  }
-  return prefix;
-}
-
-function entityPathFromScope(
-  scope: ShareDialogScope | undefined,
-  activeFilePath: string | null,
-): string {
-  if (scope?.kind === "nodes") {
-    const paths = collectFilePaths(scope.nodes);
-    return paths.length > 0 ? commonPathPrefix(paths) : (activeFilePath ?? "");
-  }
-  if (scope?.kind === "current-folder") {
-    return scope.entityPath;
-  }
-  return activeFilePath ?? "";
-}
-
-function entityPathFromRecord(record: ShareRecord): string | null {
-  return record.sharedPaths?.length
-    ? commonPathPrefix(record.sharedPaths)
-    : null;
-}
-
-function isExistingShareMatch(input: {
-  share: ShareRecord;
-  scope: ShareDialogScope | undefined;
-  label: string;
-  entityPath: string;
-}): boolean {
-  const recordPath = entityPathFromRecord(input.share);
-  if (input.scope?.kind === "current-folder") {
-    return (
-      input.share.label === input.label || recordPath === input.scope.entityPath
-    );
-  }
-  return recordPath === null
-    ? input.share.label === input.label
-    : recordPath === input.entityPath;
-}
-
-function formatExpiry(expiresAt: string): string {
-  const remainingMs = new Date(expiresAt).getTime() - Date.now();
-  if (remainingMs <= 0) {
-    return "expired";
-  }
-  const remainingDays = Math.floor(remainingMs / 86400000);
-  const remainingHours = Math.ceil(remainingMs / 3600000);
-  return remainingDays > 0
-    ? `expires in ${remainingDays} d`
-    : `expires in ${remainingHours} h`;
-}
-
-function formatCreated(createdAt: string): string {
-  const created = new Date(createdAt);
-  const today = new Date();
-  if (created.toDateString() === today.toDateString()) {
-    return "created today";
-  }
-  const day = String(created.getDate()).padStart(2, "0");
-  const month = String(created.getMonth() + 1).padStart(2, "0");
-  return `created ${day}.${month}.${created.getFullYear()}`;
-}
-
-function countFiles(nodes: FileTreeNode[]): number {
-  return nodes.reduce(
-    (total, node) =>
-      total + (node.kind === "file" ? 1 : countFiles(node.children)),
-    0,
-  );
-}
-
-function FileScopeIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
-      <path d="M14 3v6h6" />
-    </svg>
-  );
-}
-
-function FolderScopeIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-    </svg>
-  );
-}
-
-function LockIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="4" y="10" width="16" height="10" rx="2" />
-      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-    </svg>
-  );
-}
-
-function ShieldIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    </svg>
-  );
-}
-
-// The readable origin stays ink; the secret fragment is dimmed — it is the
-// part that never reaches a server (02-screens §4).
-function ShareUrlPreview({ link }: { link: string }) {
-  const display = truncateShareUrlForDisplay(link);
-  const hashIndex = display.indexOf("#");
-  const base = hashIndex === -1 ? display : display.slice(0, hashIndex);
-  const fragment = hashIndex === -1 ? null : display.slice(hashIndex);
-  return (
-    <p className="share-dialog__url" aria-label="Shareable link">
-      {base}
-      {fragment && (
-        <span className="share-dialog__url-fragment">{fragment}</span>
-      )}
-    </p>
-  );
-}
+export type { ShareDialogScope } from "./shareDialogModel";
 
 export function ShareDialog({ onClose, scope }: Props) {
   const tab = useActiveTab();

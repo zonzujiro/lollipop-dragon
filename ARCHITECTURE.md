@@ -298,7 +298,10 @@ This project now draws a hard line between pure state updates and side effects.
 
 These rules are enforced by `npm run architecture:check`, which resolves the
 runtime import graph, rejects cycles and forbidden edges, validates module
-README contracts, and caps production component files at 1,000 lines.
+README contracts, and caps every production React component file at 500 lines.
+This is an absolute ceiling, not a target: split models, interaction hooks,
+rendering adapters, and leaf UI as soon as a component starts accumulating
+multiple responsibilities.
 
 ### Relay composition
 

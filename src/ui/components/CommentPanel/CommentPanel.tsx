@@ -1,189 +1,26 @@
 import "./CommentPanel.css";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { buildCommentThreadGroups } from "../../../markup";
-import { getFinishedAgentRunHistoryForTab } from "../../../modules/agent-workflow";
-import type { AgentRun, AgentRunStatus } from "../../../modules/agent-workflow";
-import {
-  canRunAgent,
-  canShowTerminal,
-  getAgentRuntimeCapability,
-  resizeTerminal,
-  sendTerminalData,
-} from "../../../runtime";
-import type { AgentRuntimeCapability } from "../../../runtime";
+import { useEffect, useMemo } from "react";
 import { useActiveTab } from "../../../store/selectors";
 import { useCommentPanelStore } from "../../../store/uiHooks";
-import type { Comment, CommentType } from "../../../types/criticmarkup";
-import type { PeerComment } from "../../../types/share";
-import type { TabState } from "../../../types/tab";
+import type { CommentType } from "../../../types/criticmarkup";
 import { tabRequiresRestoreAccess } from "../../../types/tab";
 import { USER_COMMENT_TYPES } from "../../commentTypes";
-import { AgentTerminal } from "../AgentTerminal";
 import { CrossFileList, SingleFileList } from "./CommentPanelEntries";
-
-const ACTIVE_AGENT_RUN_STATUSES = new Set<AgentRunStatus>([
-  "queued",
-  "running",
-  "needs_attention",
-]);
-const AGENT_RUN_STATUS_LABEL: Record<AgentRunStatus, string> = {
-  queued: "Queued",
-  running: "Running",
-  needs_attention: "Needs attention",
-  completed: "Completed",
-  failed: "Failed",
-  stopped: "Stopped",
-};
-const AGENT_RUN_TASK_LABEL = {
-  address_comments: "Address comments",
-  answer_questions: "Answer questions",
-  review_peer_comments: "Review peer comments",
-};
-const EMPTY_COMMENTS: Comment[] = [];
-const EMPTY_FILE_TREE: TabState["fileTree"] = [];
-const EMPTY_ALL_FILE_COMMENTS: TabState["allFileComments"] = {};
-const EMPTY_AGENT_RUNS: AgentRun[] = [];
-const EMPTY_ANSWERED_COMMENT_IDS = new Set<string>();
-const EMPTY_ANSWERED_COMMENT_IDS_BY_PATH = new Map<
-  string,
-  ReadonlySet<string>
->();
-const INITIAL_AGENT_CAPABILITY: AgentRuntimeCapability = {
-  canRunAgent: false,
-  unavailableMessage: canRunAgent
-    ? null
-    : "Local agent execution is unavailable on web.",
-};
-
-function getCompletedAgentRunMessage(status: AgentRunStatus): string | null {
-  if (status === "completed") {
-    return "Agent run complete · review the updated file";
-  }
-  if (status === "failed") {
-    return "Agent run failed · open the run card for details";
-  }
-  if (status === "stopped") {
-    return "Agent run stopped";
-  }
-  return null;
-}
-
-function scrollToBlock(blockIndex: number | undefined) {
-  if (blockIndex === undefined) {
-    return;
-  }
-  document
-    .querySelector(`[data-block-index="${blockIndex}"]`)
-    ?.scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
-interface DisplayComment {
-  id: string;
-  type: CommentType;
-  text: string;
-  blockIndex: number | undefined;
-  quote: string | undefined;
-  authorLabel: string;
-  createdAt: string;
-}
-
-function peerCommentToDisplay(comment: PeerComment): DisplayComment {
-  return {
-    id: comment.id,
-    type: comment.commentType,
-    text: comment.text,
-    blockIndex: comment.blockRef.blockIndex,
-    quote: comment.blockRef.quote,
-    authorLabel: comment.peerName,
-    createdAt: comment.createdAt,
-  };
-}
-
-function formatAgentRunTargets(targetPaths: string[]): string {
-  if (targetPaths.length === 0) {
-    return "No target";
-  }
-  if (targetPaths.length === 1) {
-    return targetPaths[0];
-  }
-  return `${targetPaths[0]} +${targetPaths.length - 1} more`;
-}
-
-function formatAgentRunCommentCount(commentCount: number): string {
-  if (commentCount === 0) {
-    return "no comments";
-  }
-  if (commentCount === 1) {
-    return "1 comment";
-  }
-  return `${commentCount} comments`;
-}
-
-function formatAgentRunScope(run: AgentRun): string {
-  return `${AGENT_RUN_TASK_LABEL[run.taskKind]} · ${formatAgentRunTargets(
-    run.targetPaths,
-  )} · ${formatAgentRunCommentCount(run.selectedCommentIds.length)}`;
-}
-
-interface CrossFileEntry<C extends { type: CommentType }> {
-  filePath: string;
-  fileName: string;
-  comments: C[];
-}
-
-function filterCrossFileByType<C extends { type: CommentType }>(
-  entries: CrossFileEntry<C>[],
-  commentFilter: string,
-): CrossFileEntry<C>[] {
-  if (commentFilter === "all" || commentFilter === "pending") {
-    return entries;
-  }
-  return entries
-    .map((entry) => ({
-      ...entry,
-      comments: entry.comments.filter(
-        (comment) => comment.type === commentFilter,
-      ),
-    }))
-    .filter((entry) => entry.comments.length > 0);
-}
-
-function getRootOnlyComments(comments: Comment[]): Comment[] {
-  return buildCommentThreadGroups(comments).map((group) => group.root);
-}
-
-function getAnsweredQuestionIds(comments: Comment[]): ReadonlySet<string> {
-  const answeredQuestionIds = new Set<string>();
-  for (const group of buildCommentThreadGroups(comments)) {
-    if (
-      group.root.type === "question" &&
-      group.replies.some((reply) => reply.type === "answer")
-    ) {
-      answeredQuestionIds.add(group.root.id);
-    }
-  }
-  return answeredQuestionIds;
-}
-
-function getActiveRootCommentId(
-  comments: Comment[],
-  activeCommentId: string | null,
-): string | null {
-  if (!activeCommentId) {
-    return null;
-  }
-
-  for (const group of buildCommentThreadGroups(comments)) {
-    if (
-      group.root.id === activeCommentId ||
-      group.replies.some((reply) => reply.id === activeCommentId)
-    ) {
-      return group.root.id;
-    }
-  }
-
-  return activeCommentId;
-}
+import { CommentPanelAgentRuns } from "./CommentPanelAgentRuns";
+import {
+  EMPTY_ALL_FILE_COMMENTS,
+  EMPTY_ANSWERED_COMMENT_IDS,
+  EMPTY_ANSWERED_COMMENT_IDS_BY_PATH,
+  EMPTY_COMMENTS,
+  EMPTY_FILE_TREE,
+  filterCrossFileByType,
+  getActiveRootCommentId,
+  getAnsweredQuestionIds,
+  getRootOnlyComments,
+  peerCommentToDisplay,
+  scrollToBlock,
+  type DisplayComment,
+} from "./commentPanelModel";
 
 interface Props {
   peerMode?: boolean;
@@ -245,36 +82,10 @@ export function CommentPanel({ peerMode = false }: Props) {
     : (tab?.activeFilePath ?? null);
   const fileTree = tab?.fileTree ?? EMPTY_FILE_TREE;
   const allFileComments = tab?.allFileComments ?? EMPTY_ALL_FILE_COMMENTS;
-  const [agentRunTerminalOpen, setAgentRunTerminalOpen] = useState(false);
-  const [agentCapability, setAgentCapability] = useState(
-    INITIAL_AGENT_CAPABILITY,
-  );
-  const previousAgentRunRef = useRef<{
-    id: string;
-    status: AgentRunStatus;
-  } | null>(null);
 
   const isFolderMode = fileTree.length > 0 && !peerMode;
   const isPeerMultiFile =
     peerMode && !!sharedContent && Object.keys(sharedContent.tree).length > 1;
-
-  useEffect(() => {
-    const previousRun = previousAgentRunRef.current;
-    if (
-      activeAgentRun &&
-      previousRun?.id === activeAgentRun.id &&
-      ACTIVE_AGENT_RUN_STATUSES.has(previousRun.status) &&
-      !ACTIVE_AGENT_RUN_STATUSES.has(activeAgentRun.status)
-    ) {
-      const message = getCompletedAgentRunMessage(activeAgentRun.status);
-      if (message) {
-        showToast(message);
-      }
-    }
-    previousAgentRunRef.current = activeAgentRun
-      ? { id: activeAgentRun.id, status: activeAgentRun.status }
-      : null;
-  }, [activeAgentRun, showToast]);
 
   // Shared mapping: group peer comments by path as DisplayComment[], computed once
   const peerDisplayByPath: Record<string, DisplayComment[]> = useMemo(() => {
@@ -450,191 +261,6 @@ export function CommentPanel({ peerMode = false }: Props) {
     });
   }
 
-  const canStopAgentRun = Boolean(
-    activeAgentRun && ACTIVE_AGENT_RUN_STATUSES.has(activeAgentRun.status),
-  );
-  const showAgentRunStatus = !peerMode && activeAgentRun;
-  const activeAgentRunId = activeAgentRun?.id ?? null;
-  const agentRunHistory = useMemo(
-    () =>
-      tab?.id
-        ? getFinishedAgentRunHistoryForTab(
-            { agentRuns, activeAgentRunIdByTabId },
-            tab.id,
-          )
-        : EMPTY_AGENT_RUNS,
-    [activeAgentRunIdByTabId, agentRuns, tab?.id],
-  );
-  const visibleAgentRunHistory = useMemo(
-    () => agentRunHistory.filter((run) => run.id !== activeAgentRunId),
-    [activeAgentRunId, agentRunHistory],
-  );
-  const showAgentRunHistory = !peerMode && visibleAgentRunHistory.length > 0;
-  const canAttachActiveTerminal = Boolean(
-    canShowTerminal && activeAgentRun?.terminalAttachmentId,
-  );
-  const activeAgentRunScope = activeAgentRun
-    ? `${AGENT_RUN_TASK_LABEL[activeAgentRun.taskKind]} · ${formatAgentRunTargets(
-        activeAgentRun.targetPaths,
-      )} · ${formatAgentRunCommentCount(
-        activeAgentRun.selectedCommentIds.length,
-      )}`
-    : null;
-  const showAgentCapabilityWarning = Boolean(
-    !peerMode &&
-    canRunAgent &&
-    !agentCapability.canRunAgent &&
-    agentCapability.unavailableMessage,
-  );
-
-  async function handleStopAgentRun() {
-    const result = await stopActiveAgentRun();
-    if (result.status === "unavailable") {
-      showToast(result.message);
-    }
-  }
-
-  async function handleCopyActiveRunPrompt() {
-    if (!activeAgentRun?.prompt) {
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(activeAgentRun.prompt);
-      showToast("Agent run prompt copied");
-    } catch (error) {
-      console.error("[CommentPanel] failed to copy run prompt:", error);
-      showToast("Couldn't copy agent prompt");
-    }
-  }
-
-  async function handleCopyAgentRunPrompt(run: AgentRun) {
-    if (!run.prompt) {
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(run.prompt);
-      showToast("Agent run prompt copied");
-    } catch (error) {
-      console.error("[CommentPanel] failed to copy run prompt:", error);
-      showToast("Couldn't copy agent prompt");
-    }
-  }
-
-  async function handleCopyAgentRunOutput(run: AgentRun) {
-    if (!run.output) {
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(run.output);
-      showToast("Agent run output copied");
-    } catch (error) {
-      console.error("[CommentPanel] failed to copy run output:", error);
-      showToast("Couldn't copy agent output");
-    }
-  }
-
-  function toggleAgentRunTerminal() {
-    setAgentRunTerminalOpen((current) => !current);
-  }
-
-  const handleTerminalData = useCallback(
-    async (data: string) => {
-      if (!activeAgentRun?.terminalAttachmentId) {
-        return;
-      }
-
-      try {
-        await sendTerminalData(activeAgentRun.terminalAttachmentId, data);
-      } catch (error) {
-        console.error("[CommentPanel] failed to send terminal data:", error);
-        showToast("Couldn't send terminal input");
-      }
-    },
-    [activeAgentRun?.terminalAttachmentId, showToast],
-  );
-
-  const handleTerminalResize = useCallback(
-    async (dimensions: { cols: number; rows: number }) => {
-      if (!activeAgentRun?.terminalAttachmentId) {
-        return;
-      }
-
-      try {
-        await resizeTerminal(activeAgentRun.terminalAttachmentId, dimensions);
-      } catch (error) {
-        console.error("[CommentPanel] failed to resize terminal:", error);
-      }
-    },
-    [activeAgentRun?.terminalAttachmentId],
-  );
-
-  useEffect(() => {
-    if (
-      peerMode ||
-      !agentCapability.canRunAgent ||
-      !activeAgentRun?.terminalAttachmentId ||
-      !ACTIVE_AGENT_RUN_STATUSES.has(activeAgentRun.status)
-    ) {
-      return;
-    }
-
-    function syncStatus() {
-      syncActiveAgentRunStatus().catch((error) => {
-        console.error("[CommentPanel] failed to sync agent run:", error);
-      });
-    }
-
-    syncStatus();
-    const intervalId = window.setInterval(syncStatus, 2000);
-    return () => window.clearInterval(intervalId);
-  }, [
-    activeAgentRun?.id,
-    activeAgentRun?.status,
-    activeAgentRun?.terminalAttachmentId,
-    agentCapability.canRunAgent,
-    peerMode,
-    syncActiveAgentRunStatus,
-  ]);
-
-  useEffect(() => {
-    setAgentRunTerminalOpen(false);
-  }, [activeAgentRunId]);
-
-  useEffect(() => {
-    if (peerMode) {
-      return;
-    }
-
-    let cancelled = false;
-    getAgentRuntimeCapability()
-      .then((capability) => {
-        if (
-          !cancelled &&
-          (capability.canRunAgent !== INITIAL_AGENT_CAPABILITY.canRunAgent ||
-            capability.unavailableMessage !==
-              INITIAL_AGENT_CAPABILITY.unavailableMessage)
-        ) {
-          setAgentCapability(capability);
-        }
-      })
-      .catch((error) => {
-        console.error("[CommentPanel] failed to read agent capability:", error);
-        if (!cancelled) {
-          setAgentCapability({
-            canRunAgent: false,
-            unavailableMessage: "Agent runtime availability check failed.",
-          });
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [agentSettingsOpen, peerMode]);
-
   useEffect(() => {
     const activePanelCommentId = peerMode
       ? activeCommentId
@@ -733,168 +359,19 @@ export function CommentPanel({ peerMode = false }: Props) {
         </div>
       )}
 
-      {showAgentRunStatus && (
-        <div className="comment-panel__agent-run" role="status">
-          <div className="comment-panel__agent-run-copy">
-            <span className="comment-panel__agent-run-label">
-              Agent {AGENT_RUN_STATUS_LABEL[activeAgentRun.status]}
-            </span>
-            {activeAgentRunScope && (
-              <span className="comment-panel__agent-run-scope">
-                {activeAgentRunScope}
-              </span>
-            )}
-            <div
-              className="comment-panel__agent-steps"
-              aria-label="Agent run progress"
-            >
-              <span className="is-done">Preparing</span>
-              <span
-                className={activeAgentRun.status === "queued" ? "" : "is-done"}
-              >
-                Editing
-              </span>
-              <span
-                className={
-                  !ACTIVE_AGENT_RUN_STATUSES.has(activeAgentRun.status)
-                    ? "is-done"
-                    : ""
-                }
-              >
-                Review
-              </span>
-            </div>
-            {activeAgentRun.errorMessage && (
-              <span className="comment-panel__agent-run-error">
-                {activeAgentRun.errorMessage}
-              </span>
-            )}
-            {agentRunTerminalOpen && canAttachActiveTerminal && (
-              <AgentTerminal
-                runId={activeAgentRun.terminalAttachmentId}
-                output={activeAgentRun.output}
-                onData={handleTerminalData}
-                onResize={handleTerminalResize}
-              />
-            )}
-          </div>
-          <div className="comment-panel__agent-run-actions">
-            {canAttachActiveTerminal && (
-              <button
-                className="comment-panel__agent-run-action"
-                onClick={toggleAgentRunTerminal}
-              >
-                {agentRunTerminalOpen ? "Hide terminal" : "Show terminal"}
-              </button>
-            )}
-            {activeAgentRun.prompt && (
-              <button
-                className="comment-panel__agent-run-action"
-                onClick={() => {
-                  void handleCopyActiveRunPrompt();
-                }}
-              >
-                Copy prompt
-              </button>
-            )}
-            {activeAgentRun.output && (
-              <button
-                className="comment-panel__agent-run-action"
-                onClick={() => {
-                  void handleCopyAgentRunOutput(activeAgentRun);
-                }}
-              >
-                Copy output
-              </button>
-            )}
-            {canStopAgentRun ? (
-              <button
-                className="comment-panel__agent-run-action"
-                onClick={() => {
-                  void handleStopAgentRun();
-                }}
-              >
-                Stop
-              </button>
-            ) : (
-              <button
-                className="comment-panel__agent-run-action"
-                onClick={() => clearAgentRun(activeAgentRun.id)}
-              >
-                Dismiss
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {showAgentRunHistory && (
-        <div
-          className="comment-panel__agent-history"
-          aria-label="Recent agent runs"
-        >
-          <div className="comment-panel__agent-history-title">
-            Recent agent runs
-          </div>
-          {visibleAgentRunHistory.map((run) => (
-            <div key={run.id} className="comment-panel__agent-history-item">
-              <div className="comment-panel__agent-history-copy">
-                <span className="comment-panel__agent-history-label">
-                  {AGENT_RUN_STATUS_LABEL[run.status]}
-                </span>
-                <span className="comment-panel__agent-history-scope">
-                  {formatAgentRunScope(run)}
-                </span>
-                {run.errorMessage && (
-                  <span className="comment-panel__agent-history-error">
-                    {run.errorMessage}
-                  </span>
-                )}
-              </div>
-              <div className="comment-panel__agent-history-actions">
-                {run.prompt && (
-                  <button
-                    className="comment-panel__agent-run-action"
-                    onClick={() => {
-                      void handleCopyAgentRunPrompt(run);
-                    }}
-                  >
-                    Copy prompt
-                  </button>
-                )}
-                {run.output && (
-                  <button
-                    className="comment-panel__agent-run-action"
-                    onClick={() => {
-                      void handleCopyAgentRunOutput(run);
-                    }}
-                  >
-                    Copy output
-                  </button>
-                )}
-                <button
-                  className="comment-panel__agent-run-action"
-                  onClick={() => clearAgentRun(run.id)}
-                >
-                  Dismiss
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {showAgentCapabilityWarning && (
-        <div className="comment-panel__agent-capability" role="status">
-          <span>{agentCapability.unavailableMessage}</span>
-          <button
-            className="comment-panel__agent-capability-action"
-            onClick={openAgentSettings}
-          >
-            Set up
-          </button>
-        </div>
-      )}
+      <CommentPanelAgentRuns
+        activeAgentRun={activeAgentRun}
+        activeAgentRunIdByTabId={activeAgentRunIdByTabId}
+        agentRuns={agentRuns}
+        agentSettingsOpen={agentSettingsOpen}
+        clearAgentRun={clearAgentRun}
+        onOpenAgentSettings={openAgentSettings}
+        peerMode={peerMode}
+        showToast={showToast}
+        stopActiveAgentRun={stopActiveAgentRun}
+        syncActiveAgentRunStatus={syncActiveAgentRunStatus}
+        tabId={tab?.id ?? null}
+      />
 
       <div className="comment-panel__list">
         {resolvedView ? (

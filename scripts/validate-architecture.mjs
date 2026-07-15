@@ -5,7 +5,7 @@ const SOURCE_DIRECTORY = resolve("src");
 const PRODUCTION_FILE_PATTERN = /\.(?:ts|tsx)$/;
 const TEST_PATH_PATTERN =
   /(?:^|\/)(?:test|testing)(?:\/|$)|\.test\.(?:ts|tsx)$/;
-const COMPONENT_LINE_LIMIT = 1000;
+const COMPONENT_LINE_LIMIT = 500;
 const REQUIRED_MODULE_README_SECTIONS = [
   "## Purpose",
   "## Owns",
@@ -123,10 +123,10 @@ for (const filePath of sourceFiles) {
 
 for (const filePath of sourceFiles) {
   const projectPath = toProjectPath(filePath);
-  if (
+  const isComponent =
     projectPath.startsWith("src/ui/components/") &&
-    projectPath.endsWith(".tsx")
-  ) {
+    projectPath.endsWith(".tsx");
+  if (isComponent) {
     const lineCount = readFileSync(filePath, "utf8").split("\n").length;
     if (lineCount > COMPONENT_LINE_LIMIT) {
       violations.push(

@@ -95,9 +95,10 @@ Import components through barrel files:
 import { MyComponent } from "../MyComponent"; // resolves to index.ts
 ```
 
-Production component files are capped at 1,000 lines by architecture
-validation. Split rendering and interaction responsibilities before reaching
-that ceiling; do not raise the limit to land a feature.
+Production React component files are capped at 500 lines by architecture
+validation. This is an absolute ceiling, not a target. Split models,
+interaction hooks, rendering adapters, and leaf UI before reaching it; do not
+raise the limit to land a feature.
 
 ### CSS
 
