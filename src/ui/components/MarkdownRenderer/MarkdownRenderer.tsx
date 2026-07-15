@@ -719,12 +719,41 @@ function MarkdownRendererContent({
     clearPendingScrollTarget,
   ]);
 
-  // Highlight the block when hovering a comment in the panel
+  // Hovering a rail card spotlights that comment: its own spans focus, every
+  // other highlight washes out, so overlapping ranges stay tellable apart.
+  // Comments without a range fall back to tinting the whole block.
   const hoveredBlockHighlight = useAppStore((s) => s.hoveredBlockHighlight);
   useEffect(() => {
     if (!hoveredBlockHighlight) {
       return;
     }
+    const hoveredId = hoveredBlockHighlight.commentId;
+    const body = bodyRef.current;
+    const spans = hoveredId
+      ? body?.querySelectorAll<HTMLElement>(".comment-highlight")
+      : undefined;
+    let spotlit = false;
+    if (spans && hoveredId) {
+      for (const span of spans) {
+        const covers = (span.dataset.cids ?? "").split(" ").includes(hoveredId);
+        span.classList.toggle("comment-highlight--focus", covers);
+        span.classList.toggle("comment-highlight--muted", !covers);
+        if (covers) {
+          spotlit = true;
+        }
+      }
+      if (spotlit) {
+        return () => {
+          for (const span of spans) {
+            span.classList.remove(
+              "comment-highlight--focus",
+              "comment-highlight--muted",
+            );
+          }
+        };
+      }
+    }
+    // block-level fallback (no range, or range not rendered)
     const el = viewerRef.current?.querySelector(
       `[data-block-index="${hoveredBlockHighlight.blockIndex}"]`,
     );

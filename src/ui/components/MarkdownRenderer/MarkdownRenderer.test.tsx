@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -381,5 +387,51 @@ describe("MarkdownRenderer — margin markers", () => {
     await waitFor(() => {
       expect(container.querySelectorAll(".comment-margin__dot").length).toBe(2);
     });
+  });
+});
+
+describe("MarkdownRenderer — hover spotlight", () => {
+  it("focuses the hovered comment's spans and mutes every other highlight", async () => {
+    setContent(
+      'Alpha beta gamma delta. {>>clarify: First. @@ "Alpha beta gamma"<<} {>>rewrite: Second. @@ "beta gamma delta"<<}',
+    );
+    const { container } = render(<MarkdownRenderer />);
+    await waitFor(() => {
+      expect(
+        container.querySelectorAll(".comment-highlight").length,
+      ).toBeGreaterThanOrEqual(3);
+    });
+    const spans = [
+      ...container.querySelectorAll<HTMLElement>(".comment-highlight"),
+    ];
+    const soloSpan = spans.find(
+      (span) => (span.dataset.cids ?? "").split(" ").length === 1,
+    );
+    if (!soloSpan) {
+      throw new Error("Expected a span covered by a single comment");
+    }
+    const hoveredId = soloSpan.dataset.cids ?? "";
+
+    act(() => {
+      useAppStore.getState().setHoveredBlockHighlight({
+        blockIndex: 0,
+        commentType: "clarify",
+        commentId: hoveredId,
+      });
+    });
+
+    for (const span of spans) {
+      const covers = (span.dataset.cids ?? "").split(" ").includes(hoveredId);
+      expect(span.classList.contains("comment-highlight--focus")).toBe(covers);
+      expect(span.classList.contains("comment-highlight--muted")).toBe(!covers);
+    }
+
+    act(() => {
+      useAppStore.getState().setHoveredBlockHighlight(null);
+    });
+    for (const span of spans) {
+      expect(span.classList.contains("comment-highlight--focus")).toBe(false);
+      expect(span.classList.contains("comment-highlight--muted")).toBe(false);
+    }
   });
 });

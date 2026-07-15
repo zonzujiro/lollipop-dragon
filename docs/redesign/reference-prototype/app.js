@@ -1161,6 +1161,14 @@ $("#palette-overlay").addEventListener("click", (e) => { if (e.target === e.curr
 document.addEventListener("mouseover", (e) => {
   const blk = e.target.closest(".blk");
   if (blk) state.hoverBlock = { file: blk.dataset.file, i: parseInt(blk.dataset.i, 10) };
+  // spotlight: hovering a rail card focuses its spans, mutes the others
+  const card = e.target.closest(".c-card[data-cid]");
+  const hoveredId = card ? card.dataset.cid : null;
+  document.querySelectorAll(".hl2").forEach((span) => {
+    const covers = hoveredId && (span.dataset.cids || "").split(",").includes(hoveredId);
+    span.classList.toggle("hl2-focus", !!covers);
+    span.classList.toggle("hl2-muted", !!hoveredId && !covers);
+  });
 });
 
 // text selection → composer with a character-precise range (sub-sentence anchoring)

@@ -1183,6 +1183,7 @@ function CommentEntry({
           setHighlight({
             blockIndex: comment.blockIndex,
             commentType: comment.type,
+            commentId: comment.id,
           });
         }
       }}

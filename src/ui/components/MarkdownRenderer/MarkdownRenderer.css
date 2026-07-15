@@ -558,3 +558,21 @@
   border-radius: 99px;
   background: var(--agent-gutter, var(--agent));
 }
+
+/* Spotlight while hovering a rail card: the hovered comment's spans speak,
+   every other highlight goes quiet. */
+.comment-highlight--muted {
+  filter: saturate(0.1) opacity(0.3);
+}
+
+.comment-highlight--focus {
+  outline: 3px solid
+    color-mix(in srgb, var(--hl-color, var(--accent)) 24%, transparent);
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .comment-highlight {
+    transition: filter 140ms ease;
+  }
+}
