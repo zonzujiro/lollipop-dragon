@@ -5,7 +5,10 @@ import { useActiveTab } from "../../../store/selectors";
 import type { ShareContentOptions } from "../../../modules/sharing/types";
 import type { PreparedShareIdentity } from "../../../modules/sharing/types";
 import { prepareShareIdentity } from "../../../modules/sharing/shareIdentity";
-import { buildShareUrlFromOrigin } from "../../../utils/shareUrl";
+import {
+  buildShareUrlFromOrigin,
+  truncateShareUrlForDisplay,
+} from "../../../utils/shareUrl";
 import type { FileTreeNode } from "../../../types/fileTree";
 import type { ShareRecord } from "../../../types/share";
 import { PendingCommentReview } from "../PendingCommentReview";
@@ -447,7 +450,7 @@ export function ShareDialog({ onClose, scope }: Props) {
             </p>
             {link ? (
               <p className="share-dialog__url" aria-label="Shareable link">
-                {link}
+                {truncateShareUrlForDisplay(link)}
               </p>
             ) : (
               <p className="share-dialog__preparing">

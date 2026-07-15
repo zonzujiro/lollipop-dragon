@@ -13,7 +13,8 @@
 
 .landing-scroll {
   height: 100vh;
-  overflow: auto hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   scroll-behavior: smooth;
 }
 
