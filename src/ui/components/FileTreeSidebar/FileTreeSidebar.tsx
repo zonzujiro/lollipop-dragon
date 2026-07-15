@@ -1,7 +1,6 @@
 import "./FileTreeSidebar.css";
 import { useState, type ReactNode } from "react";
 import type { SidebarTreeNode } from "../../../types/fileTree";
-import type { ShareRecord } from "../../../types/share";
 
 function ChevronIcon({ expanded }: { expanded: boolean }) {
   return (
@@ -14,49 +13,11 @@ function ChevronIcon({ expanded }: { expanded: boolean }) {
   );
 }
 
-function SharedBadge() {
-  return (
-    <span
-      className="tree-item__shared-badge"
-      title="Currently shared"
-      aria-label="Shared"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="10"
-        height="10"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-      </svg>
-    </span>
-  );
-}
-
-/** Compute whether this exact node has a share link */
-function isNodeShared(node: SidebarTreeNode, shares: ShareRecord[]): boolean {
-  if (shares.length === 0) {
-    return false;
-  }
-  const now = new Date();
-  return shares.some(
-    (s) => new Date(s.expiresAt) > now && s.label === node.name,
-  );
-}
-
 interface TreeItemProps {
   node: SidebarTreeNode;
   depth: number;
   activeFilePath: string | null;
   onSelect: (path: string) => void;
-  shares: ShareRecord[];
   commentCounts: Record<string, number>;
 }
 
@@ -65,12 +26,10 @@ function TreeItem({
   depth,
   activeFilePath,
   onSelect,
-  shares,
   commentCounts,
 }: TreeItemProps) {
   const [expanded, setExpanded] = useState(true);
   const depthClass = `tree-item--depth-${Math.min(depth, 2)}`;
-  const shared = isNodeShared(node, shares);
 
   if (node.kind === "file") {
     const isActive = activeFilePath === node.path;
@@ -87,7 +46,6 @@ function TreeItem({
               {commentCounts[node.path]}
             </span>
           )}
-          {shared && <SharedBadge />}
         </button>
       </div>
     );
@@ -102,7 +60,6 @@ function TreeItem({
         >
           <ChevronIcon expanded={expanded} />
           <span className="tree-item__name">{node.name}</span>
-          {shared && <SharedBadge />}
         </button>
       </div>
       {expanded && (
@@ -114,7 +71,6 @@ function TreeItem({
               depth={depth + 1}
               activeFilePath={activeFilePath}
               onSelect={onSelect}
-              shares={shares}
               commentCounts={commentCounts}
             />
           ))}
@@ -132,7 +88,6 @@ export interface FileTreeSidebarProps {
     title: string;
     action?: { onClick: () => void; label: string; icon: ReactNode };
   };
-  shares?: ShareRecord[];
   commentCounts?: Record<string, number>;
   onCollapse?: () => void;
 }
@@ -142,7 +97,6 @@ export function FileTreeSidebar({
   activeFilePath,
   onSelect,
   header,
-  shares = [],
   commentCounts = {},
   onCollapse,
 }: FileTreeSidebarProps) {
@@ -192,7 +146,6 @@ export function FileTreeSidebar({
             depth={0}
             activeFilePath={activeFilePath}
             onSelect={onSelect}
-            shares={shares}
             commentCounts={commentCounts}
           />
         ))}

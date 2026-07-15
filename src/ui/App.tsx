@@ -393,7 +393,6 @@ function App() {
             activeFilePath={tab?.activeFilePath ?? null}
             onSelect={handleHostSelectSafely}
             header={hostHeader}
-            shares={tab?.shares}
             commentCounts={hostCommentCounts}
             onCollapse={toggleSidebar}
           />
