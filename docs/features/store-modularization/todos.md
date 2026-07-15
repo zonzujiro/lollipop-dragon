@@ -46,9 +46,9 @@ Files:
 
 Steps:
 
-- [ ] Identify all root-level state groups and map each field to a target module
-- [ ] Add section comments or temporary grouping helpers that match the target modules
-- [ ] Extract non-module-specific helper functions into pure helpers where needed
+- [x] Identify all root-level state groups and map each field to a target module
+- [x] Compose module-owned state and actions explicitly in the root store
+- [x] Extract non-module-specific helper functions into pure helpers where needed
 
 Verification:
 
@@ -252,7 +252,7 @@ Verification:
 Files:
 
 - [src/store/selectors.ts](../../../src/store/selectors.ts)
-- [src/services/*](../../../src/services/)
+- [src/services/\*](../../../src/services/)
 - [src/store/index.ts](../../../src/store/index.ts)
 
 Steps:
@@ -292,9 +292,9 @@ Files:
 
 Steps:
 
-- [ ] document final public APIs
-- [ ] document invariants and common failure modes
-- [ ] link related product and design docs
+- [x] document final public APIs
+- [x] document invariants and common failure modes
+- [x] link related product and design docs
 
 Verification:
 
@@ -302,11 +302,16 @@ Verification:
 
 ## Guardrails
 
-- [ ] Do not change persisted-state compatibility unless explicitly required
-- [ ] Do not remove old migration logic without approval
-- [ ] Do not change host vs peer product behavior during structural extraction
-- [ ] Do not create cross-module imports into module internals
-- [ ] Do not leave side effects inside `state.ts`
+- [x] Do not change persisted-state compatibility unless explicitly required
+- [x] Do not remove old migration logic without approval
+- [x] Do not change host vs peer product behavior during structural extraction
+- [x] Do not create cross-module imports into module internals
+- [x] Do not leave side effects inside `state.ts`
+
+The architecture validator enforces the import direction, runtime-cycle,
+module-README, and focused-component boundaries. Compatibility fields and
+migrations remain in place until an explicitly approved cleanup changes that
+contract.
 
 ## Definition Of Done
 

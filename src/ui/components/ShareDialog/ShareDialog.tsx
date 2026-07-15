@@ -18,6 +18,7 @@ const TTL_OPTIONS = [
   { label: "7 days", value: 604800 },
   { label: "30 days", value: 2592000 },
 ];
+const EMPTY_SHARES: ShareRecord[] = [];
 
 interface Props {
   onClose: () => void;
@@ -199,7 +200,7 @@ export function ShareDialog({ onClose, scope }: Props) {
   const showToast = useAppStore((state) => state.showToast);
   const fileName = tab?.fileName ?? "document";
   const directoryName = tab?.directoryName ?? null;
-  const shares = tab?.shares ?? [];
+  const shares = tab?.shares ?? EMPTY_SHARES;
   const pendingComments = tab?.pendingComments ?? {};
   const defaultScope: ShareDialogScope = directoryName
     ? { kind: "current-folder", label: directoryName, entityPath: "" }

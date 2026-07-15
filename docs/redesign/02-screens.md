@@ -43,7 +43,7 @@ Visual verification: the composer has no legacy `Add comment` title row or
 separate Cancel button; dismissal remains available through Esc and
 click-outside behavior.
 
-## 4. Share sheet (`ShareDialog` + `SharedPanel`, merged)
+## 4. Share sheet (`ShareDialog`; former `SharedPanel` responsibilities merged)
 
 One centered sheet (560px) over a blur scrim: "Share for review" heading + reviewer explanation → scope segmented control (This file / Whole folder · N files) → **1 day / 7 days / 30 days** expiry tabs (no access-level control; all shares allow reading and commenting) → teal link box: lock label "Encrypted link — key never leaves the URL", locally pre-generated mono URL with a stable middle ellipsis so it remains on one line, **Copy link** + "Copy as Slack message" → shield keynote explaining the #fragment in one sentence → sunken "Active shares · this workspace" list: rows with name, meta (kind · created · expires), pending-comment / peers-viewing badge, Revoke link. The display-only truncation must never alter the complete URL copied by either action. Opening the sheet generates only the local key, document ID, and URL. The first copy action shows "Encrypting & uploading…", uploads the selected content, and copies only after success; failure copies nothing and permits retry. Existing active shares copy immediately. Copy actions morph label to "Copied ✓" + toast.
 

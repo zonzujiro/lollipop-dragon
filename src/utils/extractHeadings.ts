@@ -30,12 +30,7 @@ function extractText(node: MdastNode): string {
  * with their level, text content, and top-level block index.
  */
 export function extractHeadings(cleanMarkdown: string): Heading[] {
-  const tree = unified()
-    .use(remarkParse)
-    .use(remarkGfm)
-    .parse(cleanMarkdown) as {
-    children: MdastNode[];
-  };
+  const tree = unified().use(remarkParse).use(remarkGfm).parse(cleanMarkdown);
 
   const headings: Heading[] = [];
   for (let i = 0; i < tree.children.length; i++) {

@@ -21,8 +21,6 @@ Owns application-level shell state that is not specific to host review, peer rev
 
 ## State
 
-Target state to move here:
-
 - `theme`
 - `toast`
 - `focusMode`
@@ -32,6 +30,7 @@ Target state to move here:
 
 - `createAppShellState()`
 - `createAppShellActions()`
+- `createAppShellControllerActions()`
 - shell selectors from `selectors.ts`
 
 ## Side Effects

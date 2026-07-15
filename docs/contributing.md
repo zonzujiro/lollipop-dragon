@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 22+
 - npm 11+
 - Chrome or Edge (for testing host mode — requires File System Access API over HTTPS/localhost)
 - Rust and Tauri v2 platform prerequisites for desktop shell development
@@ -39,11 +39,26 @@ VITE_WORKER_URL=https://your-worker.dev npm run dev
 ## Development workflow
 
 1. Create a branch from `main` with a descriptive prefix: `feat/`, `fix/`, `refactor/`, `docs/`
-2. Make changes, ensure tests pass (`npm test`) and types check (`npm run typecheck`)
+2. Run `npm run preflight:agent`, make the change, and finish with `npm run validate`
 3. Commit with a concise message: `feat: add slide counter to presentation mode`
 4. Push and open a PR against `main`
 
-Pre-commit hooks (Husky + lint-staged) will auto-format staged files with Prettier.
+Pre-commit hooks auto-format staged files, then run zero-warning lint, frontend
+and Worker typechecks, and architecture validation. Pull-request CI repeats the
+complete validation from a clean install.
+
+### Validation commands
+
+```bash
+npm run preflight:agent   # format, lint, both typechecks, architecture, tests
+npm run validate          # preflight plus production build and bundle budget
+npm run architecture:check
+npm run bundle:check      # run after npm run build
+```
+
+Do not add inline suppressions to bypass a validator. A legitimate exception
+must be documented in the owning architecture/module document with an owner,
+reason, and removal condition.
 
 ## Code conventions
 
@@ -80,6 +95,10 @@ Import components through barrel files:
 import { MyComponent } from "../MyComponent"; // resolves to index.ts
 ```
 
+Production component files are capped at 1,000 lines by architecture
+validation. Split rendering and interaction responsibilities before reaching
+that ceiling; do not raise the limit to land a feature.
+
 ### CSS
 
 - Component styles go in the component folder (`MyComponent.css`), imported at the top of the `.tsx` file.
@@ -114,10 +133,21 @@ npm run test:watch          # watch mode
 npm run test:coverage       # with coverage report
 ```
 
+Security boundaries need hostile-input regression tests. In particular,
+changes to Markdown or Mermaid rendering must prove scripts, event attributes,
+external SVG resources, and unsafe URLs remain inert for peer-link content.
+
 ### Coverage thresholds
 
 - Lines / Functions / Statements: 60%
 - Branches: 70%
+- Relay, sharing, and workspace have explicit ratchet floors in
+  `vite.config.ts`; do not lower them. Raise the relevant floor when critical
+  controller coverage improves.
+
+Vitest rejects unexpected stderr, including React `act()` warnings. Tests that
+intentionally exercise an error path must spy on the expected console call and
+assert its context, so a green run remains quiet and meaningful.
 
 ### Test helpers
 

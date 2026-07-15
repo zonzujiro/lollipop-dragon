@@ -1,8 +1,5 @@
 import { encrypt, decrypt } from "../../services/crypto";
-import {
-  serializePayload,
-  deserializePayload,
-} from "./sharePayload";
+import { serializePayload, deserializePayload } from "./sharePayload";
 import type { SharePayload } from "../../types/share";
 import { normalizeWorkerUrl } from "../../utils/workerUrl";
 

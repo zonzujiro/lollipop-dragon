@@ -77,7 +77,9 @@ export function PeerCommentCard({ docId, comment, currentPath }: Props) {
       <div className="peer-card__actions" onClick={(e) => e.stopPropagation()}>
         <button
           className="peer-card__btn peer-card__btn--merge"
-          onClick={() => mergeComment(docId, comment)}
+          onClick={() => {
+            void mergeComment(docId, comment);
+          }}
           disabled={!canMerge}
           title={
             canMerge

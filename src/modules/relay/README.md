@@ -21,8 +21,6 @@ Owns relay runtime state and relay transport orchestration.
 
 ## State
 
-Target state to move here:
-
 - `relayStatus`
 - `documentUpdateAvailable`
 
@@ -30,6 +28,7 @@ Target state to move here:
 
 - `createRelayState()`
 - `createRelayActions()`
+- `configureRelayApplicationPort()`
 - relay selectors from `selectors.ts`
 - transport orchestration in `controller.ts`
 
@@ -52,6 +51,8 @@ This module owns the relay transport side effects in `controller.ts`:
 
 - the relay module owns transport behavior, not feature-owned domain state
 - relay runtime objects must stay outside persisted Zustand state
+- relay code must not import the composed store; it reads application commands
+  through `RelayApplicationPort`
 
 ## Common Failure Modes
 

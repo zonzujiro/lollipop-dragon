@@ -8,6 +8,92 @@ import type { TabState } from "../types/tab";
 import type { Comment } from "../types/criticmarkup";
 import type { ShareRecord, PeerComment } from "../types/share";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isFunctionProperty(
+  value: Record<string, unknown>,
+  propertyName: string,
+): boolean {
+  return typeof value[propertyName] === "function";
+}
+
+function isFileSystemFileHandle(value: unknown): value is FileSystemFileHandle {
+  return !isRecord(value) ||
+    value.kind !== "file" ||
+    typeof value.name !== "string" ||
+    !isFunctionProperty(value, "getFile") ||
+    !isFunctionProperty(value, "createWritable") ||
+    !isFunctionProperty(value, "isSameEntry")
+    ? false
+    : true;
+}
+
+export function requireFileSystemFileHandle(
+  value: unknown,
+): FileSystemFileHandle {
+  if (!isFileSystemFileHandle(value)) {
+    throw new Error("Invalid mock file handle");
+  }
+  return value;
+}
+
+export function makeTestFileHandle(
+  overrides: Record<string, unknown> = {},
+): FileSystemFileHandle {
+  return requireFileSystemFileHandle({
+    kind: "file",
+    name: "test.md",
+    getFile: () => Promise.resolve(new File([], "test.md")),
+    createWritable: () => Promise.reject(new Error("Writable not configured")),
+    isSameEntry: () => Promise.resolve(false),
+    ...overrides,
+  });
+}
+
+function isFileSystemDirectoryHandle(
+  value: unknown,
+): value is FileSystemDirectoryHandle {
+  return !(
+    !isRecord(value) ||
+    value.kind !== "directory" ||
+    typeof value.name !== "string" ||
+    !isFunctionProperty(value, "getDirectoryHandle") ||
+    !isFunctionProperty(value, "getFileHandle") ||
+    !isFunctionProperty(value, "removeEntry") ||
+    !isFunctionProperty(value, "resolve") ||
+    !isFunctionProperty(value, "isSameEntry")
+  );
+}
+
+export function requireFileSystemDirectoryHandle(
+  value: unknown,
+): FileSystemDirectoryHandle {
+  if (!isFileSystemDirectoryHandle(value)) {
+    throw new Error("Invalid mock directory handle");
+  }
+  return value;
+}
+
+export function makeTestDirectoryHandle(
+  overrides: Record<string, unknown> = {},
+): FileSystemDirectoryHandle {
+  return requireFileSystemDirectoryHandle({
+    kind: "directory",
+    name: "test-directory",
+    getDirectoryHandle: () =>
+      Promise.reject(new Error("Directory lookup not configured")),
+    getFileHandle: () =>
+      Promise.reject(new Error("File lookup not configured")),
+    removeEntry: () => Promise.resolve(),
+    resolve: () => Promise.resolve(null),
+    isSameEntry: () => Promise.resolve(false),
+    async *values() {},
+    ...overrides,
+  });
+}
+
 /**
  * Set tab-scoped state for tests. Creates a tab from the provided fields
  * and sets it as the active tab, while also setting any global fields.

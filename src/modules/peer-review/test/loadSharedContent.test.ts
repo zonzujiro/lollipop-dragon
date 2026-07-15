@@ -4,7 +4,8 @@ const mockFetchContent = vi.fn();
 const mockFetchLastModified = vi.fn();
 
 vi.mock("../../../modules/sharing", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../../modules/sharing")>();
+  const actual =
+    await importOriginal<typeof import("../../../modules/sharing")>();
   return {
     ...actual,
     ShareStorage: vi.fn().mockImplementation(() => ({
@@ -15,9 +16,8 @@ vi.mock("../../../modules/sharing", async (importOriginal) => {
 });
 
 vi.mock("../../../services/crypto", async (importOriginal) => {
-  const actual = await importOriginal<
-    typeof import("../../../services/crypto")
-  >();
+  const actual =
+    await importOriginal<typeof import("../../../services/crypto")>();
   return {
     ...actual,
     base64urlToKey: vi
@@ -32,7 +32,8 @@ vi.mock("../../../config", () => ({
 }));
 
 vi.mock("../../../modules/relay", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../../modules/relay")>();
+  const actual =
+    await importOriginal<typeof import("../../../modules/relay")>();
   return {
     ...actual,
     getRelay: () => ({
@@ -54,6 +55,7 @@ vi.mock("../../../modules/relay", async (importOriginal) => {
 
 import { useAppStore } from "../../../store";
 import { resetTestStore, setTestState } from "../../../testing/testHelpers";
+import type { PeerComment } from "../../../types/share";
 
 describe("peer-review.loadSharedContent", () => {
   beforeEach(() => {
@@ -151,12 +153,12 @@ describe("peer-review.loadSharedContent", () => {
   });
 
   it("discards unsubmitted comments when requested during refresh", async () => {
-    const submittedComment = {
+    const submittedComment: PeerComment = {
       id: "submitted-1",
       peerName: "Alice",
       path: "notes.md",
       blockRef: { blockIndex: 0, contentPreview: "" },
-      commentType: "note" as const,
+      commentType: "note",
       text: "submitted",
       createdAt: new Date().toISOString(),
     };
@@ -183,7 +185,9 @@ describe("peer-review.loadSharedContent", () => {
       },
     });
 
-    await useAppStore.getState().loadSharedContent({ discardUnsubmitted: true });
+    await useAppStore
+      .getState()
+      .loadSharedContent({ discardUnsubmitted: true });
 
     const state = useAppStore.getState();
     expect(state.myPeerComments).toEqual([submittedComment]);

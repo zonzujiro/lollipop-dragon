@@ -21,7 +21,12 @@ vi.mock("../config", () => ({
 import App from "./App";
 import { shouldShowBrowserUnsupported } from "./browserSupport";
 import { useAppStore } from "../store";
-import { setTestState, resetTestStore } from "../testing/testHelpers";
+import {
+  makeTestDirectoryHandle,
+  makeTestFileHandle,
+  resetTestStore,
+  setTestState,
+} from "../testing/testHelpers";
 import type { FileTreeNode } from "../types/fileTree";
 
 // Mock IntersectionObserver for landing page
@@ -38,10 +43,10 @@ vi.stubGlobal(
 
 // Stub File System Access API so App doesn't render "Browser not supported"
 if (!window.showOpenFilePicker) {
-  (window as Record<string, unknown>).showOpenFilePicker = vi.fn();
+  vi.stubGlobal("showOpenFilePicker", vi.fn());
 }
 if (!window.showDirectoryPicker) {
-  (window as Record<string, unknown>).showDirectoryPicker = vi.fn();
+  vi.stubGlobal("showDirectoryPicker", vi.fn());
 }
 
 function resetStore() {
@@ -79,7 +84,7 @@ const fakeTree: FileTreeNode[] = [
     kind: "file",
     name: "readme.md",
     path: "readme.md",
-    handle: {} as FileSystemFileHandle,
+    handle: makeTestFileHandle(),
   },
   {
     kind: "directory",
@@ -90,7 +95,7 @@ const fakeTree: FileTreeNode[] = [
         kind: "file",
         name: "guide.md",
         path: "docs/guide.md",
-        handle: {} as FileSystemFileHandle,
+        handle: makeTestFileHandle(),
       },
     ],
   },
@@ -214,7 +219,7 @@ describe("App — no file open", () => {
 describe("App — single file open", () => {
   beforeEach(() => {
     setTestState({
-      fileHandle: {} as FileSystemFileHandle,
+      fileHandle: makeTestFileHandle(),
       fileName: "research.md",
       rawContent: "# Hello\n\nThis is a test.",
     });
@@ -261,7 +266,7 @@ describe("App — single file open", () => {
 describe("App — folder open", () => {
   beforeEach(() => {
     setTestState({
-      directoryHandle: {} as FileSystemDirectoryHandle,
+      directoryHandle: makeTestDirectoryHandle(),
       directoryName: "my-docs",
       fileTree: fakeTree,
       sidebarOpen: true,
@@ -429,7 +434,7 @@ describe("App — theme toggle", () => {
   beforeEach(() => {
     setTestState(
       {
-        fileHandle: {} as FileSystemFileHandle,
+        fileHandle: makeTestFileHandle(),
         fileName: "doc.md",
         rawContent: "",
       },
@@ -469,7 +474,7 @@ describe("App — focus mode", () => {
   beforeEach(() => {
     setTestState(
       {
-        fileHandle: {} as FileSystemFileHandle,
+        fileHandle: makeTestFileHandle(),
         fileName: "doc.md",
         rawContent: "",
       },

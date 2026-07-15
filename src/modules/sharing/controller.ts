@@ -11,6 +11,7 @@ import { base64urlToKey } from "../../services/crypto";
 import { readFile } from "../../runtime";
 import { isBrowserFileHandle } from "../../types/fileTree";
 import type { FileTreeNode } from "../../types/fileTree";
+import { isShareRecordArray } from "../../types/share";
 import type { PeerComment, ShareRecord } from "../../types/share";
 import type { TabState } from "../../types/tab";
 import { buildShareUrlFromOrigin } from "../../utils/shareUrl";
@@ -64,7 +65,7 @@ function isShareRecordMap(
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return false;
   }
-  return Object.values(value).every((entry) => Array.isArray(entry));
+  return Object.values(value).every(isShareRecordArray);
 }
 
 function loadAllShares(): Record<string, ShareRecord[]> {
@@ -78,7 +79,8 @@ function loadAllShares(): Record<string, ShareRecord[]> {
       return parsed;
     }
     return {};
-  } catch {
+  } catch (error) {
+    console.warn("[sharing] failed to load persisted shares:", error);
     return {};
   }
 }
@@ -202,8 +204,12 @@ export async function restoreShareKeys(
     }
     try {
       keys[share.docId] = await base64urlToKey(share.keyB64);
-    } catch {
-      console.warn("[sharing] skipping share with invalid key:", share.docId);
+    } catch (error) {
+      console.warn(
+        "[sharing] skipping share with invalid key:",
+        share.docId,
+        error,
+      );
     }
   }
 

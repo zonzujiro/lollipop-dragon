@@ -77,7 +77,11 @@ export function TabBar() {
               role="tab"
               aria-selected={tab.id === activeTabId}
               className={`tab-bar__tab${tab.id === activeTabId ? " tab-bar__tab--active" : ""}`}
-              onClick={() => switchTab(tab.id)}
+              onClick={() => {
+                void switchTab(tab.id).catch((error: unknown) => {
+                  console.warn("[workspace] failed to switch tab:", error);
+                });
+              }}
               title={tab.directoryName ?? tab.fileName ?? tab.label}
             >
               <TabKindIcon folder={Boolean(tab.directoryName)} />

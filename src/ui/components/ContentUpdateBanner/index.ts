@@ -1,1 +1,1 @@
-export { ContentUpdateBanner } from './ContentUpdateBanner';
+export { ContentUpdateBanner } from "./ContentUpdateBanner";

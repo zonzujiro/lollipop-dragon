@@ -73,6 +73,7 @@ export function selectHasPeerLocalCommentWork<
   >,
 >(state: StoreState): boolean {
   return (
-    state.peerDraftCommentOpen || selectUnsubmittedPeerComments(state).length > 0
+    state.peerDraftCommentOpen ||
+    selectUnsubmittedPeerComments(state).length > 0
   );
 }

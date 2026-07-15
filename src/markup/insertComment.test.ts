@@ -32,6 +32,7 @@ describe("insertComment — plain content (no existing markup)", () => {
   });
 
   it("returns rawContent unchanged when blockIndex is out of range", () => {
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
     const raw = "Single paragraph.";
     expect(
       insertComment({
@@ -53,6 +54,7 @@ describe("insertComment — plain content (no existing markup)", () => {
         text: "hi",
       }),
     ).toBe(raw);
+    expect(errorLog).toHaveBeenCalledTimes(2);
   });
 
   it("handles a single-paragraph document", () => {

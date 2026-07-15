@@ -1,23 +1,23 @@
-import './Toast.css'
-import { useEffect } from 'react'
-import { useAppStore } from '../../../store'
+import "./Toast.css";
+import { useEffect } from "react";
+import { useAppStore } from "../../../store";
 
-const TOAST_DURATION_MS = 3000
+const TOAST_DURATION_MS = 3000;
 
 export function Toast() {
-  const toast = useAppStore((s) => s.toast)
-  const dismissToast = useAppStore((s) => s.dismissToast)
+  const toast = useAppStore((s) => s.toast);
+  const dismissToast = useAppStore((s) => s.dismissToast);
 
   useEffect(() => {
     if (!toast) {
-      return
+      return;
     }
-    const timer = setTimeout(dismissToast, TOAST_DURATION_MS)
-    return () => clearTimeout(timer)
-  }, [toast, dismissToast])
+    const timer = setTimeout(dismissToast, TOAST_DURATION_MS);
+    return () => clearTimeout(timer);
+  }, [toast, dismissToast]);
 
   if (!toast) {
-    return null
+    return null;
   }
 
   return (
@@ -31,5 +31,5 @@ export function Toast() {
         &times;
       </button>
     </div>
-  )
+  );
 }

@@ -63,12 +63,10 @@ describe("ShareStorage.uploadContent", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const storage = new ShareStorage(`${WORKER_URL}/`);
-    await storage.uploadContent(
-      "abc123",
-      { "a.md": "# A" },
-      key,
-      { ttl: 604800, label: "test" },
-    );
+    await storage.uploadContent("abc123", { "a.md": "# A" }, key, {
+      ttl: 604800,
+      label: "test",
+    });
 
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringMatching(/^https:\/\/worker\.test\/share\/abc123\?/),
@@ -140,7 +138,12 @@ describe("ShareStorage.updateContent", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const storage = new ShareStorage(WORKER_URL);
-    await storage.updateContent("doc1", "secret-123", { "doc.md": "# Hi" }, key);
+    await storage.updateContent(
+      "doc1",
+      "secret-123",
+      { "doc.md": "# Hi" },
+      key,
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       `${WORKER_URL}/share/doc1`,

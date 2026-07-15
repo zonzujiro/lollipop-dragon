@@ -20,8 +20,12 @@ import { MermaidBlock } from "../MermaidBlock";
 import type { MermaidComment } from "../MermaidBlock/MermaidBlock";
 import { CodeCommentSurface } from "../CodeCommentSurface";
 import { CommentMargin } from "../CommentMargin";
-import { useAppStore } from "../../../store";
 import { useActiveTabField } from "../../../store/selectors";
+import {
+  useMarkdownRendererStore,
+  usePeerMarkdownStore,
+  usePeerMode,
+} from "../../../store/uiHooks";
 import {
   assignBlockIndices,
   applyCommentHighlights,
@@ -36,7 +40,6 @@ import {
   resolveCommentAnchor,
   useShikiRehypePlugin,
 } from "../../../markup";
-import { getActiveAgentRunForTab } from "../../../modules/agent-workflow";
 import type { MarkdownMetadataField } from "../../../markup";
 import type { Comment, CommentAnchorDraft } from "../../../types/criticmarkup";
 import { COMMENT_TYPE_COLOR } from "../../../types/criticmarkup";
@@ -376,9 +379,7 @@ function HostMarkdownRendererView() {
 }
 
 function PeerMarkdownRendererView() {
-  const rawContent = useAppStore((s) => s.peerRawContent);
-  const fileName = useAppStore((s) => s.peerFileName);
-  const activeFilePath = useAppStore((s) => s.peerActiveFilePath);
+  const { rawContent, fileName, activeFilePath } = usePeerMarkdownStore();
 
   return (
     <MarkdownRendererContent
@@ -408,26 +409,25 @@ function MarkdownRendererContent({
   restoreTabState,
   writeAllowed,
 }: MarkdownRendererContentProps) {
-  const setComments = useAppStore((s) => s.setComments);
-  const addCommentAction = useAppStore((s) => s.addComment);
-  const postPeerCommentAction = useAppStore((s) => s.postPeerComment);
-  const reopenTab = useAppStore((s) => s.reopenTab);
-  const openDirectoryInNewTab = useAppStore((s) => s.openDirectoryInNewTab);
-  const openFileInNewTab = useAppStore((s) => s.openFileInNewTab);
-  const clearPendingScrollTarget = useAppStore(
-    (s) => s.clearPendingScrollTarget,
-  );
-  const setActiveCommentId = useAppStore((s) => s.setActiveCommentId);
-  const showToast = useAppStore((s) => s.showToast);
+  const {
+    setComments,
+    addComment: addCommentAction,
+    postPeerComment: postPeerCommentAction,
+    reopenTab,
+    openDirectoryInNewTab,
+    openFileInNewTab,
+    clearPendingScrollTarget,
+    setActiveCommentId,
+    showToast,
+    peerActiveCommentId,
+    myPeerComments,
+    activeAgentRun,
+    hoveredBlockHighlight,
+  } = useMarkdownRendererStore(hostTabId);
   const hostActiveCommentId = useActiveTabField("activeCommentId") ?? null;
-  const peerActiveCommentId = useAppStore((s) => s.peerActiveCommentId);
-  const myPeerComments = useAppStore((s) => s.myPeerComments);
   const activeCommentId = isPeerMode
     ? peerActiveCommentId
     : hostActiveCommentId;
-  const activeAgentRun = useAppStore((state) =>
-    hostTabId ? getActiveAgentRunForTab(state, hostTabId) : null,
-  );
   const shikiPlugin = useShikiRehypePlugin();
   const viewerRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -723,7 +723,6 @@ function MarkdownRendererContent({
   // Hovering a rail card spotlights that comment: its own spans focus, every
   // other highlight washes out, so overlapping ranges stay tellable apart.
   // Comments without a range fall back to tinting the whole block.
-  const hoveredBlockHighlight = useAppStore((s) => s.hoveredBlockHighlight);
   useEffect(() => {
     if (!hoveredBlockHighlight) {
       return;
@@ -920,7 +919,7 @@ function MarkdownRendererContent({
 }
 
 export const MarkdownRenderer = memo(function MarkdownRenderer() {
-  const isPeerMode = useAppStore((s) => s.isPeerMode);
+  const isPeerMode = usePeerMode();
   return isPeerMode ? (
     <PeerMarkdownRendererView />
   ) : (

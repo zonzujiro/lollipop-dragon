@@ -1,1 +1,1 @@
-export { PendingCommentReview } from './PendingCommentReview';
+export { PendingCommentReview } from "./PendingCommentReview";

@@ -12,12 +12,15 @@ Example source:
 
 ```markdown
 # Introduction
+
 Some intro text.
 
 # Architecture
+
 Diagrams and explanation.
 
 # Roadmap
+
 Future plans.
 ```
 
@@ -32,8 +35,9 @@ If the document uses `---` separators instead of headings, the same splitting lo
 - **Keyboard shortcut**: None initially (can be added later).
 
 When entering presentation mode the app:
+
 1. Sets `presentationMode: true` on the store.
-2. Hides: Header, TabBar, FileTreeSidebar, CommentPanel, SharedPanel, read-only banner.
+2. Hides: Header, TabBar, FileTreeSidebar, CommentPanel, ShareDialog, read-only banner.
 3. Parses the current rendered markdown into slides.
 4. Shows slide 0 (the first slide).
 5. Requests fullscreen via the Fullscreen API (`document.documentElement.requestFullscreen()`). If the browser denies the request, presentation mode still works in the normal window.
@@ -45,18 +49,19 @@ When entering presentation mode the app:
 - If the browser exits fullscreen externally (e.g., user presses F11), presentation mode also exits.
 
 When exiting:
+
 1. Sets `presentationMode: false`.
 2. Restores all previously visible chrome.
 3. Exits fullscreen if still active.
 
 ## Navigation
 
-| Input | Action |
-|---|---|
-| Arrow Down / Arrow Right / Space / Page Down | Next slide |
-| Arrow Up / Arrow Left / Backspace / Page Up | Previous slide |
-| Home | First slide |
-| End | Last slide |
+| Input                                        | Action         |
+| -------------------------------------------- | -------------- |
+| Arrow Down / Arrow Right / Space / Page Down | Next slide     |
+| Arrow Up / Arrow Left / Backspace / Page Up  | Previous slide |
+| Home                                         | First slide    |
+| End                                          | Last slide     |
 
 Navigation wraps: pressing "next" on the last slide does nothing (no wrap-around). Same for "previous" on the first slide.
 
@@ -81,23 +86,27 @@ Navigation wraps: pressing "next" on the last slide does nothing (no wrap-around
 ```
 
 ### Slide content area
+
 - Centered horizontally and vertically.
 - Max-width ~800px to keep line lengths readable.
 - Font size increased relative to normal view (e.g., base 1.4rem).
 - The full markdown rendering pipeline is used (syntax highlighting, mermaid diagrams, GFM tables, etc.) — we reuse the existing `ReactMarkdown` setup from `MarkdownRenderer`.
 
 ### Dot navigation (right edge)
+
 - A vertical column of dots, one per slide, positioned on the right side of the screen, vertically centered.
 - The current slide's dot is filled/active (larger or different color).
 - Clicking a dot navigates to that slide.
 - If there are many slides (>15), dots become smaller to fit.
 
 ### Theme toggle (bottom-right corner)
+
 - A small sun/moon icon button in the bottom-right corner.
 - Toggles between light and dark theme (reuses the existing `setTheme` action).
 - Fades in on mouse movement, fades out after inactivity (same as the X button).
 
 ### Exit button (top-right corner)
+
 - A small X icon.
 - Appears on mouse movement, fades out after ~2s of inactivity.
 
@@ -114,18 +123,18 @@ Transition duration: ~300ms, CSS-only (no JS animation libraries). Uses CSS tran
 
 ### New store fields (on `AppState` root — global, not tab-scoped)
 
-| Field | Type | Default | Description |
-|---|---|---|---|
+| Field              | Type      | Default | Description                         |
+| ------------------ | --------- | ------- | ----------------------------------- |
 | `presentationMode` | `boolean` | `false` | Whether presentation mode is active |
 
 No other store state is needed. The current slide index and slide list are local component state within the `PresentationMode` component, since they are derived from the current document content and don't need to persist or be accessed by other components.
 
 ### Actions
 
-| Action | Signature | Description |
-|---|---|---|
-| `enterPresentationMode` | `() => void` | Sets `presentationMode: true` |
-| `exitPresentationMode` | `() => void` | Sets `presentationMode: false` |
+| Action                  | Signature    | Description                    |
+| ----------------------- | ------------ | ------------------------------ |
+| `enterPresentationMode` | `() => void` | Sets `presentationMode: true`  |
+| `exitPresentationMode`  | `() => void` | Sets `presentationMode: false` |
 
 ## Component structure
 
@@ -177,13 +186,13 @@ This approach avoids DOM manipulation and keeps the logic simple: the `splitInto
 
 ## Files to create / modify
 
-| File | Change |
-|---|---|
-| `src/components/PresentationMode.tsx` | New component |
-| `src/store/index.ts` | Add `presentationMode`, `enterPresentationMode`, `exitPresentationMode` to `AppState` |
-| `src/App.tsx` | Render `PresentationMode` when `presentationMode === true` |
-| `src/components/Header.tsx` | Add "Present" button |
-| `src/index.css` | Presentation mode styles |
+| File                                  | Change                                                                                |
+| ------------------------------------- | ------------------------------------------------------------------------------------- |
+| `src/components/PresentationMode.tsx` | New component                                                                         |
+| `src/store/index.ts`                  | Add `presentationMode`, `enterPresentationMode`, `exitPresentationMode` to `AppState` |
+| `src/App.tsx`                         | Render `PresentationMode` when `presentationMode === true`                            |
+| `src/components/Header.tsx`           | Add "Present" button                                                                  |
+| `src/index.css`                       | Presentation mode styles                                                              |
 
 ## Edge cases
 

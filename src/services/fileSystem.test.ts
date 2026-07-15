@@ -1,10 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { openFile, readFile, writeFile } from './fileSystem'
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { openFile, readFile, writeFile } from "./fileSystem";
+import { makeTestFileHandle } from "../testing/testHelpers";
 
 function makeMockHandle(name: string, content: string): FileSystemFileHandle {
-  return {
+  return makeTestFileHandle({
     name,
-    kind: 'file',
     getFile: vi.fn().mockResolvedValue({
       text: vi.fn().mockResolvedValue(content),
     }),
@@ -15,66 +15,72 @@ function makeMockHandle(name: string, content: string): FileSystemFileHandle {
     isSameEntry: vi.fn(),
     queryPermission: vi.fn(),
     requestPermission: vi.fn(),
-  } as unknown as FileSystemFileHandle
+  });
 }
 
 beforeEach(() => {
-  vi.restoreAllMocks()
-})
+  vi.restoreAllMocks();
+});
 
-describe('openFile', () => {
-  it('returns handle and name when user picks a file', async () => {
-    const mockHandle = makeMockHandle('notes.md', '# Hello')
-    vi.stubGlobal('showOpenFilePicker', vi.fn().mockResolvedValue([mockHandle]))
-
-    const result = await openFile()
-
-    expect(result).not.toBeNull()
-    expect(result!.name).toBe('notes.md')
-    expect(result!.handle).toBe(mockHandle)
-  })
-
-  it('returns null when user cancels the picker', async () => {
+describe("openFile", () => {
+  it("returns handle and name when user picks a file", async () => {
+    const mockHandle = makeMockHandle("notes.md", "# Hello");
     vi.stubGlobal(
-      'showOpenFilePicker',
-      vi.fn().mockRejectedValue(new DOMException('User cancelled', 'AbortError')),
-    )
+      "showOpenFilePicker",
+      vi.fn().mockResolvedValue([mockHandle]),
+    );
 
-    const result = await openFile()
-    expect(result).toBeNull()
-  })
+    const result = await openFile();
 
-  it('re-throws unexpected errors', async () => {
+    expect(result).not.toBeNull();
+    expect(result!.name).toBe("notes.md");
+    expect(result!.handle).toBe(mockHandle);
+  });
+
+  it("returns null when user cancels the picker", async () => {
     vi.stubGlobal(
-      'showOpenFilePicker',
-      vi.fn().mockRejectedValue(new Error('Unexpected failure')),
-    )
+      "showOpenFilePicker",
+      vi
+        .fn()
+        .mockRejectedValue(new DOMException("User cancelled", "AbortError")),
+    );
 
-    await expect(openFile()).rejects.toThrow('Unexpected failure')
-  })
-})
+    const result = await openFile();
+    expect(result).toBeNull();
+  });
 
-describe('readFile', () => {
-  it('returns file text content', async () => {
-    const mockHandle = makeMockHandle('doc.md', '# Title\n\nSome content.')
-    const content = await readFile(mockHandle)
-    expect(content).toBe('# Title\n\nSome content.')
-  })
-})
+  it("re-throws unexpected errors", async () => {
+    vi.stubGlobal(
+      "showOpenFilePicker",
+      vi.fn().mockRejectedValue(new Error("Unexpected failure")),
+    );
 
-describe('writeFile', () => {
-  it('writes content and closes the stream', async () => {
-    const writeMock = vi.fn().mockResolvedValue(undefined)
-    const closeMock = vi.fn().mockResolvedValue(undefined)
-    const mockHandle = {
-      name: 'doc.md',
-      kind: 'file',
-      createWritable: vi.fn().mockResolvedValue({ write: writeMock, close: closeMock }),
-    } as unknown as FileSystemFileHandle
+    await expect(openFile()).rejects.toThrow("Unexpected failure");
+  });
+});
 
-    await writeFile(mockHandle, '# Updated')
+describe("readFile", () => {
+  it("returns file text content", async () => {
+    const mockHandle = makeMockHandle("doc.md", "# Title\n\nSome content.");
+    const content = await readFile(mockHandle);
+    expect(content).toBe("# Title\n\nSome content.");
+  });
+});
 
-    expect(writeMock).toHaveBeenCalledWith('# Updated')
-    expect(closeMock).toHaveBeenCalled()
-  })
-})
+describe("writeFile", () => {
+  it("writes content and closes the stream", async () => {
+    const writeMock = vi.fn().mockResolvedValue(undefined);
+    const closeMock = vi.fn().mockResolvedValue(undefined);
+    const mockHandle = makeTestFileHandle({
+      name: "doc.md",
+      createWritable: vi
+        .fn()
+        .mockResolvedValue({ write: writeMock, close: closeMock }),
+    });
+
+    await writeFile(mockHandle, "# Updated");
+
+    expect(writeMock).toHaveBeenCalledWith("# Updated");
+    expect(closeMock).toHaveBeenCalled();
+  });
+});

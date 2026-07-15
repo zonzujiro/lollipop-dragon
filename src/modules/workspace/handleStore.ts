@@ -15,7 +15,8 @@ function getDB(): Promise<IDBDatabase> {
         const req = indexedDB.open(DB_NAME, 1);
         req.onupgradeneeded = () => req.result.createObjectStore(STORE);
         req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
+        req.onerror = () =>
+          reject(req.error ?? new Error("Failed to open the handle database"));
       });
     }
   }
@@ -31,7 +32,8 @@ export async function saveHandle(
     const tx = db.transaction(STORE, "readwrite");
     tx.objectStore(STORE).put(handle, key);
     tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
+    tx.onerror = () =>
+      reject(tx.error ?? new Error(`Failed to save handle ${key}`));
   });
 }
 
@@ -46,9 +48,7 @@ function isFileSystemHandle(value: unknown): value is FileSystemHandle {
   return kind === "file" || kind === "directory";
 }
 
-export async function getHandle(
-  key: string,
-): Promise<FileSystemHandle | null> {
+export async function getHandle(key: string): Promise<FileSystemHandle | null> {
   const db = await getDB();
   return new Promise<FileSystemHandle | null>((resolve, reject) => {
     const tx = db.transaction(STORE, "readonly");
@@ -61,7 +61,8 @@ export async function getHandle(
         resolve(null);
       }
     };
-    req.onerror = () => reject(req.error);
+    req.onerror = () =>
+      reject(req.error ?? new Error(`Failed to read handle ${key}`));
   });
 }
 
@@ -76,6 +77,7 @@ export async function removeHandle(key: string): Promise<void> {
     const tx = db.transaction(STORE, "readwrite");
     tx.objectStore(STORE).delete(key);
     tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
+    tx.onerror = () =>
+      reject(tx.error ?? new Error(`Failed to remove handle ${key}`));
   });
 }

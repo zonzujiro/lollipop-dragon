@@ -1,14 +1,11 @@
 import "./CommentMargin.css";
 import { useEffect, useRef, useMemo, useState } from "react";
-import { useShallow } from "zustand/react/shallow";
 import {
   buildCommentThreadGroups,
   type CommentThreadGroup,
 } from "../../../markup";
-import { useAppStore } from "../../../store";
-import { getActiveTab, useActiveTabField } from "../../../store/selectors";
-import { selectDocumentUpdateAvailable } from "../../../modules/relay";
-import { selectPeerDraftCommentOpen } from "../../../modules/peer-review";
+import { useActiveTabField } from "../../../store/selectors";
+import { useCommentMarginStore } from "../../../store/uiHooks";
 import { peerColor, initials } from "../../../utils/peerDisplay";
 import type {
   Comment,
@@ -22,7 +19,6 @@ import {
 } from "../../commentTypes";
 
 const EMPTY_COMMENTS: Comment[] = [];
-const EMPTY_PEER_COMMENTS: PeerComment[] = [];
 const COMMENT_TYPE_HINTS: Record<CommentType, string> = {
   fix: "something is wrong — correct it",
   rewrite: "right idea, wrong words",
@@ -269,39 +265,19 @@ export function CommentMargin({
   const commentFilter = peerMode ? "all" : hostCommentFilter;
   const hostActiveId = useActiveTabField("activeCommentId") ?? null;
   const hostCommentPanelOpen = useActiveTabField("commentPanelOpen") ?? false;
-  const peerActiveId = useAppStore((state) => state.peerActiveCommentId);
-  const peerCommentPanelOpen = useAppStore(
-    (state) => state.peerCommentPanelOpen,
-  );
+  const {
+    peerActiveCommentId: peerActiveId,
+    peerCommentPanelOpen,
+    setActiveCommentId: setActiveId,
+    toggleCommentPanel,
+    hostPendingPeerComments,
+    documentUpdateAvailable,
+    peerDraftCommentOpen,
+    setPeerDraftCommentOpen,
+    myPeerComments,
+    peerActiveFilePath,
+  } = useCommentMarginStore();
   const activeId = peerMode ? peerActiveId : hostActiveId;
-  const setActiveId = useAppStore((s) => s.setActiveCommentId);
-  const toggleCommentPanel = useAppStore((state) => state.toggleCommentPanel);
-  const hostPendingPeerComments = useAppStore(
-    useShallow((state) => {
-      const tab = getActiveTab(state);
-      if (!tab?.activeDocId) {
-        return EMPTY_PEER_COMMENTS;
-      }
-      const pendingComments =
-        tab.pendingComments[tab.activeDocId] ?? EMPTY_PEER_COMMENTS;
-      if (pendingComments.length === 0) {
-        return EMPTY_PEER_COMMENTS;
-      }
-      const currentPath = tab.activeFilePath ?? tab.fileName ?? "";
-      if (!currentPath) {
-        return pendingComments;
-      }
-      const visibleComments = pendingComments.filter(
-        (comment) => comment.path === currentPath,
-      );
-      return visibleComments.length > 0 ? visibleComments : EMPTY_PEER_COMMENTS;
-    }),
-  );
-  const documentUpdateAvailable = useAppStore(selectDocumentUpdateAvailable);
-  const peerDraftCommentOpen = useAppStore(selectPeerDraftCommentOpen);
-  const setPeerDraftCommentOpen = useAppStore(
-    (state) => state.setPeerDraftCommentOpen,
-  );
   const [blockTops, setBlockTops] = useState<Map<number, number>>(new Map());
   // 'resolved' means the comments are gone from the file — no dots to show.
   // 'pending' is the same as 'all' for current (still-in-file) comments.
@@ -348,8 +324,6 @@ export function CommentMargin({
   }, [peerMode, selectionDraft, setActiveId, setPeerDraftCommentOpen]);
 
   // In peer mode, show the peer's own comments as dots
-  const myPeerComments = useAppStore((s) => s.myPeerComments);
-  const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
 
   // Peer comments for the current file, grouped by blockIndex
   const peerDotGroups = useMemo(() => {

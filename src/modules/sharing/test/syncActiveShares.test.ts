@@ -6,7 +6,8 @@ const { mockUpdateContent, mockRelaySend } = vi.hoisted(() => ({
 }));
 
 vi.mock("../../../modules/relay", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../../modules/relay")>();
+  const actual =
+    await importOriginal<typeof import("../../../modules/relay")>();
   return {
     ...actual,
     getRelay: () => ({
