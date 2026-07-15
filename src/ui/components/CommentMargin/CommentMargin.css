@@ -47,9 +47,12 @@
   --comment-marker-color: var(--c-orange);
 }
 
-.comment-margin__dot[data-comment-type="expand"],
+.comment-margin__dot[data-comment-type="expand"] {
+  --comment-marker-color: var(--c-expand);
+}
+
 .comment-margin__dot[data-comment-type="answer"] {
-  --comment-marker-color: var(--accent);
+  --comment-marker-color: var(--c-answer);
 }
 
 .comment-margin__dot[data-comment-type="clarify"] {
@@ -65,7 +68,7 @@
 }
 
 .comment-margin__dot[data-comment-type="remove"] {
-  --comment-marker-color: var(--ink-muted);
+  --comment-marker-color: var(--c-remove);
 }
 
 .comment-margin__dot:hover,

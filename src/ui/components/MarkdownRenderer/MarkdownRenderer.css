@@ -1,8 +1,9 @@
 /* ── Markdown viewer (flex row: margin column + body) ────────── */
 .markdown-scroll-area {
   position: relative;
-  --document-body-width: 1450px;
-  --document-viewer-width: 1498px;
+  /* 66-character serif measure — the core of the reading design (01-design-system) */
+  --document-body-width: 632px;
+  --document-viewer-width: 680px;
 }
 
 .restore-access-banner,
@@ -62,7 +63,7 @@
   border: 1px solid transparent;
   background: transparent;
   color: var(--text);
-  border-radius: var(--radius-sm);
+  border-radius: 8px;
   padding: 0.55rem 0.9rem;
   font-size: 0.875rem;
   font-weight: 600;
@@ -130,7 +131,8 @@
 }
 
 .comment-highlight[data-selected="true"] {
-  outline: 3px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  outline: 3px solid
+    color-mix(in srgb, var(--hl-color, var(--accent)) 20%, transparent);
   outline-offset: 1px;
 }
 
@@ -224,7 +226,7 @@
 
 .markdown-body h2 {
   font-size: 23px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.01em;
   padding-bottom: 0.3rem;
   border-bottom: 0;
@@ -301,12 +303,11 @@
 }
 
 .markdown-body blockquote {
-  border-left: 4px solid var(--accent);
+  border-left: 3px solid var(--line-strong);
   margin: 1rem 0;
-  padding: 0.75rem 1rem;
-  background-color: var(--accent-bg);
-  border-radius: 0 var(--radius) var(--radius) 0;
-  color: var(--text-secondary);
+  padding: 2px 0 2px 18px;
+  color: var(--ink-secondary);
+  font-style: italic;
 }
 
 .markdown-body blockquote > p:last-child {
@@ -318,21 +319,21 @@
 
 .markdown-body :not(pre) > code {
   font-family: var(--font-mono);
-  font-size: 0.875em;
+  font-size: 0.8em;
   background-color: var(--surface-alt);
-  border: 1px solid var(--border-light);
-  border-radius: 4px;
-  padding: 0.15rem 0.4rem;
-  color: var(--c-red);
+  border-radius: 5px;
+  padding: 1.5px 5px;
+  color: var(--ink);
 }
 
 .markdown-body pre {
   font-family: var(--font-mono);
-  font-size: 0.875rem;
+  font-size: 13px;
   line-height: 1.6;
-  border-radius: var(--radius);
+  border-radius: var(--radius-m);
   border: 1px solid var(--border);
-  padding: 1.25em 1.5em;
+  background-color: var(--bg-sunken);
+  padding: 16px 18px;
   overflow-x: auto;
   margin: 1rem 0;
 }
@@ -351,10 +352,9 @@
   width: 100%;
   border-collapse: collapse;
   margin: 1rem 0;
-  font-size: 0.9rem;
+  font-family: var(--font-ui);
+  font-size: 13.5px;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
 }
 
 .markdown-body thead {
@@ -362,27 +362,20 @@
 }
 
 .markdown-body th {
-  font-weight: 600;
-  font-size: 0.85rem;
-  color: var(--text);
+  font-weight: 650;
+  font-size: 12.5px;
+  color: var(--ink);
   text-align: left;
-  padding: 0.6rem 0.85rem;
+  padding: 8px 12px;
   border: 1px solid var(--border);
   background-color: var(--surface-alt);
 }
 
 .markdown-body td {
-  padding: 0.5rem 0.85rem;
-  border: 1px solid var(--border-light);
+  padding: 8px 12px;
+  border: 1px solid var(--border);
   vertical-align: top;
-  color: var(--text-secondary);
-}
-
-.markdown-body tr:nth-child(even) td {
-  background-color: var(--surface-alt);
-}
-.markdown-body tr:hover td {
-  background-color: var(--accent-bg);
+  color: var(--ink);
 }
 
 .markdown-body hr {
@@ -415,7 +408,10 @@
   background-color: color-mix(in srgb, var(--c-orange) 15%, transparent);
 }
 [data-highlight-type="expand"] {
-  background-color: color-mix(in srgb, var(--accent) 15%, transparent);
+  background-color: color-mix(in srgb, var(--c-expand) 15%, transparent);
+}
+[data-highlight-type="answer"] {
+  background-color: color-mix(in srgb, var(--c-answer) 15%, transparent);
 }
 [data-highlight-type="clarify"] {
   background-color: color-mix(in srgb, var(--c-purple) 15%, transparent);
@@ -458,15 +454,16 @@
     padding: 1em;
   }
 }
+/* Agent edits stream in teal — red is reserved for "act here" (01-design-system) */
 .markdown-body[data-agent-status="queued"],
 .markdown-body[data-agent-status="running"],
 .markdown-body[data-agent-status="needs_attention"] {
-  --agent-gutter: color-mix(in srgb, var(--accent) 55%, transparent);
+  --agent-gutter: color-mix(in srgb, var(--agent) 65%, transparent);
 }
 .markdown-body [data-agent-changed="true"] {
   position: relative;
   border-radius: 0 var(--radius) var(--radius) 0;
-  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  background: var(--agent-soft);
 }
 .markdown-body [data-agent-changed="true"]::before {
   content: "";
@@ -476,5 +473,5 @@
   left: -0.65rem;
   width: 3px;
   border-radius: 99px;
-  background: var(--agent-gutter, var(--accent));
+  background: var(--agent-gutter, var(--agent));
 }

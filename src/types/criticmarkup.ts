@@ -19,14 +19,14 @@ export type CommentType =
 
 /** CSS color variable for each comment type. */
 export const COMMENT_TYPE_COLOR: Record<CommentType, string> = {
-  fix: "var(--c-red)",
-  rewrite: "var(--c-orange)",
-  expand: "var(--accent)",
-  clarify: "var(--c-purple)",
-  question: "var(--c-cyan)",
-  answer: "var(--accent)",
-  remove: "var(--text-muted)",
-  note: "var(--c-green)",
+  fix: "var(--c-fix)",
+  rewrite: "var(--c-rewrite)",
+  expand: "var(--c-expand)",
+  clarify: "var(--c-clarify)",
+  question: "var(--c-question)",
+  answer: "var(--c-answer)",
+  remove: "var(--c-remove)",
+  note: "var(--c-answer)",
 };
 
 export interface CommentThreadMetadata {

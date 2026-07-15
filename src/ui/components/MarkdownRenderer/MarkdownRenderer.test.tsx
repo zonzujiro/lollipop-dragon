@@ -227,13 +227,13 @@ describe("MarkdownRenderer — commenting", () => {
 });
 
 describe("MarkdownRenderer — responsive reading width", () => {
-  it("uses most of the reading pane while preserving the comment lane", () => {
+  it("keeps the 66ch reading measure while preserving the comment lane", () => {
     const markdownRendererCss = readFileSync(
       "src/ui/components/MarkdownRenderer/MarkdownRenderer.css",
       "utf8",
     );
-    expect(markdownRendererCss).toContain("--document-body-width: 1450px");
-    expect(markdownRendererCss).toContain("--document-viewer-width: 1498px");
+    expect(markdownRendererCss).toContain("--document-body-width: 632px");
+    expect(markdownRendererCss).toContain("--document-viewer-width: 680px");
     expect(markdownRendererCss).toContain(
       "width: min(90%, var(--document-viewer-width))",
     );
