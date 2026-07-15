@@ -1,0 +1,169 @@
+/* ── Document outline: sticky orientation bar + review-aware contents ── */
+.document-outline {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  width: min(calc(90% - 3rem), var(--document-body-width));
+  margin: 0 auto 18px;
+  background: var(--surface);
+}
+
+.document-outline__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 0;
+  color: var(--ink-muted);
+  font: 11px/1.4 var(--font-mono);
+  letter-spacing: 0.04em;
+}
+
+.document-outline__path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 1;
+}
+
+.document-outline__sep {
+  flex-shrink: 0;
+}
+
+.document-outline__section {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 2px 6px;
+  margin: -2px -6px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--ink-secondary);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    color 0.12s,
+    background-color 0.12s;
+}
+
+.document-outline__section:hover,
+.document-outline__section[aria-expanded="true"] {
+  color: var(--ink);
+  background: var(--bg-sunken);
+}
+
+.document-outline__mark {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.document-outline__section-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 34ch;
+}
+
+.document-outline__panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 20;
+  width: min(340px, 90vw);
+  max-height: min(60vh, 440px);
+  overflow-y: auto;
+  background: var(--surface-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-pop);
+}
+
+.document-outline__label {
+  padding: 10px 14px 4px;
+  font: 700 10px/1 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.document-outline__list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 6px 8px;
+}
+
+.document-outline__entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border: none;
+  border-left: 2px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: var(--ink-secondary);
+  font: 500 12.5px/1.4 var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.12s,
+    color 0.12s;
+}
+
+.document-outline__entry:hover {
+  background: var(--bg-sunken);
+  color: var(--ink);
+}
+
+.document-outline__entry--active {
+  border-left-color: var(--accent);
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.document-outline__entry[data-level="1"] {
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.document-outline__entry[data-level="2"] {
+  padding-left: 22px;
+}
+
+.document-outline__entry[data-level="3"] {
+  padding-left: 36px;
+  font-size: 12px;
+}
+
+.document-outline__entry[data-level="4"],
+.document-outline__entry[data-level="5"],
+.document-outline__entry[data-level="6"] {
+  padding-left: 48px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.document-outline__entry-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-outline__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 700 10.5px/1 var(--font-ui);
+  flex-shrink: 0;
+}
