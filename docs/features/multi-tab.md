@@ -267,7 +267,6 @@ The active tab's directory and open file are watched for external changes (e.g.,
 | `MarkdownRenderer.tsx`     | Update selectors to read from active tab                                                               |
 | `CommentPanel.tsx`         | Update selectors to read from active tab                                                               |
 | `CommentMargin.tsx`        | Update selectors to read from active tab                                                               |
-| `SharedPanel.tsx`          | Update selectors to read from active tab                                                               |
 | `ShareDialog.tsx`          | Update selectors to read from active tab                                                               |
 | `UndoToast.tsx`            | Update selectors to read from active tab                                                               |
 | `PendingCommentReview.tsx` | Update selectors to read from active tab                                                               |
@@ -313,7 +312,7 @@ The active tab's directory and open file are watched for external changes (e.g.,
 14. Update `FilePicker.tsx`
 15. Update `Header.tsx`
 16. Update `MarkdownRenderer.tsx`, `CommentPanel.tsx`, `CommentMargin.tsx`
-17. Update `SharedPanel.tsx`, `ShareDialog.tsx`, `UndoToast.tsx`
+17. Update `ShareDialog.tsx` and `UndoToast.tsx`
 18. Update `PendingCommentReview.tsx`, `PeerCommentCard.tsx`
 
 ### Phase 4: Polish

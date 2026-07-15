@@ -36,6 +36,7 @@ import type {
   PeerReviewState,
 } from "../modules/peer-review";
 import { createRelayActions, createRelayState } from "../modules/relay/state";
+import { configureRelayApplicationPort } from "../modules/relay/applicationPort";
 import type { RelayActions, RelayState } from "../modules/relay/types";
 import {
   createSharingActions,
@@ -65,6 +66,7 @@ import type {
 import type { CommentType } from "../types/criticmarkup";
 import type { TabState } from "../types/tab";
 import { createDefaultTab } from "../types/tab";
+import { isShareRecordArray } from "../types/share";
 import type { ShareRecord } from "../types/share";
 
 const SHARES_KEY = "markreview-shares";
@@ -262,7 +264,7 @@ export const useAppStore = create<AppState>()(
               persisted.fileName || persisted.directoryName
             );
             const tabId = crypto.randomUUID();
-            const tabs = hasContent
+            const tabs: TabState[] = hasContent
               ? [
                   {
                     id: tabId,
@@ -282,7 +284,7 @@ export const useAppStore = create<AppState>()(
                     resolvedComments: [],
                     activeCommentId: null,
                     commentPanelOpen: false,
-                    commentFilter: "all" as const,
+                    commentFilter: "all",
                     allFileComments: {},
                     pendingScrollTarget: null,
                     writeAllowed: true,
@@ -303,16 +305,19 @@ export const useAppStore = create<AppState>()(
               const oldRaw = localStorage.getItem(SHARES_KEY);
               if (oldRaw && tabs.length > 0) {
                 const oldShares: unknown = JSON.parse(oldRaw);
-                if (Array.isArray(oldShares)) {
+                if (isShareRecordArray(oldShares)) {
                   const allShares: Record<string, ShareRecord[]> = {
                     [tabId]: oldShares,
                   };
                   localStorage.setItem(SHARES_KEY, JSON.stringify(allShares));
-                  tabs[0].shares = oldShares;
+                  const firstTab = tabs[0];
+                  if (firstTab) {
+                    firstTab.shares = oldShares;
+                  }
                 }
               }
-            } catch (e) {
-              console.error("[migrate] failed to migrate shares:", e);
+            } catch (error) {
+              console.error("[migrate] failed to migrate shares:", error);
             }
 
             // Migrate old IndexedDB handle key
@@ -399,6 +404,8 @@ export const useAppStore = create<AppState>()(
 
 // Keep browser tab title in sync with the active file
 const APP_TITLE = "critiq.ink";
+configureRelayApplicationPort({ getState: () => useAppStore.getState() });
+
 useAppStore.subscribe((state) => {
   const name = state.isPeerMode
     ? state.peerActiveFilePath?.split("/").pop()

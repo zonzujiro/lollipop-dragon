@@ -1,5 +1,6 @@
 import "./PresentationMode.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ComponentProps } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CodeBlock, PreBlock } from "../MarkdownRenderer";
@@ -97,7 +98,9 @@ export function PresentationMode() {
     return () => {
       document.removeEventListener("fullscreenchange", onFullscreenChange);
       if (document.fullscreenElement === document.documentElement) {
-        document.exitFullscreen?.().catch(() => {});
+        void document.exitFullscreen?.().catch((error: unknown) => {
+          console.warn("[presentation] failed to exit fullscreen:", error);
+        });
       }
     };
   }, [exitPresentationMode]);
@@ -136,45 +139,43 @@ export function PresentationMode() {
 
   // Keyboard navigation
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
+    const onKey = (event: KeyboardEvent) => {
       const canGoForward = currentSlide < slides.length - 1;
       const canGoBackward = currentSlide > 0;
 
-      switch (e.key) {
-        case "ArrowDown":
-        case "ArrowRight":
-        case " ":
-        case "PageDown":
-          if (canGoForward) {
-            e.preventDefault();
-            goTo(currentSlide + 1, "up");
-          }
-          break;
-        case "ArrowUp":
-        case "ArrowLeft":
-        case "Backspace":
-        case "PageUp":
-          if (canGoBackward) {
-            e.preventDefault();
-            goTo(currentSlide - 1, "down");
-          }
-          break;
-        case "Home":
-          e.preventDefault();
-          goTo(0, "down");
-          break;
-        case "End":
-          e.preventDefault();
-          goTo(slides.length - 1, "up");
-          break;
-        case "Escape":
-          e.preventDefault();
-          if (document.fullscreenElement) {
-            document.exitFullscreen?.().catch(() => {});
-          } else {
-            exitPresentationMode();
-          }
-          break;
+      if (["ArrowDown", "ArrowRight", " ", "PageDown"].includes(event.key)) {
+        if (canGoForward) {
+          event.preventDefault();
+          goTo(currentSlide + 1, "up");
+        }
+        return;
+      }
+      if (["ArrowUp", "ArrowLeft", "Backspace", "PageUp"].includes(event.key)) {
+        if (canGoBackward) {
+          event.preventDefault();
+          goTo(currentSlide - 1, "down");
+        }
+        return;
+      }
+      if (event.key === "Home") {
+        event.preventDefault();
+        goTo(0, "down");
+        return;
+      }
+      if (event.key === "End") {
+        event.preventDefault();
+        goTo(slides.length - 1, "up");
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (document.fullscreenElement && document.exitFullscreen) {
+          void document.exitFullscreen().catch((error: unknown) => {
+            console.warn("[presentation] failed to exit fullscreen:", error);
+          });
+        } else {
+          exitPresentationMode();
+        }
       }
     };
     window.addEventListener("keydown", onKey);
@@ -182,7 +183,8 @@ export function PresentationMode() {
   }, [goTo, currentSlide, slides.length, exitPresentationMode]);
 
   const isDark = theme === "dark";
-  const rehypePlugins = shikiPlugin ? ([shikiPlugin] as const) : ([] as const);
+  const rehypePlugins: ComponentProps<typeof ReactMarkdown>["rehypePlugins"] =
+    shikiPlugin ? [shikiPlugin] : [];
 
   return (
     <div className="presentation" onMouseMove={resetControlsTimer}>

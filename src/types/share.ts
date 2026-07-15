@@ -13,6 +13,43 @@ export interface ShareRecord {
   sharedPaths?: string[]; // original file paths included in the share
 }
 
+function isStringArray(value: unknown): value is string[] {
+  return (
+    Array.isArray(value) && value.every((entry) => typeof entry === "string")
+  );
+}
+
+export function isShareRecord(value: unknown): value is ShareRecord {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  return (
+    "docId" in value &&
+    typeof value.docId === "string" &&
+    "hostSecret" in value &&
+    typeof value.hostSecret === "string" &&
+    "label" in value &&
+    typeof value.label === "string" &&
+    "createdAt" in value &&
+    typeof value.createdAt === "string" &&
+    "expiresAt" in value &&
+    typeof value.expiresAt === "string" &&
+    "pendingCommentCount" in value &&
+    typeof value.pendingCommentCount === "number" &&
+    "keyB64" in value &&
+    typeof value.keyB64 === "string" &&
+    "fileCount" in value &&
+    typeof value.fileCount === "number" &&
+    (!("sharedPaths" in value) ||
+      value.sharedPaths === undefined ||
+      isStringArray(value.sharedPaths))
+  );
+}
+
+export function isShareRecordArray(value: unknown): value is ShareRecord[] {
+  return Array.isArray(value) && value.every(isShareRecord);
+}
+
 // Decrypted content structure (inside the encrypted blob)
 export interface SharePayload {
   version: "2.0";

@@ -176,6 +176,26 @@ The host selects files or folders to share and clicks "Share." The app encrypts 
 
 Peers open the link. The app fetches the encrypted blob from the Worker, decrypts it in the browser, reconstructs the folder tree, and renders the documents in the same clean reading UI as v1. File tree sidebar, rich rendering, CriticMarkup comments displayed as margin elements — identical experience to the host.
 
+#### Untrusted rich rendering
+
+As a peer opening a shared Markdown document, I need rich diagrams to render
+without executing document-controlled code or loading document-controlled
+resources, so reviewing a shared link does not grant the document author DOM or
+network capabilities.
+
+Acceptance criteria:
+
+- Shared Markdown and Mermaid source are treated as untrusted input.
+- Mermaid loads only when a Mermaid block is rendered and runs with strict
+  security and HTML labels disabled.
+- The rendered SVG is sanitized before insertion into the DOM.
+- Scripts, embedded HTML, event-handler attributes, external resource URLs,
+  unsafe CSS imports, expressions, and JavaScript URLs are removed.
+- Fragment-only SVG references remain available for local markers and fills.
+- Invalid diagrams remain in the existing error/raw-source state.
+- Hostile SVG fixtures cover script, event, URL, embedded-content, and CSS
+  payloads.
+
 ### 7.3 Async Commenting
 
 Peers can comment on any block or a 3–300 character selection, just like the

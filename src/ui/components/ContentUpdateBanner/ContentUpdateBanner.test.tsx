@@ -68,6 +68,7 @@ describe("ContentUpdateBanner - Refresh button", () => {
   });
 
   it("does not dismiss when loadSharedContent fails", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const dismissDocumentUpdate = vi.fn();
     const loadSharedContent = vi
       .fn()
@@ -83,6 +84,10 @@ describe("ContentUpdateBanner - Refresh button", () => {
       expect(loadSharedContent).toHaveBeenCalledTimes(1);
     });
     expect(dismissDocumentUpdate).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      "[ContentUpdateBanner] refresh failed:",
+      expect.any(Error),
+    );
   });
   it("does not render a dismiss button", () => {
     useAppStore.setState({ documentUpdateAvailable: true });

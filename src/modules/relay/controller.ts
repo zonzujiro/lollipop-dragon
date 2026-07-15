@@ -5,10 +5,10 @@ import type {
   RelayMessage,
 } from "../../types/relay";
 import type { PeerComment } from "../../types/share";
-import { useAppStore } from "../../store";
 import { WORKER_URL } from "../../config";
-import { ShareStorage } from "../sharing";
+import { ShareStorage } from "../sharing/storage";
 import { selectHasPeerLocalCommentWork } from "../peer-review/selectors";
+import { getRelayApplicationState } from "./applicationPort";
 
 export interface RelayConnection {
   subscribe(
@@ -100,7 +100,7 @@ function parseInboundFrame(raw: unknown): ParsedFrame {
     return {
       kind: "error",
       docId: raw.docId,
-      message: String(raw.message ?? ""),
+      message: typeof raw.message === "string" ? raw.message : "Relay error",
     };
   }
   if (raw.type === "subscribe:ok" && typeof raw.docId === "string") {
@@ -407,7 +407,7 @@ class RelayConnectionImpl implements RelayConnection {
 
   private handleSocketMessage = async (event: MessageEvent): Promise<void> => {
     try {
-      const rawData = JSON.parse(
+      const rawData: unknown = JSON.parse(
         typeof event.data === "string" ? event.data : "",
       );
       const frame = parseInboundFrame(rawData);
@@ -452,7 +452,9 @@ class RelayConnectionImpl implements RelayConnection {
     this.onStatusChange("connecting");
     this.socket = new WebSocket(this.wsUrl);
     this.socket.addEventListener("open", this.handleSocketOpen);
-    this.socket.addEventListener("message", this.handleSocketMessage);
+    this.socket.addEventListener("message", (event) => {
+      void this.handleSocketMessage(event);
+    });
     this.socket.addEventListener("close", this.handleSocketClose);
     this.socket.addEventListener("error", () => {
       this.socket?.close();
@@ -582,7 +584,7 @@ async function decryptPeerComment(
 }
 
 function findEncryptionKey(docId: string): CryptoKey | undefined {
-  const state = useAppStore.getState();
+  const state = getRelayApplicationState();
   if (state.isPeerMode) {
     return state.peerShareKeys[docId];
   }
@@ -595,7 +597,7 @@ function findEncryptionKey(docId: string): CryptoKey | undefined {
 }
 
 function findHostSecret(docId: string): string | undefined {
-  const state = useAppStore.getState();
+  const state = getRelayApplicationState();
   for (const tab of state.tabs) {
     const record = tab.shares.find((share) => share.docId === docId);
     if (record) {
@@ -641,7 +643,7 @@ async function decryptAndAddPendingComment(
   }
   try {
     const comment = await decryptPeerComment(encryptedPayload, key, cmtId);
-    useAppStore.getState().addPendingComment(docId, comment);
+    getRelayApplicationState().addPendingComment(docId, comment);
   } catch (error) {
     console.warn("[relay] failed to decrypt comment:", error);
   }
@@ -664,16 +666,16 @@ async function decryptAndReplaceSnapshot(
       console.warn("[relay] failed to decrypt snapshot comment:", error);
     }
   }
-  useAppStore.getState().replaceCommentsSnapshot(docId, comments);
+  getRelayApplicationState().replaceCommentsSnapshot(docId, comments);
 }
 
 async function refreshPeerContent(input?: { discardUnsubmitted?: boolean }) {
-  const state = useAppStore.getState();
+  const state = getRelayApplicationState();
   try {
     await state.loadSharedContent(input);
-    useAppStore.getState().dismissDocumentUpdate();
+    getRelayApplicationState().dismissDocumentUpdate();
   } catch (error) {
-    useAppStore.getState().setDocumentUpdateAvailable(true);
+    getRelayApplicationState().setDocumentUpdateAvailable(true);
     console.warn("[relay] peer content refresh failed:", error);
   }
 }
@@ -681,7 +683,7 @@ async function refreshPeerContent(input?: { discardUnsubmitted?: boolean }) {
 export async function applyPeerDocumentUpdate(
   updatedAt: string | null,
 ): Promise<void> {
-  const state = useAppStore.getState();
+  const state = getRelayApplicationState();
   if (!state.isPeerMode || state.documentUpdateAvailable) {
     return;
   }
@@ -696,7 +698,7 @@ export async function applyPeerDocumentUpdate(
 }
 
 function handleIncomingMessage(docId: string, event: RelayEvent): void {
-  const state = useAppStore.getState();
+  const state = getRelayApplicationState();
 
   if (event.type === "comment:added") {
     if (!state.isPeerMode) {
@@ -737,7 +739,7 @@ function handleIncomingMessage(docId: string, event: RelayEvent): void {
 }
 
 export async function performReconnectCatchUp(): Promise<void> {
-  const state = useAppStore.getState();
+  const state = getRelayApplicationState();
   if (!state.isPeerMode || state.documentUpdateAvailable) {
     return;
   }
@@ -760,14 +762,14 @@ export async function performReconnectCatchUp(): Promise<void> {
 function handleStatusChange(
   status: "connecting" | "connected" | "disconnected",
 ): void {
-  useAppStore.getState().setRelayStatus(status);
+  getRelayApplicationState().setRelayStatus(status);
   if (status === "connected") {
     void performReconnectCatchUp();
   }
 }
 
 function handleSubscribeConfirmed(docId: string): void {
-  const state = useAppStore.getState();
+  const state = getRelayApplicationState();
   if (state.isPeerMode) {
     state.syncPeerComments().catch((error: unknown) => {
       console.warn("[relay] peer comment resend failed:", error);
@@ -794,7 +796,7 @@ export function subscribeToDoc(docId: string): void {
     console.warn("[relay] no key for docId:", docId);
     return;
   }
-  const state = useAppStore.getState();
+  const state = getRelayApplicationState();
   if (state.isPeerMode) {
     relay.subscribe(docId, key, "peer");
     return;
@@ -822,7 +824,7 @@ export function stopRelay(): void {
   if (relay) {
     relay.close();
   }
-  useAppStore.getState().setRelayStatus("disconnected");
+  getRelayApplicationState().setRelayStatus("disconnected");
 }
 
 export function isDocSubscribed(docId: string): boolean {

@@ -12,7 +12,7 @@ Four phases, each independently shippable and demo-able. Work in this repo; foll
 **Scope**
 
 - Replace `src/ui/styles/tokens.css` values with the Reading Room tokens (`assets/tokens.css`); keep the existing variable-name conventions and `.dark` override mechanism; migrate names where they differ rather than duplicating.
-- Re-skin the app shell: `Header` (merge `TabBar` into it — tab strip becomes header-inline; delete the standalone strip but keep all tab actions/shortcuts), `FileTreeSidebar` (248px, count badges, collapse/restore per spec), document column typography in `MarkdownRenderer` (serif 17/1.68, 632px measure, kicker line), `TableOfContents`, `Toast`, `RawViewer` untouched functionally.
+- Re-skin the app shell: `Header` (merge `TabBar` into it — tab strip becomes header-inline; delete the standalone strip but keep all tab actions/shortcuts), `FileTreeSidebar` (248px, count badges, collapse/restore per spec), document column typography in `MarkdownRenderer` (serif 17/1.68, 632px measure, kicker line), `TableOfContents`, and `Toast`. Raw/source views stay within their owning renderers rather than a separate `RawViewer` surface.
 - Landing rebuild in `FilePicker`: asymmetric poster hero (three stacked actions + drop + recents), geometric product art, and numbered Bauhaus chapters per `02-screens.md` §1. Do not retain the legacy centered-card landing structure.
 - Presentation mode re-skin (`PresentationMode`).
 
@@ -54,7 +54,7 @@ Four phases, each independently shippable and demo-able. Work in this repo; foll
 
 **Scope**
 
-- Share sheet (merge `ShareDialog` + `SharedPanel` into one surface; keep `src/modules/sharing/controller.ts` flows).
+- Share sheet (keep the former `SharedPanel` responsibilities merged into `ShareDialog`; keep `src/modules/sharing/controller.ts` flows).
 - Peer takeover re-skin: trust ribbon, identity chip, "Your comments" tray with sent/draft states, name sheet (`PeerNamePrompt`), `ConnectionStatus` chip states, `ContentUpdateBanner` unchanged semantics.
 - Peer payload: add `quote`/`occurrence` to comment `block_ref` (additive, versioned); host merge uses Phase-2 insertion.
 

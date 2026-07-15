@@ -57,3 +57,15 @@ narrow agent run request.
   runtime for answering active-file question threads.
 - `buildPendingPeerCommentsAgentRunRequest` builds the bounded request passed to
   the runtime for reviewing pending peer comments from a selected host share.
+
+## Related Docs
+
+- [Architecture](../../../ARCHITECTURE.md)
+- [Desktop agent client](../../../docs/features/desktop-agent-client.md)
+
+## Common Failure Modes
+
+- storing runtime process or terminal objects in Zustand
+- starting a host-only run while peer mode is active
+- bypassing the bounded request builders and sending unscoped workspace content
+- allowing run history to grow without the per-tab cap

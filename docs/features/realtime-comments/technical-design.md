@@ -50,11 +50,13 @@ Host / Peer ───── HTTPS /share/:docId ─ Worker + KV
 SQLite tables:
 
 `doc_meta`
+
 - `doc_id`
 - `host_secret_hash`
 - `expires_at`
 
 `comments`
+
 - `doc_id`
 - `cmt_id`
 - `payload`

@@ -21,8 +21,6 @@ Owns host-side markdown review state and review operations over local content.
 
 ## State
 
-Target state to move here:
-
 - `comments`
 - `resolvedComments`
 - `activeCommentId`
@@ -34,16 +32,14 @@ Target state to move here:
 
 ## Public API
 
-Planned public API:
-
+- `createHostReviewActions()`
+- `createHostReviewControllerActions()`
 - host review selectors
-- pure host review transitions
-- controller commands for merge/write orchestration
-- controller helpers for comment scan and resolved-comment refresh
+- comment scan and resolved-comment refresh helpers
 
 ## Side Effects
 
-Expected side effects:
+Current side effects:
 
 - writing merged content to host files
 - comment scanning and refresh coordination

@@ -1,1 +1,0 @@
-export { SharedPanel } from './SharedPanel';

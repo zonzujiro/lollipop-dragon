@@ -381,14 +381,18 @@ export function FilePicker() {
             <div className="landing-actions">
               <button
                 className="landing-action landing-action--red"
-                onClick={openDirectory}
+                onClick={() => {
+                  void openDirectory();
+                }}
               >
                 <Mark shape="square" color="cream" />
                 open a folder<kbd>⌘O</kbd>
               </button>
               <button
                 className="landing-action landing-action--line"
-                onClick={openFile}
+                onClick={() => {
+                  void openFile();
+                }}
               >
                 <Mark shape="circle" color="teal" />
                 open a file<kbd>⌘⇧O</kbd>
@@ -586,7 +590,9 @@ export function FilePicker() {
           </h2>
           <button
             className="landing-action landing-action--red"
-            onClick={openDirectory}
+            onClick={() => {
+              void openDirectory();
+            }}
           >
             <Mark shape="square" color="cream" />
             open a folder<kbd>⌘O</kbd>

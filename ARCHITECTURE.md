@@ -284,13 +284,35 @@ This project now draws a hard line between pure state updates and side effects.
 
 ## Cross-Module Rules
 
-- Prefer importing modules through `src/modules/<module>/index.ts`.
-- Narrow leaf imports such as `types.ts` or `selectors.ts` are acceptable when
-  they are intentionally lightweight and help avoid circular dependencies.
-- Modules may call other modules through their public APIs.
+- `src/store/index.ts` is the composition root and may import module factories.
+- Feature modules must not import `src/store`; controllers receive application
+  state and commands through typed ports configured by the composition root.
+- UI may import module public APIs and selectors, but never a module's internal
+  `state.ts` or `controller.ts` file.
+- Cross-module runtime dependencies should use narrow leaf adapters or typed
+  ports. Importing another module's barrel from a controller can pull its own
+  controller back into the graph and create a hidden cycle.
 - Modules must not mutate another module's internal store paths directly.
 - UI should prefer module APIs and selectors over reaching into unrelated store
   internals.
+
+These rules are enforced by `npm run architecture:check`, which resolves the
+runtime import graph, rejects cycles and forbidden edges, validates module
+README contracts, and caps production component files at 1,000 lines.
+
+### Relay composition
+
+Relay transport receives the state and commands it needs through
+`RelayApplicationPort`. `src/store/index.ts` configures that port after the
+Zustand store is created. This preserves the direction `store -> module` and
+keeps WebSocket orchestration independently testable.
+
+### Untrusted rendering
+
+Markdown loaded from local files and peer links is untrusted input. Mermaid is
+loaded lazily, runs with strict security and HTML labels disabled, and its SVG
+passes through the dedicated sanitizer before DOM insertion. Changes to this
+boundary must keep hostile SVG/URL regression tests green.
 
 ## Module Documentation
 

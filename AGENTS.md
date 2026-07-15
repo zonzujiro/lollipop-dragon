@@ -6,6 +6,13 @@ Read the [contribution guide](./docs/contributing.md) and review the docs in [`d
 
 If a change may remove backward-compatibility logic, pause and ask for confirmation before deleting it. Do not assume old migrations, persisted-state compatibility, or legacy restore paths can be removed without approval.
 
+Run `npm run preflight:agent` before implementation to expose existing gate
+failures, and run `npm run validate` before handoff. Architecture rules are
+executable: do not bypass them with inline suppressions or by raising budgets.
+Read `ARCHITECTURE.md` and the owning `src/modules/<module>/README.md` for
+module changes; read the untrusted-rendering section and its tests for Markdown
+or Mermaid changes.
+
 ## Environment
 
 - Detect the checkout/runtime before choosing commands.
@@ -57,6 +64,8 @@ If a component reads tab state while in peer mode (or vice versa), it will get s
 ### Store holds data only
 
 - **Do not put mutable non-serializable objects (WebSocket connections, timers, DOM refs) in the Zustand store.** Keep them as module-level singletons in services.
+- Feature modules must not import `src/store`. Cross-feature controllers receive
+  narrow typed ports configured in `src/store/index.ts`.
 
 ### When adding new state
 

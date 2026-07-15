@@ -15,15 +15,12 @@ vi.mock("react-markdown", () => ({
 }));
 
 vi.mock("../CommentMargin", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("../CommentMargin")>();
+  const actual = await importOriginal<typeof import("../CommentMargin")>();
   const ActualCommentMargin = actual.CommentMargin;
 
   return {
     ...actual,
-    CommentMargin: (
-      props: Parameters<typeof actual.CommentMargin>[0],
-    ) => {
+    CommentMargin: (props: Parameters<typeof actual.CommentMargin>[0]) => {
       counters.commentMarginRenderCount += 1;
       return <ActualCommentMargin {...props} />;
     },

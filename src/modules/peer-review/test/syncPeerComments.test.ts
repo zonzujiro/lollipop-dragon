@@ -6,7 +6,8 @@ const { mockRelayCommentAdd, mockRelaySend } = vi.hoisted(() => ({
 }));
 
 vi.mock("../../../modules/sharing", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../../modules/sharing")>();
+  const actual =
+    await importOriginal<typeof import("../../../modules/sharing")>();
   return {
     ...actual,
     syncActiveShares: vi.fn(),
@@ -19,18 +20,20 @@ vi.mock("../../../config", () => ({
 }));
 
 vi.mock("../../../services/crypto", async (importOriginal) => {
-  const actual = await importOriginal<
-    typeof import("../../../services/crypto")
-  >();
+  const actual =
+    await importOriginal<typeof import("../../../services/crypto")>();
   return {
     ...actual,
-    base64urlToKey: vi.fn().mockImplementation(async () => actual.generateKey()),
+    base64urlToKey: vi
+      .fn()
+      .mockImplementation(async () => actual.generateKey()),
     docIdFromKey: vi.fn().mockResolvedValue("mock-doc-id"),
   };
 });
 
 vi.mock("../../../modules/relay", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../../modules/relay")>();
+  const actual =
+    await importOriginal<typeof import("../../../modules/relay")>();
   return {
     ...actual,
     getRelay: () => ({
@@ -51,7 +54,11 @@ vi.mock("../../../modules/relay", async (importOriginal) => {
 });
 
 import { useAppStore } from "../../../store";
-import { makePeerComment, resetTestStore, setTestState } from "../../../testing/testHelpers";
+import {
+  makePeerComment,
+  resetTestStore,
+  setTestState,
+} from "../../../testing/testHelpers";
 
 beforeEach(() => {
   resetTestStore();

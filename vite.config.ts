@@ -29,6 +29,12 @@ export default defineConfig(({ mode }) => ({
     environment: "jsdom",
     globals: true,
     setupFiles: "./src/testing/setup.ts",
+    onConsoleLog(log, type) {
+      if (type === "stderr") {
+        throw new Error(`Unexpected test stderr:\n${log}`);
+      }
+      return false;
+    },
     coverage: {
       provider: "v8",
       include: ["src/**/*.{ts,tsx}"],
@@ -43,6 +49,24 @@ export default defineConfig(({ mode }) => ({
         functions: 60,
         branches: 70,
         statements: 60,
+        "src/modules/relay/**": {
+          lines: 50,
+          functions: 65,
+          branches: 45,
+          statements: 50,
+        },
+        "src/modules/sharing/**": {
+          lines: 55,
+          functions: 65,
+          branches: 60,
+          statements: 55,
+        },
+        "src/modules/workspace/**": {
+          lines: 55,
+          functions: 75,
+          branches: 70,
+          statements: 55,
+        },
       },
     },
   },

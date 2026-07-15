@@ -2,7 +2,10 @@ import type { Comment } from "../../types/criticmarkup";
 import type { HostReviewTabState } from "./types";
 
 export function selectVisibleHostComments(
-  tab: Pick<HostReviewTabState, "comments" | "resolvedComments" | "commentFilter">,
+  tab: Pick<
+    HostReviewTabState,
+    "comments" | "resolvedComments" | "commentFilter"
+  >,
 ): Comment[] {
   if (tab.commentFilter === "resolved") {
     return tab.resolvedComments;
@@ -16,7 +19,10 @@ export function selectVisibleHostComments(
 }
 
 export function selectActiveHostComment(
-  tab: Pick<HostReviewTabState, "comments" | "resolvedComments" | "activeCommentId">,
+  tab: Pick<
+    HostReviewTabState,
+    "comments" | "resolvedComments" | "activeCommentId"
+  >,
 ): Comment | null {
   if (!tab.activeCommentId) {
     return null;
@@ -24,7 +30,9 @@ export function selectActiveHostComment(
 
   return (
     tab.comments.find((comment) => comment.id === tab.activeCommentId) ??
-    tab.resolvedComments.find((comment) => comment.id === tab.activeCommentId) ??
+    tab.resolvedComments.find(
+      (comment) => comment.id === tab.activeCommentId,
+    ) ??
     null
   );
 }

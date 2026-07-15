@@ -1,2 +1,2 @@
-export { FileTreeSidebar } from './FileTreeSidebar';
-export type { FileTreeSidebarProps } from './FileTreeSidebar';
+export { FileTreeSidebar } from "./FileTreeSidebar";
+export type { FileTreeSidebarProps } from "./FileTreeSidebar";

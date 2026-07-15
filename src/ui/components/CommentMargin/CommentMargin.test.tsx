@@ -288,16 +288,18 @@ describe("CommentMargin — AddCommentForm", () => {
     await user.click(screen.getByRole("button", { name: "Add comment" }));
     await user.type(screen.getByLabelText("Comment text"), "draft");
 
-    useAppStore.setState({ documentUpdateAvailable: true });
-    rerender(
-      <CommentMargin
-        containerRef={fakeContainerRef}
-        hoveredBlock={{ index: 2, top: 0 }}
-        onAddComment={vi.fn()}
-        peerMode
-        onPostPeerComment={vi.fn()}
-      />,
-    );
+    act(() => {
+      useAppStore.setState({ documentUpdateAvailable: true });
+      rerender(
+        <CommentMargin
+          containerRef={fakeContainerRef}
+          hoveredBlock={{ index: 2, top: 0 }}
+          onAddComment={vi.fn()}
+          peerMode
+          onPostPeerComment={vi.fn()}
+        />,
+      );
+    });
 
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });

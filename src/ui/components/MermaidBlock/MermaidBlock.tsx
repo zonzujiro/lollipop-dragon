@@ -8,7 +8,6 @@ import {
   useRef,
   useState,
 } from "react";
-import mermaid from "mermaid";
 import { findQuoteOccurrences } from "../../../markup";
 import type {
   CommentAnchor,
@@ -16,8 +15,30 @@ import type {
   CommentType,
 } from "../../../types/criticmarkup";
 import { CodeCommentSurface } from "../CodeCommentSurface";
+import { sanitizeMermaidSvg } from "./mermaidSecurity";
 
-mermaid.initialize({ startOnLoad: false, securityLevel: "loose" });
+type MermaidApi = (typeof import("mermaid"))["default"];
+
+let mermaidPromise: Promise<MermaidApi> | null = null;
+
+function loadMermaid(): Promise<MermaidApi> {
+  if (!mermaidPromise) {
+    mermaidPromise = import("mermaid")
+      .then((module) => {
+        module.default.initialize({
+          startOnLoad: false,
+          securityLevel: "strict",
+          flowchart: { htmlLabels: false },
+        });
+        return module.default;
+      })
+      .catch((error: unknown) => {
+        mermaidPromise = null;
+        throw error;
+      });
+  }
+  return mermaidPromise;
+}
 
 const DIRECTION_PATTERN = /^((?:graph|flowchart)\s+)(TD|LR|TB|RL|BT)(\b.*)/i;
 
@@ -151,11 +172,11 @@ export function MermaidBlock({
     setSvg(null);
     setError(null);
 
-    mermaid
-      .render(`mermaid-${uid}`, effectiveCode)
+    loadMermaid()
+      .then((mermaid) => mermaid.render(`mermaid-${uid}`, effectiveCode))
       .then(({ svg: result }) => {
         if (!cancelled) {
-          setSvg(result);
+          setSvg(sanitizeMermaidSvg(result));
         }
       })
       .catch((renderError: unknown) => {

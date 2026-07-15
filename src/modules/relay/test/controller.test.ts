@@ -6,8 +6,8 @@ vi.mock("../../../config", () => ({
   WORKER_URL: "https://mock-worker.test",
 }));
 
-vi.mock("../../sharing", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../sharing")>();
+vi.mock("../../sharing/storage", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../sharing/storage")>();
   return {
     ...actual,
     ShareStorage: vi.fn().mockImplementation(() => ({

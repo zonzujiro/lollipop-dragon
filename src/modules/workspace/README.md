@@ -24,8 +24,6 @@ Owns host-side tab lifecycle and file-session state.
 
 ## State
 
-Target state to move here:
-
 - `tabs`
 - `activeTabId`
 - `history`
@@ -34,16 +32,14 @@ Target state to move here:
 
 ## Public API
 
-Planned public API:
-
-- workspace selectors
-- tab lifecycle state transitions
-- workspace controller commands for file and directory orchestration
-- history and restore commands
+- `createWorkspaceState()` and `createWorkspaceActions()`
+- `createWorkspaceControllerActions()`
+- `getActiveTab()` and tab update helpers
+- history persistence and restore helpers
 
 ## Side Effects
 
-Expected side effects:
+Current side effects:
 
 - file open
 - directory open

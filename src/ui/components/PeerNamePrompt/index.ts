@@ -1,1 +1,1 @@
-export { PeerNamePrompt } from './PeerNamePrompt';
+export { PeerNamePrompt } from "./PeerNamePrompt";

@@ -88,7 +88,8 @@ async function getMeta(env: Env, docId: string): Promise<ShareMeta | null> {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
-  } catch {
+  } catch (error) {
+    console.warn("[share-worker] invalid persisted share metadata:", error);
     return null;
   }
   if (!isShareMeta(parsed)) {
@@ -143,6 +144,18 @@ const MAX_BLOB_SIZE = 25 * 1024 * 1024;
 const MAX_TTL_SECONDS = 30 * 86400;
 const DEFAULT_TTL_SECONDS = 604800;
 
+interface ShareRequestContext {
+  request: Request;
+  env: Env;
+  cors: Record<string, string>;
+  url: URL;
+  docId: string;
+}
+
+interface RouteRequestContext extends Omit<ShareRequestContext, "docId"> {
+  allowedOrigins: string[];
+}
+
 function parseShareParams(url: URL, req: Request) {
   const ttl = Math.min(
     Number(url.searchParams.get("ttl") ?? DEFAULT_TTL_SECONDS),
@@ -153,22 +166,22 @@ function parseShareParams(url: URL, req: Request) {
   return { ttl, label, hostSecret };
 }
 
-async function createShare(
-  req: Request,
-  env: Env,
-  cors: Record<string, string>,
-  url: URL,
-  docId: string,
-): Promise<Response> {
+async function createShare({
+  request,
+  env,
+  cors,
+  url,
+  docId,
+}: ShareRequestContext): Promise<Response> {
   const existing = await env.LOLLIPOP_DRAGON.get(`share:${docId}:meta`);
   if (existing) {
     return errRes(409, "Document already exists", cors);
   }
-  const blob = await req.arrayBuffer();
+  const blob = await request.arrayBuffer();
   if (blob.byteLength > MAX_BLOB_SIZE) {
     return errRes(413, "Blob too large", cors);
   }
-  const { ttl, label, hostSecret } = parseShareParams(url, req);
+  const { ttl, label, hostSecret } = parseShareParams(url, request);
   if (!hostSecret) {
     return errRes(400, "X-Host-Secret required", cors);
   }
@@ -277,20 +290,17 @@ async function deleteShare(
 }
 
 async function handleShare(
-  req: Request,
-  env: Env,
-  cors: Record<string, string>,
-  url: URL,
-  docId: string,
+  context: ShareRequestContext,
 ): Promise<Response | null> {
+  const { request, env, cors, docId } = context;
   const handlers: Record<string, () => Promise<Response>> = {
-    POST: () => createShare(req, env, cors, url, docId),
+    POST: () => createShare(context),
     GET: () => getShareContent(env, cors, docId),
-    PUT: () => updateShareContent(req, env, cors, docId),
+    PUT: () => updateShareContent(request, env, cors, docId),
     HEAD: () => headShare(env, cors, docId),
-    DELETE: () => deleteShare(req, env, cors, docId),
+    DELETE: () => deleteShare(request, env, cors, docId),
   };
-  const handler = handlers[req.method];
+  const handler = handlers[request.method];
   return handler ? handler() : null;
 }
 
@@ -300,21 +310,22 @@ export function getRouteParts(pathname: string): string[] {
   return pathname.replace(/^\/+/, "").split("/");
 }
 
-async function routeRequest(
-  req: Request,
-  env: Env,
-  cors: Record<string, string>,
-  url: URL,
-  allowed: string[],
-): Promise<Response> {
+async function routeRequest(context: RouteRequestContext): Promise<Response> {
+  const { request, env, cors, url, allowedOrigins } = context;
   const parts = getRouteParts(url.pathname);
-  const [resource, docId] = parts;
+  const [resource, routeDocId] = parts;
 
   if (resource === "relay") {
-    return handleRelay(req, env, cors, allowed);
+    return handleRelay(request, env, cors, allowedOrigins);
   }
   if (resource === "share") {
-    const result = await handleShare(req, env, cors, url, docId);
+    const result = await handleShare({
+      request,
+      env,
+      cors,
+      url,
+      docId: routeDocId ?? "",
+    });
     if (result) {
       return result;
     }
@@ -335,7 +346,13 @@ export default {
     }
 
     try {
-      return await routeRequest(req, env, cors, url, allowed);
+      return await routeRequest({
+        request: req,
+        env,
+        cors,
+        url,
+        allowedOrigins: allowed,
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Internal error";
       return errRes(500, message, cors);

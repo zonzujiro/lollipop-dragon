@@ -61,9 +61,7 @@ export async function updateShare(input: {
   }
 }
 
-export async function syncActiveShares(
-  state: SharingSyncState,
-): Promise<void> {
+export async function syncActiveShares(state: SharingSyncState): Promise<void> {
   if (state.isPeerMode) {
     return;
   }

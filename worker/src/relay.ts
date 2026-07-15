@@ -41,7 +41,8 @@ function parseShareMeta(metaJson: string): RelayShareMeta | null {
   let parsed: unknown;
   try {
     parsed = JSON.parse(metaJson);
-  } catch {
+  } catch (error) {
+    console.warn("[relay-worker] invalid persisted relay metadata:", error);
     return null;
   }
   if (!isRelayShareMeta(parsed)) {
@@ -57,12 +58,23 @@ function isClearDocRequest(value: unknown): value is ClearDocRequest {
   return typeof value["docId"] === "string";
 }
 
+function getStringArray(
+  record: Record<string, unknown>,
+  key: string,
+): string[] {
+  const value = record[key];
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter((entry): entry is string => typeof entry === "string");
+}
+
 function getAttachment(ws: WebSocket): SocketAttachment {
   const raw = ws.deserializeAttachment();
-  if (raw && Array.isArray(raw.subscriptions)) {
+  if (isRecord(raw)) {
     return {
-      subscriptions: raw.subscriptions,
-      hostDocs: Array.isArray(raw.hostDocs) ? raw.hostDocs : [],
+      subscriptions: getStringArray(raw, "subscriptions"),
+      hostDocs: getStringArray(raw, "hostDocs"),
     };
   }
   return { subscriptions: [], hostDocs: [] };
@@ -157,13 +169,17 @@ export class RelayHubSqlite implements DurableObject {
     const requestUrl = new URL(request.url);
     if (request.headers.get("Upgrade") === "websocket") {
       const pair = new WebSocketPair();
-      const [client, server] = Object.values(pair);
+      const client = pair[0];
+      const server = pair[1];
       this.state.acceptWebSocket(server);
       setAttachment(server, { subscriptions: [], hostDocs: [] });
       return new Response(null, { status: 101, webSocket: client });
     }
 
-    if (request.method === "POST" && requestUrl.pathname === "/internal/clear") {
+    if (
+      request.method === "POST" &&
+      requestUrl.pathname === "/internal/clear"
+    ) {
       const body: unknown = await request.json();
       if (!isClearDocRequest(body)) {
         return new Response("Bad Request", { status: 400 });
@@ -216,14 +232,20 @@ export class RelayHubSqlite implements DurableObject {
     const metaJson = await this.env.LOLLIPOP_DRAGON.get(`share:${docId}:meta`);
     if (!metaJson) {
       this.clearDoc(docId);
-      ws.send(JSON.stringify({ type: "error", docId, message: "Doc not found" }));
+      ws.send(
+        JSON.stringify({ type: "error", docId, message: "Doc not found" }),
+      );
       return;
     }
 
     const meta = parseShareMeta(metaJson);
     if (!meta) {
       ws.send(
-        JSON.stringify({ type: "error", docId, message: "Invalid share metadata" }),
+        JSON.stringify({
+          type: "error",
+          docId,
+          message: "Invalid share metadata",
+        }),
       );
       return;
     }
@@ -231,7 +253,9 @@ export class RelayHubSqlite implements DurableObject {
     const expiresAt = new Date(meta.createdAt).getTime() + meta.ttl * 1000;
     if (expiresAt <= Date.now()) {
       this.clearDoc(docId);
-      ws.send(JSON.stringify({ type: "error", docId, message: "Share expired" }));
+      ws.send(
+        JSON.stringify({ type: "error", docId, message: "Share expired" }),
+      );
       return;
     }
 
@@ -300,14 +324,16 @@ export class RelayHubSqlite implements DurableObject {
   }
 
   private sendSnapshot(ws: WebSocket, docId: string): void {
-    const rows = this.sql.exec(
-      `SELECT cmt_id, payload
+    const rows = this.sql
+      .exec(
+        `SELECT cmt_id, payload
        FROM comments
        WHERE doc_id = ? AND expires_at > ?
        ORDER BY created_at`,
-      docId,
-      Date.now(),
-    ).toArray();
+        docId,
+        Date.now(),
+      )
+      .toArray();
     const comments = rows.map((row) => ({
       cmtId: String(row.cmt_id),
       payload: String(row.payload),
@@ -332,19 +358,24 @@ export class RelayHubSqlite implements DurableObject {
     const payload = frame.payload;
     const attachment = getAttachment(ws);
     if (!attachment.subscriptions.includes(docId)) {
-      ws.send(JSON.stringify({ type: "error", docId, message: "Not subscribed" }));
+      ws.send(
+        JSON.stringify({ type: "error", docId, message: "Not subscribed" }),
+      );
       return;
     }
 
-    const rows = this.sql.exec(
-      "SELECT expires_at FROM doc_meta WHERE doc_id = ?",
-      docId,
-    ).toArray();
+    const rows = this.sql
+      .exec("SELECT expires_at FROM doc_meta WHERE doc_id = ?", docId)
+      .toArray();
     const expiresAt = Number(rows[0]?.expires_at ?? 0);
     if (expiresAt <= Date.now()) {
       this.clearDoc(docId);
       ws.send(
-        JSON.stringify({ type: "error", docId, message: "Share expired or not found" }),
+        JSON.stringify({
+          type: "error",
+          docId,
+          message: "Share expired or not found",
+        }),
       );
       return;
     }
@@ -374,10 +405,7 @@ export class RelayHubSqlite implements DurableObject {
     ws: WebSocket,
     frame: Record<string, unknown>,
   ): void {
-    if (
-      typeof frame.docId !== "string" ||
-      typeof frame.cmtId !== "string"
-    ) {
+    if (typeof frame.docId !== "string" || typeof frame.cmtId !== "string") {
       return;
     }
 
@@ -444,9 +472,9 @@ export class RelayHubSqlite implements DurableObject {
   }
 
   private async scheduleNextAlarm(): Promise<void> {
-    const rows = this.sql.exec(
-      "SELECT MIN(expires_at) AS next_expires_at FROM comments",
-    ).toArray();
+    const rows = this.sql
+      .exec("SELECT MIN(expires_at) AS next_expires_at FROM comments")
+      .toArray();
     const nextExpiresAt = Number(rows[0]?.next_expires_at ?? 0);
     if (nextExpiresAt <= 0) {
       await this.state.storage.deleteAlarm();

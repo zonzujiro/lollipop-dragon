@@ -9,16 +9,27 @@ export function useHashRouter(): boolean {
   const [peerModeChecked, setPeerModeChecked] = useState(false);
 
   useEffect(() => {
+    async function restoreWorkspace() {
+      try {
+        await restoreTabs();
+      } catch (error) {
+        console.warn("[useHashRouter] failed to restore tabs:", error);
+      }
+    }
+
     function checkHash() {
       if (isShareHash() && WORKER_URL) {
         loadSharedContent()
           .catch((error: unknown) => {
-            console.warn("[useHashRouter] failed to load shared content:", error);
+            console.warn(
+              "[useHashRouter] failed to load shared content:",
+              error,
+            );
           })
           .finally(() => setPeerModeChecked(true));
       } else {
         setPeerModeChecked(true);
-        restoreTabs();
+        void restoreWorkspace();
       }
     }
     checkHash();

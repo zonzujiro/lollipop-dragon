@@ -99,7 +99,8 @@ export function loadWorkspaceHistory(): HistoryEntry[] {
     }
 
     return parsed.filter(isHistoryEntry);
-  } catch {
+  } catch (error) {
+    console.warn("[workspace] failed to load persisted history:", error);
     return [];
   }
 }

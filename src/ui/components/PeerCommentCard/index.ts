@@ -1,1 +1,1 @@
-export { PeerCommentCard } from './PeerCommentCard';
+export { PeerCommentCard } from "./PeerCommentCard";

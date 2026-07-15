@@ -377,8 +377,7 @@ For records that have `sharedPaths`, the entity path is derived from that field.
 App
 ├── (all v1 components unchanged)
 ├── ShareButton               — header button; opens ShareDialog
-├── ShareDialog               — select file/folder, choose an expiry tab, upload on copy
-├── SharedPanel               — right panel (or modal) listing active shares
+├── ShareDialog               — create shares and manage active shares in one modal
 │   ├── ShareEntry            — one active share: label, expiry, pending count
 │   │   ├── RevokeButton
 │   │   ├── UpdateButton
@@ -471,19 +470,19 @@ loadSharedContent: () => Promise<void>                       // peer mode init
 - If fetch fails (expired/revoked): show "This document is no longer available"
 - **Deliverable:** Peer opens link → enters name → sees the full document
 
-**2a.6 — Shared panel (host)**
+**2a.6 — Share management (host)**
 
-- "Shared" button in header opens `SharedPanel`
+- "Share" button in the header opens the management view in `ShareDialog`
 - Lists all active `ShareRecord` entries from localStorage
 - Each entry: label, created date, expiry countdown, "Revoke" and "Update" buttons
 - "Revoke": calls `deleteContent()`, removes from localStorage, shows toast
 - "Update": re-encrypts current file state, calls `uploadContent()` with same expiry (new docId + new key → new link generated; old link stops working)
-- **Deliverable:** Host can see, revoke, and update all active shares
+- **Deliverable:** Host can see, revoke, and update all active shares in the share dialog
 
 **2a.7 — Iteration 2a testing**
 
 - Unit tests: crypto round-trip, compression, ShareStorage (mocked Worker)
-- Component tests: ShareDialog flow, PeerNamePrompt, SharedPanel entries
+- Component tests: ShareDialog flow and active entries, PeerNamePrompt
 - Integration test: serialize folder → encrypt → decrypt → deserialize → verify tree matches original
 - Integration test: share record persists in localStorage; revoke removes it
 - Manual test: generate link → open in incognito tab → verify document renders correctly
@@ -514,13 +513,13 @@ loadSharedContent: () => Promise<void>                       // peer mode init
 **2b.3 — Host: fetch and decrypt comments**
 
 - `fetchComments(docId)` in ShareStorage: GET all comment blobs, decrypt each, return `PeerComment[]`
-- "Check comments" button on each `ShareEntry` in `SharedPanel`
+- "Check comments" button on each `ShareEntry` in `ShareDialog`
 - Shows pending count badge; updates `pendingCommentCount` in localStorage
 - **Deliverable:** Host can fetch and see all pending peer comments in the Shared panel
 
 **2b.4 — Peer comment review UI**
 
-- `PendingCommentReview` component inside `SharedPanel`
+- `PendingCommentReview` component inside `ShareDialog`
 - Each `PeerCommentCard` shows: peer name, file path, block content preview, comment type badge, comment text, "Merge" and "Dismiss" buttons
 - Dismiss: removes from pending list (no Worker call — the comment stays but is ignored)
 - **Deliverable:** Host can read all pending comments with full context before deciding
@@ -547,7 +546,7 @@ loadSharedContent: () => Promise<void>                       // peer mode init
 - Unit tests: peer attribution suffix appended correctly
 - Integration test: peer posts comment → host fetches → host merges → verify CriticMarkup in file
 - Integration test: bulk merge writes all comments without corrupting file
-- Component tests: PeerCommentCard, PendingCommentReview, SharedPanel with badge
+- Component tests: PeerCommentCard, PendingCommentReview, ShareDialog with badge
 - Manual test: full peer → host flow with a real markdown document
 - **Deliverable:** Test suite passes; full async comment workflow verified end-to-end
 

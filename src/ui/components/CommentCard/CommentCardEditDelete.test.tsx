@@ -3,9 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import { CommentCard } from "./index";
 import { makeComment } from "../../../testing/testHelpers";
+import type { Comment } from "../../../types/criticmarkup";
 
-const fixDefaults = {
-  type: "fix" as const,
+const fixDefaults: Partial<Comment> = {
+  type: "fix",
   text: "fix this",
   raw: "{>>fix: fix this<<}",
   rawEnd: 19,

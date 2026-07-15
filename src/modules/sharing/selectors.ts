@@ -1,9 +1,9 @@
 import type { PeerComment } from "../../types/share";
 import type { SharingTabState } from "./types";
 
-export function selectHasActiveShares<TabState extends Pick<SharingTabState, "shares">>(
-  tab: TabState,
-): boolean {
+export function selectHasActiveShares<
+  TabState extends Pick<SharingTabState, "shares">,
+>(tab: TabState): boolean {
   return tab.shares.some((share) => new Date(share.expiresAt) > new Date());
 }
 
