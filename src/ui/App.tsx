@@ -21,7 +21,6 @@ import { findLiveFileInTree } from "../types/fileTree";
 import type { SidebarTreeNode } from "../types/fileTree";
 import { RestoreError } from "./components/RestoreError";
 import { ContentUpdateBanner } from "./components/ContentUpdateBanner";
-import { PanelLeftOpenIcon } from "./components/Icons";
 import {
   getRestoreAccessActionLabel,
   getRestoreOpenOtherLabel,
@@ -406,7 +405,17 @@ function App() {
             aria-label="Show sidebar"
             title="Show sidebar (⌘B)"
           >
-            <PanelLeftOpenIcon />
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              <path d="M9 18l6-6-6-6" />
+            </svg>
           </button>
         )}
         <main className="app-main">

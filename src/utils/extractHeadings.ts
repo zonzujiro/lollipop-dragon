@@ -1,6 +1,4 @@
-import { unified } from "unified";
-import remarkParse from "remark-parse";
-import remarkGfm from "remark-gfm";
+import { getRenderedBlocks } from "../markup/commentAnchor";
 
 export interface Heading {
   level: number;
@@ -30,11 +28,13 @@ function extractText(node: MdastNode): string {
  * with their level, text content, and top-level block index.
  */
 export function extractHeadings(cleanMarkdown: string): Heading[] {
-  const tree = unified().use(remarkParse).use(remarkGfm).parse(cleanMarkdown);
+  // Index over RENDERED blocks: footnote/link definitions produce no element,
+  // so counting raw mdast children would drift every index after them.
+  const { nodes } = getRenderedBlocks(cleanMarkdown);
 
   const headings: Heading[] = [];
-  for (let i = 0; i < tree.children.length; i++) {
-    const node = tree.children[i];
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i];
     if (node.type === "heading" && node.depth !== undefined) {
       headings.push({
         level: node.depth,

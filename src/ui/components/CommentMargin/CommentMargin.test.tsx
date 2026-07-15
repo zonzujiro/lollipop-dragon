@@ -109,8 +109,7 @@ describe("CommentMargin — add button", () => {
     );
     const addButton = screen.getByRole("button", { name: "Add comment" });
     expect(addButton).toBeInTheDocument();
-    expect(addButton).toHaveTextContent("+");
-    expect(addButton.querySelector("svg")).toBeNull();
+    expect(addButton.querySelector("svg")).toBeInTheDocument();
   });
 
   it("does not show the add button when hoveredBlock is null", () => {

@@ -41,3 +41,16 @@ describe("extractHeadings", () => {
     expect(result[0].text).toBe("Hello world and code");
   });
 });
+
+describe("extractHeadings — rendered block alignment", () => {
+  it("skips footnote and link definitions when counting block indices", () => {
+    const md =
+      "# Alpha\n\nUses a note.[^a]\n\n[^a]: The note.\n\n[ref]: https://example.com\n\n## Beta\n\nBody.";
+    const headings = extractHeadings(md);
+    expect(headings).toEqual([
+      { level: 1, text: "Alpha", blockIndex: 0 },
+      // definitions render nothing — Beta is the third rendered block
+      { level: 2, text: "Beta", blockIndex: 2 },
+    ]);
+  });
+});

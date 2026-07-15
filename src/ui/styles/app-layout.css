@@ -49,21 +49,21 @@
 }
 
 .sidebar-reopen {
+  /* slim restore control at the document's top-left (design 02-screens §2) */
   position: absolute;
-  top: 0.75rem;
-  left: 0;
+  top: 12px;
+  left: 10px;
   z-index: 20;
   display: flex;
-  width: 2rem;
-  height: 2rem;
+  width: 26px;
+  height: 26px;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--border);
-  border-left: 0;
-  border-radius: 0 6px 6px 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
   background: var(--surface);
-  color: var(--text-muted);
-  box-shadow: var(--shadow-sm);
+  color: var(--ink-muted);
+  box-shadow: var(--shadow-card);
   cursor: pointer;
 }
 
