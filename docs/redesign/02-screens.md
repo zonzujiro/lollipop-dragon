@@ -37,7 +37,7 @@ Right **comment rail** (332px, `CommentPanel`): "Comments · N open (· M resolv
 
 ## 3. Composer (replaces `AddCommentPopover`-style popup)
 
-Floating card (390px, raised surface, drag handle) anchored under the target block: italic serif quote line with type-colored left rule (when a range is anchored) → type chip row (clarify/rewrite, keys 1–2, selected chip fills with type-soft) → textarea → footer: honesty line **"Written into the file as CriticMarkup"** (peer mode: "Sent to the host — encrypted") + primary button `Comment ⌘↵`. Esc dismisses; click-outside dismisses; one composer at a time (opening another closes the first — matches the existing single-active-input rule). Legacy comment types remain readable but are not offered for new comments.
+Floating card (390px, raised surface, drag handle) anchored under the target block: italic serif quote line with type-colored left rule (when a range is anchored) → type chip row (question/clarify/rewrite/remove, keys 1–4, **question is the default**, selected chip fills with type-soft; remove is destructive red) → textarea → footer: honesty line **"Written into the file as CriticMarkup"** (peer mode: "Sent to the host — encrypted") + primary button `Comment ⌘↵`. Esc dismisses; click-outside dismisses; one composer at a time (opening another closes the first — matches the existing single-active-input rule). Legacy comment types (fix/expand) remain readable but are not offered for new comments. Question comments open threads: replies render under the root in the rail and thread card, agent replies are read-only, and answering marks the root `✓ answered`.
 
 Visual verification: the composer has no legacy `Add comment` title row or
 separate Cancel button; dismissal remains available through Esc and

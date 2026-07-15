@@ -175,6 +175,23 @@ function ShieldIcon() {
   );
 }
 
+// The readable origin stays ink; the secret fragment is dimmed — it is the
+// part that never reaches a server (02-screens §4).
+function ShareUrlPreview({ link }: { link: string }) {
+  const display = truncateShareUrlForDisplay(link);
+  const hashIndex = display.indexOf("#");
+  const base = hashIndex === -1 ? display : display.slice(0, hashIndex);
+  const fragment = hashIndex === -1 ? null : display.slice(hashIndex);
+  return (
+    <p className="share-dialog__url" aria-label="Shareable link">
+      {base}
+      {fragment && (
+        <span className="share-dialog__url-fragment">{fragment}</span>
+      )}
+    </p>
+  );
+}
+
 export function ShareDialog({ onClose, scope }: Props) {
   const tab = useActiveTab();
   const shareContent = useAppStore((state) => state.shareContent);
@@ -449,9 +466,7 @@ export function ShareDialog({ onClose, scope }: Props) {
               <LockIcon /> Encrypted link — key never leaves the URL
             </p>
             {link ? (
-              <p className="share-dialog__url" aria-label="Shareable link">
-                {truncateShareUrlForDisplay(link)}
-              </p>
+              <ShareUrlPreview link={link} />
             ) : (
               <p className="share-dialog__preparing">
                 {identityStatus === "failed"

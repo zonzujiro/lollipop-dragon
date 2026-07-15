@@ -667,7 +667,9 @@ function MarkdownRendererContent({
     }
   }, [agentChangedBlocks, cleanMarkdown]);
 
-  const prevCommentsRef = useRef(comments);
+  // null sentinel: the initial mount must push too — a restored tab arrives
+  // with content already in place, and the margin/panel read the store.
+  const prevCommentsRef = useRef<Comment[] | null>(null);
   useEffect(() => {
     if (!isPeerMode && prevCommentsRef.current !== comments) {
       prevCommentsRef.current = comments;

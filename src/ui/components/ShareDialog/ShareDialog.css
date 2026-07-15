@@ -387,3 +387,7 @@
     backdrop-filter: none;
   }
 }
+
+.share-dialog__url-fragment {
+  color: var(--ink-muted);
+}

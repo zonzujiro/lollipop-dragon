@@ -164,7 +164,7 @@
 
 /* ── Add comment form ────────────────────────────────────────── */
 .comment-add-form {
-  --comment-type-color: var(--c-clarify);
+  --comment-type-color: var(--c-question);
   position: absolute;
   left: calc(100% + 0.75rem);
   z-index: 60;
@@ -182,8 +182,16 @@
   font: 14px/1.4 var(--font-ui);
 }
 
+.comment-add-form[data-comment-type="clarify"] {
+  --comment-type-color: var(--c-clarify);
+}
+
 .comment-add-form[data-comment-type="rewrite"] {
   --comment-type-color: var(--c-rewrite);
+}
+
+.comment-add-form[data-comment-type="remove"] {
+  --comment-type-color: var(--c-remove);
 }
 
 .comment-add-form--dragging {
@@ -256,6 +264,11 @@
     border-color 120ms;
 }
 
+.comment-add-form__type[data-comment-type="question"] {
+  --comment-chip-color: var(--c-question);
+  --comment-chip-soft: var(--c-question-soft);
+}
+
 .comment-add-form__type[data-comment-type="clarify"] {
   --comment-chip-color: var(--c-clarify);
   --comment-chip-soft: var(--c-clarify-soft);
@@ -264,6 +277,11 @@
 .comment-add-form__type[data-comment-type="rewrite"] {
   --comment-chip-color: var(--c-rewrite);
   --comment-chip-soft: var(--c-rewrite-soft);
+}
+
+.comment-add-form__type[data-comment-type="remove"] {
+  --comment-chip-color: var(--c-remove);
+  --comment-chip-soft: var(--c-remove-soft);
 }
 
 .comment-add-form__type-mark {

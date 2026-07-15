@@ -247,7 +247,7 @@ describe("CommentPanel — active entry", () => {
       screen.queryByRole("button", { name: "Edit comment" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Delete comment" }),
+      screen.getByRole("button", { name: "Resolve comment" }),
     ).toBeInTheDocument();
   });
 });
@@ -497,7 +497,9 @@ describe("CommentPanel — resolved history", () => {
     expect(screen.getByText("resolved")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Resolved 1/ })).toBeVisible();
     expect(screen.queryByRole("button", { name: "Edit comment" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Delete comment" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Resolve comment" }),
+    ).toBeNull();
     expect(screen.queryByRole("button", { name: "Clear" })).toBeNull();
   });
 });

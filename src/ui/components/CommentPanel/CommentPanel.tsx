@@ -1223,11 +1223,14 @@ function CommentEntry({
             </button>
           )}
           <button
-            className="comment-panel__entry-delete"
-            onClick={() => setConfirming(true)}
-            aria-label="Delete comment"
+            className="comment-panel__entry-resolve"
+            onClick={(event) => {
+              event.stopPropagation();
+              onDelete?.(comment.id);
+            }}
+            aria-label="Resolve comment"
           >
-            Del
+            ✓ Resolve
           </button>
         </span>
       )}

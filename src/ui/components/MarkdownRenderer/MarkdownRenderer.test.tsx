@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -369,5 +369,17 @@ describe("MarkdownRenderer — GFM footnotes", () => {
     // two rendered paragraphs (0, 1), then the footnotes section (2) — the
     // definition itself must not shift rendered block indices
     expect(section?.getAttribute("data-block-index")).toBe("2");
+  });
+});
+
+describe("MarkdownRenderer — margin markers", () => {
+  it("renders a margin square for block-level and range comments", async () => {
+    setContent(
+      'Alpha paragraph body.{>>question: Why is this so?<<}\n\nBeta paragraph body. {>>clarify: Tighten this. @@ "Beta paragraph body."<<}',
+    );
+    const { container } = render(<MarkdownRenderer />);
+    await waitFor(() => {
+      expect(container.querySelectorAll(".comment-margin__dot").length).toBe(2);
+    });
   });
 });

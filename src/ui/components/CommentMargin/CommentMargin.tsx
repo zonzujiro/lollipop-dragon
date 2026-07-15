@@ -16,7 +16,10 @@ import type {
   CommentType,
 } from "../../../types/criticmarkup";
 import type { PeerComment } from "../../../types/share";
-import { USER_COMMENT_TYPES } from "../../commentTypes";
+import {
+  DEFAULT_USER_COMMENT_TYPE,
+  USER_COMMENT_TYPES,
+} from "../../commentTypes";
 
 const EMPTY_COMMENTS: Comment[] = [];
 const EMPTY_PEER_COMMENTS: PeerComment[] = [];
@@ -56,7 +59,7 @@ function AddCommentForm({
   anchor,
   peerMode = false,
 }: AddCommentFormProps) {
-  const [type, setType] = useState<CommentType>("clarify");
+  const [type, setType] = useState<CommentType>(DEFAULT_USER_COMMENT_TYPE);
   const [text, setText] = useState("");
   const formStyle: React.CSSProperties = dragPosition
     ? {

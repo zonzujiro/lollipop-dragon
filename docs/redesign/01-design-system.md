@@ -28,17 +28,17 @@ Rules: never pure black/white; elevation in dark mode = lighter surface (4 level
 
 ### Comment taxonomy colors
 
-| Type     | Light     | Dark      | Meaning                          |
-| -------- | --------- | --------- | -------------------------------- |
-| fix      | `#D93030` | `#F07272` | something is wrong — correct it  |
-| rewrite  | `#C07A10` | `#E0A33E` | right idea, wrong words          |
-| expand   | `#2563EB` | `#6D9BF5` | true but incomplete — go deeper  |
-| clarify  | `#7C4FD0` | `#A98BE8` | ambiguous — make it precise      |
-| question | `#0E8A9E` | `#4FB8CB` | needs an answer, opens a thread  |
-| answer   | `#2E9678` | `#4CBA9A` | the reply — often from the agent |
-| remove   | `#6E6659` | `#97907F` | doesn't belong — cut it          |
+| Type     | Light     | Dark      | Meaning                                                             |
+| -------- | --------- | --------- | ------------------------------------------------------------------- |
+| fix      | `#D93030` | `#F07272` | something is wrong — correct it                                     |
+| rewrite  | `#C07A10` | `#E0A33E` | right idea, wrong words                                             |
+| expand   | `#2563EB` | `#6D9BF5` | true but incomplete — go deeper                                     |
+| clarify  | `#7C4FD0` | `#A98BE8` | ambiguous — make it precise                                         |
+| question | `#0E8A9E` | `#4FB8CB` | needs an answer, opens a thread                                     |
+| answer   | `#2E9678` | `#4CBA9A` | the reply — often from the agent                                    |
+| remove   | `#D93030` | `#F07272` | doesn't belong — cut it (destructive red; user decision 2026-07-15) |
 
-Each has a `-soft` translucent variant (see tokens.css) used for text tints and badge backgrounds. Every type must hold ≥3:1 contrast against `--surface` in both themes — dark values are deliberately lifted/saturated. Color is never the only signal: type name always appears in the tag.
+Each has a `-soft` translucent variant (see tokens.css) used for text tints and badge backgrounds. Every type must hold ≥3:1 contrast against `--surface` in both themes — dark values are deliberately lifted/saturated. Color is never the only signal: type name always appears in the tag. New comments offer **question (default) · clarify · rewrite · remove**; legacy types stay readable.
 
 ## Typography
 

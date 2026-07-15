@@ -434,12 +434,10 @@
     box-shadow 0.12s;
 }
 
-/* quiet hover — the card firms up, it doesn't jump (design principle 03).
-   Never touches the left border: it always keeps the taxonomy color. */
+/* quiet hover, straight from the prototype: the whole border (taxonomy
+   left edge included) goes neutral and the Resolve action appears. */
 .comment-panel__entry:hover {
-  border-top-color: var(--line-strong);
-  border-right-color: var(--line-strong);
-  border-bottom-color: var(--line-strong);
+  border-color: var(--line-strong);
 }
 
 .comment-panel__entry--active {
@@ -602,6 +600,7 @@
 }
 
 .comment-panel__entry-edit,
+.comment-panel__entry-resolve,
 .comment-panel__entry-delete {
   height: 22px;
   padding: 0 8px;
@@ -625,6 +624,12 @@
   background-color: rgba(224, 49, 49, 0.08);
   border-color: var(--c-red);
   color: var(--c-red);
+}
+
+.comment-panel__entry-resolve:hover {
+  background-color: var(--agent-soft);
+  border-color: var(--agent);
+  color: var(--agent);
 }
 
 .comment-panel__inline-edit {
