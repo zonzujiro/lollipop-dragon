@@ -1219,7 +1219,7 @@ function CommentEntry({
               onClick={() => setEditing(true)}
               aria-label="Edit comment"
             >
-              Edit
+              ✎ Edit
             </button>
           )}
           <button
