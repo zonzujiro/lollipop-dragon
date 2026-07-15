@@ -39,6 +39,7 @@ import {
 import { getActiveAgentRunForTab } from "../../../modules/agent-workflow";
 import type { MarkdownMetadataField } from "../../../markup";
 import type { Comment, CommentAnchorDraft } from "../../../types/criticmarkup";
+import { COMMENT_TYPE_COLOR } from "../../../types/criticmarkup";
 import type { PeerComment } from "../../../types/share";
 import {
   getRestoreOpenOtherLabel,
@@ -734,11 +735,19 @@ function MarkdownRendererContent({
       : undefined;
     let spotlit = false;
     if (spans && hoveredId) {
+      const color = COMMENT_TYPE_COLOR[hoveredBlockHighlight.commentType];
+      const soloTint = `linear-gradient(color-mix(in srgb, ${color} 14%, transparent), color-mix(in srgb, ${color} 14%, transparent))`;
       for (const span of spans) {
         const covers = (span.dataset.cids ?? "").split(" ").includes(hoveredId);
         span.classList.toggle("comment-highlight--focus", covers);
         span.classList.toggle("comment-highlight--muted", !covers);
         if (covers) {
+          // shared segments stack every covering comment's tint and stripe —
+          // while spotlit, only the hovered comment may speak
+          span.dataset.spotlightBackground = span.style.backgroundImage;
+          span.dataset.spotlightShadow = span.style.boxShadow;
+          span.style.backgroundImage = soloTint;
+          span.style.boxShadow = `inset 0 -2px 0 ${color}`;
           spotlit = true;
         }
       }
@@ -749,6 +758,14 @@ function MarkdownRendererContent({
               "comment-highlight--focus",
               "comment-highlight--muted",
             );
+            if (span.dataset.spotlightBackground !== undefined) {
+              span.style.backgroundImage = span.dataset.spotlightBackground;
+              delete span.dataset.spotlightBackground;
+            }
+            if (span.dataset.spotlightShadow !== undefined) {
+              span.style.boxShadow = span.dataset.spotlightShadow;
+              delete span.dataset.spotlightShadow;
+            }
           }
         };
       }

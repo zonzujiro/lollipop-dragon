@@ -1161,13 +1161,27 @@ $("#palette-overlay").addEventListener("click", (e) => { if (e.target === e.curr
 document.addEventListener("mouseover", (e) => {
   const blk = e.target.closest(".blk");
   if (blk) state.hoverBlock = { file: blk.dataset.file, i: parseInt(blk.dataset.i, 10) };
-  // spotlight: hovering a rail card focuses its spans, mutes the others
+  // spotlight: hovering a rail card focuses its spans, mutes the others;
+  // focused spans drop every other comment's tint/stripe while spotlit
   const card = e.target.closest(".c-card[data-cid]");
   const hoveredId = card ? card.dataset.cid : null;
+  const hoveredComment = hoveredId ? COMMENTS.find((x) => x.id === hoveredId) : null;
   document.querySelectorAll(".hl2").forEach((span) => {
+    if (span.dataset.obg !== undefined) {
+      span.style.backgroundImage = span.dataset.obg;
+      span.style.boxShadow = span.dataset.osh;
+      delete span.dataset.obg;
+      delete span.dataset.osh;
+    }
     const covers = hoveredId && (span.dataset.cids || "").split(",").includes(hoveredId);
     span.classList.toggle("hl2-focus", !!covers);
     span.classList.toggle("hl2-muted", !!hoveredId && !covers);
+    if (covers && hoveredComment) {
+      span.dataset.obg = span.style.backgroundImage;
+      span.dataset.osh = span.style.boxShadow;
+      span.style.backgroundImage = `linear-gradient(var(--c-${hoveredComment.type}-soft), var(--c-${hoveredComment.type}-soft))`;
+      span.style.boxShadow = `inset 0 -2px 0 var(--c-${hoveredComment.type})`;
+    }
   });
 });
 

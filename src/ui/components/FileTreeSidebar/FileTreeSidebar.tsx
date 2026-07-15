@@ -2,7 +2,6 @@ import "./FileTreeSidebar.css";
 import { useState, type ReactNode } from "react";
 import type { SidebarTreeNode } from "../../../types/fileTree";
 import type { ShareRecord } from "../../../types/share";
-import { PanelLeftCloseIcon } from "../Icons";
 
 function ChevronIcon({ expanded }: { expanded: boolean }) {
   return (
@@ -171,7 +170,16 @@ export function FileTreeSidebar({
               title="Hide sidebar (⌘B)"
               aria-label="Hide sidebar"
             >
-              <PanelLeftCloseIcon />
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
             </button>
           )}
         </div>

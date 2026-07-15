@@ -420,11 +420,22 @@ describe("MarkdownRenderer — hover spotlight", () => {
       });
     });
 
+    const sharedSpan = spans.find(
+      (span) => (span.dataset.cids ?? "").split(" ").length > 1,
+    );
+    if (!sharedSpan) {
+      throw new Error("Expected a span shared by two comments");
+    }
+
     for (const span of spans) {
       const covers = (span.dataset.cids ?? "").split(" ").includes(hoveredId);
       expect(span.classList.contains("comment-highlight--focus")).toBe(covers);
       expect(span.classList.contains("comment-highlight--muted")).toBe(!covers);
     }
+    // while spotlit, the shared segment renders only the hovered comment's
+    // stripe (the stacked styles are parked on the dataset for restore)
+    expect(sharedSpan.dataset.spotlightShadow).toBeDefined();
+    expect(sharedSpan.style.boxShadow).toBe("inset 0 -2px 0 var(--c-clarify)");
 
     act(() => {
       useAppStore.getState().setHoveredBlockHighlight(null);
@@ -433,5 +444,7 @@ describe("MarkdownRenderer — hover spotlight", () => {
       expect(span.classList.contains("comment-highlight--focus")).toBe(false);
       expect(span.classList.contains("comment-highlight--muted")).toBe(false);
     }
+    // stacked styles restored after unhover
+    expect(sharedSpan.dataset.spotlightShadow).toBeUndefined();
   });
 });
