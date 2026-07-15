@@ -1,1 +1,2 @@
-export { MarkdownRenderer, CodeBlock, PreBlock } from "./MarkdownRenderer";
+export { MarkdownRenderer } from "./MarkdownRenderer";
+export { CodeBlock, PreBlock } from "./MarkdownSpecialBlocks";

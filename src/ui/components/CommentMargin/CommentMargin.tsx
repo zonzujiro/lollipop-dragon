@@ -6,205 +6,20 @@ import {
 } from "../../../markup";
 import { useActiveTabField } from "../../../store/selectors";
 import { useCommentMarginStore } from "../../../store/uiHooks";
-import { peerColor, initials } from "../../../utils/peerDisplay";
 import type {
   Comment,
   CommentAnchorDraft,
   CommentType,
 } from "../../../types/criticmarkup";
 import type { PeerComment } from "../../../types/share";
-import {
-  DEFAULT_USER_COMMENT_TYPE,
-  USER_COMMENT_TYPES,
-} from "../../commentTypes";
+import { AddCommentForm, type FloatingCardPosition } from "./AddCommentForm";
+import { CommentMarkers, type DotGroup } from "./CommentMarkers";
 
 const EMPTY_COMMENTS: Comment[] = [];
-const COMMENT_TYPE_HINTS: Record<CommentType, string> = {
-  fix: "something is wrong — correct it",
-  rewrite: "right idea, wrong words",
-  expand: "true but incomplete — go deeper",
-  clarify: "ambiguous — make it precise",
-  question: "needs an answer, opens a thread",
-  answer: "provide a direct answer",
-  note: "add context for the reviewer",
-  remove: "doesn’t belong — cut it",
-};
-
-interface AddCommentFormProps {
-  top: number;
-  dragPosition?: FloatingCardPosition | null;
-  dragging?: boolean;
-  formRef?: React.RefObject<HTMLFormElement | null>;
-  onDragStart?: (event: React.PointerEvent) => void;
-  onSubmit: (type: CommentType, text: string) => void;
-  onCancel: () => void;
-  disabled?: boolean;
-  anchor?: CommentAnchorDraft;
-  peerMode?: boolean;
-}
-
-function AddCommentForm({
-  top,
-  dragPosition = null,
-  dragging = false,
-  formRef,
-  onDragStart,
-  onSubmit,
-  onCancel,
-  disabled = false,
-  anchor,
-  peerMode = false,
-}: AddCommentFormProps) {
-  const [type, setType] = useState<CommentType>(DEFAULT_USER_COMMENT_TYPE);
-  const [text, setText] = useState("");
-  const formStyle: React.CSSProperties = dragPosition
-    ? {
-        position: "fixed",
-        top: dragPosition.top,
-        left: dragPosition.left,
-      }
-    : { top };
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!text.trim()) {
-      return;
-    }
-    onSubmit(type, text.trim());
-  }
-
-  function handleKeyDown(event: React.KeyboardEvent<HTMLFormElement>) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      onCancel();
-      return;
-    }
-    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-      event.preventDefault();
-      if (text.trim()) {
-        onSubmit(type, text.trim());
-      }
-      return;
-    }
-    if (event.target instanceof HTMLTextAreaElement) {
-      return;
-    }
-    const typeIndex = Number(event.key) - 1;
-    const selectedType = USER_COMMENT_TYPES[typeIndex];
-    if (selectedType) {
-      event.preventDefault();
-      setType(selectedType);
-    }
-  }
-
-  return (
-    <form
-      ref={formRef}
-      className={`comment-add-form${dragging ? " comment-add-form--dragging" : ""}`}
-      data-comment-type={type}
-      style={formStyle}
-      onSubmit={handleSubmit}
-      onKeyDown={handleKeyDown}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div
-        className="comment-add-form__drag-handle"
-        onPointerDown={onDragStart}
-        title="Drag comment panel"
-      >
-        <span aria-hidden="true" />
-      </div>
-      {anchor && (
-        <blockquote className="comment-add-form__quote">
-          “{anchor.quote}”
-        </blockquote>
-      )}
-      <div className="comment-add-form__types">
-        {USER_COMMENT_TYPES.map((commentType, index) => (
-          <button
-            key={commentType}
-            type="button"
-            className={`comment-add-form__type${type === commentType ? " comment-add-form__type--active" : ""}`}
-            data-comment-type={commentType}
-            aria-pressed={type === commentType}
-            onClick={() => setType(commentType)}
-            disabled={disabled}
-          >
-            {type === commentType && (
-              <span
-                className="comment-add-form__type-mark"
-                aria-hidden="true"
-              />
-            )}
-            {commentType}
-            <kbd>{index + 1}</kbd>
-          </button>
-        ))}
-      </div>
-      <textarea
-        className="comment-add-form__input"
-        placeholder={`${COMMENT_TYPE_HINTS[type]}…`}
-        aria-label="Comment text"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        rows={3}
-        autoFocus
-        disabled={disabled}
-      />
-      <div className="comment-add-form__actions">
-        <span className="comment-add-form__honesty">
-          {peerMode
-            ? "Sent to the host — encrypted"
-            : "Written into the file as CriticMarkup"}
-        </span>
-        <button
-          type="submit"
-          className="comment-add-form__save"
-          disabled={disabled || !text.trim()}
-          aria-label="Save"
-        >
-          Comment <kbd>⌘↵</kbd>
-        </button>
-      </div>
-    </form>
-  );
-}
-
-interface DotGroup {
-  top: number;
-  threads: CommentThreadGroup[];
-}
-
-interface FloatingCardPosition {
-  top: number;
-  left: number;
-}
 
 interface FloatingCardDragState {
   offsetTop: number;
   offsetLeft: number;
-}
-
-interface CommentMarkerProps {
-  active: boolean;
-  label: string;
-  type: CommentType;
-  onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
-}
-
-function CommentMarker({ active, label, type, onClick }: CommentMarkerProps) {
-  return (
-    <button
-      className={`comment-margin__dot${active ? " comment-margin__dot--active" : ""}`}
-      data-comment-type={type}
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-    >
-      <span className="comment-margin__dot-mark" aria-hidden="true" />
-    </button>
-  );
 }
 
 function hasSelectionInside(container: HTMLElement | null): boolean {
@@ -657,122 +472,14 @@ export function CommentMargin({
           peerMode={peerMode}
         />
       )}
-      {groups.map(({ top, threads }, i) => {
-        // Find peer comments for the same block
-        const blockIdx = threads[0]?.root.blockIndex;
-        const peerForBlock =
-          blockIdx !== undefined ? (peerDotGroups.get(blockIdx) ?? []) : [];
-        return (
-          <div key={i}>
-            <div className="comment-margin__dots" style={{ top }}>
-              {threads.map((thread) => {
-                const isActive =
-                  thread.root.id === activeId ||
-                  thread.replies.some((reply) => reply.id === activeId);
-                return (
-                  <CommentMarker
-                    key={thread.root.id}
-                    active={isActive}
-                    type={thread.root.type}
-                    label={`${thread.root.type}: ${thread.root.text}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      selectComment(thread.root.id);
-                    }}
-                  />
-                );
-              })}
-              {peerForBlock.map((peerComment) =>
-                peerMode ? (
-                  <CommentMarker
-                    key={peerComment.id}
-                    active={peerComment.id === activeId}
-                    type={peerComment.commentType}
-                    label={`${peerComment.commentType}: ${peerComment.text}`}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      selectComment(peerComment.id);
-                    }}
-                  />
-                ) : (
-                  <button
-                    key={peerComment.id}
-                    className="comment-margin__peer-dot"
-                    style={{ backgroundColor: peerColor(peerComment.peerName) }}
-                    title={`${peerComment.peerName}: ${peerComment.text}`}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      document
-                        .querySelector(
-                          `[data-block-index="${peerComment.blockRef.blockIndex}"]`,
-                        )
-                        ?.scrollIntoView({
-                          behavior: "smooth",
-                          block: "center",
-                        });
-                    }}
-                  >
-                    {initials(peerComment.peerName)[0]}
-                  </button>
-                ),
-              )}
-            </div>
-          </div>
-        );
-      })}
-      {/* Peer-only blocks (no host comments at this block) */}
-      {Array.from(peerDotGroups.entries()).map(([blockIdx, peerComments]) => {
-        // Skip blocks already rendered with host groups
-        if (
-          groups.some((group) => group.threads[0]?.root.blockIndex === blockIdx)
-        ) {
-          return null;
-        }
-        const top = blockTops.get(blockIdx);
-        if (top == null) {
-          return null;
-        }
-        return (
-          <div key={`peer-${blockIdx}`}>
-            <div className="comment-margin__dots" style={{ top }}>
-              {peerComments.map((peerComment) =>
-                peerMode ? (
-                  <CommentMarker
-                    key={peerComment.id}
-                    active={peerComment.id === activeId}
-                    type={peerComment.commentType}
-                    label={`${peerComment.commentType}: ${peerComment.text}`}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      selectComment(peerComment.id);
-                    }}
-                  />
-                ) : (
-                  <button
-                    key={peerComment.id}
-                    className="comment-margin__peer-dot"
-                    style={{ backgroundColor: peerColor(peerComment.peerName) }}
-                    title={`${peerComment.peerName}: ${peerComment.text}`}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      document
-                        .querySelector(
-                          `[data-block-index="${peerComment.blockRef.blockIndex}"]`,
-                        )
-                        ?.scrollIntoView({
-                          behavior: "smooth",
-                          block: "center",
-                        });
-                    }}
-                  >
-                    {initials(peerComment.peerName)[0]}
-                  </button>
-                ),
-              )}
-            </div>
-          </div>
-        );
-      })}
+      <CommentMarkers
+        activeId={activeId}
+        blockTops={blockTops}
+        groups={groups}
+        peerDotGroups={peerDotGroups}
+        peerMode={peerMode}
+        selectComment={selectComment}
+      />
     </div>
   );
 }
