@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, it, expect, vi } from "vitest";
 import { CommentPanel } from "./index";
@@ -499,5 +499,23 @@ describe("CommentPanel — resolved history", () => {
     expect(screen.queryByRole("button", { name: "Edit comment" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Delete comment" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Clear" })).toBeNull();
+  });
+});
+
+describe("CommentPanel — selecting a comment", () => {
+  it("clicking an entry makes it the active comment", async () => {
+    setTestState({ comments, activeCommentId: null });
+    const { container } = render(<CommentPanel />);
+    expect(
+      container.querySelector(".comment-panel__entry--active"),
+    ).not.toBeInTheDocument();
+
+    const entries = container.querySelectorAll(".comment-panel__entry");
+    expect(entries.length).toBeGreaterThan(0);
+    fireEvent.click(entries[0]);
+
+    expect(
+      container.querySelector(".comment-panel__entry--active"),
+    ).toBeInTheDocument();
   });
 });

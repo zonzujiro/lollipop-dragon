@@ -1,9 +1,10 @@
 /* ── Markdown viewer (flex row: margin column + body) ────────── */
 .markdown-scroll-area {
   position: relative;
-  /* 66-character serif measure — the core of the reading design (01-design-system) */
-  --document-body-width: 632px;
-  --document-viewer-width: 680px;
+  /* Deliberately wider than the 66ch guideline: long technical documents
+     need the room (product decision, matches the previous Lollipop UI). */
+  --document-body-width: 1450px;
+  --document-viewer-width: 1498px;
 }
 
 .restore-access-banner,
@@ -251,7 +252,13 @@
   color: var(--text-muted);
 }
 
+/* Layout-transparent remount boundary for the highlight layer */
+.markdown-content {
+  display: contents;
+}
+
 .markdown-body > :first-child,
+.markdown-content > :first-child,
 .markdown-body > h1:first-child,
 .markdown-body > h2:first-child {
   margin-top: 0;
@@ -394,6 +401,82 @@
 
 .markdown-body del {
   color: var(--text-muted);
+}
+
+/* ── Footnotes (GFM) ─────────────────────────────────────────── */
+.markdown-body .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.markdown-body sup [data-footnote-ref] {
+  padding: 1px 3px;
+  border-radius: 4px;
+  font-family: var(--font-ui);
+  font-size: 0.75em;
+  font-weight: 650;
+  color: var(--accent);
+}
+
+.markdown-body sup [data-footnote-ref]:hover {
+  background: var(--accent-soft);
+  text-decoration: none;
+}
+
+.markdown-body [data-footnotes] {
+  margin-top: 40px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  color: var(--ink-secondary);
+}
+
+.markdown-body [data-footnotes]::before {
+  content: "footnotes";
+  display: block;
+  margin-bottom: 8px;
+  font: 700 10.5px/1 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.markdown-body [data-footnotes] ol {
+  margin: 0;
+  padding-left: 1.4em;
+}
+
+.markdown-body [data-footnotes] li {
+  margin: 0.35rem 0;
+}
+
+.markdown-body [data-footnotes] li:target {
+  background: var(--accent-soft);
+  border-radius: 4px;
+}
+
+.markdown-body [data-footnotes] p {
+  margin: 0 0 0.35rem;
+}
+
+.markdown-body [data-footnote-backref] {
+  margin-left: 4px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--ink-muted);
+  text-decoration: none;
+}
+
+.markdown-body [data-footnote-backref]:hover {
+  color: var(--accent);
+  text-decoration: none;
 }
 
 /* ── Block highlight (comment hover) ─────────────────────────── */

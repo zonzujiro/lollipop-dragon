@@ -227,13 +227,13 @@ describe("MarkdownRenderer — commenting", () => {
 });
 
 describe("MarkdownRenderer — responsive reading width", () => {
-  it("keeps the 66ch reading measure while preserving the comment lane", () => {
+  it("uses most of the reading pane while preserving the comment lane", () => {
     const markdownRendererCss = readFileSync(
       "src/ui/components/MarkdownRenderer/MarkdownRenderer.css",
       "utf8",
     );
-    expect(markdownRendererCss).toContain("--document-body-width: 632px");
-    expect(markdownRendererCss).toContain("--document-viewer-width: 680px");
+    expect(markdownRendererCss).toContain("--document-body-width: 1450px");
+    expect(markdownRendererCss).toContain("--document-viewer-width: 1498px");
     expect(markdownRendererCss).toContain(
       "width: min(90%, var(--document-viewer-width))",
     );
@@ -354,5 +354,20 @@ describe("MarkdownRenderer — read-only banner", () => {
       screen.getByRole("button", { name: "Open another file…" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("status").textContent).not.toMatch(/read-only/i);
+  });
+});
+
+describe("MarkdownRenderer — GFM footnotes", () => {
+  it("renders footnote refs and the trailing section on aligned block indices", () => {
+    setContent("Uses a note.[^a]\n\nSecond paragraph.\n\n[^a]: The note body.");
+    render(<MarkdownRenderer />);
+    expect(screen.getByText("The note body.")).toBeInTheDocument();
+    const reference = document.querySelector("[data-footnote-ref]");
+    expect(reference).not.toBeNull();
+    const section = document.querySelector("[data-footnotes]");
+    expect(section).not.toBeNull();
+    // two rendered paragraphs (0, 1), then the footnotes section (2) — the
+    // definition itself must not shift rendered block indices
+    expect(section?.getAttribute("data-block-index")).toBe("2");
   });
 });

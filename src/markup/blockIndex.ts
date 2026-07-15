@@ -1,12 +1,9 @@
-import { unified } from "unified";
-import remarkParse from "remark-parse";
-import remarkGfm from "remark-gfm";
-import type { Root } from "mdast";
 import type { Comment } from "../types/criticmarkup";
 import {
   findQuoteOccurrences,
   getBlockPlainTextMap,
   getPlainText,
+  getRenderedBlocks,
   resolveCommentAnchor,
 } from "./commentAnchor";
 
@@ -42,17 +39,24 @@ function findStandaloneAnchorBlockIndex(
   return nearestPreceding.index;
 }
 
-// Parse cleanMarkdown and return the offset range of each top-level block.
+// Parse cleanMarkdown and return the offset range of each RENDERED top-level
+// block. Footnote definitions collapse into one trailing rendered section, so
+// every definition shares the single index after the last rendered block.
 export function getBlockPositions(cleanMarkdown: string): BlockPosition[] {
-  const tree: Root = unified()
-    .use(remarkParse)
-    .use(remarkGfm)
-    .parse(cleanMarkdown);
-  return tree.children.map((node, index) => ({
+  const { nodes, footnoteDefinitions } = getRenderedBlocks(cleanMarkdown);
+  const positions: BlockPosition[] = nodes.map((node, index) => ({
     index,
     start: node.position?.start.offset ?? 0,
     end: node.position?.end.offset ?? 0,
   }));
+  for (const definition of footnoteDefinitions) {
+    positions.push({
+      index: nodes.length,
+      start: definition.position?.start.offset ?? 0,
+      end: definition.position?.end.offset ?? 0,
+    });
+  }
+  return positions;
 }
 
 // Assign a blockIndex to each comment based on where its cleanStart falls.
@@ -75,14 +79,16 @@ export function assignBlockIndices(
       positions,
       cleanMarkdown,
     );
-    let blockIndex =
-      standaloneAnchorBlockIndex ??
-      positions.findIndex(
-        ({ start, end }) => cleanStart >= start && cleanStart <= end,
+    const containingPosition = positions.find(
+      ({ start, end }) => cleanStart >= start && cleanStart <= end,
+    );
+    let blockIndex = standaloneAnchorBlockIndex ?? containingPosition?.index;
+    // Fallback: position is past every block (e.g. trailing comment)
+    if (blockIndex === undefined || blockIndex === -1) {
+      blockIndex = positions.reduce(
+        (nearest, position) => Math.max(nearest, position.index),
+        0,
       );
-    // Fallback: position is past the last block (e.g. trailing comment)
-    if (blockIndex === -1) {
-      blockIndex = positions.length - 1;
     }
     const blockMap = getBlockPlainTextMap(cleanMarkdown, blockIndex);
     if (!blockMap) {

@@ -434,10 +434,12 @@
     box-shadow 0.12s;
 }
 
-/* quiet hover — the card firms up, it doesn't jump (design principle 03) */
+/* quiet hover — the card firms up, it doesn't jump (design principle 03).
+   Never touches the left border: it always keeps the taxonomy color. */
 .comment-panel__entry:hover {
-  border-color: var(--line-strong);
-  border-left-color: var(--comment-color, var(--line-strong));
+  border-top-color: var(--line-strong);
+  border-right-color: var(--line-strong);
+  border-bottom-color: var(--line-strong);
 }
 
 .comment-panel__entry--active {

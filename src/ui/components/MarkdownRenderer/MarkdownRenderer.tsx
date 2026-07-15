@@ -68,12 +68,22 @@ interface SpecialBlockContextValue {
   comments: Comment[];
   onCreateAnchor: (blockIndex: number, anchor: CommentAnchorDraft) => void;
   onSelectComment: (commentId: string) => void;
-  onViewChange: () => void;
+  onViewChange: (blockIndex: number, view: "diagram" | "source") => void;
+  specialViews: Map<number, "diagram" | "source">;
 }
 
 const SpecialBlockContext = createContext<SpecialBlockContextValue | null>(
   null,
 );
+
+// djb2 — cheap, stable content fingerprint for the remount key
+function hashContentKey(value: string): string {
+  let hash = 5381;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 33) ^ value.charCodeAt(index);
+  }
+  return (hash >>> 0).toString(36);
+}
 
 function textFromReactNode(node: ReactNode): string {
   if (typeof node === "string" || typeof node === "number") {
@@ -131,9 +141,10 @@ export function PreBlock({ children, ...props }: PreBlockProps) {
         blockIndex={blockIndex}
         code={plainText}
         comments={mermaidComments}
+        initialView={specialBlock.specialViews.get(blockIndex)}
         onCreateAnchor={onCreateAnchor}
         onSelectComment={specialBlock.onSelectComment}
-        onViewChange={specialBlock.onViewChange}
+        onViewChange={(view) => specialBlock.onViewChange(blockIndex, view)}
       />
     );
   }
@@ -495,6 +506,29 @@ function MarkdownRendererContent({
 
   const handleBodyMouseLeave = useCallback(() => setHoveredBlock(null), []);
 
+  // Footnote refs/backrefs navigate within the scroll pane. Letting the
+  // browser follow them would write #user-content-fn… into the URL, which is
+  // reserved for share links.
+  const handleBodyClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+    const footnoteLink = target.closest(
+      "[data-footnote-ref], [data-footnote-backref]",
+    );
+    if (!(footnoteLink instanceof HTMLAnchorElement)) {
+      return;
+    }
+    e.preventDefault();
+    const hash = footnoteLink.getAttribute("href");
+    if (!hash || !hash.startsWith("#")) {
+      return;
+    }
+    const destination = document.getElementById(hash.slice(1));
+    destination?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
+
   const handleBodyMouseUp = useCallback(() => {
     if (!canComment) {
       return;
@@ -559,6 +593,11 @@ function MarkdownRendererContent({
       metadata: document.metadata,
     };
   }, [rawContent]);
+  const contentKey = useMemo(
+    () =>
+      `${activeFilePath ?? fileName ?? ""}:${cleanMarkdown.length}:${hashContentKey(cleanMarkdown)}`,
+    [activeFilePath, fileName, cleanMarkdown],
+  );
   const peerRangeComments = useMemo(
     () =>
       isPeerMode
@@ -588,15 +627,21 @@ function MarkdownRendererContent({
     },
     [],
   );
+  // Diagram/source choices survive the content-keyed remount of the markdown
+  // subtree (indices may shift on structural edits, which resets the choice —
+  // acceptable).
+  const specialViewsRef = useRef(new Map<number, "diagram" | "source">());
   const specialBlockContext = useMemo<SpecialBlockContextValue>(
     () => ({
       activeCommentId,
       comments: visibleRangeComments,
       onCreateAnchor: handleSpecialBlockAnchor,
       onSelectComment: setActiveCommentId,
-      onViewChange: () => {
+      onViewChange: (blockIndex, view) => {
+        specialViewsRef.current.set(blockIndex, view);
         setSpecialBlockRevision((revision) => revision + 1);
       },
+      specialViews: specialViewsRef.current,
     }),
     [
       activeCommentId,
@@ -711,6 +756,7 @@ function MarkdownRendererContent({
     return () => removeCommentHighlights(body);
   }, [
     activeCommentId,
+    contentKey,
     setActiveCommentId,
     showToast,
     specialBlockRevision,
@@ -799,19 +845,26 @@ function MarkdownRendererContent({
           className="markdown-body"
           data-agent-status={activeAgentRun?.status}
           ref={bodyRef}
+          onClick={handleBodyClick}
           onMouseOver={handleBodyMouseOver}
           onMouseUp={handleBodyMouseUp}
         >
           <MetadataPanel fields={metadata} />
-          <SpecialBlockContext.Provider value={specialBlockContext}>
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={rehypePlugins}
-              components={markdownComponents}
-            >
-              {cleanMarkdown}
-            </ReactMarkdown>
-          </SpecialBlockContext.Provider>
+          {/* Key by document identity + content: the highlight layer mutates
+              text nodes inside this subtree, so React must never diff it in
+              place across content changes — a changed key swaps the whole
+              subtree, which only removes untouched root nodes. */}
+          <div className="markdown-content" key={contentKey}>
+            <SpecialBlockContext.Provider value={specialBlockContext}>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={rehypePlugins}
+                components={markdownComponents}
+              >
+                {cleanMarkdown}
+              </ReactMarkdown>
+            </SpecialBlockContext.Provider>
+          </div>
         </div>
       </div>
     </div>

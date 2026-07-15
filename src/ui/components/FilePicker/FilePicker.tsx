@@ -1,4 +1,4 @@
-import { type DragEvent } from "react";
+import { useState, type DragEvent } from "react";
 import "../../styles/landing.css";
 import { canRunAgent } from "../../../runtime";
 import { useAppStore } from "../../../store";
@@ -305,21 +305,32 @@ export function FilePicker() {
   const history = useAppStore((state) => state.history);
   const reopenFromHistory = useAppStore((state) => state.reopenFromHistory);
 
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [linkValue, setLinkValue] = useState("");
+  const [linkError, setLinkError] = useState<string | null>(null);
+
   function openReviewLink() {
-    const reviewLink = window.prompt("Paste a Lollipop Dragon review link");
-    if (!reviewLink) {
-      return;
-    }
+    setLinkValue("");
+    setLinkError(null);
+    setLinkDialogOpen(true);
+  }
+
+  function submitReviewLink() {
     try {
-      const parsedLink = new URL(reviewLink);
+      const parsedLink = new URL(linkValue.trim());
       if (!parsedLink.hash) {
-        window.alert("That link does not include an encrypted review key.");
+        setLinkError(
+          "that link is missing its encrypted key — copy the full link, # part included",
+        );
         return;
       }
+      setLinkDialogOpen(false);
       window.location.hash = parsedLink.hash;
     } catch (error) {
       console.warn("[FilePicker] invalid review link:", error);
-      window.alert("That does not look like a valid review link.");
+      setLinkError(
+        "that doesn't look like a link — paste the whole review url",
+      );
     }
   }
 
@@ -611,6 +622,72 @@ export function FilePicker() {
           </p>
         </footer>
       </div>
+
+      {linkDialogOpen && (
+        <div
+          className="landing-link-scrim"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              setLinkDialogOpen(false);
+            }
+          }}
+        >
+          <div
+            className="landing-link-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Paste a review link"
+          >
+            <h2 className="landing-link-dialog__title">paste a review link</h2>
+            <p className="landing-link-dialog__hint">
+              the whole url — the part after # carries the encrypted key and
+              never reaches any server
+            </p>
+            <input
+              className="landing-link-dialog__input"
+              type="url"
+              value={linkValue}
+              placeholder="https://…/#doc=…&key=…"
+              autoFocus
+              spellCheck={false}
+              onChange={(event) => {
+                setLinkValue(event.target.value);
+                setLinkError(null);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  submitReviewLink();
+                }
+                if (event.key === "Escape") {
+                  setLinkDialogOpen(false);
+                }
+              }}
+            />
+            {linkError && (
+              <p className="landing-link-dialog__error" role="alert">
+                {linkError}
+              </p>
+            )}
+            <div className="landing-link-dialog__actions">
+              <button
+                type="button"
+                className="landing-link-dialog__cancel"
+                onClick={() => setLinkDialogOpen(false)}
+              >
+                cancel
+              </button>
+              <button
+                type="button"
+                className="landing-link-dialog__join"
+                disabled={!linkValue.trim()}
+                onClick={submitReviewLink}
+              >
+                join the review
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
