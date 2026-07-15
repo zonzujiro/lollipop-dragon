@@ -42,13 +42,13 @@ Each has a `-soft` translucent variant (see tokens.css) used for text tints and 
 
 ## Typography
 
-| Register        | Stack                                                             | Values                                                  |
-| --------------- | ----------------------------------------------------------------- | ------------------------------------------------------- |
-| Document body   | `ui-serif, "New York", "Iowan Old Style", Georgia, serif`         | 17px / 1.68, max-width **632px (~66ch)**, centered      |
-| Doc headings    | same serif                                                        | h1 34/1.2 · h2 23/1.3, −0.01em tracking                 |
-| UI chrome       | `-apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif` | 11–14px, weights 500–750                                |
-| Mono            | `ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace`     | file paths, type tags, kickers, CriticMarkup, code 13px |
-| Landing display | UI sans, weight 800, lowercase, −0.02em                           | landing sections only                                   |
+| Register        | Stack                                                             | Values                                                                                                                                                                                                     |
+| --------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Document body   | `ui-serif, "New York", "Iowan Old Style", Georgia, serif`         | 17px / 1.68, max-width **1450px reading pane**, centered — deliberately wider than the 66ch guideline to support long technical documents (product decision, 2026-07-15; matches the previous Lollipop UI) |
+| Doc headings    | same serif                                                        | h1 34/1.2 · h2 23/1.3, −0.01em tracking                                                                                                                                                                    |
+| UI chrome       | `-apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif` | 11–14px, weights 500–750                                                                                                                                                                                   |
+| Mono            | `ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace`     | file paths, type tags, kickers, CriticMarkup, code 13px                                                                                                                                                    |
+| Landing display | UI sans, weight 800, lowercase, −0.02em                           | landing sections only                                                                                                                                                                                      |
 
 The serif/sans split is semantic: serif = the document, sans = the tool, mono = what the agent reads. Don't blur it.
 
