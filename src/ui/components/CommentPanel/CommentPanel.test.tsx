@@ -39,6 +39,20 @@ beforeEach(() => {
 });
 
 describe("CommentPanel — list rendering", () => {
+  it("keeps comments readable and marks the rail read-only during restore", () => {
+    setTestState({
+      comments: [makeComment("0", "clarify", "keep this visible")],
+      restoreError: 'Live access to "notes.md" is unavailable.',
+    });
+
+    render(<CommentPanel />);
+
+    expect(screen.getByText("keep this visible")).toBeInTheDocument();
+    expect(
+      screen.getByText("read-only until folder access is restored"),
+    ).toBeInTheDocument();
+  });
+
   it("renders shortcut hints as individual keycaps", () => {
     const { container } = render(<CommentPanel />);
     const footer = container.querySelector(".comment-panel__shortcut-hints");

@@ -7,6 +7,7 @@ vi.mock("../../../config", () => ({
 }));
 
 import { Header } from "./index";
+import { useAppStore } from "../../../store";
 import {
   makeComment,
   resetTestStore,
@@ -88,19 +89,33 @@ describe("Header share buttons", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("disables review controls while restore access is required", () => {
+    it("guards review mutations while restore access is required", async () => {
+      const user = userEvent.setup();
+      const onShareFile = vi.fn();
       setTestState({
         fileName: "readme.md",
         rawContent: "# Persisted",
         restoreError: 'Live access to "readme.md" is unavailable.',
       });
 
-      render(<Header onShareFile={vi.fn()} onShareFolder={vi.fn()} />);
+      render(<Header onShareFile={onShareFile} onShareFolder={vi.fn()} />);
 
-      expect(screen.getByRole("button", { name: "Share" })).toBeDisabled();
+      const shareButton = screen.getByRole("button", { name: "Share" });
+      expect(shareButton).toHaveAttribute("aria-disabled", "true");
       expect(
         screen.getByRole("button", { name: "Open comments panel" }),
-      ).toBeDisabled();
+      ).toBeEnabled();
+
+      await user.click(shareButton);
+      expect(onShareFile).not.toHaveBeenCalled();
+      expect(useAppStore.getState().toast).toBe(
+        "Share management resumes once folder access is restored",
+      );
+
+      await user.click(
+        screen.getByRole("button", { name: "Open comments panel" }),
+      );
+      expect(useAppStore.getState().tabs[0]?.commentPanelOpen).toBe(true);
     });
   });
 

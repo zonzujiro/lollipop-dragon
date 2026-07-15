@@ -75,19 +75,23 @@ export function shouldRenderRestorePlaceholder(
 }
 
 export function getRestoreAccessTitle(tab: RestoreStateTab | null): string {
-  if (tab?.directoryName) {
-    return "Folder access needed";
-  }
-
-  return "File access needed";
+  return `Reconnect “${getRestoreWorkspaceName(tab)}”`;
 }
 
 export function getRestoreAccessActionLabel(
   tab: RestoreStateTab | null,
 ): string {
   if (tab?.directoryName) {
-    return "Re-open current folder";
+    return "Re-open folder";
   }
 
-  return "Re-open current file";
+  return "Re-open file";
+}
+
+export function getRestoreWorkspaceName(tab: RestoreStateTab | null): string {
+  return tab?.directoryName ?? tab?.fileName ?? "workspace";
+}
+
+export function getRestoreOpenOtherLabel(tab: RestoreStateTab | null): string {
+  return tab?.directoryName ? "Open another folder…" : "Open another file…";
 }

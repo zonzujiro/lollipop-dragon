@@ -18,6 +18,25 @@
   gap: 0.5rem;
 }
 
+.comment-panel__read-only {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.65rem 0.75rem 0;
+  padding: 0.55rem 0.65rem;
+  border: 1px dashed var(--c-rewrite);
+  color: var(--ink-secondary);
+  font: 600 0.68rem/1.35 var(--font-mono);
+  text-transform: lowercase;
+}
+
+.comment-panel__read-only svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  color: var(--c-rewrite);
+}
+
 .comment-panel__title {
   min-width: 0;
   font-size: 14px;

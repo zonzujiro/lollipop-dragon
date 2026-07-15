@@ -361,3 +361,7 @@
   color: var(--text-muted);
   font-size: 0.58rem;
 }
+.app-header__btn--guarded,
+.app-header__btn[aria-disabled="true"] {
+  opacity: 0.48;
+}

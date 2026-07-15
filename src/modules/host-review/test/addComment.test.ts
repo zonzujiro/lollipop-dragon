@@ -207,4 +207,20 @@ describe("store.addComment", () => {
     const tab = getActiveTab(useAppStore.getState());
     expect(tab?.rawContent).toBe("Hello.");
   });
+
+  it("does not write while the tab is waiting for restored access", async () => {
+    const mockWritable = createWritableStub();
+    const fileHandle = createFileHandleStub(mockWritable);
+    setTestState({
+      fileHandle,
+      rawContent: "Hello.",
+      writeAllowed: false,
+      restoreError: 'Live access to "test.md" is unavailable.',
+    });
+
+    await useAppStore.getState().addComment(0, "clarify", "Explain this");
+
+    expect(fileHandle.createWritable).not.toHaveBeenCalled();
+    expect(getActiveTab(useAppStore.getState())?.rawContent).toBe("Hello.");
+  });
 });

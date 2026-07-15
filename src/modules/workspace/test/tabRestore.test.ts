@@ -666,7 +666,9 @@ describe("store.reopenTab", () => {
     expect(saveHandle).not.toHaveBeenCalled();
     expect(tab?.restoreError).toContain("notes.md");
     expect(tab?.writeAllowed).toBe(false);
-    expect(useAppStore.getState().toast).toBe("File access was not restored");
+    expect(useAppStore.getState().toast).toBe(
+      "The browser did not grant file access",
+    );
   });
 });
 

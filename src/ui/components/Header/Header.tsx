@@ -269,9 +269,7 @@ export function Header({
   const hasFolderOpen = fileTree.length > 0;
   const hasContent = !!(fileName || directoryName);
   const disableHostReviewActions = !peerMode && tabRequiresRestoreAccess(tab);
-  const commentPanelOpen = disableHostReviewActions
-    ? false
-    : rawCommentPanelOpen;
+  const commentPanelOpen = rawCommentPanelOpen;
   const showToast = useAppStore((state) => state.showToast);
   const startAddressCommentsAgentRun = useAppStore(
     (state) => state.startAddressCommentsAgentRun,
@@ -319,8 +317,15 @@ export function Header({
   const activeAgentRunInProgress = Boolean(
     activeAgentRun && ACTIVE_AGENT_RUN_STATUSES.has(activeAgentRun.status),
   );
-  const showAgentActions =
-    !peerMode && hasContent && !disableHostReviewActions && hasReviewTargets;
+  const showAgentActions = !peerMode && hasContent && hasReviewTargets;
+
+  function guardRestoreAction(message: string): boolean {
+    if (!disableHostReviewActions) {
+      return false;
+    }
+    showToast(message);
+    return true;
+  }
 
   async function handleCopyReviewPrompt() {
     const targetPath = activeFilePath ?? fileName ?? "the active markdown file";
@@ -379,10 +384,23 @@ export function Header({
               {(onShareFile || onShareFolder) && (
                 <button
                   className="app-header__btn app-header__btn--text app-header__btn--share"
-                  onClick={hasFolderOpen ? onShareFolder : onShareFile}
+                  onClick={() => {
+                    if (
+                      guardRestoreAction(
+                        "Share management resumes once folder access is restored",
+                      )
+                    ) {
+                      return;
+                    }
+                    if (hasFolderOpen) {
+                      onShareFolder?.();
+                      return;
+                    }
+                    onShareFile?.();
+                  }}
                   aria-label="Share"
                   title="Create or manage encrypted review links"
-                  disabled={disableHostReviewActions}
+                  aria-disabled={disableHostReviewActions}
                 >
                   <ShareFileIcon />
                   <span className="app-header__btn-label">Share</span>
@@ -466,8 +484,18 @@ export function Header({
             {showAgentActions && (
               <ReviewAgentButton
                 disabled={activeAgentRunInProgress}
+                readOnly={disableHostReviewActions}
                 canRunAgent={canRunAgent}
-                onReview={handleReviewAction}
+                onReview={async () => {
+                  if (
+                    guardRestoreAction(
+                      "Read-only — restore folder access first",
+                    )
+                  ) {
+                    return;
+                  }
+                  await handleReviewAction();
+                }}
               />
             )}
             {!peerMode && hasContent && onPresent && (
@@ -503,7 +531,6 @@ export function Header({
                   : "Open comments panel"
               }
               className={`app-header__btn app-header__btn--icon app-header__btn--rail${commentPanelOpen ? " app-header__btn--active" : ""}`}
-              disabled={disableHostReviewActions}
             >
               <CommentRailIcon />
               {commentCount > 0 && <span className="app-header__dot-badge" />}
@@ -517,10 +544,12 @@ export function Header({
 
 function ReviewAgentButton({
   disabled,
+  readOnly,
   canRunAgent,
   onReview,
 }: {
   disabled: boolean;
+  readOnly: boolean;
   canRunAgent: boolean;
   onReview: () => Promise<void>;
 }) {
@@ -529,9 +558,16 @@ function ReviewAgentButton({
   return (
     <button
       type="button"
-      className="app-header__btn app-header__btn--text app-header__btn--agent"
+      className={`app-header__btn app-header__btn--text app-header__btn--agent${readOnly ? " app-header__btn--guarded" : ""}`}
       aria-label={label}
-      title={disabled ? "Wait for the active agent run to finish" : label}
+      title={
+        readOnly
+          ? "Restore folder access to run the agent"
+          : disabled
+            ? "Wait for the active agent run to finish"
+            : label
+      }
+      aria-disabled={readOnly}
       disabled={disabled}
       onClick={() => {
         void onReview();

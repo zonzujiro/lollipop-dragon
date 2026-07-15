@@ -41,7 +41,8 @@ import type { MarkdownMetadataField } from "../../../markup";
 import type { Comment, CommentAnchorDraft } from "../../../types/criticmarkup";
 import type { PeerComment } from "../../../types/share";
 import {
-  getRestoreAccessActionLabel,
+  getRestoreOpenOtherLabel,
+  getRestoreWorkspaceName,
   shouldRenderRestoreBanner,
 } from "../../../types/tab";
 import type { TabState } from "../../../types/tab";
@@ -399,6 +400,8 @@ function MarkdownRendererContent({
   const addCommentAction = useAppStore((s) => s.addComment);
   const postPeerCommentAction = useAppStore((s) => s.postPeerComment);
   const reopenTab = useAppStore((s) => s.reopenTab);
+  const openDirectoryInNewTab = useAppStore((s) => s.openDirectoryInNewTab);
+  const openFileInNewTab = useAppStore((s) => s.openFileInNewTab);
   const clearPendingScrollTarget = useAppStore(
     (s) => s.clearPendingScrollTarget,
   );
@@ -722,17 +725,48 @@ function MarkdownRendererContent({
     <div className="markdown-scroll-area">
       {showRestoreBanner && hostTabId ? (
         <div className="restore-access-banner" role="status">
-          <span className="restore-access-banner__text">
-            {restoreTabState.restoreError}
-          </span>
-          <button
-            className="restore-access-banner__btn"
-            onClick={() => {
-              void reopenTab(hostTabId);
-            }}
+          <svg
+            className="restore-access-banner__icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
           >
-            {getRestoreAccessActionLabel(restoreTabState)}
-          </button>
+            <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <circle cx="11" cy="13" r="2.2" />
+            <path d="M13.2 13h4.3m-1.8 0v2" />
+          </svg>
+          <span className="restore-access-banner__text">
+            <strong>
+              Live access to “{getRestoreWorkspaceName(restoreTabState)}” was
+              dropped when the browser restarted.
+            </strong>{" "}
+            Keep reading — commenting and agent runs resume once access is
+            restored.
+          </span>
+          <div className="restore-access-banner__actions">
+            <button
+              className="restore-access-banner__btn restore-access-banner__btn--primary"
+              onClick={() => {
+                void reopenTab(hostTabId);
+              }}
+            >
+              Restore access
+            </button>
+            <button
+              className="restore-access-banner__btn"
+              onClick={() => {
+                if (restoreTabState.directoryName) {
+                  void openDirectoryInNewTab();
+                  return;
+                }
+                void openFileInNewTab();
+              }}
+            >
+              {getRestoreOpenOtherLabel(restoreTabState)}
+            </button>
+          </div>
         </div>
       ) : null}
       {!writeAllowed && !isPeerMode && !showRestoreBanner && (

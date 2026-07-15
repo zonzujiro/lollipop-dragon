@@ -19,6 +19,7 @@ import { useActiveTab } from "../../../store/selectors";
 import type { Comment, CommentType } from "../../../types/criticmarkup";
 import type { PeerComment } from "../../../types/share";
 import type { TabState } from "../../../types/tab";
+import { tabRequiresRestoreAccess } from "../../../types/tab";
 import { canEditComment } from "../../../utils/commentPermissions";
 import {
   normalizeUserCommentType,
@@ -200,6 +201,7 @@ interface Props {
 
 export function CommentPanel({ peerMode = false }: Props) {
   const tab = useActiveTab();
+  const readOnly = !peerMode && tabRequiresRestoreAccess(tab);
   const comments = tab?.comments ?? EMPTY_COMMENTS;
   const hostRootComments = useMemo(
     () => getRootOnlyComments(comments),
@@ -449,6 +451,10 @@ export function CommentPanel({ peerMode = false }: Props) {
   }
 
   function handleEditHostComment(id: string, type: CommentType, text: string) {
+    if (readOnly) {
+      showToast("Read-only — restore folder access first");
+      return;
+    }
     editComment(id, type, text).catch((error) => {
       console.error("[CommentPanel] failed to edit comment:", error);
       showToast("Couldn't edit comment");
@@ -456,6 +462,10 @@ export function CommentPanel({ peerMode = false }: Props) {
   }
 
   function handleDeleteHostComment(id: string) {
+    if (readOnly) {
+      showToast("Read-only — restore folder access first");
+      return;
+    }
     deleteComment(id).catch((error) => {
       console.error("[CommentPanel] failed to delete comment:", error);
       showToast("Couldn't delete comment");
@@ -687,6 +697,22 @@ export function CommentPanel({ peerMode = false }: Props) {
           )}
         </span>
       </div>
+
+      {readOnly && (
+        <div className="comment-panel__read-only" role="status">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
+          >
+            <rect x="5" y="10" width="14" height="10" rx="2" />
+            <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+          </svg>
+          read-only until folder access is restored
+        </div>
+      )}
 
       {(showTypeFilters || (!peerMode && resolvedComments.length > 0)) && (
         <div className="comment-panel__filters">

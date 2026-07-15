@@ -24,31 +24,65 @@
 }
 
 .restore-access-banner {
-  background: color-mix(in srgb, var(--surface) 88%, var(--c-orange) 12%);
-  border-color: color-mix(in srgb, var(--border) 75%, var(--c-orange) 25%);
+  top: 0;
+  width: 100%;
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 0;
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--c-rewrite) 42%, var(--border));
+  border-radius: 0;
+  background: color-mix(in srgb, var(--bg) 78%, var(--c-rewrite) 22%);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.restore-access-banner__icon {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  color: var(--c-rewrite);
 }
 
 .restore-access-banner__text {
+  flex: 1;
   color: var(--text);
   font-size: 0.95rem;
   line-height: 1.45;
 }
 
+.restore-access-banner__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
 .restore-access-banner__btn {
   flex-shrink: 0;
-  border: 1px solid color-mix(in srgb, var(--border) 70%, var(--accent) 30%);
-  background: var(--surface);
+  border: 1px solid transparent;
+  background: transparent;
   color: var(--text);
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   padding: 0.55rem 0.9rem;
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
 }
 
+.restore-access-banner__btn--primary {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--bg);
+}
+
 .restore-access-banner__btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.restore-access-banner__btn--primary:hover {
+  background: var(--ink-secondary);
+  color: var(--bg);
 }
 
 .readonly-banner {

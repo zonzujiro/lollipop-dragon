@@ -24,9 +24,9 @@ import { ContentUpdateBanner } from "./components/ContentUpdateBanner";
 import { PanelLeftOpenIcon } from "./components/Icons";
 import {
   getRestoreAccessActionLabel,
+  getRestoreOpenOtherLabel,
   getRestoreAccessTitle,
   shouldRenderRestorePlaceholder,
-  tabRequiresRestoreAccess,
 } from "../types/tab";
 import { stopRelay } from "../modules/relay";
 import { workspaceRuntime } from "../runtime";
@@ -155,6 +155,7 @@ function App() {
   const selectFile = useAppStore((s) => s.selectFile);
   const showToast = useAppStore((s) => s.showToast);
   const openDirectoryInNewTab = useAppStore((s) => s.openDirectoryInNewTab);
+  const openFileInNewTab = useAppStore((s) => s.openFileInNewTab);
   const refreshFile = useAppStore((s) => s.refreshFile);
   const refreshFileTree = useAppStore((s) => s.refreshFileTree);
   const switchTab = useAppStore((s) => s.switchTab);
@@ -372,7 +373,6 @@ function App() {
   // ── Host mode with tabs ──
   const hasFolderOpen = (tab?.fileTree.length ?? 0) > 0;
   const showRestorePlaceholder = shouldRenderRestorePlaceholder(tab);
-  const disableReviewPanels = tabRequiresRestoreAccess(tab);
 
   return (
     <div className="app-layout">
@@ -420,9 +420,18 @@ function App() {
           {showRestorePlaceholder ? (
             <RestoreError
               title={getRestoreAccessTitle(tab)}
-              message={tab.restoreError}
               actionLabel={getRestoreAccessActionLabel(tab)}
-              onReopen={() => reopenTab(tab.id)}
+              secondaryActionLabel={getRestoreOpenOtherLabel(tab)}
+              onReopen={() => {
+                void reopenTab(tab.id);
+              }}
+              onOpenOther={() => {
+                if (tab.directoryName) {
+                  void openDirectoryInNewTab();
+                  return;
+                }
+                void openFileInNewTab();
+              }}
             />
           ) : tab?.fileName ? (
             <MarkdownRenderer />
@@ -434,9 +443,7 @@ function App() {
             />
           )}
         </main>
-        {tab?.commentPanelOpen && !focusMode && !disableReviewPanels && (
-          <CommentPanel />
-        )}
+        {tab?.commentPanelOpen && !focusMode && <CommentPanel />}
       </div>
       {shareScope && (
         <ShareDialog onClose={() => setShareScope(null)} scope={shareScope} />

@@ -348,7 +348,10 @@ describe("MarkdownRenderer — read-only banner", () => {
 
     expect(screen.getByRole("status").textContent).toMatch(/live access/i);
     expect(
-      screen.getByRole("button", { name: "Re-open current file" }),
+      screen.getByRole("button", { name: "Restore access" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Open another file…" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("status").textContent).not.toMatch(/read-only/i);
   });
