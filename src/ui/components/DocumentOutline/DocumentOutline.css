@@ -1,75 +1,12 @@
-/* ── Document outline: sticky orientation bar + review-aware contents ── */
+/* ── Document outline: header trigger + review-aware contents panel ── */
 .document-outline {
-  position: sticky;
-  top: 0;
-  z-index: 6;
-  width: min(calc(90% - 3rem), var(--document-body-width));
-  margin: 0 auto 18px;
-  background: var(--surface);
-}
-
-.document-outline__bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  padding: 6px 0;
-  color: var(--ink-muted);
-  font: 11px/1.4 var(--font-mono);
-  letter-spacing: 0.04em;
-}
-
-.document-outline__path {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex-shrink: 1;
-}
-
-.document-outline__sep {
-  flex-shrink: 0;
-}
-
-.document-outline__section {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  padding: 2px 6px;
-  margin: -2px -6px;
-  border: none;
-  border-radius: 6px;
-  background: none;
-  color: var(--ink-secondary);
-  font: inherit;
-  cursor: pointer;
-  transition:
-    color 0.12s,
-    background-color 0.12s;
-}
-
-.document-outline__section:hover,
-.document-outline__section[aria-expanded="true"] {
-  color: var(--ink);
-  background: var(--bg-sunken);
-}
-
-.document-outline__mark {
-  color: var(--accent);
-  font-weight: 700;
-}
-
-.document-outline__section-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 34ch;
+  position: relative;
 }
 
 .document-outline__panel {
   position: absolute;
-  top: 100%;
-  left: 0;
+  top: calc(100% + 6px);
+  right: 0;
   z-index: 20;
   width: min(340px, 90vw);
   max-height: min(60vh, 440px);

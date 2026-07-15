@@ -39,7 +39,7 @@ describe("MarkdownRenderer — CommonMark", () => {
     render(<MarkdownRenderer />);
 
     expect(screen.getByText("database/overview.md")).toHaveClass(
-      "document-outline__path",
+      "document-kicker",
     );
     expect(
       screen.getByRole("heading", { level: 1, name: "Overview" }),

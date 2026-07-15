@@ -4,7 +4,6 @@ import type { PluggableList } from "unified";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CommentMargin } from "../CommentMargin";
-import { DocumentOutline } from "../DocumentOutline";
 import { isCommentType, useShikiRehypePlugin } from "../../../markup";
 import { useActiveTabField } from "../../../store/selectors";
 import {
@@ -127,7 +126,6 @@ function MarkdownRendererContent({
     ? peerActiveCommentId
     : hostActiveCommentId;
   const shikiPlugin = useShikiRehypePlugin();
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const canComment = writeAllowed || isPeerMode;
@@ -240,7 +238,7 @@ function MarkdownRendererContent({
     : [rehypeBlockIndex];
 
   return (
-    <div className="markdown-scroll-area" ref={scrollAreaRef}>
+    <div className="markdown-scroll-area">
       <DocumentAccessBanner
         hostTabId={hostTabId}
         isPeerMode={isPeerMode}
@@ -249,12 +247,9 @@ function MarkdownRendererContent({
         restoreTabState={restoreTabState}
         writeAllowed={writeAllowed}
       />
-      <DocumentOutline
-        path={activeFilePath ?? fileName ?? "Untitled document"}
-        cleanMarkdown={cleanMarkdown}
-        comments={visibleRangeComments}
-        scrollRootRef={scrollAreaRef}
-      />
+      <div className="document-kicker">
+        {activeFilePath ?? fileName ?? "Untitled document"}
+      </div>
       <div
         className="markdown-viewer"
         ref={viewerRef}

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DocumentOutline } from "./DocumentOutline";
+import { resetTestStore, setTestState } from "../../../testing/testHelpers";
 import type { Comment } from "../../../types/criticmarkup";
 
 const MARKDOWN = [
@@ -32,52 +33,47 @@ function makeComment(id: string, blockIndex: number): Comment {
   };
 }
 
+beforeEach(() => {
+  resetTestStore();
+});
+
 describe("DocumentOutline", () => {
-  it("shows the path and the current section in the sticky bar", () => {
-    render(
-      <DocumentOutline
-        path="database/comparison.md"
-        cleanMarkdown={MARKDOWN}
-        comments={[]}
-      />,
-    );
-    expect(screen.getByText("database/comparison.md")).toBeInTheDocument();
+  it("opens the contents panel from the header trigger", () => {
+    setTestState({ fileName: "doc.md", rawContent: MARKDOWN });
+    render(<DocumentOutline />);
+    fireEvent.click(screen.getByRole("button", { name: "Table of contents" }));
+    expect(screen.getByRole("menu")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Table of contents" }),
-    ).toHaveTextContent("Alpha");
+      screen.getAllByRole("menuitem").map((entry) => entry.textContent),
+    ).toEqual(["Alpha", "Beta", "Gamma"]);
   });
 
-  it("lists sections with their open-comment counts", () => {
-    render(
-      <DocumentOutline
-        path="doc.md"
-        cleanMarkdown={MARKDOWN}
-        comments={[
-          makeComment("c1", 3), // paragraph inside Beta
-          makeComment("c2", 5), // paragraph inside Gamma
-          makeComment("c3", 5),
-        ]}
-      />,
-    );
+  it("shows per-section open-comment counts", () => {
+    setTestState({
+      fileName: "doc.md",
+      rawContent: MARKDOWN,
+      comments: [
+        makeComment("c1", 3), // inside Beta
+        makeComment("c2", 5), // inside Gamma
+        makeComment("c3", 5),
+      ],
+    });
+    render(<DocumentOutline />);
     fireEvent.click(screen.getByRole("button", { name: "Table of contents" }));
-    const entries = screen.getAllByRole("menuitem");
-    expect(entries.map((entry) => entry.textContent)).toEqual([
-      "Alpha",
-      "Beta1",
-      "Gamma2",
-    ]);
+    expect(
+      screen.getAllByRole("menuitem").map((entry) => entry.textContent),
+    ).toEqual(["Alpha", "Beta1", "Gamma2"]);
   });
 
   it("jumps to the section block and closes on selection", () => {
+    setTestState({ fileName: "doc.md", rawContent: MARKDOWN });
     const block = document.createElement("div");
     block.setAttribute("data-block-index", "2");
     document.body.appendChild(block);
     const scrollSpy = vi.fn();
     block.scrollIntoView = scrollSpy;
 
-    render(
-      <DocumentOutline path="doc.md" cleanMarkdown={MARKDOWN} comments={[]} />,
-    );
+    render(<DocumentOutline />);
     fireEvent.click(screen.getByRole("button", { name: "Table of contents" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Beta" }));
 
@@ -89,17 +85,11 @@ describe("DocumentOutline", () => {
     block.remove();
   });
 
-  it("shows only the path when the document has no headings", () => {
-    render(
-      <DocumentOutline
-        path="notes.md"
-        cleanMarkdown="Just a paragraph."
-        comments={[]}
-      />,
-    );
-    expect(screen.getByText("notes.md")).toBeInTheDocument();
+  it("is disabled when the document has no headings", () => {
+    setTestState({ fileName: "notes.md", rawContent: "Just a paragraph." });
+    render(<DocumentOutline />);
     expect(
-      screen.queryByRole("button", { name: "Table of contents" }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: "Table of contents" }),
+    ).toBeDisabled();
   });
 });

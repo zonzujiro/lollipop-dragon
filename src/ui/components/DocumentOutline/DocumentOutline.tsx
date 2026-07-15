@@ -1,111 +1,109 @@
 import "./DocumentOutline.css";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type RefObject,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAppStore } from "../../../store";
+import { useActiveTab } from "../../../store/selectors";
+import { parseCriticMarkup, parseMarkdownFrontmatter } from "../../../markup";
 import { extractHeadings } from "../../../utils/extractHeadings";
-import type { Comment } from "../../../types/criticmarkup";
 
 interface Props {
-  path: string;
-  cleanMarkdown: string;
-  comments: Comment[];
-  scrollRootRef?: RefObject<HTMLDivElement | null>;
+  peerMode?: boolean;
 }
 
 const ACTIVE_SCROLL_OFFSET = 100;
 
-function ChevronDownIcon() {
+function OutlineIcon() {
   return (
     <svg
-      width="10"
-      height="10"
+      width="15"
+      height="15"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2.4"
+      strokeWidth="2"
       aria-hidden="true"
     >
-      <path d="M6 9l6 6 6-6" />
+      <path d="M4 6h10M4 12h16M4 18h13" />
+      <circle cx="19" cy="6" r="1.4" fill="currentColor" stroke="none" />
     </svg>
   );
 }
 
-// The document's orientation bar: sticky path + the current section, which
-// opens an outline panel where every section carries its open-comment count.
-export function DocumentOutline({
-  path,
-  cleanMarkdown,
-  comments,
-  scrollRootRef,
-}: Props) {
+function findScrollArea(): HTMLElement | null {
+  return document.querySelector<HTMLElement>(".markdown-scroll-area");
+}
+
+// Header trigger (an obvious button, always in the same place) opening the
+// contents panel: headings by level, the section you're reading marked, and
+// per-section open-comment counts — the ToC doubles as a review map.
+export function DocumentOutline({ peerMode = false }: Props) {
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  const headings = useMemo(
-    () => extractHeadings(cleanMarkdown),
-    [cleanMarkdown],
+  const tab = useActiveTab();
+  const peerRawContent = useAppStore((s) => s.peerRawContent);
+  const peerActiveFilePath = useAppStore((s) => s.peerActiveFilePath);
+  const myPeerComments = useAppStore((s) => s.myPeerComments);
+
+  const rawContent = peerMode ? peerRawContent : (tab?.rawContent ?? "");
+
+  const headings = useMemo(() => {
+    if (!rawContent) {
+      return [];
+    }
+    const document = parseMarkdownFrontmatter(rawContent);
+    const { cleanMarkdown } = parseCriticMarkup(document.body);
+    return extractHeadings(cleanMarkdown);
+  }, [rawContent]);
+
+  const commentBlockIndices = useMemo(() => {
+    if (peerMode) {
+      return myPeerComments
+        .filter((comment) => comment.path === peerActiveFilePath)
+        .map((comment) => comment.blockRef.blockIndex);
+    }
+    return (tab?.comments ?? [])
+      .map((comment) => comment.blockIndex)
+      .filter((blockIndex): blockIndex is number => blockIndex !== undefined);
+  }, [myPeerComments, peerActiveFilePath, peerMode, tab?.comments]);
+
+  const sectionCounts = useMemo(
+    () =>
+      headings.map((heading, index) => {
+        const sectionStart = heading.blockIndex;
+        const sectionEnd = headings[index + 1]?.blockIndex ?? Infinity;
+        return commentBlockIndices.filter(
+          (blockIndex) => blockIndex >= sectionStart && blockIndex < sectionEnd,
+        ).length;
+      }),
+    [commentBlockIndices, headings],
   );
 
-  const sectionCounts = useMemo(() => {
-    return headings.map((heading, index) => {
-      const sectionStart = heading.blockIndex;
-      const sectionEnd = headings[index + 1]?.blockIndex ?? Infinity;
-      return comments.filter(
-        (comment) =>
-          comment.blockIndex !== undefined &&
-          comment.blockIndex >= sectionStart &&
-          comment.blockIndex < sectionEnd,
-      ).length;
-    });
-  }, [comments, headings]);
-
-  // Track the section under the reading position while the document scrolls
-  useEffect(() => {
-    const scrollRoot = scrollRootRef?.current;
-    if (!scrollRoot || headings.length === 0) {
+  const updateActiveSection = useCallback(() => {
+    const scrollArea = findScrollArea();
+    if (!scrollArea) {
+      setActiveIndex(0);
       return;
     }
-    let frame = 0;
-    const updateActiveSection = () => {
-      frame = 0;
-      const threshold = scrollRoot.scrollTop + ACTIVE_SCROLL_OFFSET;
-      let nextActive = 0;
-      for (let index = 0; index < headings.length; index += 1) {
-        const block = scrollRoot.querySelector<HTMLElement>(
-          `[data-block-index="${headings[index].blockIndex}"]`,
-        );
-        if (block && block.offsetTop <= threshold) {
-          nextActive = index;
-        }
+    const threshold = scrollArea.scrollTop + ACTIVE_SCROLL_OFFSET;
+    let nextActive = 0;
+    for (let index = 0; index < headings.length; index += 1) {
+      const block = scrollArea.querySelector<HTMLElement>(
+        `[data-block-index="${headings[index].blockIndex}"]`,
+      );
+      if (block && block.offsetTop <= threshold) {
+        nextActive = index;
       }
-      setActiveIndex(nextActive);
-    };
-    const handleScroll = () => {
-      if (!frame) {
-        frame = requestAnimationFrame(updateActiveSection);
-      }
-    };
-    updateActiveSection();
-    scrollRoot.addEventListener("scroll", handleScroll, { passive: true });
-    return () => {
-      scrollRoot.removeEventListener("scroll", handleScroll);
-      if (frame) {
-        cancelAnimationFrame(frame);
-      }
-    };
-  }, [headings, scrollRootRef]);
+    }
+    setActiveIndex(nextActive);
+  }, [headings]);
 
-  // Close on click outside / Escape
+  // Close on click outside / Escape; keep the active marker fresh while open
   useEffect(() => {
     if (!open) {
       return;
     }
+    updateActiveSection();
     function handleMouseDown(event: MouseEvent) {
       if (
         event.target instanceof Node &&
@@ -125,7 +123,7 @@ export function DocumentOutline({
       document.removeEventListener("mousedown", handleMouseDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open]);
+  }, [open, updateActiveSection]);
 
   const jumpToSection = useCallback(
     (index: number) => {
@@ -133,48 +131,31 @@ export function DocumentOutline({
       if (!heading) {
         return;
       }
-      const root = scrollRootRef?.current ?? document;
+      const root = findScrollArea() ?? document;
       root
         .querySelector(`[data-block-index="${heading.blockIndex}"]`)
         ?.scrollIntoView({ behavior: "smooth", block: "start" });
       setActiveIndex(index);
       setOpen(false);
     },
-    [headings, scrollRootRef],
+    [headings],
   );
 
-  const activeHeading = headings[activeIndex] ?? headings[0];
+  const disabled = headings.length === 0;
 
   return (
     <div className="document-outline" ref={rootRef}>
-      <div className="document-outline__bar">
-        <span className="document-outline__path" title={path}>
-          {path}
-        </span>
-        {headings.length > 0 && (
-          <>
-            <span className="document-outline__sep" aria-hidden="true">
-              ·
-            </span>
-            <button
-              className="document-outline__section"
-              onClick={() => setOpen(!open)}
-              aria-expanded={open}
-              aria-haspopup="menu"
-              aria-label="Table of contents"
-              title="Table of contents"
-            >
-              <span className="document-outline__mark" aria-hidden="true">
-                §
-              </span>
-              <span className="document-outline__section-text">
-                {activeHeading?.text}
-              </span>
-              <ChevronDownIcon />
-            </button>
-          </>
-        )}
-      </div>
+      <button
+        className={`app-header__btn app-header__btn--icon${open ? " app-header__btn--active" : ""}`}
+        onClick={() => setOpen(!open)}
+        disabled={disabled}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label="Table of contents"
+        title={disabled ? "No headings in this document" : "Table of contents"}
+      >
+        <OutlineIcon />
+      </button>
       {open && (
         <div className="document-outline__panel" role="menu">
           <div className="document-outline__label">contents</div>
