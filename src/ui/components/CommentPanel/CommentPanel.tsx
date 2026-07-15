@@ -1171,7 +1171,7 @@ function CommentEntry({
       data-comment-type={comment.type}
       role="button"
       tabIndex={0}
-      className={`comment-panel__entry${isActive ? " comment-panel__entry--active" : ""}${isOtherFile ? " comment-panel__entry--other-file" : ""}${resolved ? " comment-panel__entry--resolved" : ""}`}
+      className={`comment-panel__entry${isActive ? " comment-panel__entry--active" : ""}${isOtherFile ? " comment-panel__entry--other-file" : ""}${resolved ? " comment-panel__entry--resolved" : ""}${canEdit ? " comment-panel__entry--actionable" : ""}`}
       onClick={onClick}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {

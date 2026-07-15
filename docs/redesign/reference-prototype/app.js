@@ -515,6 +515,7 @@ function commentCard(c, opts) {
     html += `<div class="reply-row"><input data-reply-input="${c.id}" placeholder="Reply — Enter to send" maxlength="200"></div>`;
   }
   if (!peer && c.state === "open" && !state.agent) {
+    card.classList.add("actionable");
     html += `<div class="actions"><button data-resolve="${c.id}">✓ Resolve</button></div>`;
   }
   card.innerHTML = html;

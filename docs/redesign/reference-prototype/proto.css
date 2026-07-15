@@ -964,6 +964,10 @@ textarea {
 .c-card:hover .actions {
   display: flex;
 }
+.c-card.actionable:hover .when,
+.c-card.actionable:hover .answered-chip {
+  visibility: hidden;
+}
 .c-card .actions button {
   height: 22px;
   padding: 0 8px;

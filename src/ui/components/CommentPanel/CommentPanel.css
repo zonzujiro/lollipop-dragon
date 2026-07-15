@@ -584,19 +584,35 @@
   opacity: 1;
 }
 
+.comment-panel__entry {
+  position: relative;
+}
+
+/* Hover actions replace the right-side meta (time / answered chip) so the
+   two can never collide; visibility keeps the row from reflowing. */
 .comment-panel__entry-actions {
+  position: absolute;
+  top: 8px;
+  right: 10px;
   display: flex;
   align-items: center;
   gap: 0.2rem;
-  flex-shrink: 0;
-  margin-left: auto;
   opacity: 0;
+  pointer-events: none;
   transition: opacity 0.12s;
+}
+
+.comment-panel__entry--actionable:hover .comment-panel__time,
+.comment-panel__entry--actionable:hover .comment-panel__status,
+.comment-panel__entry--actionable:focus-within .comment-panel__time,
+.comment-panel__entry--actionable:focus-within .comment-panel__status {
+  visibility: hidden;
 }
 
 .comment-panel__entry:hover .comment-panel__entry-actions,
 .comment-panel__entry:focus-within .comment-panel__entry-actions {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .comment-panel__entry-edit,

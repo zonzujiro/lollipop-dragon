@@ -7,7 +7,7 @@
 
 .comment-margin__dots {
   position: absolute;
-  right: 0.2rem;
+  right: 20px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -89,9 +89,9 @@
 }
 
 .comment-margin__add-wrapper {
+  /* same lane as the markers, stacked beneath them (design 02-screens §2) */
   position: absolute;
-  left: -0.45rem;
-  margin-top: -6px;
+  right: 20px;
 }
 
 .comment-margin__add {
