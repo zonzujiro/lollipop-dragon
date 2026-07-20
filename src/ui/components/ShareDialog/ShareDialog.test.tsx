@@ -30,8 +30,22 @@ describe("ShareDialog - initial render", () => {
     setTestState({ directoryName: "my-project", fileName: "index.md" });
     render(<ShareDialog onClose={vi.fn()} />);
     expect(
+      screen.getByRole("button", { name: /This file/ }),
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole("button", { name: /Whole folder · 0 files/ }),
     ).toBeInTheDocument();
+  });
+
+  it("hides the file/folder scope selector when only a file is open", () => {
+    setTestState({ directoryName: null, fileName: "readme.md" });
+    render(<ShareDialog onClose={vi.fn()} />);
+    expect(
+      screen.queryByRole("button", { name: /This file/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Whole folder/ }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows 7 days as the default expiry tab", () => {

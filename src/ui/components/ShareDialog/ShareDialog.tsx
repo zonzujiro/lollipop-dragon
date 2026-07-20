@@ -96,7 +96,11 @@ export function ShareDialog({ onClose, scope }: Props) {
     ? buildShareUrlFromOrigin({ keyB64: preparedIdentity.keyB64, name: label })
     : null;
   const link = uploadedLink ?? preparedLink;
-  const canChooseScope = selectedScope?.kind !== "nodes" && Boolean(tab);
+  // The file/folder selector only makes sense when a folder is open — a
+  // single-file workspace has nothing to toggle to.
+  const isFolderOpen = Boolean(tab?.directoryName);
+  const canChooseScope =
+    selectedScope?.kind !== "nodes" && Boolean(tab) && isFolderOpen;
   const folderFileCount = countFiles(tab?.fileTree ?? []);
 
   useEffect(() => {
