@@ -28,6 +28,7 @@ function loadMermaid(): Promise<MermaidApi> {
         module.default.initialize({
           startOnLoad: false,
           securityLevel: "strict",
+          suppressErrorRendering: true,
           flowchart: { htmlLabels: false },
         });
         return module.default;
