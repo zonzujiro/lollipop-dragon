@@ -89,6 +89,12 @@ export function isExistingShareMatch(input: {
       input.share.label === input.label || recordPath === input.scope.entityPath
     );
   }
+  if (input.scope?.kind === "current-file") {
+    return (
+      input.share.label === input.label &&
+      (recordPath === null || recordPath === input.entityPath)
+    );
+  }
   return recordPath === null
     ? input.share.label === input.label
     : recordPath === input.entityPath;
