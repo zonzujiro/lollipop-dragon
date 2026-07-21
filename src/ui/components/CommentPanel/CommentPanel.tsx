@@ -1,10 +1,11 @@
 import "./CommentPanel.css";
 import { useEffect, useMemo } from "react";
+import { buildCommentThreadGroups } from "../../../markup";
 import { useActiveTab } from "../../../store/selectors";
 import { useCommentPanelStore } from "../../../store/uiHooks";
 import type { CommentType } from "../../../types/criticmarkup";
 import { tabRequiresRestoreAccess } from "../../../types/tab";
-import { USER_COMMENT_TYPES } from "../../commentTypes";
+import { isUserCommentType, USER_COMMENT_TYPES } from "../../commentTypes";
 import { CrossFileList, SingleFileList } from "./CommentPanelEntries";
 import { CommentPanelAgentRuns } from "./CommentPanelAgentRuns";
 import {
@@ -13,10 +14,13 @@ import {
   EMPTY_ANSWERED_COMMENT_IDS_BY_PATH,
   EMPTY_COMMENTS,
   EMPTY_FILE_TREE,
+  EMPTY_THREAD_GROUPS,
+  EMPTY_THREAD_GROUPS_BY_PATH,
   filterCrossFileByType,
   getActiveRootCommentId,
   getAnsweredQuestionIds,
   getRootOnlyComments,
+  getThreadGroupsByPath,
   peerCommentToDisplay,
   scrollToBlock,
   type DisplayComment,
@@ -30,6 +34,10 @@ export function CommentPanel({ peerMode = false }: Props) {
   const tab = useActiveTab();
   const readOnly = !peerMode && tabRequiresRestoreAccess(tab);
   const comments = tab?.comments ?? EMPTY_COMMENTS;
+  const hostThreadGroups = useMemo(
+    () => buildCommentThreadGroups(comments),
+    [comments],
+  );
   const hostRootComments = useMemo(
     () => getRootOnlyComments(comments),
     [comments],
@@ -51,6 +59,7 @@ export function CommentPanel({ peerMode = false }: Props) {
     navigateToComment,
     editComment,
     deleteComment,
+    replyToCommentThread,
     editPeerComment,
     deletePeerComment,
     selectPeerFile,
@@ -69,11 +78,34 @@ export function CommentPanel({ peerMode = false }: Props) {
     () => getActiveRootCommentId(comments, activeCommentId),
     [activeCommentId, comments],
   );
+  // The selected question thread, expanded inline in the panel (host mode).
+  const activeHostThread = useMemo(() => {
+    if (peerMode || !activeRootCommentId) {
+      return null;
+    }
+    const group = hostThreadGroups.find(
+      (thread) => thread.root.id === activeRootCommentId,
+    );
+    return group && group.root.thread ? group : null;
+  }, [activeRootCommentId, hostThreadGroups, peerMode]);
+
+  function handleReplyToThread(
+    rootCommentId: string,
+    text: string,
+    type: CommentType,
+  ) {
+    if (readOnly) {
+      showToast("Read-only — restore folder access first");
+      return;
+    }
+    replyToCommentThread(rootCommentId, text, type).catch((error) => {
+      console.error("[CommentPanel] failed to post reply:", error);
+      showToast("Couldn't post reply");
+    });
+  }
   const commentFilter = tab?.commentFilter ?? "all";
   const effectiveCommentFilter =
-    commentFilter === "clarify" ||
-    commentFilter === "rewrite" ||
-    commentFilter === "resolved"
+    isUserCommentType(commentFilter) || commentFilter === "resolved"
       ? commentFilter
       : "all";
   const resolvedView = !peerMode && effectiveCommentFilter === "resolved";
@@ -158,6 +190,12 @@ export function CommentPanel({ peerMode = false }: Props) {
       byPath.set(entry.filePath, getAnsweredQuestionIds(entry.comments));
     }
     return byPath;
+  }, [allFileComments, isFolderMode]);
+  const threadGroupsByPath = useMemo(() => {
+    if (!isFolderMode) {
+      return EMPTY_THREAD_GROUPS_BY_PATH;
+    }
+    return getThreadGroupsByPath(allFileComments);
   }, [allFileComments, isFolderMode]);
 
   // Total count across all files for folder/peer-multi-file mode
@@ -286,7 +324,7 @@ export function CommentPanel({ peerMode = false }: Props) {
     : isPeerMultiFile || isFolderMode
       ? totalCrossFileCount
       : sourceComments.length;
-  const showTypeFilters = activeTypes.length > 0;
+  const showTypeFilters = !peerMode && activeTypes.length > 0;
 
   return (
     <aside className="comment-panel" aria-label="Comments">
@@ -384,6 +422,7 @@ export function CommentPanel({ peerMode = false }: Props) {
             onEdit={handleEditHostComment}
             onDelete={handleDeleteHostComment}
             answeredCommentIds={EMPTY_ANSWERED_COMMENT_IDS}
+            threadGroups={EMPTY_THREAD_GROUPS}
             resolvedView
           />
         ) : isPeerMultiFile ? (
@@ -396,6 +435,7 @@ export function CommentPanel({ peerMode = false }: Props) {
             onEdit={editPeerComment}
             onDelete={deletePeerComment}
             answeredCommentIdsByPath={EMPTY_ANSWERED_COMMENT_IDS_BY_PATH}
+            threadGroupsByPath={EMPTY_THREAD_GROUPS_BY_PATH}
           />
         ) : isFolderMode ? (
           <CrossFileList
@@ -407,6 +447,10 @@ export function CommentPanel({ peerMode = false }: Props) {
             onEdit={handleEditHostComment}
             onDelete={handleDeleteHostComment}
             answeredCommentIdsByPath={answeredQuestionIdsByPath}
+            threadGroupsByPath={threadGroupsByPath}
+            activeThreadGroup={activeHostThread}
+            onReply={handleReplyToThread}
+            onCloseThread={() => setActiveCommentId(null)}
           />
         ) : (
           <SingleFileList
@@ -420,6 +464,10 @@ export function CommentPanel({ peerMode = false }: Props) {
             answeredCommentIds={
               peerMode ? EMPTY_ANSWERED_COMMENT_IDS : answeredQuestionIds
             }
+            threadGroups={peerMode ? EMPTY_THREAD_GROUPS : hostThreadGroups}
+            activeThreadGroup={activeHostThread}
+            onReply={handleReplyToThread}
+            onCloseThread={() => setActiveCommentId(null)}
           />
         )}
       </div>

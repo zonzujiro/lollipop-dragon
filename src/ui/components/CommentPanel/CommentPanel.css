@@ -389,12 +389,20 @@
   background: var(--comment-color);
 }
 
+.comment-panel__filter[data-comment-type="question"] {
+  --comment-color: var(--c-question);
+}
+
 .comment-panel__filter[data-comment-type="clarify"] {
-  --comment-color: var(--c-purple);
+  --comment-color: var(--c-clarify);
 }
 
 .comment-panel__filter[data-comment-type="rewrite"] {
-  --comment-color: var(--c-orange);
+  --comment-color: var(--c-rewrite);
+}
+
+.comment-panel__filter[data-comment-type="remove"] {
+  --comment-color: var(--c-remove);
 }
 
 .comment-panel__filter-count {

@@ -125,6 +125,31 @@ describe("CommentPanel — filtering", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("filters question and remove comments instead of falling back to All", async () => {
+    const user = userEvent.setup();
+    setTestState({
+      comments: [
+        makeComment("question", "question", "why is this here?"),
+        makeComment("remove", "remove", "remove this section"),
+        makeComment("clarify", "clarify", "clarify this section"),
+      ],
+    });
+
+    render(<CommentPanel />);
+
+    const questionFilter = screen.getByRole("button", {
+      name: /^question\s+\d/,
+    });
+    await user.click(questionFilter);
+    expect(screen.getByText("why is this here?")).toBeInTheDocument();
+    expect(screen.queryByText("remove this section")).not.toBeInTheDocument();
+
+    await user.click(questionFilter);
+    await user.click(screen.getByRole("button", { name: /^remove\s+\d/ }));
+    expect(screen.getByText("remove this section")).toBeInTheDocument();
+    expect(screen.queryByText("why is this here?")).not.toBeInTheDocument();
+  });
+
   it("filters comments by type when a filter button is clicked", async () => {
     const user = userEvent.setup();
     render(<CommentPanel />);
@@ -178,45 +203,108 @@ describe("CommentPanel — active entry", () => {
     expect(tab?.activeCommentId).toBe("0");
   });
 
-  it("keeps threaded replies out of the panel list and highlights the root entry", () => {
+  const questionThreadComments = [
+    makeCommentBase({
+      id: "question-root",
+      type: "question",
+      text: "Why is this here?",
+      blockIndex: 0,
+      thread: {
+        commentId: "mr-question-1",
+        threadId: "mr-question-1",
+      },
+    }),
+    makeCommentBase({
+      id: "answer-reply",
+      type: "answer",
+      text: "Because it explains reconnect fallback.",
+      blockIndex: 0,
+      thread: {
+        commentId: "mr-answer-1",
+        threadId: "mr-question-1",
+        replyTo: "mr-question-1",
+        authorLabel: "Codex",
+      },
+    }),
+  ];
+
+  it("shows threaded replies beneath the root before the thread is selected", () => {
     setTestState({
-      comments: [
-        makeCommentBase({
-          id: "question-root",
-          type: "question",
-          text: "Why is this here?",
-          blockIndex: 0,
-          thread: {
-            commentId: "mr-question-1",
-            threadId: "mr-question-1",
-          },
-        }),
-        makeCommentBase({
-          id: "answer-reply",
-          type: "answer",
-          text: "Because it explains reconnect fallback.",
-          blockIndex: 0,
-          thread: {
-            commentId: "mr-answer-1",
-            threadId: "mr-question-1",
-            replyTo: "mr-question-1",
-            authorLabel: "Codex",
-          },
-        }),
-      ],
+      comments: questionThreadComments,
+      activeCommentId: null,
+    });
+
+    render(<CommentPanel />);
+
+    expect(screen.getByText("Why is this here?")).toBeInTheDocument();
+    expect(screen.getByText("✓ answered · 1")).toBeInTheDocument();
+    expect(
+      screen.getByText("Because it explains reconnect fallback."),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Answer text")).not.toBeInTheDocument();
+  });
+
+  it("expands the selected question thread into a conversation with its reply", () => {
+    setTestState({
+      comments: questionThreadComments,
       activeCommentId: "answer-reply",
     });
 
-    const { container } = render(<CommentPanel />);
+    render(<CommentPanel />);
 
+    // The list entry expands into the conversation card: root + reply + author.
+    expect(screen.queryByText("Thread")).not.toBeInTheDocument();
     expect(screen.getByText("Why is this here?")).toBeInTheDocument();
-    expect(screen.getByText("answered")).toBeInTheDocument();
     expect(
-      screen.queryByText("Because it explains reconnect fallback."),
+      screen.getByText("Because it explains reconnect fallback."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Codex")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Edit comment" }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Delete comment" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Resolve question" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Answer text")).toBeInTheDocument();
+  });
 
-    const active = container.querySelector(".comment-panel__entry--active");
-    expect(active?.textContent).toContain("Why is this here?");
+  it("keeps answered threads immutable in folder view", () => {
+    setTestState({
+      activeFilePath: "docs/spec.md",
+      comments: questionThreadComments,
+      activeCommentId: "question-root",
+      fileTree: [
+        {
+          kind: "file",
+          name: "spec.md",
+          path: "docs/spec.md",
+        },
+      ],
+      allFileComments: {
+        "docs/spec.md": {
+          filePath: "docs/spec.md",
+          fileName: "spec.md",
+          comments: questionThreadComments,
+        },
+      },
+    });
+
+    render(<CommentPanel />);
+
+    expect(screen.getByText("✓ answered · 1")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Edit comment" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Delete comment" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Resolve question" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Answer text")).toBeInTheDocument();
   });
 
   it("does not show edit actions for agent-authored answer comments", async () => {

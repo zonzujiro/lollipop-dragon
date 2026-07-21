@@ -111,23 +111,30 @@ function spotlightCommentRanges(input: {
   if (!spans || !hoveredId) {
     return null;
   }
+  const covers = (span: HTMLElement) =>
+    (span.dataset.cids ?? "").split(" ").includes(hoveredId);
+  // If the hovered comment has no anchored span in the document (e.g. a
+  // block-level comment), don't dim anything: there is nothing to spotlight,
+  // and muting every highlight with no cleanup left them stuck greyed.
+  if (![...spans].some(covers)) {
+    return null;
+  }
 
   const color = COMMENT_TYPE_COLOR[input.highlight.commentType];
   const soloTint = `linear-gradient(color-mix(in srgb, ${color} 14%, transparent), color-mix(in srgb, ${color} 14%, transparent))`;
-  let spotlit = false;
   for (const span of spans) {
-    const covers = (span.dataset.cids ?? "").split(" ").includes(hoveredId);
-    span.classList.toggle("comment-highlight--focus", covers);
-    span.classList.toggle("comment-highlight--muted", !covers);
-    if (covers) {
+    const isCovered = covers(span);
+    span.classList.toggle("comment-highlight--focus", isCovered);
+    span.classList.toggle("comment-highlight--muted", !isCovered);
+    if (isCovered) {
       span.dataset.spotlightBackground = span.style.backgroundImage;
       span.dataset.spotlightShadow = span.style.boxShadow;
       span.style.backgroundImage = soloTint;
       span.style.boxShadow = `inset 0 -2px 0 ${color}`;
-      spotlit = true;
     }
   }
-  return spotlit ? () => restoreSpotlightStyles(spans) : null;
+  // Always restore on cleanup — including the muted-only spans.
+  return () => restoreSpotlightStyles(spans);
 }
 
 export function useCommentHighlightLayer(input: {

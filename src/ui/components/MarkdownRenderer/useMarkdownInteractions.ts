@@ -2,6 +2,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type RefObject,
   useCallback,
+  useEffect,
   useState,
 } from "react";
 import { findQuoteOccurrences } from "../../../markup";
@@ -11,6 +12,16 @@ export interface RangeCommentDraft {
   blockIndex: number;
   top: number;
   anchor: CommentAnchorDraft;
+}
+
+// A captured selection awaiting an explicit "Comment" action. Selecting text
+// no longer opens the composer directly (that hijacks normal select/copy);
+// instead a floating button appears at these viewport coordinates and only
+// opens the composer when clicked.
+export interface PendingSelection {
+  draft: RangeCommentDraft;
+  top: number;
+  left: number;
 }
 
 interface HoveredBlock {
@@ -84,6 +95,8 @@ export function useMarkdownInteractions(input: {
   const [hoveredBlock, setHoveredBlock] = useState<HoveredBlock | null>(null);
   const [rangeCommentDraft, setRangeCommentDraft] =
     useState<RangeCommentDraft | null>(null);
+  const [pendingSelection, setPendingSelection] =
+    useState<PendingSelection | null>(null);
 
   const handleBodyMouseOver = useCallback(
     (event: ReactMouseEvent<HTMLDivElement>) => {
@@ -138,19 +151,58 @@ export function useMarkdownInteractions(input: {
     [],
   );
 
+  // Selecting text no longer opens the composer directly — it surfaces a
+  // floating "Comment" button, so the raw selection stays usable (copy/paste).
   const handleBodyMouseUp = useCallback(() => {
     if (!input.canComment) {
       return;
     }
     const selection = window.getSelection();
-    if (!selection) {
+    if (!selection || selection.rangeCount === 0) {
+      setPendingSelection(null);
       return;
     }
     const draft = captureRangeCommentDraft(selection);
-    if (draft) {
-      setRangeCommentDraft(draft);
+    if (!draft) {
+      setPendingSelection(null);
+      return;
     }
+    const range = selection.getRangeAt(0);
+    // Range.getBoundingClientRect is absent in some environments (jsdom); the
+    // rect only positions the floating button, so fall back to the origin.
+    const rect =
+      typeof range.getBoundingClientRect === "function"
+        ? range.getBoundingClientRect()
+        : { top: 0, left: 0, width: 0 };
+    setPendingSelection({
+      draft,
+      top: rect.top,
+      left: rect.left + rect.width / 2,
+    });
   }, [input.canComment]);
+
+  const handleBodyMouseDown = useCallback(() => {
+    setPendingSelection(null);
+  }, []);
+
+  const confirmPendingSelection = useCallback(() => {
+    if (!pendingSelection) {
+      return;
+    }
+    setRangeCommentDraft(pendingSelection.draft);
+    setPendingSelection(null);
+  }, [pendingSelection]);
+
+  // A floating button anchored to viewport coords would drift on scroll, so
+  // dismiss it instead.
+  useEffect(() => {
+    if (!pendingSelection) {
+      return;
+    }
+    const clear = () => setPendingSelection(null);
+    window.addEventListener("scroll", clear, true);
+    return () => window.removeEventListener("scroll", clear, true);
+  }, [pendingSelection]);
 
   const handleSpecialBlockAnchor = useCallback(
     (blockIndex: number, anchor: CommentAnchorDraft) => {
@@ -167,19 +219,23 @@ export function useMarkdownInteractions(input: {
 
   const dismissRangeComment = useCallback(() => {
     setRangeCommentDraft(null);
+    setPendingSelection(null);
     window.getSelection()?.removeAllRanges();
   }, []);
 
   const handleBodyMouseLeave = useCallback(() => setHoveredBlock(null), []);
 
   return {
+    confirmPendingSelection,
     dismissRangeComment,
     handleBodyClick,
+    handleBodyMouseDown,
     handleBodyMouseLeave,
     handleBodyMouseOver,
     handleBodyMouseUp,
     handleSpecialBlockAnchor,
     hoveredBlock,
+    pendingSelection,
     rangeCommentDraft,
   };
 }

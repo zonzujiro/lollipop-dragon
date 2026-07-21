@@ -33,6 +33,27 @@ function makeQuestionThread() {
   };
 }
 
+function makeUnansweredQuestionThread() {
+  const { root } = makeQuestionThread();
+  return { root, replies: [] };
+}
+
+function makeUnansweredActionThread() {
+  const { root } = makeQuestionThread();
+  const reply = makeComment({
+    id: "reply-comment",
+    type: "clarify",
+    text: "Please explain the reconnect fallback path.",
+    thread: {
+      commentId: "mr-action-1",
+      threadId: "mr-question-1",
+      replyTo: "mr-question-1",
+      authorLabel: "You",
+    },
+  });
+  return { root, replies: [reply] };
+}
+
 describe("CommentThreadCard", () => {
   it("renders a question with linked agent answers", () => {
     render(
@@ -49,6 +70,31 @@ describe("CommentThreadCard", () => {
       screen.getByText("It explains the reconnect fallback path."),
     ).toBeInTheDocument();
     expect(screen.getByText("Codex")).toBeInTheDocument();
+  });
+
+  it("uses the prototype rail anatomy for inline threads", () => {
+    const { container } = render(
+      <CommentThreadCard
+        thread={makeQuestionThread().thread}
+        top={0}
+        inline
+        selected
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("Thread")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Close comment" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("✓ answered · 1")).toBeInTheDocument();
+    expect(
+      container.querySelector(".comment-thread-card__thread-list"),
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector(".comment-thread-card__avatar--external"),
+    ).toHaveTextContent("A");
   });
 
   it("falls back to Agent when an answer has no author label", () => {
@@ -103,8 +149,53 @@ describe("CommentThreadCard", () => {
       screen.getByText("Codex").closest(".comment-thread-card__item"),
     ).toHaveClass("comment-thread-card__item--external");
     expect(
-      screen.getByText("You").closest(".comment-thread-card__item"),
+      screen
+        .getAllByText("You")
+        .find((element) =>
+          element.classList.contains("comment-thread-card__reply-author"),
+        )
+        ?.closest(".comment-thread-card__item"),
     ).toHaveClass("comment-thread-card__item--mine");
+  });
+
+  it("collapses long threads to the first and last reply", async () => {
+    const user = userEvent.setup();
+    const { root } = makeQuestionThread();
+    const replies = ["First", "Second", "Third", "Fourth", "Last"].map(
+      (text, replyIndex) =>
+        makeComment({
+          id: `reply-${replyIndex}`,
+          type: "answer",
+          text,
+          thread: {
+            commentId: `mr-answer-${replyIndex}`,
+            threadId: "mr-question-1",
+            replyTo: "mr-question-1",
+            authorLabel: "Agent",
+          },
+        }),
+    );
+
+    render(
+      <CommentThreadCard
+        thread={{ root, replies }}
+        top={0}
+        inline
+        selected={false}
+      />,
+    );
+
+    expect(screen.getByText("First")).toBeInTheDocument();
+    expect(screen.getByText("Last")).toBeInTheDocument();
+    expect(screen.queryByText("Second")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "⌄ 3 more replies" }));
+
+    expect(screen.getByText("Second")).toBeInTheDocument();
+    expect(screen.getByText("Third")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "⌃ collapse thread" }),
+    ).toBeInTheDocument();
   });
 
   it("edits the selected user-authored thread message", async () => {
@@ -113,7 +204,7 @@ describe("CommentThreadCard", () => {
 
     render(
       <CommentThreadCard
-        thread={makeQuestionThread().thread}
+        thread={makeUnansweredQuestionThread()}
         top={0}
         onClose={vi.fn()}
         onEdit={onEdit}
@@ -138,7 +229,7 @@ describe("CommentThreadCard", () => {
 
     render(
       <CommentThreadCard
-        thread={makeQuestionThread().thread}
+        thread={makeUnansweredQuestionThread()}
         top={0}
         onClose={vi.fn()}
         onEdit={vi.fn()}
@@ -156,22 +247,87 @@ describe("CommentThreadCard", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("does not allow editing linked agent answers", () => {
+  it("keeps only root resolution available in an answered thread", () => {
     render(
       <CommentThreadCard
         thread={makeQuestionThread().thread}
         top={0}
         onClose={vi.fn()}
         onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onReply={vi.fn()}
       />,
     );
 
     expect(
-      screen.getAllByRole("button", { name: "Edit comment" }),
-    ).toHaveLength(1);
+      screen.queryByRole("button", { name: "Edit comment" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Delete comment" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Resolve question" }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Answer text")).toBeInTheDocument();
+  });
+
+  it("closes an active edit when the thread becomes answered", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <CommentThreadCard
+        thread={makeUnansweredQuestionThread()}
+        top={0}
+        onClose={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onReply={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Edit comment" }));
+    expect(screen.getByLabelText("Comment text")).toBeInTheDocument();
+
+    rerender(
+      <CommentThreadCard
+        thread={makeQuestionThread().thread}
+        top={0}
+        onClose={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onReply={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByLabelText("Comment text")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Answer text")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Delete comment" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Resolve question" }),
+    ).toBeInTheDocument();
   });
 
   it("deletes the selected thread message", async () => {
+    const user = userEvent.setup();
+    const onDelete = vi.fn();
+
+    render(
+      <CommentThreadCard
+        thread={makeUnansweredActionThread()}
+        top={0}
+        onClose={vi.fn()}
+        onDelete={onDelete}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Delete comment" }));
+    await user.click(screen.getByRole("button", { name: "Confirm delete" }));
+
+    expect(onDelete).toHaveBeenCalledWith("reply-comment");
+  });
+
+  it("resolves an answered question from the thread root", async () => {
     const user = userEvent.setup();
     const onDelete = vi.fn();
 
@@ -184,31 +340,11 @@ describe("CommentThreadCard", () => {
       />,
     );
 
-    await user.click(
-      screen.getAllByRole("button", { name: "Delete comment" })[1],
-    );
-    await user.click(screen.getByRole("button", { name: "Confirm delete" }));
+    await user.click(screen.getByRole("button", { name: "Resolve question" }));
 
-    expect(onDelete).toHaveBeenCalledWith("reply-comment");
-  });
-
-  it("labels root deletion as deleting the thread", async () => {
-    const user = userEvent.setup();
-
-    render(
-      <CommentThreadCard
-        thread={makeQuestionThread().thread}
-        top={0}
-        onClose={vi.fn()}
-        onDelete={vi.fn()}
-      />,
-    );
-
-    await user.click(
-      screen.getAllByRole("button", { name: "Delete comment" })[0],
-    );
-
-    expect(screen.getByText("Delete this thread?")).toBeInTheDocument();
+    expect(screen.getByText("Resolve this question?")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Confirm resolve" }));
+    expect(onDelete).toHaveBeenCalledWith("root-comment");
   });
 
   it("submits a user answer from the thread composer", async () => {
@@ -254,7 +390,7 @@ describe("CommentThreadCard", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText("Answer text")).toHaveAttribute(
       "placeholder",
-      "Write an answer...",
+      "Reply — Enter to send",
     );
     for (const actionType of ["clarify", "rewrite"]) {
       expect(screen.getByRole("button", { name: actionType })).toHaveAttribute(
@@ -321,7 +457,7 @@ describe("CommentThreadCard", () => {
 
     expect(rewriteButton).toHaveAttribute("aria-pressed", "false");
     const input = screen.getByLabelText("Answer text");
-    expect(input).toHaveAttribute("placeholder", "Write an answer...");
+    expect(input).toHaveAttribute("placeholder", "Reply — Enter to send");
     await user.type(input, "Keep it after all.");
     await user.click(screen.getByRole("button", { name: "Send reply" }));
 

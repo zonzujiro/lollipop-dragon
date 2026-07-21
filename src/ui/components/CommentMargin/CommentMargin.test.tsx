@@ -432,6 +432,39 @@ describe("CommentMargin — AddCommentForm", () => {
 });
 
 describe("CommentMargin — existing comment markers", () => {
+  it("keeps dense marker stacks from adjacent blocks separated", async () => {
+    setTestState({
+      comments: [
+        makeComment({ id: "first", type: "note", blockIndex: 0 }),
+        makeComment({ id: "second", type: "question", blockIndex: 0 }),
+        makeComment({ id: "third", type: "clarify", blockIndex: 0 }),
+        makeComment({ id: "fourth", type: "remove", blockIndex: 1 }),
+      ],
+    });
+
+    const { container } = render(
+      <CommentMargin
+        containerRef={createContainerRef([96, 150])}
+        hoveredBlock={{ index: 1, top: 150 }}
+        onAddComment={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelectorAll(".comment-margin__dots")).toHaveLength(
+        2,
+      );
+    });
+    const markerStacks = Array.from(
+      container.querySelectorAll<HTMLElement>(".comment-margin__dots"),
+    );
+    expect(markerStacks[0]).toHaveStyle({ top: "96px" });
+    expect(markerStacks[1]).toHaveStyle({ top: "186px" });
+    expect(container.querySelector(".comment-margin__add-wrapper")).toHaveStyle(
+      { top: "216px" },
+    );
+  });
+
   it("uses the redesign marker and does not render a floating thread card", async () => {
     setTestState({
       activeCommentId: "fix-root",

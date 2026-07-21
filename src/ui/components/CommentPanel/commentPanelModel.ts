@@ -1,4 +1,5 @@
 import { buildCommentThreadGroups } from "../../../markup";
+import type { CommentThreadGroup } from "../../../markup";
 import type { AgentRun, AgentRunStatus } from "../../../modules/agent-workflow";
 import { canRunAgent } from "../../../runtime";
 import type { AgentRuntimeCapability } from "../../../runtime";
@@ -32,6 +33,11 @@ export const EMPTY_ANSWERED_COMMENT_IDS = new Set<string>();
 export const EMPTY_ANSWERED_COMMENT_IDS_BY_PATH = new Map<
   string,
   ReadonlySet<string>
+>();
+export const EMPTY_THREAD_GROUPS: CommentThreadGroup[] = [];
+export const EMPTY_THREAD_GROUPS_BY_PATH = new Map<
+  string,
+  readonly CommentThreadGroup[]
 >();
 export const INITIAL_AGENT_CAPABILITY: AgentRuntimeCapability = {
   canRunAgent: false,
@@ -72,6 +78,22 @@ export interface DisplayComment {
   quote: string | undefined;
   authorLabel: string;
   createdAt: string;
+}
+
+export function formatRelativeTime(createdAt: string): string {
+  const elapsedMilliseconds = Date.now() - new Date(createdAt).getTime();
+  const elapsedMinutes = Math.max(0, Math.floor(elapsedMilliseconds / 60000));
+  if (elapsedMinutes < 1) {
+    return "now";
+  }
+  if (elapsedMinutes < 60) {
+    return `${elapsedMinutes} min`;
+  }
+  const elapsedHours = Math.floor(elapsedMinutes / 60);
+  if (elapsedHours < 24) {
+    return `${elapsedHours} h`;
+  }
+  return `${Math.floor(elapsedHours / 24)} d`;
 }
 
 export function peerCommentToDisplay(comment: PeerComment): DisplayComment {
@@ -152,6 +174,16 @@ export function getAnsweredQuestionIds(
     }
   }
   return answeredQuestionIds;
+}
+
+export function getThreadGroupsByPath(
+  allFileComments: TabState["allFileComments"],
+): ReadonlyMap<string, readonly CommentThreadGroup[]> {
+  const byPath = new Map<string, readonly CommentThreadGroup[]>();
+  for (const entry of Object.values(allFileComments)) {
+    byPath.set(entry.filePath, buildCommentThreadGroups(entry.comments));
+  }
+  return byPath;
 }
 
 export function getActiveRootCommentId(

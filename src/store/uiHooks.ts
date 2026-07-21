@@ -20,6 +20,7 @@ export function useCommentPanelStore(tabId: string | null) {
       navigateToComment: state.navigateToComment,
       editComment: state.editComment,
       deleteComment: state.deleteComment,
+      replyToCommentThread: state.replyToCommentThread,
       editPeerComment: state.editPeerComment,
       deletePeerComment: state.deletePeerComment,
       selectPeerFile: state.selectPeerFile,
