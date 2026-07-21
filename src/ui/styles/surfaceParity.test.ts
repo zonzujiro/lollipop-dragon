@@ -121,22 +121,20 @@ describe("Reading Room surface parity", () => {
     expect(literalWhiteViolations).toEqual([]);
   });
 
-  it("keeps the landing composition on its fixed poster register", () => {
+  it("keeps the landing composition on the shared app palette", () => {
     const landingCss = readStylesheet("src/ui/styles/landing.css");
 
-    expect(landingCss).not.toMatch(
-      /var\(--(?:bg(?:-sunken)?|surface|ink(?:-secondary|-muted)?|accent|agent|c-rewrite|c-clarify)\)/,
-    );
-    for (const posterToken of [
-      "poster-bg",
-      "poster-surface",
-      "poster-ink",
-      "poster-accent",
-      "poster-agent",
-      "poster-rewrite",
-      "poster-clarify",
+    expect(landingCss).not.toContain("var(--poster-");
+    for (const themeToken of [
+      "bg",
+      "surface",
+      "ink",
+      "accent",
+      "agent",
+      "c-rewrite",
+      "c-clarify",
     ]) {
-      expect(landingCss).toContain(`var(--${posterToken})`);
+      expect(landingCss).toContain(`var(--${themeToken})`);
     }
   });
 
@@ -210,7 +208,7 @@ describe("Reading Room surface parity", () => {
       /\.landing-hero\s*\{[^}]*grid-template-columns:\s*1\.1fr 1fr/s,
     );
     expect(landingCss).toMatch(
-      /\.landing-action\s*\{[^}]*height:\s*54px[^}]*box-shadow:\s*5px 5px 0 var\(--poster-ink\)/s,
+      /\.landing-action\s*\{[^}]*height:\s*54px[^}]*box-shadow:\s*5px 5px 0 var\(--ink\)/s,
     );
   });
 });

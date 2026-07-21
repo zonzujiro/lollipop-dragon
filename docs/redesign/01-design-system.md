@@ -7,7 +7,7 @@ The shipped palette is **Sage** and lives in [`src/ui/styles/tokens.css`](../../
 The mascot logo (`src/assets/lollipop-dragon-logo.svg`) stays as the brand stamp, but the palette shipped as **Sage** — a warm, botanical register (oat paper, forest-green accent, clay agent) chosen to be the app's own identity, distinct from the logo's exact hues (palette decision 21.07.2026). Two registers coexist deliberately:
 
 - **The app (Reading Room)**: warm oat paper, serif documents, quiet chrome — title-case, restrained.
-- **The landing story (Bauhaus)**: lowercase display headings, geometric shapes (square/circle/triangle markers), flat color bands. Landing-only; never inside the app shell.
+- **The landing story (Bauhaus)**: lowercase display headings, geometric shapes (square/circle/triangle markers), flat color bands. Its layout language is landing-only, while its colors come from the same active Sage light/dark theme as the app shell.
 
 ## Color
 
@@ -26,12 +26,6 @@ The mascot logo (`src/assets/lollipop-dragon-logo.svg`) stays as the brand stamp
 | `--avatar-neutral`         | `#6E6659`             | `#97907F`             | neutral reply avatars                                   |
 | `--on-accent`              | `#FFFFFF`             | `#14170F`             | glyphs and compact labels on colored controls           |
 | `--on-rewrite`             | `#14170F`             | `#14170F`             | compact labels on rewrite-colored controls              |
-
-The landing's theme-independent poster register is also authoritative in
-`tokens.css`: `--poster-accent: #2F7A4F`, `--poster-agent: #AD592A`,
-`--poster-rewrite: #BB7410`, and `--poster-clarify: #7C4FD0`, alongside the
-paper, ink, line, pop, and well tokens. Landing CSS must consume only these
-`--poster-*` colors so toggling the app theme cannot recolor the composition.
 
 Rules: never pure black/white; elevation in dark mode = lighter surface (4 levels), in light mode = hairline + subtle shadow; accent is reserved — everything else stays neutral.
 

@@ -4,12 +4,12 @@ Every surface, its layout and states. Pixel truth: `reference-prototype/` (open 
 
 ## 1. Landing (`FilePicker`)
 
-**Concept: a Bauhaus poster that works.** A ground-up redesign — do not port the old landing's sections. It keeps two ideas from it: the Bauhaus design language, and "what it does" feature storytelling. Landing-only visual rules: **sharp corners (no border-radius), 3px ink rules, flat color planes, hard offset shadows (`5px 5px 0 ink`), lowercase 800–900-weight display type, square/circle/triangle as the only ornament**. The fixed `--poster-*` register complements the Sage app palette: forest accent, clay agent, pale-sage pop, oat paper, and ink. The old `#E63946/#FFB800/#1D3557` palette is retired.
+**Concept: a Bauhaus poster that works.** A ground-up redesign — do not port the old landing's sections. It keeps two ideas from it: the Bauhaus design language, and "what it does" feature storytelling. Landing-only visual rules: **sharp corners (no border-radius), 3px ink rules, flat color planes, hard offset shadows (`5px 5px 0 ink`), lowercase 800–900-weight display type, square/circle/triangle as the only ornament**. Colors come from the same Sage tokens as the app and follow the active light/dark theme: forest accent, clay agent, oat paper, and ink. The old `#E63946/#FFB800/#1D3557` palette is retired.
 
 **Hero (100vh, asymmetric two-column grid):**
 
 - Left: the real dragon logo as a small brand stamp (~46px, `title="yes, it's a dragon"` easter egg) → mono kicker "■ local-first markdown review" → giant lowercase wordmark, "lollipop" solid ink over "dragon" as accent-outlined type (`-webkit-text-stroke`) → tagline → three stacked flat action buttons with hard shadows: **open a folder** (accent, ⌘O), **open a file** (outline, ⌘⇧O), **paste a review link** (agent, "no install" — opens the peer flow). Shape glyph per action (■ ● ▲). Hover: translate(−2px,−2px) + deeper shadow; active: pressed. Below: "recent" chips (from file history, `HistoryDropdown` data) with open-comment count.
-- Right: geometric lollipop-dragon composition using the fixed poster palette beside a bordered page miniature that already shows **two overlapping comment ranges** (question + clarify translucent bars with separate underline stubs) — the product thesis drawn as art.
+- Right: geometric lollipop-dragon composition using the active app palette beside a bordered page miniature that already shows **two overlapping comment ranges** (question + clarify translucent bars with separate underline stubs) — the product thesis drawn as art.
 - Bottom edge: full-width ink strip — left "what it does ↓" (anchors to `#landing-features`), right the honest browser note. Directory drag-and-drop onto the window must still work.
 
 **"What it does" — numbered chapters (fresh copy, not the old feature list):**
