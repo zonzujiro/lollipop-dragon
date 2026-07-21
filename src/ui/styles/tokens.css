@@ -8,13 +8,20 @@
      theme-independent (NOT overridden in .dark): the poster is a fixed
      composition — a light page with dark ink — that must read identically in
      light and dark. Change the whole landing palette from here. */
+  --poster-bg: #f1f3ea; /* outer oat-paper field */
+  --poster-surface: #fcfdf8; /* cards and outlined actions */
   --poster-plane: #14170f; /* dark bands, footer, ink marks */
   --poster-ink: #1e241c; /* page outline, headings, rules in the art */
+  --poster-ink-secondary: #4f5748; /* secondary body copy */
   --poster-muted: #857f70; /* secondary text lines in the art */
   --poster-sunken: #e7ebdd; /* code-well fill in the art */
   --poster-line: #cbd0bb; /* hairlines in the art */
   --poster-pop: #d9e4c8; /* pale sage accent pop */
   --poster-paper: #f5f7ec; /* near-white surfaces / text on colored planes */
+  --poster-accent: #2f7a4f; /* forest-green poster action */
+  --poster-agent: #ad592a; /* clay poster secondary action */
+  --poster-rewrite: #bb7410; /* ochre poster geometry */
+  --poster-clarify: #7c4fd0; /* violet poster geometry */
 
   --bg: #f1f3ea;
   --bg-sunken: #e7ebdd;
@@ -27,10 +34,11 @@
   --line-strong: #cbd0bb;
   --accent: #2f7a4f;
   --accent-soft: rgba(47, 122, 79, 0.08);
-  --agent: #b5602f;
-  --agent-soft: rgba(181, 96, 47, 0.1);
+  --agent: #b45f2e;
+  --agent-soft: rgba(180, 95, 46, 0.1);
   --avatar-neutral: #6e6659;
   --on-accent: #ffffff;
+  --on-rewrite: #14170f;
 
   --c-fix: #d93030;
   --c-rewrite: #bb7410;
@@ -101,6 +109,7 @@
   --agent-soft: rgba(209, 131, 79, 0.16);
   --avatar-neutral: #97907f;
   --on-accent: #14170f;
+  --on-rewrite: #14170f;
   --shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.35);
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
 

@@ -73,7 +73,7 @@
 }
 .peer-card__btn--merge:hover {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 .peer-card__btn--merge:disabled {
   opacity: 0.4;

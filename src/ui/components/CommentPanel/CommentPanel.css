@@ -117,7 +117,7 @@
 .comment-panel__danger-confirm-delete {
   border: 1px solid var(--c-red);
   background: var(--c-red);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .comment-panel__danger-confirm-cancel {

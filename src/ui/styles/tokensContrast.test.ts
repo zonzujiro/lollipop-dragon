@@ -9,10 +9,21 @@ interface ThemeColors {
   codeBackground: string;
   ink: string;
   onAccent: string;
+  onRewrite: string;
   remove: string;
+  rewrite: string;
   secondaryInk: string;
   surface: string;
   taxonomy: string[];
+}
+
+interface PosterColors {
+  accent: string;
+  agent: string;
+  clarify: string;
+  paper: string;
+  plane: string;
+  rewrite: string;
 }
 
 const TOKEN_STYLESHEET = readFileSync("src/ui/styles/tokens.css", "utf8");
@@ -76,7 +87,9 @@ function buildThemeColors(
     codeBackground: value("--bg-sunken"),
     ink: value("--ink"),
     onAccent: value("--on-accent"),
+    onRewrite: value("--on-rewrite"),
     remove: value("--c-remove"),
+    rewrite: value("--c-rewrite"),
     secondaryInk: value("--ink-secondary"),
     surface: value("--surface"),
     taxonomy: TAXONOMY_TOKENS.map(value),
@@ -93,6 +106,14 @@ const themes: [string, ThemeColors][] = [
   ["light", buildThemeColors(rootTokens, new Map())],
   ["dark", buildThemeColors(rootTokens, darkTokens)],
 ];
+const posterColors: PosterColors = {
+  accent: getToken("--poster-accent", rootTokens, new Map()),
+  agent: getToken("--poster-agent", rootTokens, new Map()),
+  clarify: getToken("--poster-clarify", rootTokens, new Map()),
+  paper: getToken("--poster-paper", rootTokens, new Map()),
+  plane: getToken("--poster-plane", rootTokens, new Map()),
+  rewrite: getToken("--poster-rewrite", rootTokens, new Map()),
+};
 
 function channelToLinear(channel: number): number {
   const normalized = channel / 255;
@@ -151,10 +172,28 @@ describe("Reading Room token contrast", () => {
       contrastRatio(colors.onAccent, colors.remove),
     ).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(colors.onAccent, colors.agent)).toBeGreaterThanOrEqual(
-      3,
+      4.5,
     );
     expect(
       contrastRatio(colors.onAccent, colors.avatarNeutral),
-    ).toBeGreaterThanOrEqual(3);
+    ).toBeGreaterThanOrEqual(4.5);
+    expect(
+      contrastRatio(colors.onRewrite, colors.rewrite),
+    ).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("keeps fixed poster control labels legible", () => {
+    expect(
+      contrastRatio(posterColors.paper, posterColors.accent),
+    ).toBeGreaterThanOrEqual(4.5);
+    expect(
+      contrastRatio(posterColors.paper, posterColors.agent),
+    ).toBeGreaterThanOrEqual(4.5);
+    expect(
+      contrastRatio(posterColors.paper, posterColors.clarify),
+    ).toBeGreaterThanOrEqual(4.5);
+    expect(
+      contrastRatio(posterColors.plane, posterColors.rewrite),
+    ).toBeGreaterThanOrEqual(4.5);
   });
 });

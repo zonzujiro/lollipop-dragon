@@ -22,9 +22,16 @@ The mascot logo (`src/assets/lollipop-dragon-logo.svg`) stays as the brand stamp
 | `--ink-muted`              | `#857F70`             | `#7C7A6C`             | hints, metadata                                         |
 | `--line` / `--line-strong` | `#DDE1D1` / `#CBD0BB` | `#2C3122` / `#3A4030` | hairlines                                               |
 | `--accent`                 | `#2F7A4F`             | `#5AA877`             | **the only accent**: primary actions, selection, unread |
-| `--agent`                  | `#B5602F`             | `#D1834F`             | agent activity, live connection, success                |
+| `--agent`                  | `#B45F2E`             | `#D1834F`             | agent activity, live connection, success                |
 | `--avatar-neutral`         | `#6E6659`             | `#97907F`             | neutral reply avatars                                   |
 | `--on-accent`              | `#FFFFFF`             | `#14170F`             | glyphs and compact labels on colored controls           |
+| `--on-rewrite`             | `#14170F`             | `#14170F`             | compact labels on rewrite-colored controls              |
+
+The landing's theme-independent poster register is also authoritative in
+`tokens.css`: `--poster-accent: #2F7A4F`, `--poster-agent: #AD592A`,
+`--poster-rewrite: #BB7410`, and `--poster-clarify: #7C4FD0`, alongside the
+paper, ink, line, pop, and well tokens. Landing CSS must consume only these
+`--poster-*` colors so toggling the app theme cannot recolor the composition.
 
 Rules: never pure black/white; elevation in dark mode = lighter surface (4 levels), in light mode = hairline + subtle shadow; accent is reserved — everything else stays neutral.
 
@@ -38,7 +45,7 @@ Rules: never pure black/white; elevation in dark mode = lighter surface (4 level
 | clarify  | `#7C4FD0` | `#A98BE8` | ambiguous — make it precise                                         |
 | question | `#0E8A9E` | `#4FB8CB` | needs an answer, opens a thread                                     |
 | answer   | `#2E9678` | `#4CBA9A` | the reply — often from the agent                                    |
-| remove   | `#D93030` | `#F07272` | doesn't belong — cut it (destructive red; user decision 2026-07-15) |
+| remove   | `#D93030` | `#F07272` | doesn't belong — cut it (destructive red; user decision 15.07.2026) |
 
 Each has a `-soft` translucent variant (see tokens.css) used for text tints and badge backgrounds. Every type must hold ≥3:1 contrast against `--surface` in both themes — dark values are deliberately lifted/saturated. Color is never the only signal: type name always appears in the tag. New comments offer **question (default) · clarify · rewrite · remove**; legacy types stay readable. Contrast tests parse the actual `:root` and `.dark` declarations from `tokens.css`; they must never mirror a second literal palette in test code.
 
@@ -46,7 +53,7 @@ Each has a `-soft` translucent variant (see tokens.css) used for text tints and 
 
 | Register        | Stack                                                             | Values                                                                                                                                                                                                     |
 | --------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Document body   | `ui-serif, "New York", "Iowan Old Style", Georgia, serif`         | 17px / 1.68, max-width **1450px reading pane**, centered — deliberately wider than the 66ch guideline to support long technical documents (product decision, 2026-07-15; matches the previous Lollipop UI) |
+| Document body   | `ui-serif, "New York", "Iowan Old Style", Georgia, serif`         | 17px / 1.68, max-width **1450px reading pane**, centered — deliberately wider than the 66ch guideline to support long technical documents (product decision, 15.07.2026; matches the previous Lollipop UI) |
 | Doc headings    | same serif                                                        | h1 34/1.2 · h2 23/1.3, −0.01em tracking                                                                                                                                                                    |
 | UI chrome       | `-apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif` | 11–14px, weights 500–750                                                                                                                                                                                   |
 | Mono            | `ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace`     | file paths, type tags, kickers, CriticMarkup, code 13px                                                                                                                                                    |

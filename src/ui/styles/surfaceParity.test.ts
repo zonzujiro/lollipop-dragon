@@ -1,8 +1,22 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 function readStylesheet(path: string): string {
   return readFileSync(path, "utf8");
+}
+
+function listStylesheets(directory: string): string[] {
+  const stylesheets: string[] = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const entryPath = join(directory, entry.name);
+    if (entry.isDirectory()) {
+      stylesheets.push(...listStylesheets(entryPath));
+    } else if (entry.name.endsWith(".css")) {
+      stylesheets.push(entryPath);
+    }
+  }
+  return stylesheets;
 }
 
 describe("Reading Room surface parity", () => {
@@ -85,6 +99,47 @@ describe("Reading Room surface parity", () => {
     expect(markdownRendererCss).not.toMatch(/#[0-9a-f]{3,8}|rgba?\(/i);
   });
 
+  it("uses the contrast-safe foreground token on solid brand controls", () => {
+    const literalWhiteViolations: string[] = [];
+    const solidBrandBackground =
+      /background(?:-color)?:\s*var\(--(?:accent(?:-light)?|agent|c-red|c-remove|c-orange|c-rewrite)\)/;
+    const literalWhiteForeground = /color:\s*(?:#fff(?:fff)?|white)\b/i;
+
+    for (const stylesheetPath of listStylesheets("src/ui")) {
+      const ruleBlocks =
+        readStylesheet(stylesheetPath).match(/[^{}]+\{[^{}]*\}/g) ?? [];
+      for (const ruleBlock of ruleBlocks) {
+        if (
+          solidBrandBackground.test(ruleBlock) &&
+          literalWhiteForeground.test(ruleBlock)
+        ) {
+          literalWhiteViolations.push(stylesheetPath);
+        }
+      }
+    }
+
+    expect(literalWhiteViolations).toEqual([]);
+  });
+
+  it("keeps the landing composition on its fixed poster register", () => {
+    const landingCss = readStylesheet("src/ui/styles/landing.css");
+
+    expect(landingCss).not.toMatch(
+      /var\(--(?:bg(?:-sunken)?|surface|ink(?:-secondary|-muted)?|accent|agent|c-rewrite|c-clarify)\)/,
+    );
+    for (const posterToken of [
+      "poster-bg",
+      "poster-surface",
+      "poster-ink",
+      "poster-accent",
+      "poster-agent",
+      "poster-rewrite",
+      "poster-clarify",
+    ]) {
+      expect(landingCss).toContain(`var(--${posterToken})`);
+    }
+  });
+
   it("keeps the metadata title compact inside the document heading scope", () => {
     const markdownCss = readStylesheet(
       "src/ui/components/MarkdownRenderer/MarkdownRenderer.css",
@@ -155,7 +210,7 @@ describe("Reading Room surface parity", () => {
       /\.landing-hero\s*\{[^}]*grid-template-columns:\s*1\.1fr 1fr/s,
     );
     expect(landingCss).toMatch(
-      /\.landing-action\s*\{[^}]*height:\s*54px[^}]*box-shadow:\s*5px 5px 0 var\(--ink\)/s,
+      /\.landing-action\s*\{[^}]*height:\s*54px[^}]*box-shadow:\s*5px 5px 0 var\(--poster-ink\)/s,
     );
   });
 });
