@@ -203,7 +203,7 @@ describe("MarkdownRenderer — commenting", () => {
     });
   });
 
-  it("keeps the range composer open through the click emitted after selection", async () => {
+  it("opens the range composer only after the explicit Comment action", async () => {
     setContent("Select this exact phrase for review.");
     render(<MarkdownRenderer />);
     const paragraph = screen.getByText("Select this exact phrase for review.");
@@ -220,10 +220,17 @@ describe("MarkdownRenderer — commenting", () => {
     selection?.addRange(range);
 
     fireEvent.mouseUp(paragraph);
-    expect(await screen.findByText("“this exact phrase”")).toBeInTheDocument();
 
-    fireEvent.click(paragraph);
+    // Selecting text surfaces a Comment action — it must NOT open the composer
+    // directly, so the raw selection stays usable (copy/paste).
+    const commentAction = await screen.findByRole("button", {
+      name: "Comment",
+    });
+    expect(screen.queryByLabelText("Comment text")).not.toBeInTheDocument();
 
+    fireEvent.click(commentAction);
+
+    // Now the composer opens, anchored to the selected quote.
     expect(screen.getByText("“this exact phrase”")).toBeInTheDocument();
     expect(screen.getByLabelText("Comment text")).toBeInTheDocument();
 

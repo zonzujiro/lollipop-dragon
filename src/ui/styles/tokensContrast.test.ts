@@ -1,49 +1,102 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 interface ThemeColors {
+  accent: string;
+  agent: string;
+  avatarNeutral: string;
   background: string;
   codeBackground: string;
-  surface: string;
   ink: string;
+  onAccent: string;
+  onRewrite: string;
+  remove: string;
+  rewrite: string;
   secondaryInk: string;
+  surface: string;
   taxonomy: string[];
 }
 
-const themes: Record<"light" | "dark", ThemeColors> = {
-  light: {
-    background: "#f6f2e9",
-    codeBackground: "#efeadd",
-    surface: "#fffdf8",
-    ink: "#211d18",
-    secondaryInk: "#575046",
-    taxonomy: [
-      "#d93030",
-      "#bb7410",
-      "#2563eb",
-      "#7c4fd0",
-      "#0e8a9e",
-      "#2e9678",
-      "#6e6659",
-    ],
-  },
-  dark: {
-    background: "#171412",
-    codeBackground: "#100e0c",
-    surface: "#1f1b18",
-    ink: "#ede6d9",
-    secondaryInk: "#b5ac9e",
-    taxonomy: [
-      "#f07272",
-      "#e0a33e",
-      "#6d9bf5",
-      "#a98be8",
-      "#4fb8cb",
-      "#4cba9a",
-      "#97907f",
-    ],
-  },
-};
+const TOKEN_STYLESHEET = readFileSync("src/ui/styles/tokens.css", "utf8");
+const TAXONOMY_TOKENS = [
+  "--c-fix",
+  "--c-rewrite",
+  "--c-expand",
+  "--c-clarify",
+  "--c-question",
+  "--c-answer",
+  "--c-remove",
+];
 
+function extractTokenBlock(pattern: RegExp, label: string): string {
+  const match = pattern.exec(TOKEN_STYLESHEET);
+  const block = match?.[1];
+  if (!block) {
+    throw new Error(`Missing ${label} token block`);
+  }
+  return block;
+}
+
+function parseHexTokens(block: string): ReadonlyMap<string, string> {
+  const tokens = new Map<string, string>();
+  const declarationPattern = /(--[a-z0-9-]+):\s*(#[0-9a-f]{6})\s*;/gi;
+  let match: RegExpExecArray | null = declarationPattern.exec(block);
+  while (match) {
+    const tokenName = match[1];
+    const tokenValue = match[2];
+    if (tokenName && tokenValue) {
+      tokens.set(tokenName, tokenValue.toLowerCase());
+    }
+    match = declarationPattern.exec(block);
+  }
+  return tokens;
+}
+
+function getToken(
+  tokenName: string,
+  rootTokens: ReadonlyMap<string, string>,
+  overrides: ReadonlyMap<string, string>,
+): string {
+  const value = overrides.get(tokenName) ?? rootTokens.get(tokenName);
+  if (!value) {
+    throw new Error(`Missing hex value for ${tokenName}`);
+  }
+  return value;
+}
+
+function buildThemeColors(
+  rootTokens: ReadonlyMap<string, string>,
+  overrides: ReadonlyMap<string, string>,
+): ThemeColors {
+  const value = (tokenName: string) =>
+    getToken(tokenName, rootTokens, overrides);
+  return {
+    accent: value("--accent"),
+    agent: value("--agent"),
+    avatarNeutral: value("--avatar-neutral"),
+    background: value("--bg"),
+    codeBackground: value("--bg-sunken"),
+    ink: value("--ink"),
+    onAccent: value("--on-accent"),
+    onRewrite: value("--on-rewrite"),
+    remove: value("--c-remove"),
+    rewrite: value("--c-rewrite"),
+    secondaryInk: value("--ink-secondary"),
+    surface: value("--surface"),
+    taxonomy: TAXONOMY_TOKENS.map(value),
+  };
+}
+
+const rootTokens = parseHexTokens(
+  extractTokenBlock(/:root\s*\{([\s\S]*?)\n\}/, ":root"),
+);
+const darkTokens = parseHexTokens(
+  extractTokenBlock(/\.dark\s*\{([\s\S]*?)\n\}/, ".dark"),
+);
+const themes: [string, ThemeColors][] = [
+  ["light", buildThemeColors(rootTokens, new Map())],
+  ["dark", buildThemeColors(rootTokens, darkTokens)],
+];
 function channelToLinear(channel: number): number {
   const normalized = channel / 255;
   if (normalized <= 0.04045) {
@@ -73,7 +126,7 @@ function contrastRatio(firstColor: string, secondColor: string): number {
 }
 
 describe("Reading Room token contrast", () => {
-  it.each(Object.entries(themes))(
+  it.each(themes)(
     "%s theme meets text and taxonomy contrast budgets",
     (_themeName, colors) => {
       expect(
@@ -92,4 +145,22 @@ describe("Reading Room token contrast", () => {
       }
     },
   );
+
+  it.each(themes)("%s theme keeps control glyphs legible", (_name, colors) => {
+    expect(
+      contrastRatio(colors.onAccent, colors.accent),
+    ).toBeGreaterThanOrEqual(4.5);
+    expect(
+      contrastRatio(colors.onAccent, colors.remove),
+    ).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(colors.onAccent, colors.agent)).toBeGreaterThanOrEqual(
+      4.5,
+    );
+    expect(
+      contrastRatio(colors.onAccent, colors.avatarNeutral),
+    ).toBeGreaterThanOrEqual(4.5);
+    expect(
+      contrastRatio(colors.onRewrite, colors.rewrite),
+    ).toBeGreaterThanOrEqual(4.5);
+  });
 });

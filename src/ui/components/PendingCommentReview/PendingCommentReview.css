@@ -31,7 +31,7 @@
 }
 .pending-review__btn--merge-all:hover {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 .pending-review__btn--clear {
   color: var(--c-red);

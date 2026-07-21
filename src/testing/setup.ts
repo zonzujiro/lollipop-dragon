@@ -1,5 +1,18 @@
 import "@testing-library/jest-dom";
 
+// jsdom does not implement the geometry and scrolling APIs used by the UI.
+Object.defineProperty(Range.prototype, "getBoundingClientRect", {
+  value: () => new DOMRect(),
+  writable: true,
+  configurable: true,
+});
+
+Object.defineProperty(Element.prototype, "scrollIntoView", {
+  value: () => {},
+  writable: true,
+  configurable: true,
+});
+
 // jsdom does not implement ResizeObserver
 global.ResizeObserver = class ResizeObserver {
   observe() {}

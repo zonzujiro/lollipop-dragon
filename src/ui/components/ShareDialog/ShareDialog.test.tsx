@@ -195,6 +195,60 @@ describe("ShareDialog - share flow", () => {
     });
   });
 
+  it("can switch an existing folder share to a new current-file share", async () => {
+    const shareContent = vi
+      .fn()
+      .mockResolvedValue("https://example.com/#share=file&key=xyz");
+    useAppStore.setState({ shareContent });
+    setTestState({
+      directoryName: "my-project",
+      fileName: "readme.md",
+      activeFilePath: "readme.md",
+      shares: [
+        {
+          docId: "folder-share",
+          hostSecret: "secret",
+          label: "my-project",
+          createdAt: "2026-04-01T00:00:00.000Z",
+          expiresAt: "2099-04-01T00:00:00.000Z",
+          pendingCommentCount: 0,
+          keyB64: "folder-key",
+          fileCount: 1,
+          sharedPaths: ["readme.md"],
+        },
+      ],
+    });
+    const user = userEvent.setup();
+
+    render(
+      <ShareDialog
+        onClose={vi.fn()}
+        scope={{
+          kind: "current-folder",
+          label: "my-project",
+          entityPath: "",
+        }}
+      />,
+    );
+
+    const fileScope = screen.getByRole("button", { name: /This file/ });
+    expect(fileScope).toBeEnabled();
+    await user.click(fileScope);
+    expect(fileScope).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(await screen.findByRole("button", { name: "Copy link" }));
+
+    await waitFor(() => {
+      expect(shareContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          label: "readme.md",
+          nodes: [],
+          preparedIdentity: expect.any(Object),
+        }),
+      );
+    });
+  });
+
   it("keeps explicit file-share behavior for the header file action", async () => {
     const shareContent = vi
       .fn()

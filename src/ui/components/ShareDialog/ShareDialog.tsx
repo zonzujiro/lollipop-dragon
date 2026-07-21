@@ -259,7 +259,7 @@ export function ShareDialog({ onClose, scope }: Props) {
                   selectedScope?.kind === "current-file" ? "is-active" : ""
                 }
                 aria-pressed={selectedScope?.kind === "current-file"}
-                disabled={Boolean(uploadedLink) || Boolean(uploadingAction)}
+                disabled={Boolean(uploadingAction)}
                 onClick={() =>
                   chooseScope({ kind: "current-file", label: fileName })
                 }
@@ -272,7 +272,7 @@ export function ShareDialog({ onClose, scope }: Props) {
                     selectedScope?.kind === "current-folder" ? "is-active" : ""
                   }
                   aria-pressed={selectedScope?.kind === "current-folder"}
-                  disabled={Boolean(uploadedLink) || Boolean(uploadingAction)}
+                  disabled={Boolean(uploadingAction)}
                   onClick={() =>
                     chooseScope({
                       kind: "current-folder",

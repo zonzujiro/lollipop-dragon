@@ -271,11 +271,26 @@ function MarkdownRendererContent({
           selectionDraft={interactions.rangeCommentDraft}
           onDismissSelection={interactions.dismissRangeComment}
         />
+        {interactions.pendingSelection && (
+          <button
+            type="button"
+            className="selection-comment-button"
+            style={{
+              top: interactions.pendingSelection.top,
+              left: interactions.pendingSelection.left,
+            }}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={interactions.confirmPendingSelection}
+          >
+            Comment
+          </button>
+        )}
         <div
           className="markdown-body"
           data-agent-status={activeAgentRun?.status}
           ref={bodyRef}
           onClick={interactions.handleBodyClick}
+          onMouseDown={interactions.handleBodyMouseDown}
           onMouseOver={interactions.handleBodyMouseOver}
           onMouseUp={interactions.handleBodyMouseUp}
         >

@@ -23,23 +23,40 @@ export function HeroArtwork() {
         height="360"
         className="landing-fill-rewrite"
       />
-      <circle cx="317" cy="220" r="180" className="landing-fill-teal" />
-      <circle cx="317" cy="220" r="96" fill="#fbedd3" />
+      <circle cx="317" cy="220" r="180" className="landing-fill-agent" />
+      <circle cx="317" cy="220" r="96" className="landing-fill-pop" />
       <circle cx="317" cy="220" r="38" className="landing-fill-accent" />
       <path d="M150 240 L18 150 L160 120 Z" className="landing-fill-accent" />
-      <path d="M484 240 L616 150 L474 120 Z" fill="#211d18" />
+      <path d="M484 240 L616 150 L474 120 Z" className="landing-fill-ink" />
       <rect
         x="392"
         y="470"
         width="216"
         height="270"
-        fill="#fffcf5"
-        stroke="#211d18"
+        className="landing-page"
         strokeWidth="3"
       />
-      <rect x="416" y="502" width="120" height="14" fill="#211d18" />
-      <rect x="416" y="534" width="168" height="8" fill="#8a8175" />
-      <rect x="416" y="552" width="150" height="8" fill="#8a8175" />
+      <rect
+        x="416"
+        y="502"
+        width="120"
+        height="14"
+        className="landing-fill-ink"
+      />
+      <rect
+        x="416"
+        y="534"
+        width="168"
+        height="8"
+        className="landing-fill-muted"
+      />
+      <rect
+        x="416"
+        y="552"
+        width="150"
+        height="8"
+        className="landing-fill-muted"
+      />
       <rect
         x="416"
         y="576"
@@ -68,15 +85,26 @@ export function HeroArtwork() {
         height="5"
         className="landing-fill-clarify"
       />
-      <rect x="416" y="628" width="168" height="8" fill="#8a8175" />
-      <rect x="416" y="646" width="104" height="8" fill="#8a8175" />
+      <rect
+        x="416"
+        y="628"
+        width="168"
+        height="8"
+        className="landing-fill-muted"
+      />
+      <rect
+        x="416"
+        y="646"
+        width="104"
+        height="8"
+        className="landing-fill-muted"
+      />
       <rect
         x="416"
         y="678"
         width="150"
         height="36"
-        fill="#efeadd"
-        stroke="#cfc5b0"
+        className="landing-well"
         strokeWidth="2"
       />
       <rect
@@ -84,7 +112,7 @@ export function HeroArtwork() {
         y="690"
         width="86"
         height="6"
-        className="landing-fill-teal"
+        className="landing-fill-agent"
       />
       <rect
         x="352"
@@ -101,7 +129,7 @@ export function HeroArtwork() {
         className="landing-fill-clarify"
         transform="rotate(45 361 611)"
       />
-      <rect x="0" y="744" width="640" height="5" fill="#211d18" />
+      <rect x="0" y="744" width="640" height="5" className="landing-fill-ink" />
       <rect
         x="72"
         y="716"
@@ -109,7 +137,7 @@ export function HeroArtwork() {
         height="28"
         className="landing-fill-rewrite"
       />
-      <path d="M150 744 L172 706 L194 744 Z" className="landing-fill-teal" />
+      <path d="M150 744 L172 706 L194 744 Z" className="landing-fill-agent" />
     </svg>
   );
 }
@@ -122,20 +150,30 @@ export function ReadingArtwork() {
         y="14"
         width="176"
         height="232"
-        fill="#fffcf5"
-        stroke="#211d18"
+        className="landing-page"
         strokeWidth="3"
       />
-      <rect x="52" y="42" width="96" height="12" fill="#211d18" />
-      <rect x="52" y="68" width="132" height="7" fill="#8a8175" />
-      <rect x="52" y="84" width="120" height="7" fill="#8a8175" />
+      <rect x="52" y="42" width="96" height="12" className="landing-fill-ink" />
+      <rect
+        x="52"
+        y="68"
+        width="132"
+        height="7"
+        className="landing-fill-muted"
+      />
+      <rect
+        x="52"
+        y="84"
+        width="120"
+        height="7"
+        className="landing-fill-muted"
+      />
       <rect
         x="52"
         y="108"
         width="132"
         height="52"
-        fill="#efeadd"
-        stroke="#cfc5b0"
+        className="landing-well"
         strokeWidth="2"
       />
       <circle
@@ -143,7 +181,7 @@ export function ReadingArtwork() {
         cy="134"
         r="14"
         fill="none"
-        className="landing-stroke-teal"
+        className="landing-stroke-agent"
         strokeWidth="3"
       />
       <rect
@@ -161,15 +199,27 @@ export function ReadingArtwork() {
         className="landing-stroke-accent"
         strokeWidth="3"
       />
-      <rect x="52" y="182" width="132" height="7" fill="#8a8175" />
-      <rect x="52" y="198" width="100" height="7" fill="#8a8175" />
+      <rect
+        x="52"
+        y="182"
+        width="132"
+        height="7"
+        className="landing-fill-muted"
+      />
+      <rect
+        x="52"
+        y="198"
+        width="100"
+        height="7"
+        className="landing-fill-muted"
+      />
       <circle cx="236" cy="60" r="42" className="landing-fill-accent" />
       <rect
         x="212"
         y="170"
         width="56"
         height="56"
-        className="landing-fill-teal"
+        className="landing-fill-agent"
         transform="rotate(12 240 198)"
       />
     </svg>
@@ -184,7 +234,7 @@ export function CommentArtwork() {
         y="52"
         width="260"
         height="10"
-        fill="#fbedd3"
+        className="landing-fill-pop"
         opacity=".85"
       />
       <rect
@@ -192,7 +242,7 @@ export function CommentArtwork() {
         y="80"
         width="220"
         height="10"
-        fill="#fbedd3"
+        className="landing-fill-pop"
         opacity=".85"
       />
       <rect
@@ -200,7 +250,7 @@ export function CommentArtwork() {
         y="108"
         width="244"
         height="10"
-        fill="#fbedd3"
+        className="landing-fill-pop"
         opacity=".85"
       />
       <rect
@@ -231,12 +281,42 @@ export function CommentArtwork() {
         height="4"
         className="landing-fill-clarify"
       />
-      <rect x="20" y="150" width="120" height="44" fill="#fffcf5" />
-      <rect x="34" y="164" width="70" height="6" fill="#211d18" />
-      <rect x="34" y="178" width="90" height="6" fill="#8a8175" />
-      <rect x="160" y="164" width="120" height="44" fill="#fffcf5" />
-      <rect x="174" y="178" width="70" height="6" fill="#211d18" />
-      <rect x="174" y="192" width="90" height="6" fill="#8a8175" />
+      <rect
+        x="20"
+        y="150"
+        width="120"
+        height="44"
+        className="landing-fill-paper"
+      />
+      <rect x="34" y="164" width="70" height="6" className="landing-fill-ink" />
+      <rect
+        x="34"
+        y="178"
+        width="90"
+        height="6"
+        className="landing-fill-muted"
+      />
+      <rect
+        x="160"
+        y="164"
+        width="120"
+        height="44"
+        className="landing-fill-paper"
+      />
+      <rect
+        x="174"
+        y="178"
+        width="70"
+        height="6"
+        className="landing-fill-ink"
+      />
+      <rect
+        x="174"
+        y="192"
+        width="90"
+        height="6"
+        className="landing-fill-muted"
+      />
       <circle cx="34" cy="228" r="10" className="landing-fill-accent" />
       <rect
         x="160"
@@ -256,10 +336,16 @@ export function PrivacyArtwork() {
       <path
         d="M96 118v-30a54 54 0 0 1 108 0v30"
         fill="none"
-        className="landing-stroke-teal"
+        className="landing-stroke-agent"
         strokeWidth="14"
       />
-      <rect x="72" y="118" width="156" height="116" fill="#fbedd3" />
+      <rect
+        x="72"
+        y="118"
+        width="156"
+        height="116"
+        className="landing-fill-pop"
+      />
       <circle cx="150" cy="164" r="17" className="landing-fill-accent" />
       <rect
         x="143"
@@ -268,7 +354,14 @@ export function PrivacyArtwork() {
         height="34"
         className="landing-fill-accent"
       />
-      <rect x="42" y="234" width="216" height="6" fill="#fbedd3" opacity=".4" />
+      <rect
+        x="42"
+        y="234"
+        width="216"
+        height="6"
+        className="landing-fill-pop"
+        opacity=".4"
+      />
       <rect
         x="238"
         y="52"

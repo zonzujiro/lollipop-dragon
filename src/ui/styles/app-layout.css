@@ -178,7 +178,7 @@
   margin: 0 auto 1rem;
   padding: 0.5rem 0.75rem;
   background: var(--c-orange, #f59e0b);
-  color: #fff;
+  color: var(--on-rewrite);
   border-radius: 6px;
   font-size: 0.8rem;
   text-align: center;

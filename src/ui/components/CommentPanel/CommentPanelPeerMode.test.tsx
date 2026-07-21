@@ -121,4 +121,36 @@ describe("CommentPanel peer mode", () => {
     expect(screen.getByText("readme comment")).toBeInTheDocument();
     expect(screen.getByText("other comment")).toBeInTheDocument();
   });
+
+  it("does not expose host-only taxonomy filters in the peer tray", () => {
+    setTestState(
+      { commentPanelOpen: true },
+      {
+        isPeerMode: true,
+        peerActiveFilePath: "readme.md",
+        peerCommentPanelOpen: true,
+        myPeerComments: [
+          makePeerComment({
+            id: "clarify-comment",
+            commentType: "clarify",
+            text: "clarify this",
+          }),
+          makePeerComment({
+            id: "rewrite-comment",
+            commentType: "rewrite",
+            text: "rewrite this",
+          }),
+        ],
+      },
+    );
+
+    render(<CommentPanel peerMode />);
+
+    expect(
+      screen.queryByRole("button", { name: /^clarify\s+\d/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^rewrite\s+\d/ }),
+    ).not.toBeInTheDocument();
+  });
 });

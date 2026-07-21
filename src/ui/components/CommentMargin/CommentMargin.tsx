@@ -14,26 +14,14 @@ import type {
 import type { PeerComment } from "../../../types/share";
 import { AddCommentForm, type FloatingCardPosition } from "./AddCommentForm";
 import { CommentMarkers, type DotGroup } from "./CommentMarkers";
+import { shouldPreserveCommentMarginState } from "./commentMarginDismiss";
+import { useCommentMarkerLayout } from "./useCommentMarkerLayout";
 
 const EMPTY_COMMENTS: Comment[] = [];
 
 interface FloatingCardDragState {
   offsetTop: number;
   offsetLeft: number;
-}
-
-function hasSelectionInside(container: HTMLElement | null): boolean {
-  const selection = window.getSelection();
-  if (!container || !selection || selection.isCollapsed) {
-    return false;
-  }
-  const anchorInside = selection.anchorNode
-    ? container.contains(selection.anchorNode)
-    : false;
-  const focusInside = selection.focusNode
-    ? container.contains(selection.focusNode)
-    : false;
-  return anchorInside || focusInside;
 }
 
 interface Props {
@@ -173,16 +161,13 @@ export function CommentMargin({
   // Close card when clicking outside
   useEffect(() => {
     const onDocClick = (event: MouseEvent) => {
-      const target = event.target;
-      const clickInsideViewer =
-        target instanceof Node &&
-        Boolean(containerRef.current?.contains(target));
-      if (suppressSelectionClickRef.current && clickInsideViewer) {
-        suppressSelectionClickRef.current = false;
-        return;
-      }
-      suppressSelectionClickRef.current = false;
-      if (hasSelectionInside(containerRef.current)) {
+      if (
+        shouldPreserveCommentMarginState({
+          event,
+          containerRef,
+          suppressSelectionClickRef,
+        })
+      ) {
         return;
       }
       setActiveId(null);
@@ -304,14 +289,12 @@ export function CommentMargin({
     return () => ro.disconnect();
   }, [containerRef, threadGroups]);
 
-  // the dashed + sits underneath whatever markers the hovered block already has
-  const MARKER_STACK_STEP = 30; // 26px marker + 4px gap
-  const hoveredBlockStackHeight = hoveredBlock
-    ? (groups.find((group) => group.top === hoveredBlock.top)?.threads.length ??
-        0) *
-        MARKER_STACK_STEP +
-      (peerDotGroups.get(hoveredBlock.index)?.length ?? 0) * MARKER_STACK_STEP
-    : 0;
+  const { hoveredBlockAddTop, markerTops } = useCommentMarkerLayout({
+    blockTops,
+    groups,
+    hoveredBlock,
+    peerDotGroups,
+  });
 
   const addingBlockIndex = addingBlock?.index ?? null;
 
@@ -416,7 +399,7 @@ export function CommentMargin({
         !(peerMode && documentUpdateAvailable) && (
           <div
             className="comment-margin__add-wrapper"
-            style={{ top: hoveredBlock.top + hoveredBlockStackHeight }}
+            style={{ top: hoveredBlockAddTop }}
           >
             <button
               className="comment-margin__add"
@@ -486,6 +469,7 @@ export function CommentMargin({
         activeId={activeId}
         blockTops={blockTops}
         groups={groups}
+        markerTops={markerTops}
         peerDotGroups={peerDotGroups}
         peerMode={peerMode}
         selectComment={selectComment}

@@ -184,7 +184,7 @@
 .agent-settings__primary {
   border: 1px solid var(--accent);
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .agent-settings__secondary {

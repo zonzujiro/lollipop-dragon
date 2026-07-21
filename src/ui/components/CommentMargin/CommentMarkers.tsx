@@ -77,6 +77,7 @@ export function CommentMarkers({
   activeId,
   blockTops,
   groups,
+  markerTops,
   peerDotGroups,
   peerMode,
   selectComment,
@@ -84,6 +85,7 @@ export function CommentMarkers({
   activeId: string | null;
   blockTops: Map<number, number>;
   groups: DotGroup[];
+  markerTops: ReadonlyMap<number, number>;
   peerDotGroups: Map<number, PeerComment[]>;
   peerMode: boolean | undefined;
   selectComment: (commentId: string) => void;
@@ -101,11 +103,13 @@ export function CommentMarkers({
         const blockIndex = threads[0]?.root.blockIndex;
         const peerComments =
           blockIndex === undefined ? [] : (peerDotGroups.get(blockIndex) ?? []);
+        const markerTop =
+          blockIndex === undefined ? top : (markerTops.get(blockIndex) ?? top);
         return (
           <div
             key={`host-${blockIndex ?? top}`}
             className="comment-margin__dots"
-            style={{ top }}
+            style={{ top: markerTop }}
           >
             {threads.map((thread) => (
               <CommentMarker
@@ -146,7 +150,7 @@ export function CommentMarkers({
           <div
             key={`peer-${blockIndex}`}
             className="comment-margin__dots"
-            style={{ top }}
+            style={{ top: markerTops.get(blockIndex) ?? top }}
           >
             {comments.map((comment) => (
               <PeerMarker

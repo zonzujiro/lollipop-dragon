@@ -364,7 +364,7 @@
   cursor: pointer;
   border: 1px solid var(--accent);
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font: 700 12.5px/1 var(--font-ui);
   display: inline-flex;
   align-items: center;
@@ -376,11 +376,11 @@
 }
 
 .comment-add-form__save kbd {
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid color-mix(in srgb, var(--on-accent) 30%, transparent);
   border-radius: 4px;
   padding: 2px 4px;
-  background: rgba(255, 255, 255, 0.16);
-  color: #fff;
+  background: color-mix(in srgb, var(--on-accent) 16%, transparent);
+  color: var(--on-accent);
 }
 
 .comment-add-form__save:hover:not(:disabled) {

@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { useAppStore } from "../../../store";
+import type { CommentThreadGroup } from "../../../markup";
 import type { Comment, CommentType } from "../../../types/criticmarkup";
 import { canEditComment } from "../../../utils/commentPermissions";
+import { CommentThreadCard } from "../CommentThreadCard";
 import {
   normalizeUserCommentType,
   USER_COMMENT_TYPES,
 } from "../../commentTypes";
+import { formatRelativeTime } from "./commentPanelModel";
 
 const EDITABLE_CRITIC_TYPES: Comment["criticType"][] = ["comment", "highlight"];
 const EMPTY_ANSWERED_COMMENT_IDS = new Set<string>();
@@ -18,22 +21,6 @@ interface DisplayComment {
   quote: string | undefined;
   authorLabel: string;
   createdAt: string;
-}
-
-function formatRelativeTime(createdAt: string): string {
-  const elapsedMilliseconds = Date.now() - new Date(createdAt).getTime();
-  const elapsedMinutes = Math.max(0, Math.floor(elapsedMilliseconds / 60000));
-  if (elapsedMinutes < 1) {
-    return "now";
-  }
-  if (elapsedMinutes < 60) {
-    return `${elapsedMinutes} min`;
-  }
-  const elapsedHours = Math.floor(elapsedMinutes / 60);
-  if (elapsedHours < 24) {
-    return `${elapsedHours} h`;
-  }
-  return `${Math.floor(elapsedHours / 24)} d`;
 }
 
 // ── Inline edit/delete state per entry ─────────────────────────────
@@ -303,6 +290,10 @@ export function CrossFileList({
   onEdit,
   onDelete,
   answeredCommentIdsByPath,
+  threadGroupsByPath,
+  activeThreadGroup = null,
+  onReply,
+  onCloseThread,
 }: {
   entries: {
     filePath: string;
@@ -316,6 +307,10 @@ export function CrossFileList({
   onEdit: (id: string, type: CommentType, text: string) => void;
   onDelete: (id: string) => void;
   answeredCommentIdsByPath: ReadonlyMap<string, ReadonlySet<string>>;
+  threadGroupsByPath: ReadonlyMap<string, readonly CommentThreadGroup[]>;
+  activeThreadGroup?: CommentThreadGroup | null;
+  onReply?: (rootCommentId: string, text: string, type: CommentType) => void;
+  onCloseThread?: () => void;
 }) {
   const totalCount = entries.reduce(
     (sum, entry) => sum + entry.comments.length,
@@ -346,6 +341,37 @@ export function CrossFileList({
               const answeredCommentIds =
                 answeredCommentIdsByPath.get(entry.filePath) ??
                 EMPTY_ANSWERED_COMMENT_IDS;
+              const threadGroup = threadGroupsByPath
+                .get(entry.filePath)
+                ?.find((group) => group.root.id === comment.id);
+              if (
+                threadGroup?.root.thread &&
+                !threadGroup.root.thread.replyTo
+              ) {
+                const selected =
+                  isActiveFile &&
+                  activeThreadGroup?.root.id === threadGroup.root.id;
+                return (
+                  <CommentThreadCard
+                    key={`${entry.filePath}:${comment.id}`}
+                    inline
+                    selected={selected}
+                    thread={threadGroup}
+                    top={0}
+                    onClose={() => onCloseThread?.()}
+                    onSelect={() => {
+                      if (isActiveFile) {
+                        onEntryClick(comment.id, comment.blockIndex);
+                      } else {
+                        onCrossFileClick(entry.filePath, rawStart);
+                      }
+                    }}
+                    onEdit={isActiveFile ? onEdit : undefined}
+                    onDelete={isActiveFile ? onDelete : undefined}
+                    onReply={selected ? onReply : undefined}
+                  />
+                );
+              }
               return (
                 <CommentEntry
                   key={`${entry.filePath}:${comment.id}`}
@@ -384,7 +410,11 @@ export function SingleFileList({
   onEdit,
   onDelete,
   answeredCommentIds,
+  threadGroups,
   resolvedView = false,
+  activeThreadGroup = null,
+  onReply,
+  onCloseThread,
 }: {
   visible: (Comment | DisplayComment)[];
   peerMode: boolean;
@@ -394,7 +424,11 @@ export function SingleFileList({
   onEdit: (id: string, type: CommentType, text: string) => void;
   onDelete: (id: string) => void;
   answeredCommentIds: ReadonlySet<string>;
+  threadGroups: readonly CommentThreadGroup[];
   resolvedView?: boolean;
+  activeThreadGroup?: CommentThreadGroup | null;
+  onReply?: (rootCommentId: string, text: string, type: CommentType) => void;
+  onCloseThread?: () => void;
 }) {
   if (visible.length === 0) {
     return (
@@ -410,20 +444,46 @@ export function SingleFileList({
 
   return (
     <>
-      {visible.map((comment) => (
-        <CommentEntry
-          key={comment.id}
-          comment={comment}
-          isActive={activeCommentId === comment.id}
-          isOtherFile={false}
-          canEdit={!resolvedView}
-          resolved={resolvedView}
-          answered={answeredCommentIds.has(comment.id)}
-          onClick={() => onEntryClick(comment.id, comment.blockIndex)}
-          onEdit={onEdit}
-          onDelete={onDelete}
-        />
-      ))}
+      {visible.map((comment) => {
+        const threadGroup = threadGroups.find(
+          (group) => group.root.id === comment.id,
+        );
+        if (
+          !resolvedView &&
+          threadGroup?.root.thread &&
+          !threadGroup.root.thread.replyTo
+        ) {
+          const selected = activeThreadGroup?.root.id === threadGroup.root.id;
+          return (
+            <CommentThreadCard
+              key={comment.id}
+              inline
+              selected={selected}
+              thread={threadGroup}
+              top={0}
+              onClose={() => onCloseThread?.()}
+              onSelect={() => onEntryClick(comment.id, comment.blockIndex)}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onReply={selected ? onReply : undefined}
+            />
+          );
+        }
+        return (
+          <CommentEntry
+            key={comment.id}
+            comment={comment}
+            isActive={activeCommentId === comment.id}
+            isOtherFile={false}
+            canEdit={!resolvedView}
+            resolved={resolvedView}
+            answered={answeredCommentIds.has(comment.id)}
+            onClick={() => onEntryClick(comment.id, comment.blockIndex)}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        );
+      })}
     </>
   );
 }

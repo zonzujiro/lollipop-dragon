@@ -99,6 +99,30 @@
   margin: 0 auto;
 }
 
+/* Floating "Comment" action shown after selecting text — keeps the raw
+   selection usable (copy/paste) and only opens the composer when clicked.
+   Positioned in viewport coordinates (top/left set inline at runtime). */
+.selection-comment-button {
+  position: fixed;
+  z-index: 70;
+  transform: translate(-50%, calc(-100% - 8px));
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: var(--shadow-pop);
+  cursor: pointer;
+  font: 650 12.5px var(--font-ui);
+}
+
+.selection-comment-button:hover {
+  background: var(--accent-light);
+}
+
 .document-kicker {
   width: min(calc(90% - 3rem), var(--document-body-width));
   margin: 0 auto 18px;

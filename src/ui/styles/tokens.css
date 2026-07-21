@@ -1,34 +1,35 @@
-/* Reading Room design tokens. Legacy aliases remain while components migrate. */
+/* Reading Room design tokens — Sage palette (warm oat paper + forest green).
+   The app shell and Bauhaus landing share this palette so both follow the
+   active light/dark theme. Values are set directly (no hue-named brand
+   indirection) so a palette swap is a pure value edit. Legacy aliases remain
+   while components migrate. */
 :root {
-  --brand-red: #d93030;
-  --brand-red-deep: #b02323;
-  --brand-teal: #2e9678;
-  --brand-pink: #f19ca1;
-  --brand-cream: #fbedd3;
-
-  --bg: #f6f2e9;
-  --bg-sunken: #efeadd;
-  --surface: #fffdf8;
+  --bg: #f1f3ea;
+  --bg-sunken: #e7ebdd;
+  --surface: #fcfdf8;
   --surface-raised: #ffffff;
-  --ink: #211d18;
-  --ink-secondary: #575046;
-  --ink-muted: #8a8175;
-  --line: #e4dccb;
-  --line-strong: #cfc5b0;
-  --accent: var(--brand-red);
-  --accent-soft: rgba(217, 48, 48, 0.08);
-  --agent: var(--brand-teal);
-  --agent-soft: rgba(46, 150, 120, 0.1);
+  --ink: #1e241c;
+  --ink-secondary: #4f5748;
+  --ink-muted: #857f70;
+  --line: #dde1d1;
+  --line-strong: #cbd0bb;
+  --accent: #2f7a4f;
+  --accent-soft: rgba(47, 122, 79, 0.08);
+  --agent: #b45f2e;
+  --agent-soft: rgba(180, 95, 46, 0.1);
+  --avatar-neutral: #6e6659;
+  --on-accent: #ffffff;
+  --on-rewrite: #14170f;
 
   --c-fix: #d93030;
-  --c-rewrite: #c07a10;
+  --c-rewrite: #bb7410;
   --c-expand: #2563eb;
   --c-clarify: #7c4fd0;
   --c-question: #0e8a9e;
   --c-answer: #2e9678;
   --c-remove: #d93030;
   --c-fix-soft: rgba(217, 48, 48, 0.1);
-  --c-rewrite-soft: rgba(192, 122, 16, 0.12);
+  --c-rewrite-soft: rgba(187, 116, 16, 0.12);
   --c-expand-soft: rgba(37, 99, 235, 0.1);
   --c-clarify-soft: rgba(124, 79, 208, 0.1);
   --c-question-soft: rgba(14, 138, 158, 0.1);
@@ -43,8 +44,8 @@
   --radius-l: 14px;
   --header-h: 52px;
   --shadow-pop:
-    0 8px 28px rgba(33, 29, 24, 0.14), 0 2px 6px rgba(33, 29, 24, 0.08);
-  --shadow-card: 0 1px 2px rgba(33, 29, 24, 0.05);
+    0 8px 28px rgba(30, 36, 28, 0.14), 0 2px 6px rgba(30, 36, 28, 0.08);
+  --shadow-card: 0 1px 2px rgba(30, 36, 28, 0.05);
 
   /* Compatibility aliases for surfaces not yet migrated to canonical names. */
   --surface-alt: var(--bg-sunken);
@@ -54,7 +55,7 @@
   --text-primary: var(--ink);
   --text-secondary: var(--ink-secondary);
   --text-muted: var(--ink-muted);
-  --accent-light: var(--brand-red-deep);
+  --accent-light: #256341;
   --accent-bg: var(--accent-soft);
   --c-green: var(--c-answer);
   --c-green-bg: var(--c-answer-soft);
@@ -73,19 +74,23 @@
 }
 
 .dark {
-  --bg: #171412;
-  --bg-sunken: #100e0c;
-  --surface: #1f1b18;
-  --surface-raised: #262220;
-  --ink: #ede6d9;
-  --ink-secondary: #b5ac9e;
-  --ink-muted: #7e766a;
-  --line: #322d28;
-  --line-strong: #453e37;
-  --accent: #e85a5a;
-  --accent-soft: rgba(232, 90, 90, 0.14);
-  --agent: #4cba9a;
-  --agent-soft: rgba(76, 186, 154, 0.14);
+  --bg: #141711;
+  --bg-sunken: #0e100b;
+  --surface: #1d2016;
+  --surface-raised: #23271b;
+  --ink: #e7e9dc;
+  --ink-secondary: #b0b3a2;
+  --ink-muted: #7c7a6c;
+  --line: #2c3122;
+  --line-strong: #3a4030;
+  --accent: #5aa877;
+  --accent-soft: rgba(90, 168, 119, 0.16);
+  --accent-light: #4e9c6b;
+  --agent: #d1834f;
+  --agent-soft: rgba(209, 131, 79, 0.16);
+  --avatar-neutral: #97907f;
+  --on-accent: #14170f;
+  --on-rewrite: #14170f;
   --shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.35);
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
 
