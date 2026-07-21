@@ -1,24 +1,34 @@
-/* Reading Room design tokens. Legacy aliases remain while components migrate. */
+/* Reading Room design tokens — Sage palette (warm oat paper + forest green).
+   Change the whole palette from here: identity + comment taxonomy below, and
+   the landing poster palette just under this. Values are set directly (no
+   hue-named brand indirection) so a palette swap is a pure value edit.
+   Legacy aliases remain while components migrate. */
 :root {
-  --brand-red: #d93030;
-  --brand-red-deep: #b02323;
-  --brand-teal: #2e9678;
-  --brand-pink: #f19ca1;
-  --brand-cream: #fbedd3;
+  /* Landing poster palette — the "Bauhaus" landing register. Intentionally
+     theme-independent (NOT overridden in .dark): the poster is a fixed
+     composition — a light page with dark ink — that must read identically in
+     light and dark. Change the whole landing palette from here. */
+  --poster-plane: #14170f; /* dark bands, footer, ink marks */
+  --poster-ink: #1e241c; /* page outline, headings, rules in the art */
+  --poster-muted: #857f70; /* secondary text lines in the art */
+  --poster-sunken: #e7ebdd; /* code-well fill in the art */
+  --poster-line: #cbd0bb; /* hairlines in the art */
+  --poster-pop: #d9e4c8; /* pale sage accent pop */
+  --poster-paper: #f5f7ec; /* near-white surfaces / text on colored planes */
 
-  --bg: #f6f2e9;
-  --bg-sunken: #efeadd;
-  --surface: #fffdf8;
+  --bg: #f1f3ea;
+  --bg-sunken: #e7ebdd;
+  --surface: #fcfdf8;
   --surface-raised: #ffffff;
-  --ink: #211d18;
-  --ink-secondary: #575046;
-  --ink-muted: #8a8175;
-  --line: #e4dccb;
-  --line-strong: #cfc5b0;
-  --accent: var(--brand-red);
-  --accent-soft: rgba(217, 48, 48, 0.08);
-  --agent: var(--brand-teal);
-  --agent-soft: rgba(46, 150, 120, 0.1);
+  --ink: #1e241c;
+  --ink-secondary: #4f5748;
+  --ink-muted: #857f70;
+  --line: #dde1d1;
+  --line-strong: #cbd0bb;
+  --accent: #2f7a4f;
+  --accent-soft: rgba(47, 122, 79, 0.08);
+  --agent: #b5602f;
+  --agent-soft: rgba(181, 96, 47, 0.1);
 
   --c-fix: #d93030;
   --c-rewrite: #c07a10;
@@ -43,8 +53,8 @@
   --radius-l: 14px;
   --header-h: 52px;
   --shadow-pop:
-    0 8px 28px rgba(33, 29, 24, 0.14), 0 2px 6px rgba(33, 29, 24, 0.08);
-  --shadow-card: 0 1px 2px rgba(33, 29, 24, 0.05);
+    0 8px 28px rgba(30, 36, 28, 0.14), 0 2px 6px rgba(30, 36, 28, 0.08);
+  --shadow-card: 0 1px 2px rgba(30, 36, 28, 0.05);
 
   /* Compatibility aliases for surfaces not yet migrated to canonical names. */
   --surface-alt: var(--bg-sunken);
@@ -54,7 +64,7 @@
   --text-primary: var(--ink);
   --text-secondary: var(--ink-secondary);
   --text-muted: var(--ink-muted);
-  --accent-light: var(--brand-red-deep);
+  --accent-light: #256341;
   --accent-bg: var(--accent-soft);
   --c-green: var(--c-answer);
   --c-green-bg: var(--c-answer-soft);
@@ -73,19 +83,20 @@
 }
 
 .dark {
-  --bg: #171412;
-  --bg-sunken: #100e0c;
-  --surface: #1f1b18;
-  --surface-raised: #262220;
-  --ink: #ede6d9;
-  --ink-secondary: #b5ac9e;
-  --ink-muted: #7e766a;
-  --line: #322d28;
-  --line-strong: #453e37;
-  --accent: #e85a5a;
-  --accent-soft: rgba(232, 90, 90, 0.14);
-  --agent: #4cba9a;
-  --agent-soft: rgba(76, 186, 154, 0.14);
+  --bg: #141711;
+  --bg-sunken: #0e100b;
+  --surface: #1d2016;
+  --surface-raised: #23271b;
+  --ink: #e7e9dc;
+  --ink-secondary: #b0b3a2;
+  --ink-muted: #7c7a6c;
+  --line: #2c3122;
+  --line-strong: #3a4030;
+  --accent: #5aa877;
+  --accent-soft: rgba(90, 168, 119, 0.16);
+  --accent-light: #4e9c6b;
+  --agent: #d1834f;
+  --agent-soft: rgba(209, 131, 79, 0.16);
   --shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.35);
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
 

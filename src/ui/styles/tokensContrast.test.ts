@@ -11,11 +11,11 @@ interface ThemeColors {
 
 const themes: Record<"light" | "dark", ThemeColors> = {
   light: {
-    background: "#f6f2e9",
-    codeBackground: "#efeadd",
-    surface: "#fffdf8",
-    ink: "#211d18",
-    secondaryInk: "#575046",
+    background: "#f1f3ea",
+    codeBackground: "#e7ebdd",
+    surface: "#fcfdf8",
+    ink: "#1e241c",
+    secondaryInk: "#4f5748",
     taxonomy: [
       "#d93030",
       "#bb7410",
@@ -27,11 +27,11 @@ const themes: Record<"light" | "dark", ThemeColors> = {
     ],
   },
   dark: {
-    background: "#171412",
-    codeBackground: "#100e0c",
-    surface: "#1f1b18",
-    ink: "#ede6d9",
-    secondaryInk: "#b5ac9e",
+    background: "#141711",
+    codeBackground: "#0e100b",
+    surface: "#1d2016",
+    ink: "#e7e9dc",
+    secondaryInk: "#b0b3a2",
     taxonomy: [
       "#f07272",
       "#e0a33e",

@@ -96,7 +96,7 @@ export function FilePicker() {
             </p>
             <div className="landing-actions">
               <button
-                className="landing-action landing-action--red"
+                className="landing-action landing-action--accent"
                 onClick={() => {
                   void openDirectory();
                 }}
@@ -110,11 +110,11 @@ export function FilePicker() {
                   void openFile();
                 }}
               >
-                <Mark shape="circle" color="teal" />
+                <Mark shape="circle" color="agent" />
                 open a file<kbd>⌘⇧O</kbd>
               </button>
               <button
-                className="landing-action landing-action--teal"
+                className="landing-action landing-action--agent"
                 onClick={openReviewLink}
               >
                 <Mark shape="triangle" color="cream" />
@@ -177,7 +177,7 @@ export function FilePicker() {
                   mermaid diagrams
                 </span>
                 <span>
-                  <Mark shape="circle" color="teal" />
+                  <Mark shape="circle" color="agent" />
                   highlighted code
                 </span>
                 <span>
@@ -185,7 +185,7 @@ export function FilePicker() {
                   gfm tables &amp; task lists
                 </span>
                 <span>
-                  <Mark shape="square" color="teal" />
+                  <Mark shape="square" color="agent" />
                   tabs for files &amp; folders
                 </span>
                 <span>
@@ -233,7 +233,7 @@ export function FilePicker() {
             <h2 className="landing-heading">hand it off</h2>
           </div>
           <div className="landing-duo">
-            <div className="landing-panel landing-panel--teal">
+            <div className="landing-panel landing-panel--agent">
               <h3>to your agent</h3>
               <ul>
                 <li>
@@ -250,7 +250,7 @@ export function FilePicker() {
                 </li>
               </ul>
             </div>
-            <div className="landing-panel landing-panel--red">
+            <div className="landing-panel landing-panel--accent">
               <h3>to your people</h3>
               <ul>
                 <li>
@@ -284,7 +284,7 @@ export function FilePicker() {
                   browser, straight from disk. no upload, works offline.
                 </li>
                 <li>
-                  <Mark shape="circle" color="teal" />
+                  <Mark shape="circle" color="agent" />
                   sharing is end-to-end encrypted — the key lives in the link
                   itself and is never sent to any server. storage sees only
                   noise, and purges it when the share expires.
@@ -305,7 +305,7 @@ export function FilePicker() {
             start reading
           </h2>
           <button
-            className="landing-action landing-action--red"
+            className="landing-action landing-action--accent"
             onClick={() => {
               void openDirectory();
             }}
@@ -321,13 +321,13 @@ export function FilePicker() {
             aria-hidden="true"
           >
             <circle cx="20" cy="20" r="16" className="landing-fill-accent" />
-            <circle cx="20" cy="20" r="7" fill="#fbedd3" />
+            <circle cx="20" cy="20" r="7" className="landing-fill-pop" />
             <rect
               x="52"
               y="6"
               width="28"
               height="28"
-              className="landing-fill-teal"
+              className="landing-fill-agent"
               transform="rotate(14 66 20)"
             />
             <path

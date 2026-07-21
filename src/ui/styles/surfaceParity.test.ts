@@ -58,6 +58,21 @@ describe("Reading Room surface parity", () => {
     );
   });
 
+  it("maps every comment filter swatch to its taxonomy color", () => {
+    const commentPanelCss = readStylesheet(
+      "src/ui/components/CommentPanel/CommentPanel.css",
+    );
+
+    for (const commentType of ["question", "clarify", "rewrite", "remove"]) {
+      expect(commentPanelCss).toMatch(
+        new RegExp(
+          `\\.comment-panel__filter\\[data-comment-type="${commentType}"\\]\\s*\\{[^}]*--comment-color:\\s*var\\(--c-${commentType}\\)`,
+          "s",
+        ),
+      );
+    }
+  });
+
   it("keeps the metadata title compact inside the document heading scope", () => {
     const markdownCss = readStylesheet(
       "src/ui/components/MarkdownRenderer/MarkdownRenderer.css",

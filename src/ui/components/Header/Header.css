@@ -166,8 +166,8 @@
 }
 
 .app-header__btn--agent:hover {
-  background: var(--brand-red-deep);
-  border-color: var(--brand-red-deep);
+  background: var(--accent-light);
+  border-color: var(--accent-light);
   color: #fff;
 }
 
