@@ -10,7 +10,6 @@ import { extractComments } from "../../../markup";
 
 vi.mock("shiki", () => ({ createHighlighter: vi.fn().mockResolvedValue({}) }));
 vi.mock("@shikijs/rehype/core", () => ({ default: vi.fn(() => () => {}) }));
-Element.prototype.scrollIntoView = vi.fn();
 
 // A folder document whose second sentence carries a nested question thread
 // (question → agent answer → user follow-up) plus a standalone clarify comment.

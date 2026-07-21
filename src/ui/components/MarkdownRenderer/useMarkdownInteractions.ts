@@ -168,12 +168,7 @@ export function useMarkdownInteractions(input: {
       return;
     }
     const range = selection.getRangeAt(0);
-    // Range.getBoundingClientRect is absent in some environments (jsdom); the
-    // rect only positions the floating button, so fall back to the origin.
-    const rect =
-      typeof range.getBoundingClientRect === "function"
-        ? range.getBoundingClientRect()
-        : { top: 0, left: 0, width: 0 };
+    const rect = range.getBoundingClientRect();
     setPendingSelection({
       draft,
       top: rect.top,

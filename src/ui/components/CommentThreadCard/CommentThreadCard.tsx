@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { CSSProperties, RefObject } from "react";
 import type { CommentThreadGroup } from "../../../markup";
 import type { Comment, CommentType } from "../../../types/criticmarkup";
+import { canEditComment } from "../../../utils/commentPermissions";
 import { USER_COMMENT_TYPES } from "../../commentTypes";
 import { CommentThreadRow } from "./CommentThreadRow";
 
@@ -115,7 +116,9 @@ export function CommentThreadCard({
   }
 
   function renderCommentRow(comment: Comment, reply: boolean) {
-    const deleteEnabled = reply ? deleteRepliesEnabled : resolveEnabled;
+    const deleteEnabled = reply
+      ? deleteRepliesEnabled && canEditComment(comment)
+      : resolveEnabled;
     return (
       <CommentThreadRow
         key={comment.id}

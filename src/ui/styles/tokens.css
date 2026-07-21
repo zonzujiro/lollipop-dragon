@@ -29,16 +29,18 @@
   --accent-soft: rgba(47, 122, 79, 0.08);
   --agent: #b5602f;
   --agent-soft: rgba(181, 96, 47, 0.1);
+  --avatar-neutral: #6e6659;
+  --on-accent: #ffffff;
 
   --c-fix: #d93030;
-  --c-rewrite: #c07a10;
+  --c-rewrite: #bb7410;
   --c-expand: #2563eb;
   --c-clarify: #7c4fd0;
   --c-question: #0e8a9e;
   --c-answer: #2e9678;
   --c-remove: #d93030;
   --c-fix-soft: rgba(217, 48, 48, 0.1);
-  --c-rewrite-soft: rgba(192, 122, 16, 0.12);
+  --c-rewrite-soft: rgba(187, 116, 16, 0.12);
   --c-expand-soft: rgba(37, 99, 235, 0.1);
   --c-clarify-soft: rgba(124, 79, 208, 0.1);
   --c-question-soft: rgba(14, 138, 158, 0.1);
@@ -97,6 +99,8 @@
   --accent-light: #4e9c6b;
   --agent: #d1834f;
   --agent-soft: rgba(209, 131, 79, 0.16);
+  --avatar-neutral: #97907f;
+  --on-accent: #14170f;
   --shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.35);
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
 

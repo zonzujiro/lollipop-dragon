@@ -73,6 +73,18 @@ describe("Reading Room surface parity", () => {
     }
   });
 
+  it("keeps redesigned comment surfaces on shared color tokens", () => {
+    const commentThreadCss = readStylesheet(
+      "src/ui/components/CommentThreadCard/CommentThreadCard.css",
+    );
+    const markdownRendererCss = readStylesheet(
+      "src/ui/components/MarkdownRenderer/MarkdownRenderer.css",
+    );
+
+    expect(commentThreadCss).not.toMatch(/#[0-9a-f]{3,8}|rgba?\(/i);
+    expect(markdownRendererCss).not.toMatch(/#[0-9a-f]{3,8}|rgba?\(/i);
+  });
+
   it("keeps the metadata title compact inside the document heading scope", () => {
     const markdownCss = readStylesheet(
       "src/ui/components/MarkdownRenderer/MarkdownRenderer.css",

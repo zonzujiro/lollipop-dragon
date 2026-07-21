@@ -54,6 +54,22 @@ function makeUnansweredActionThread() {
   return { root, replies: [reply] };
 }
 
+function makeExternalUnansweredActionThread() {
+  const { root } = makeQuestionThread();
+  const reply = makeComment({
+    id: "external-reply-comment",
+    type: "clarify",
+    text: "Please explain the reconnect fallback path.",
+    thread: {
+      commentId: "mr-external-action-1",
+      threadId: "mr-question-1",
+      replyTo: "mr-question-1",
+      authorLabel: "Codex",
+    },
+  });
+  return { root, replies: [reply] };
+}
+
 describe("CommentThreadCard", () => {
   it("renders a question with linked agent answers", () => {
     render(
@@ -325,6 +341,25 @@ describe("CommentThreadCard", () => {
     await user.click(screen.getByRole("button", { name: "Confirm delete" }));
 
     expect(onDelete).toHaveBeenCalledWith("reply-comment");
+  });
+
+  it("does not allow deleting an external reply in an unanswered thread", () => {
+    render(
+      <CommentThreadCard
+        thread={makeExternalUnansweredActionThread()}
+        top={0}
+        onClose={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Codex")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Delete comment" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Resolve question" }),
+    ).toBeInTheDocument();
   });
 
   it("resolves an answered question from the thread root", async () => {

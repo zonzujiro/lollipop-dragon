@@ -280,7 +280,7 @@ describe("MermaidBlock", () => {
       ).toBeInTheDocument();
     });
     expect(
-      screen.getByRole("button", {
+      await screen.findByRole("button", {
         name: "Select fix comment by Ivan",
       }),
     ).toHaveAttribute("data-selected", "true");
@@ -296,6 +296,11 @@ describe("MermaidBlock", () => {
         container.querySelector('g.node[data-comment-selected="true"]'),
       ).toBeInTheDocument();
     });
+    expect(
+      await screen.findByRole("button", {
+        name: "Select fix comment by Ivan",
+      }),
+    ).toHaveAttribute("data-selected", "true");
   });
 });
 

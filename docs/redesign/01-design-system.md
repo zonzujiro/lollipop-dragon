@@ -23,6 +23,8 @@ The mascot logo (`src/assets/lollipop-dragon-logo.svg`) stays as the brand stamp
 | `--line` / `--line-strong` | `#DDE1D1` / `#CBD0BB` | `#2C3122` / `#3A4030` | hairlines                                               |
 | `--accent`                 | `#2F7A4F`             | `#5AA877`             | **the only accent**: primary actions, selection, unread |
 | `--agent`                  | `#B5602F`             | `#D1834F`             | agent activity, live connection, success                |
+| `--avatar-neutral`         | `#6E6659`             | `#97907F`             | neutral reply avatars                                   |
+| `--on-accent`              | `#FFFFFF`             | `#14170F`             | glyphs and compact labels on colored controls           |
 
 Rules: never pure black/white; elevation in dark mode = lighter surface (4 levels), in light mode = hairline + subtle shadow; accent is reserved — everything else stays neutral.
 
@@ -31,14 +33,14 @@ Rules: never pure black/white; elevation in dark mode = lighter surface (4 level
 | Type     | Light     | Dark      | Meaning                                                             |
 | -------- | --------- | --------- | ------------------------------------------------------------------- |
 | fix      | `#D93030` | `#F07272` | something is wrong — correct it                                     |
-| rewrite  | `#C07A10` | `#E0A33E` | right idea, wrong words                                             |
+| rewrite  | `#BB7410` | `#E0A33E` | right idea, wrong words                                             |
 | expand   | `#2563EB` | `#6D9BF5` | true but incomplete — go deeper                                     |
 | clarify  | `#7C4FD0` | `#A98BE8` | ambiguous — make it precise                                         |
 | question | `#0E8A9E` | `#4FB8CB` | needs an answer, opens a thread                                     |
 | answer   | `#2E9678` | `#4CBA9A` | the reply — often from the agent                                    |
 | remove   | `#D93030` | `#F07272` | doesn't belong — cut it (destructive red; user decision 2026-07-15) |
 
-Each has a `-soft` translucent variant (see tokens.css) used for text tints and badge backgrounds. Every type must hold ≥3:1 contrast against `--surface` in both themes — dark values are deliberately lifted/saturated. Color is never the only signal: type name always appears in the tag. New comments offer **question (default) · clarify · rewrite · remove**; legacy types stay readable.
+Each has a `-soft` translucent variant (see tokens.css) used for text tints and badge backgrounds. Every type must hold ≥3:1 contrast against `--surface` in both themes — dark values are deliberately lifted/saturated. Color is never the only signal: type name always appears in the tag. New comments offer **question (default) · clarify · rewrite · remove**; legacy types stay readable. Contrast tests parse the actual `:root` and `.dark` declarations from `tokens.css`; they must never mirror a second literal palette in test code.
 
 ## Typography
 

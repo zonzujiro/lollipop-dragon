@@ -309,7 +309,7 @@ export function CommentPanel({ peerMode = false }: Props) {
     const el = document.querySelector(
       `.comment-panel [data-comment-id="${activePanelCommentId}"]`,
     );
-    if (el && typeof el.scrollIntoView === "function") {
+    if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
   }, [activeCommentId, activeRootCommentId, peerMode]);

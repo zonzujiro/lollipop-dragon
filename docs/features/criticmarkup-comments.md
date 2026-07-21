@@ -128,11 +128,13 @@ MarkReview extends the plain comment protocol for threaded review questions.
   expandable `N more replies` control.
 - Agent-authored replies render as read-only comments in the UI. Before a
   question is answered, user-authored thread messages retain their existing edit
-  and delete actions. Once the thread contains an `answer:` reply, the root and
-  every reply become immutable in the UI: Edit and reply-level Delete are
-  unavailable, while the root keeps its Resolve action and the reply composer
-  remains available so the discussion can continue. Resolving the root removes
-  the completed question and all of its linked replies.
+  and delete actions; the same ownership check gates both actions, so an
+  agent-authored non-answer reply cannot be deleted from an otherwise unanswered
+  thread. Once the thread contains an `answer:` reply, the root and every reply
+  become immutable in the UI: Edit and reply-level Delete are unavailable,
+  while the root keeps its Resolve action and the reply composer remains
+  available so the discussion can continue. Resolving the root removes the
+  completed question and all of its linked replies.
 - Thread cards visually distinguish user-authored answers from external or agent-authored answers so ownership is clear at a glance.
 - The thread composer starts as a compact single-row field, grows up to four
   lines as the user types, and keeps its submit arrow inside the field. Enter
@@ -267,9 +269,9 @@ rails shrinks the surface fluidly without horizontal overflow.
 
 ### 8.3 Block and range commenting UI
 
-Every rendered block (paragraph, heading, table, code block, diagram, list item) is commentable. On hover, a 26px dashed rounded-square `+` appears in the left margin; it uses the quiet paper surface until hover or keyboard focus applies the accent color. Selecting text inside a block opens the same composer with the selected quote, range-safe CriticMarkup serialization, type shortcuts `1` for clarify and `2` for rewrite, and a clear notice that the comment is written into the file. Existing comments use 26px raised rounded-square markers with an 8px taxonomy-colored center; selecting one applies a taxonomy-colored border and soft focus ring. Marker stacks from adjacent blocks are collision-resolved in document order with a 4px gap, including mixed host and peer markers, and the hovered block's add button moves to the next free marker slot. Anchored ranges also render overlap-aware highlights and underline stripes. Clicking a shared highlight cycles through its comments. Clicking a marker opens the comment rail when needed, selects the matching rail card and highlight, and does not create a duplicate floating thread popup. Only the add-comment composer floats and remains draggable. The right rail shows open comments in document order, supports clarify and rewrite filters, and exposes view-only resolved history for the current tab. Its shortcut footer renders `J`, `K`, `C`, and `⌘K` as individual bordered keycaps. Orphaned range comments keep their quote and display the anchor-released note. Bulk resolution requires confirmation.
+Every rendered block (paragraph, heading, table, code block, diagram, list item) is commentable. On hover, a 26px dashed rounded-square `+` appears in the left margin; it uses the quiet paper surface until hover or keyboard focus applies the accent color. Selecting text inside a block preserves the browser selection for copying and exposes a floating **Comment** action. The range composer opens only after that explicit action, using the selected quote, range-safe CriticMarkup serialization, the four user comment types (question, clarify, rewrite, remove), and a clear notice that the comment is written into the file. Existing comments use 26px raised rounded-square markers with an 8px taxonomy-colored center; selecting one applies a taxonomy-colored border and soft focus ring. Marker stacks from adjacent blocks are collision-resolved in document order with a 4px gap, including mixed host and peer markers, and the hovered block's add button moves to the next free marker slot. Anchored ranges also render overlap-aware highlights and underline stripes. Clicking a shared highlight cycles through its comments. Clicking a marker opens the comment rail when needed, selects the matching rail card and highlight, and does not create a duplicate floating thread popup. Only the add-comment composer floats and remains draggable. The host right rail shows open comments in document order, exposes functional question, clarify, rewrite, and remove filters whenever those types are present, and exposes view-only resolved history for the current tab. Its shortcut footer renders `J`, `K`, `C`, and `⌘K` as individual bordered keycaps. Orphaned range comments keep their quote and display the anchor-released note. Bulk resolution requires confirmation.
 
-The click emitted by the browser after a drag selection must not dismiss the newly opened range composer. Once the selection collapses, normal outside-click dismissal resumes. This interaction is verified with the full `mouseup` then `click` browser event sequence; block-level comment creation remains independently covered.
+The click emitted by the browser after a drag selection must not dismiss the floating Comment action or collapse the browser selection. Clicking that action opens the range composer; starting a new selection, scrolling, or explicitly dismissing clears the pending action. These interactions are verified separately from block-level comment creation.
 
 Keyboard navigation follows the same ordering: `J`/`K` select the next or previous open comment across files, `C` opens a block composer, and `Cmd+K`/`Ctrl+K` opens the command palette. `Esc` closes the topmost palette, composer, or selection.
 
