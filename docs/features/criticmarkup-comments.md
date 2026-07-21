@@ -95,11 +95,12 @@ Supported types:
 
 The file parser continues to support every type above for compatibility with
 existing CriticMarkup and comments created by external tools. In the app UI,
-new comments and user-authored action replies deliberately offer only
-**clarify** and **rewrite**. Edit controls use the same two choices, and the
-Comments panel exposes only those two taxonomy filters; **All** still includes
-legacy comment types. Keyboard shortcuts are `1` for clarify and `2` for
-rewrite.
+new comments and user-authored action replies support **question**, **clarify**,
+**rewrite**, and **remove**. The host Comments panel exposes each of those types
+as a filter when it is present. Every visible filter must be functional and show
+the taxonomy color mark defined by the reference prototype. **All** still
+includes legacy comment types. Keyboard shortcuts follow the available composer
+actions.
 
 ### 6.3 Threaded Question / Answer Extension
 
@@ -118,15 +119,30 @@ MarkReview extends the plain comment protocol for threaded review questions.
   mismatched, or cyclic reply chains stay visible as standalone comments instead
   of disappearing.
 - The reply can also include `author` so the UI can show `Codex`, `Cursor`, or a generic `Agent` label.
-- The Comments panel keeps replies collapsed under the root question and marks the root as `answered` once an `answer:` reply exists.
-- Agent-authored replies render as read-only comments in the UI. User-authored replies can be edited or deleted.
+- The Comments panel always renders linked replies beneath the root question and marks the root as `answered` once an `answer:` reply exists. Selecting the root keeps the complete conversation in place and adds the reply composer and comment actions, including in folder mode where the thread remains under its file-path header.
+- Thread rail visuals follow `docs/redesign/reference-prototype/index.html`: the
+  root and replies share one standard comment card, replies use compact avatar
+  rows beneath a dashed divider and answer-colored left rule, and selected
+  state adds the taxonomy-colored focus ring without a nested `Thread` header.
+  Threads longer than three replies show the first and last reply around an
+  expandable `N more replies` control.
+- Agent-authored replies render as read-only comments in the UI. Before a
+  question is answered, user-authored thread messages retain their existing edit
+  and delete actions. Once the thread contains an `answer:` reply, the root and
+  every reply become immutable in the UI: Edit and reply-level Delete are
+  unavailable, while the root keeps its Resolve action and the reply composer
+  remains available so the discussion can continue. Resolving the root removes
+  the completed question and all of its linked replies.
 - Thread cards visually distinguish user-authored answers from external or agent-authored answers so ownership is clear at a glance.
 - The thread composer starts as a compact single-row field, grows up to four
   lines as the user types, and keeps its submit arrow inside the field. Enter
   submits, while Shift+Enter inserts a line break. A compact row of action
   buttons sits above the field; no separate Reply/Action mode switch is shown.
 - Threaded action replies are work instructions, not conversational answers. The review-agent prompt tells agents to apply the requested edit directly, remove the resolved thread after the edit, and avoid adding a confirmation `answer:` reply.
-- While a question, answer, or action reply in the thread card is being edited or delete-confirmed, the composer is hidden so the user sees only one active input surface.
+- While an editable message in an unanswered thread is being edited or
+  delete-confirmed, the composer is hidden so the user sees only one active input
+  surface. If an answer arrives during that interaction, edit and reply-delete
+  state closes immediately; a root Resolve confirmation remains valid.
 - Deleting a thread-root `question:` comment deletes the linked `answer:` replies in the same thread so replies never remain as orphan comments.
 
 Example root:
@@ -251,7 +267,7 @@ rails shrinks the surface fluidly without horizontal overflow.
 
 ### 8.3 Block and range commenting UI
 
-Every rendered block (paragraph, heading, table, code block, diagram, list item) is commentable. On hover, a 26px dashed rounded-square `+` appears in the left margin; it uses the quiet paper surface until hover or keyboard focus applies the accent color. Selecting text inside a block opens the same composer with the selected quote, range-safe CriticMarkup serialization, type shortcuts `1` for clarify and `2` for rewrite, and a clear notice that the comment is written into the file. Existing comments use 26px raised rounded-square markers with an 8px taxonomy-colored center; selecting one applies a taxonomy-colored border and soft focus ring. Anchored ranges also render overlap-aware highlights and underline stripes. Clicking a shared highlight cycles through its comments. Clicking a marker opens the comment rail when needed, selects the matching rail card and highlight, and does not create a duplicate floating thread popup. Only the add-comment composer floats and remains draggable. The right rail shows open comments in document order, supports clarify and rewrite filters, and exposes view-only resolved history for the current tab. Its shortcut footer renders `J`, `K`, `C`, and `⌘K` as individual bordered keycaps. Orphaned range comments keep their quote and display the anchor-released note. Bulk resolution requires confirmation.
+Every rendered block (paragraph, heading, table, code block, diagram, list item) is commentable. On hover, a 26px dashed rounded-square `+` appears in the left margin; it uses the quiet paper surface until hover or keyboard focus applies the accent color. Selecting text inside a block opens the same composer with the selected quote, range-safe CriticMarkup serialization, type shortcuts `1` for clarify and `2` for rewrite, and a clear notice that the comment is written into the file. Existing comments use 26px raised rounded-square markers with an 8px taxonomy-colored center; selecting one applies a taxonomy-colored border and soft focus ring. Marker stacks from adjacent blocks are collision-resolved in document order with a 4px gap, including mixed host and peer markers, and the hovered block's add button moves to the next free marker slot. Anchored ranges also render overlap-aware highlights and underline stripes. Clicking a shared highlight cycles through its comments. Clicking a marker opens the comment rail when needed, selects the matching rail card and highlight, and does not create a duplicate floating thread popup. Only the add-comment composer floats and remains draggable. The right rail shows open comments in document order, supports clarify and rewrite filters, and exposes view-only resolved history for the current tab. Its shortcut footer renders `J`, `K`, `C`, and `⌘K` as individual bordered keycaps. Orphaned range comments keep their quote and display the anchor-released note. Bulk resolution requires confirmation.
 
 The click emitted by the browser after a drag selection must not dismiss the newly opened range composer. Once the selection collapses, normal outside-click dismissal resumes. This interaction is verified with the full `mouseup` then `click` browser event sequence; block-level comment creation remains independently covered.
 

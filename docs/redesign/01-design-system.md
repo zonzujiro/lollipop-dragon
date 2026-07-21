@@ -1,28 +1,28 @@
 # 01 — Design System "Reading Room"
 
-The machine-readable source of truth is [`assets/tokens.css`](assets/tokens.css). Port it into `src/ui/styles/tokens.css` as CSS custom properties (the repo already themes via variables + a `.dark` override class). This doc explains intent and the values that must not drift.
+The shipped palette is **Sage** and lives in [`src/ui/styles/tokens.css`](../../src/ui/styles/tokens.css) — treat that file as authoritative; the values below are kept in sync with it. (The original warm scheme is preserved in [`reference-prototype/`](reference-prototype/) as a historical snapshot.) The repo themes via CSS custom properties + a `.dark` override class, and a palette swap is a pure value edit in that one file. This doc explains intent and the values that must not drift.
 
 ## Identity
 
-Seeded from the dragon logo (`src/assets/lollipop-dragon-logo.svg`): cream from its belly, red from the lollipop, teal from the wings. Two registers coexist deliberately:
+The mascot logo (`src/assets/lollipop-dragon-logo.svg`) stays as the brand stamp, but the palette shipped as **Sage** — a warm, botanical register (oat paper, forest-green accent, clay agent) chosen to be the app's own identity, distinct from the logo's exact hues (palette decision 21.07.2026). Two registers coexist deliberately:
 
-- **The app (Reading Room)**: warm paper, serif documents, quiet chrome — title-case, restrained.
+- **The app (Reading Room)**: warm oat paper, serif documents, quiet chrome — title-case, restrained.
 - **The landing story (Bauhaus)**: lowercase display headings, geometric shapes (square/circle/triangle markers), flat color bands. Landing-only; never inside the app shell.
 
 ## Color
 
 | Token                      | Light                 | Dark                  | Use                                                     |
 | -------------------------- | --------------------- | --------------------- | ------------------------------------------------------- |
-| `--bg`                     | `#F6F2E9`             | `#171412`             | app background ("paper" / "charcoal")                   |
-| `--bg-sunken`              | `#EFEADD`             | `#100E0C`             | rails, wells, code blocks                               |
-| `--surface`                | `#FFFDF8`             | `#1F1B18`             | document page, cards                                    |
-| `--surface-raised`         | `#FFFFFF`             | `#262220`             | popovers, sheets                                        |
-| `--ink`                    | `#211D18`             | `#EDE6D9`             | primary text                                            |
-| `--ink-secondary`          | `#575046`             | `#B5AC9E`             | secondary text                                          |
-| `--ink-muted`              | `#8A8175`             | `#7E766A`             | hints, metadata                                         |
-| `--line` / `--line-strong` | `#E4DCCB` / `#CFC5B0` | `#322D28` / `#453E37` | hairlines                                               |
-| `--accent`                 | `#D93030`             | `#E85A5A`             | **the only accent**: primary actions, selection, unread |
-| `--agent`                  | `#2E9678`             | `#4CBA9A`             | agent activity, live connection, success                |
+| `--bg`                     | `#F1F3EA`             | `#141711`             | app background ("oat paper" / "ink")                    |
+| `--bg-sunken`              | `#E7EBDD`             | `#0E100B`             | rails, wells, code blocks                               |
+| `--surface`                | `#FCFDF8`             | `#1D2016`             | document page, cards                                    |
+| `--surface-raised`         | `#FFFFFF`             | `#23271B`             | popovers, sheets                                        |
+| `--ink`                    | `#1E241C`             | `#E7E9DC`             | primary text                                            |
+| `--ink-secondary`          | `#4F5748`             | `#B0B3A2`             | secondary text                                          |
+| `--ink-muted`              | `#857F70`             | `#7C7A6C`             | hints, metadata                                         |
+| `--line` / `--line-strong` | `#DDE1D1` / `#CBD0BB` | `#2C3122` / `#3A4030` | hairlines                                               |
+| `--accent`                 | `#2F7A4F`             | `#5AA877`             | **the only accent**: primary actions, selection, unread |
+| `--agent`                  | `#B5602F`             | `#D1834F`             | agent activity, live connection, success                |
 
 Rules: never pure black/white; elevation in dark mode = lighter surface (4 levels), in light mode = hairline + subtle shadow; accent is reserved — everything else stays neutral.
 

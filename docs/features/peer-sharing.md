@@ -244,7 +244,10 @@ The host has one Share sheet for creation and management. It shows all active sh
    and URL locally. No content is uploaded yet.
 4. The host selects current file or whole folder and chooses a 1-day, 7-day, or
    30-day expiry tab. There is no access-level control; every share is read and
-   comment.
+   comment. The scope selector remains available when the sheet reuses an
+   existing active share, so the host can switch from that folder share to a
+   separate current-file share (or back). Scope controls are disabled only
+   while an upload action is actively running.
 5. The host clicks **Copy link** or **Copy as Slack message**. The selected
    action shows an encrypting/uploading state while the app encrypts the content
    and uploads it to the Worker.
