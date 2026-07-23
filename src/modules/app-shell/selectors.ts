@@ -12,12 +12,6 @@ export function selectFocusMode<StoreState extends AppShellState>(
   return state.focusMode;
 }
 
-export function selectPresentationMode<StoreState extends AppShellState>(
-  state: StoreState,
-) {
-  return state.presentationMode;
-}
-
 export function selectToast<StoreState extends AppShellState>(
   state: StoreState,
 ) {

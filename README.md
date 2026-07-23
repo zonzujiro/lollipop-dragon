@@ -1,6 +1,6 @@
 # [Lollipop Dragon](https://critiq.ink/)
 
-A browser-based platform for reviewing markdown documents. Open local files and folders, annotate them with [CriticMarkup](https://criticmarkup.com/) comments, share encrypted snapshots with peers, and present content as slideshows without leaving the browser.
+A browser-based platform for reviewing markdown documents. Open local files and folders, annotate them with [CriticMarkup](https://criticmarkup.com/) comments, and share encrypted snapshots with peers.
 
 Comments live directly in the markdown using CriticMarkup syntax, so any LLM can read and act on them naturally. No sidecar files, no export steps, no sync issues.
 
@@ -12,7 +12,6 @@ Comments live directly in the markdown using CriticMarkup syntax, so any LLM can
 - **Realtime peer review** - peers submit comments through the relay, hosts receive them live, and unresolved comments survive reconnects
 - **Folder browsing** - open entire directories, navigate via file tree sidebar, comment across files
 - **Tabs** - open multiple files and folders in tabs, with keyboard shortcuts to switch and close them
-- **Presentation mode** - splits markdown by `#` headings or `---` dividers into a fullscreen slideshow
 - **Focus mode** - hide the app chrome and keep only the rendered document
 - **Light/dark theme**
 - **File watching** - auto-refresh on external changes when the browser supports the required APIs

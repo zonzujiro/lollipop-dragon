@@ -117,7 +117,6 @@ Owns application-level shell state:
 - theme
 - toast
 - focus mode
-- presentation mode
 
 ### `agent-workflow`
 

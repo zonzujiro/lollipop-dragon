@@ -18,8 +18,7 @@ The prototype demonstrates the full "Reading Room" design from the proposal deck
 6. **Share** — the share sheet: scope, expiry, encrypted-link explanation, active shares with revoke.
 7. **⌘K** — the command palette; try typing "agent", "dark", or a file name.
 8. **Peer mode** — from landing ("Paste a review link") or the palette. Name prompt → trust ribbon → own-comments tray with ✓ sent states.
-9. **Present** — the ▶ button or `⌘P`. Open `roadmap.md` first for a 3-slide deck. Arrows navigate, `Esc` exits.
-10. **Dark mode** — moon icon anywhere, including mid-presentation.
+9. **Dark mode** — moon icon anywhere in the app.
 
 ## Keyboard map
 
@@ -32,12 +31,11 @@ The prototype demonstrates the full "Reading Room" design from the proposal deck
 | `⌘K`      | command palette                       |
 | `⌘B`      | toggle file sidebar                   |
 | `⌘\`      | toggle comment rail                   |
-| `⌘P`      | presentation mode                     |
 | `Esc`     | close topmost thing                   |
 
 ## Deep links (for demos & screenshots)
 
-`index.html#host` · `#peer` · `#present` · `#host-agent` (auto-runs the agent) · `#host-composer` · `#host-share` · `#host-palette` · `#host-dark` · `#host-mermaid` (node comment) · `#host-mermaid-src` (same comment in source view) · `#host-restore` (degraded folder access)
+`index.html#host` · `#peer` · `#host-agent` (auto-runs the agent) · `#host-composer` · `#host-share` · `#host-palette` · `#host-dark` · `#host-mermaid` (node comment) · `#host-mermaid-src` (same comment in source view) · `#host-restore` (degraded folder access)
 
 ## Files
 

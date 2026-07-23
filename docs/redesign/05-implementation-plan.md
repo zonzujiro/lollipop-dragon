@@ -14,11 +14,10 @@ Four phases, each independently shippable and demo-able. Work in this repo; foll
 - Replace `src/ui/styles/tokens.css` values with the Reading Room tokens (`assets/tokens.css`); keep the existing variable-name conventions and `.dark` override mechanism; migrate names where they differ rather than duplicating.
 - Re-skin the app shell: `Header` (merge `TabBar` into it — tab strip becomes header-inline; delete the standalone strip but keep all tab actions/shortcuts), `FileTreeSidebar` (248px, count badges, collapse/restore per spec), document column typography in `MarkdownRenderer` (serif 17/1.68, 632px measure, kicker line), `TableOfContents`, and `Toast`. Raw/source views stay within their owning renderers rather than a separate `RawViewer` surface.
 - Landing rebuild in `FilePicker`: asymmetric poster hero (three stacked actions + drop + recents), geometric product art, and numbered Bauhaus chapters per `02-screens.md` §1. Do not retain the legacy centered-card landing structure.
-- Presentation mode re-skin (`PresentationMode`).
 
 **Acceptance**
 
-- Visual parity with prototype states `#host` (minus range highlights), landing top+scroll, `#present`, dark mode — side-by-side eyeball at 1600×1000.
+- Visual parity with prototype states `#host` (minus range highlights), landing top+scroll, and dark mode — side-by-side eyeball at 1600×1000.
 - All existing tests pass after selector/CSS changes; `TabBar` removal covered by updated tests.
 - Automated contrast audit script (add `scripts/` or a Vitest suite computing WCAG ratios from token values) passes both themes.
 

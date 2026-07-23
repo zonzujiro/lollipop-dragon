@@ -8,7 +8,6 @@ import { FileTreeSidebar } from "./components/FileTreeSidebar";
 import { ShareDialog } from "./components/ShareDialog";
 import type { ShareDialogScope } from "./components/ShareDialog";
 import { CommentPanel } from "./components/CommentPanel";
-import { PresentationMode } from "./components/PresentationMode";
 import { CommandPalette } from "./components/CommandPalette";
 import { UndoToast } from "./components/UndoToast";
 import { Toast } from "./components/Toast";
@@ -130,10 +129,8 @@ function App() {
   const tab = useActiveTab();
   const tabs = useAppStore((s) => s.tabs);
   const focusMode = useAppStore((s) => s.focusMode);
-  const presentationMode = useAppStore((s) => s.presentationMode);
   const toggleFocusMode = useAppStore((s) => s.toggleFocusMode);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
-  const enterPresentationMode = useAppStore((s) => s.enterPresentationMode);
   const selectFile = useAppStore((s) => s.selectFile);
   const showToast = useAppStore((s) => s.showToast);
   const openDirectoryInNewTab = useAppStore((s) => s.openDirectoryInNewTab);
@@ -352,16 +349,6 @@ function App() {
     );
   }
 
-  // ── Presentation mode (fullscreen slideshow) ──
-  if (presentationMode) {
-    return (
-      <>
-        <PresentationMode />
-        <CommandPalette />
-      </>
-    );
-  }
-
   // ── Host mode with tabs ──
   const hasFolderOpen = (tab?.fileTree.length ?? 0) > 0;
   const showRestorePlaceholder = shouldRenderRestorePlaceholder(tab);
@@ -383,7 +370,6 @@ function App() {
               entityPath: "",
             })
           }
-          onPresent={enterPresentationMode}
         />
       )}
       <div className="app-body">

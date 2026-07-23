@@ -36,7 +36,7 @@ function freshDocs() {
     "overview.md": { blocks: [
       { t: "h1", h: "Overview" },
       { t: "p", h: "This folder holds the research for the ingestion-pipeline rebuild: storage evaluation, API surface, and the quarterly roadmap. Everything here was drafted by claude-code and is under review." },
-      { t: "p", h: "Start with <code>database/comparison.md</code> — it carries the main recommendation. The roadmap is presentable as slides straight from this app." },
+      { t: "p", h: "Start with <code>database/comparison.md</code> — it carries the main recommendation. The roadmap captures the delivery sequence and success measures." },
     ]},
     "database/comparison.md": { blocks: [
       { t: "h1", h: "Database Comparison" },
@@ -101,7 +101,7 @@ function freshDocs() {
     ]},
     "release-plan.md": { blocks: [
       { t: "h1", h: "Release Plan — v2.0" },
-      { t: "p", h: "This is a single-file workspace: the same reading room without the folder tree. Everything works here too — commenting, the agent, presentation mode." },
+      { t: "p", h: "This is a single-file workspace: the same reading room without the folder tree. Everything works here too — commenting and the agent included." },
       { t: "h2", h: "Gates" },
       { t: "ul", h: "<li>All P0 review comments resolved</li><li>Perf budget: 10k-line file renders under 1 s</li><li>Accessibility pass at WCAG AA in both themes</li>" },
       { t: "h2", h: "Timeline" },
@@ -214,7 +214,6 @@ const state = {
   peerName: "Marta",
   peerComments: [],
   restoreLock: false,       // browser dropped the folder handle — read-only until restored
-  present: null,             // {slides, i}
   sidebar: true,
   rail: true,
 };
@@ -890,7 +889,6 @@ function paletteItems() {
     });
   }
   items.push({ group: "View", label: "Toggle dark mode", ic: "◐", run: () => { toggleTheme(); closePalette(); } });
-  items.push({ group: "View", label: "Start presentation from this file", ic: "▶", keys: "⌘P", run: () => { closePalette(); startPresent(); } });
   items.push({ group: "View", label: "Toggle file sidebar", ic: "⌫", keys: "⌘B", run: () => { state.sidebar = !state.sidebar; closePalette(); renderHost(); } });
   items.push({ group: "View", label: "Toggle comment panel", ic: "▤", keys: "⌘\\", run: () => { state.rail = !state.rail; closePalette(); renderHost(); } });
   items.push({ group: "Prototype", label: "Preview the peer experience", ic: "☍", run: () => { closePalette(); enterPeerFlow(); } });
@@ -926,32 +924,6 @@ function renderPalette() {
 
 function openPalette() { $("#palette-overlay").hidden = false; $("#palette-input").value = ""; paletteSel = 0; renderPalette(); $("#palette-input").focus(); }
 function closePalette() { $("#palette-overlay").hidden = true; }
-
-/* ---------------- presentation ---------------- */
-
-function startPresent() {
-  const file = state.view === "peer" ? state.peerFile : ws().activeFile;
-  const doc = DOCS[file];
-  const slides = [];
-  let cur = null;
-  doc.blocks.forEach(b => {
-    if (b.t === "h1" || !cur) { cur = { blocks: [] }; slides.push(cur); }
-    cur.blocks.push(b);
-  });
-  state.present = { slides, i: 0, file };
-  $("#present-overlay").hidden = false;
-  renderPresent();
-}
-
-function renderPresent() {
-  const p = state.present;
-  const s = p.slides[p.i];
-  $("#pslide-wrap").innerHTML = `<div class="pslide"><div class="kick">${esc(p.file)} · slide ${p.i + 1}</div>${s.blocks.map(blockHTML).join("")}</div>`;
-  $("#pdots").innerHTML = p.slides.map((_, i) => `<i class="${i === p.i ? "on" : ""}" data-slide="${i}"></i>`).join("");
-  $("#pcounter").textContent = `${p.i + 1} / ${p.slides.length} · ${p.file}`;
-}
-
-function exitPresent() { state.present = null; $("#present-overlay").hidden = true; }
 
 /* ---------------- flows ---------------- */
 
@@ -1032,7 +1004,7 @@ document.addEventListener("click", (e) => {
     }
     return;
   }
-  const t = e.target.closest("[data-action],[data-file],[data-peer-file],[data-ws],[data-close],[data-add-tab],[data-mview],[data-expand-thread],[data-reply-input],[data-cids],[data-cid],[data-add],[data-filter],[data-resolve],[data-type],[data-submit],[data-copy-link],[data-copy-slack],[data-revoke],[data-scope],[data-stop-agent],[data-dismiss-run],[data-copy-prompt],[data-slide],[data-pi]");
+  const t = e.target.closest("[data-action],[data-file],[data-peer-file],[data-ws],[data-close],[data-add-tab],[data-mview],[data-expand-thread],[data-reply-input],[data-cids],[data-cid],[data-add],[data-filter],[data-resolve],[data-type],[data-submit],[data-copy-link],[data-copy-slack],[data-revoke],[data-scope],[data-stop-agent],[data-dismiss-run],[data-copy-prompt],[data-pi]");
   if (!t) {
     // click outside composer closes it
     if (state.composer && !e.target.closest(".composer")) closeComposer();
@@ -1049,8 +1021,6 @@ document.addEventListener("click", (e) => {
   if (a.action === "theme") { toggleTheme(); return; }
   if (a.action === "share") { openShare(); return; }
   if (a.action === "run-agent") { runAgent(); return; }
-  if (a.action === "present") { startPresent(); return; }
-  if (a.action === "exit-present") { exitPresent(); return; }
   if (a.action === "toggle-rail") { state.rail = !state.rail; renderHost(); return; }
   if (a.action === "toggle-sidebar") { state.sidebar = !state.sidebar; renderHost(); return; }
   if (a.action === "toggle-term") { $("#term").classList.toggle("collapsed"); return; }
@@ -1145,7 +1115,6 @@ document.addEventListener("click", (e) => {
   if (a.dismissRun) { state.agent = null; renderHost(); return; }
   if (a.copyPrompt) { toast("Prompt copied — paste it into any agent CLI", true); return; }
 
-  if (a.slide !== undefined) { state.present.i = parseInt(a.slide, 10); renderPresent(); return; }
   if (a.pi !== undefined) {
     const items = $("#palette-list")._items;
     if (items && items[a.pi]) items[a.pi].run();
@@ -1249,17 +1218,6 @@ document.addEventListener("keydown", (e) => {
     return;
   }
 
-  // presentation
-  if (state.present) {
-    const p = state.present;
-    if (["ArrowRight", "ArrowDown", " ", "PageDown"].includes(e.key)) { e.preventDefault(); if (p.i < p.slides.length - 1) { p.i++; renderPresent(); } }
-    else if (["ArrowLeft", "ArrowUp", "Backspace", "PageUp"].includes(e.key)) { e.preventDefault(); if (p.i > 0) { p.i--; renderPresent(); } }
-    else if (e.key === "Home") { p.i = 0; renderPresent(); }
-    else if (e.key === "End") { p.i = p.slides.length - 1; renderPresent(); }
-    else if (e.key === "Escape") exitPresent();
-    return;
-  }
-
   // name modal
   if (!$("#name-overlay").hidden) {
     if (e.key === "Enter") { e.preventDefault(); joinPeer(); }
@@ -1293,7 +1251,6 @@ document.addEventListener("keydown", (e) => {
   if (state.view === "host") {
     if (meta && e.key.toLowerCase() === "b") { e.preventDefault(); state.sidebar = !state.sidebar; renderHost(); return; }
     if (meta && e.key === "\\") { e.preventDefault(); state.rail = !state.rail; renderHost(); return; }
-    if (meta && e.key.toLowerCase() === "p") { e.preventDefault(); startPresent(); return; }
     if (meta && e.key === "Enter") { e.preventDefault(); runAgent(); return; }
     if (e.key === "j" || e.key === "J") { nav(1); return; }
     if (e.key === "k" || e.key === "K") { nav(-1); return; }
@@ -1350,11 +1307,6 @@ function boot() {
     state.peerFile = "database/comparison.md";
     setView("peer");
     renderPeer();
-  } else if (h === "present") {
-    enterHost("ws1");
-    ws().activeFile = "roadmap.md";
-    renderHost();
-    startPresent();
   } else {
     setView("landing");
   }

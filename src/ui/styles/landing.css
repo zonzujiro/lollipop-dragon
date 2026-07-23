@@ -50,6 +50,26 @@
   background: var(--agent);
   border-bottom-color: var(--agent);
 }
+.landing-mark--clarify {
+  background: var(--c-clarify);
+  border-bottom-color: var(--c-clarify);
+}
+.landing-mark--question {
+  background: var(--c-question);
+  border-bottom-color: var(--c-question);
+}
+.landing-mark--expand {
+  background: var(--c-expand);
+  border-bottom-color: var(--c-expand);
+}
+.landing-mark--answer {
+  background: var(--c-answer);
+  border-bottom-color: var(--c-answer);
+}
+.landing-mark--fix {
+  background: var(--c-fix);
+  border-bottom-color: var(--c-fix);
+}
 .landing-mark--cream {
   background: var(--surface);
   border-bottom-color: var(--surface);
@@ -71,6 +91,18 @@
 .landing-fill-agent {
   fill: var(--agent);
 }
+.landing-fill-question {
+  fill: var(--c-question);
+}
+.landing-fill-expand {
+  fill: var(--c-expand);
+}
+.landing-fill-answer {
+  fill: var(--c-answer);
+}
+.landing-fill-fix {
+  fill: var(--c-fix);
+}
 .landing-stroke-accent {
   stroke: var(--accent);
 }
@@ -79,6 +111,15 @@
 }
 .landing-stroke-agent {
   stroke: var(--agent);
+}
+.landing-stroke-question {
+  stroke: var(--c-question);
+}
+.landing-stroke-expand {
+  stroke: var(--c-expand);
+}
+.landing-stroke-clarify {
+  stroke: var(--c-clarify);
 }
 /* Decorative SVG fills/strokes inherit the active app theme tokens. */
 .landing-fill-pop {
@@ -116,6 +157,12 @@
   align-items: center;
   gap: 3vw;
   padding: 6vh 6vw 9vh;
+  background: linear-gradient(
+    125deg,
+    var(--bg) 0 68%,
+    color-mix(in srgb, var(--c-question) 16%, var(--bg)) 68% 84%,
+    color-mix(in srgb, var(--c-clarify) 17%, var(--bg)) 84% 100%
+  );
 }
 
 .landing-stamp {
@@ -146,7 +193,7 @@
 }
 .landing-title__outline {
   color: transparent;
-  -webkit-text-stroke: 3px var(--accent);
+  -webkit-text-stroke: 3px var(--c-clarify);
 }
 .landing-tag {
   margin-top: 3vh;
@@ -196,6 +243,10 @@
 .landing-action--agent {
   background: var(--agent);
   color: var(--on-agent);
+}
+.landing-action--question {
+  background: var(--c-question);
+  color: var(--on-question);
 }
 .landing-action kbd,
 .landing-action__note {
@@ -282,9 +333,16 @@
 .landing-band--cream {
   background: var(--bg-sunken);
 }
-.landing-band--black {
-  background: var(--ink);
-  border-color: var(--ink);
+.landing-band--reading {
+  background: color-mix(in srgb, var(--c-question) 18%, var(--bg));
+}
+.landing-band--comments {
+  --landing-band-ink: var(--on-question);
+  background: var(--c-question);
+}
+.landing-band--privacy {
+  --landing-band-ink: var(--on-expand);
+  background: var(--c-expand);
 }
 .landing-band__inner {
   max-width: 1120px;
@@ -309,7 +367,7 @@
 }
 .landing-number--outline {
   color: transparent;
-  -webkit-text-stroke: 2.5px var(--bg);
+  -webkit-text-stroke: 2.5px var(--landing-band-ink, var(--bg));
 }
 .landing-heading {
   margin: 0 0 18px;
@@ -321,7 +379,7 @@
   text-transform: lowercase;
 }
 .landing-heading--cream {
-  color: var(--bg);
+  color: var(--landing-band-ink, var(--bg));
 }
 .landing-heading--big {
   margin: 0;
@@ -335,7 +393,11 @@
   text-transform: lowercase;
 }
 .landing-copy--cream {
-  color: color-mix(in srgb, var(--bg) 78%, transparent);
+  color: color-mix(
+    in srgb,
+    var(--landing-band-ink, var(--bg)) 82%,
+    transparent
+  );
 }
 .landing-band__art {
   width: 100%;
@@ -385,6 +447,7 @@
 }
 .landing-band--handoff {
   padding-bottom: 96px;
+  background: color-mix(in srgb, var(--c-clarify) 18%, var(--bg));
 }
 .landing-duo {
   max-width: 1120px;
@@ -404,8 +467,8 @@
   background: var(--agent);
 }
 .landing-panel--accent {
-  --landing-panel-ink: var(--on-accent);
-  background: var(--accent);
+  --landing-panel-ink: var(--on-clarify);
+  background: var(--c-clarify);
   transform: translateY(26px);
 }
 .landing-panel h3 {
@@ -441,7 +504,11 @@
   display: flex;
   align-items: flex-start;
   gap: 13px;
-  color: color-mix(in srgb, var(--bg) 88%, transparent);
+  color: color-mix(
+    in srgb,
+    var(--landing-band-ink, var(--bg)) 90%,
+    transparent
+  );
   font-size: 14.5px;
   font-weight: 600;
   line-height: 1.55;
@@ -458,7 +525,7 @@
   flex-wrap: wrap;
   gap: 5vw;
   border-top: 3px solid var(--ink);
-  background: var(--bg);
+  background: color-mix(in srgb, var(--c-answer) 20%, var(--bg));
 }
 .landing-footer {
   padding: 52px 24px 44px;

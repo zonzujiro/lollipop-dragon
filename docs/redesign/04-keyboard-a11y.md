@@ -4,23 +4,21 @@
 
 `⌘` = `Ctrl` on Windows/Linux (`metaKey || ctrlKey`). Single-letter shortcuts fire only when focus is not in an input/textarea.
 
-| Key                             | Context                               | Action                                                                                     |
-| ------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `J` / `K`                       | host                                  | next / previous open comment (crosses files; ordering per 03 §7)                           |
-| `C`                             | host, peer                            | open composer on the hovered block (fallback: selected comment's block, else first block)  |
-| text selection                  | host, peer                            | opens composer with a character-range anchor                                               |
-| `1`–`2`                         | composer open, focus outside textarea | set comment type (`1` = clarify, `2` = rewrite)                                            |
-| `⌘↵`                            | composer textarea                     | submit comment                                                                             |
-| `⌘↵`                            | host, no composer                     | run agent on open comments (desktop runtime)                                               |
-| `⌘K`                            | everywhere                            | command palette (toggle)                                                                   |
-| `⌘B`                            | host                                  | toggle file rail                                                                           |
-| `⌘\`                            | host                                  | toggle comment rail                                                                        |
-| `⌘P`                            | host                                  | presentation mode (preventDefault on browser print)                                        |
-| `⌘W` / `⌘T` / `Ctrl+Tab`        | host                                  | close / new / cycle workspace tabs (existing)                                              |
-| `←→↑↓ Space PgUp PgDn Home End` | presentation                          | navigate slides (no wrap)                                                                  |
-| `↑` `↓` `↵`                     | palette                               | select / run                                                                               |
-| `↵`                             | peer name sheet                       | join                                                                                       |
-| `Esc`                           | everywhere                            | close topmost layer, in order: palette → share sheet → composer → selection → presentation |
+| Key                      | Context                               | Action                                                                                    |
+| ------------------------ | ------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `J` / `K`                | host                                  | next / previous open comment (crosses files; ordering per 03 §7)                          |
+| `C`                      | host, peer                            | open composer on the hovered block (fallback: selected comment's block, else first block) |
+| text selection           | host, peer                            | opens composer with a character-range anchor                                              |
+| `1`–`2`                  | composer open, focus outside textarea | set comment type (`1` = clarify, `2` = rewrite)                                           |
+| `⌘↵`                     | composer textarea                     | submit comment                                                                            |
+| `⌘↵`                     | host, no composer                     | run agent on open comments (desktop runtime)                                              |
+| `⌘K`                     | everywhere                            | command palette (toggle)                                                                  |
+| `⌘B`                     | host                                  | toggle file rail                                                                          |
+| `⌘\`                     | host                                  | toggle comment rail                                                                       |
+| `⌘W` / `⌘T` / `Ctrl+Tab` | host                                  | close / new / cycle workspace tabs (existing)                                             |
+| `↑` `↓` `↵`              | palette                               | select / run                                                                              |
+| `↵`                      | peer name sheet                       | join                                                                                      |
+| `Esc`                    | everywhere                            | close topmost layer, in order: palette → share sheet → composer → selection               |
 
 Every action reachable by mouse must also be reachable via the palette (⌘K). The rail footer hint bar permanently shows `J K · C · ⌘K`.
 
@@ -48,4 +46,4 @@ Every action reachable by mouse must also be reachable via the palette (⌘K). T
 
 ## Reduced motion
 
-With `prefers-reduced-motion: reduce`: no marker pulse, no slide/panel translation (crossfade or instant), no spinner rotation (use static progress text), keep progress-bar width changes and state color changes.
+With `prefers-reduced-motion: reduce`: no marker pulse, no panel translation (crossfade or instant), no spinner rotation (use static progress text), keep progress-bar width changes and state color changes.

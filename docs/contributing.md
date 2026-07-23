@@ -40,7 +40,7 @@ VITE_WORKER_URL=https://your-worker.dev npm run dev
 
 1. Create a branch from `main` with a descriptive prefix: `feat/`, `fix/`, `refactor/`, `docs/`
 2. Run `npm run preflight:agent`, make the change, and finish with `npm run validate`
-3. Commit with a concise message: `feat: add slide counter to presentation mode`
+3. Commit with a concise message: `feat: add comment filter shortcuts`
 4. Push and open a PR against `main`
 
 Pre-commit hooks auto-format staged files, then run zero-warning lint, frontend

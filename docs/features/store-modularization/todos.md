@@ -69,7 +69,6 @@ Owns:
 - `theme`
 - `toast`
 - `focusMode`
-- `presentationMode`
 
 Steps:
 
