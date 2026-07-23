@@ -1,20 +1,29 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
+interface ThemeContext {
+  background: string;
+  codeBackground: string;
+  ink: string;
+  secondaryInk: string;
+  surface: string;
+  taxonomy: string[];
+}
+
 interface ThemeColors {
   accent: string;
   agent: string;
   avatarNeutral: string;
-  background: string;
-  codeBackground: string;
-  ink: string;
+  document: ThemeContext;
   onAccent: string;
+  onAgent: string;
+  onAvatar: string;
+  onRemove: string;
   onRewrite: string;
+  panel: ThemeContext;
   remove: string;
   rewrite: string;
-  secondaryInk: string;
-  surface: string;
-  taxonomy: string[];
+  shell: ThemeContext;
 }
 
 const TOKEN_STYLESHEET = readFileSync("src/ui/styles/tokens.css", "utf8");
@@ -64,6 +73,30 @@ function getToken(
   return value;
 }
 
+function buildThemeContext(
+  tokenPrefix: string,
+  taxonomyPrefix: string,
+  rootTokens: ReadonlyMap<string, string>,
+  overrides: ReadonlyMap<string, string>,
+): ThemeContext {
+  const tokenName = (name: string) =>
+    tokenPrefix ? `--${tokenPrefix}-${name}` : `--${name}`;
+  const taxonomyTokenName = (name: string) =>
+    taxonomyPrefix ? `--${taxonomyPrefix}-${name.slice(2)}` : name;
+  const value = (name: string) =>
+    getToken(tokenName(name), rootTokens, overrides);
+  return {
+    background: value("bg"),
+    codeBackground: value("bg-sunken"),
+    ink: value("ink"),
+    secondaryInk: value("ink-secondary"),
+    surface: value("surface"),
+    taxonomy: TAXONOMY_TOKENS.map((name) =>
+      getToken(taxonomyTokenName(name), rootTokens, overrides),
+    ),
+  };
+}
+
 function buildThemeColors(
   rootTokens: ReadonlyMap<string, string>,
   overrides: ReadonlyMap<string, string>,
@@ -74,16 +107,16 @@ function buildThemeColors(
     accent: value("--accent"),
     agent: value("--agent"),
     avatarNeutral: value("--avatar-neutral"),
-    background: value("--bg"),
-    codeBackground: value("--bg-sunken"),
-    ink: value("--ink"),
+    document: buildThemeContext("document", "document", rootTokens, overrides),
     onAccent: value("--on-accent"),
+    onAgent: value("--on-agent"),
+    onAvatar: value("--on-avatar"),
+    onRemove: value("--on-remove"),
     onRewrite: value("--on-rewrite"),
+    panel: buildThemeContext("panel", "", rootTokens, overrides),
     remove: value("--c-remove"),
     rewrite: value("--c-rewrite"),
-    secondaryInk: value("--ink-secondary"),
-    surface: value("--surface"),
-    taxonomy: TAXONOMY_TOKENS.map(value),
+    shell: buildThemeContext("", "", rootTokens, overrides),
   };
 }
 
@@ -129,19 +162,21 @@ describe("Reading Room token contrast", () => {
   it.each(themes)(
     "%s theme meets text and taxonomy contrast budgets",
     (_themeName, colors) => {
-      expect(
-        contrastRatio(colors.ink, colors.background),
-      ).toBeGreaterThanOrEqual(4.5);
-      expect(
-        contrastRatio(colors.secondaryInk, colors.background),
-      ).toBeGreaterThanOrEqual(4.5);
-      for (const taxonomyColor of colors.taxonomy) {
+      for (const context of [colors.shell, colors.document, colors.panel]) {
         expect(
-          contrastRatio(taxonomyColor, colors.surface),
-        ).toBeGreaterThanOrEqual(3);
+          contrastRatio(context.ink, context.background),
+        ).toBeGreaterThanOrEqual(4.5);
         expect(
-          contrastRatio(taxonomyColor, colors.codeBackground),
-        ).toBeGreaterThanOrEqual(3);
+          contrastRatio(context.secondaryInk, context.background),
+        ).toBeGreaterThanOrEqual(4.5);
+        for (const taxonomyColor of context.taxonomy) {
+          expect(
+            contrastRatio(taxonomyColor, context.surface),
+          ).toBeGreaterThanOrEqual(3);
+          expect(
+            contrastRatio(taxonomyColor, context.codeBackground),
+          ).toBeGreaterThanOrEqual(3);
+        }
       }
     },
   );
@@ -151,13 +186,13 @@ describe("Reading Room token contrast", () => {
       contrastRatio(colors.onAccent, colors.accent),
     ).toBeGreaterThanOrEqual(4.5);
     expect(
-      contrastRatio(colors.onAccent, colors.remove),
+      contrastRatio(colors.onRemove, colors.remove),
     ).toBeGreaterThanOrEqual(4.5);
-    expect(contrastRatio(colors.onAccent, colors.agent)).toBeGreaterThanOrEqual(
+    expect(contrastRatio(colors.onAgent, colors.agent)).toBeGreaterThanOrEqual(
       4.5,
     );
     expect(
-      contrastRatio(colors.onAccent, colors.avatarNeutral),
+      contrastRatio(colors.onAvatar, colors.avatarNeutral),
     ).toBeGreaterThanOrEqual(4.5);
     expect(
       contrastRatio(colors.onRewrite, colors.rewrite),

@@ -21,6 +21,7 @@ function listStylesheets(directory: string): string[] {
 
 describe("Reading Room surface parity", () => {
   it("maps the document and rails to the prototype surface hierarchy", () => {
+    const tokensCss = readStylesheet("src/ui/styles/tokens.css");
     const layoutCss = readStylesheet("src/ui/styles/app-layout.css");
     const fileTreeCss = readStylesheet(
       "src/ui/components/FileTreeSidebar/FileTreeSidebar.css",
@@ -30,14 +31,19 @@ describe("Reading Room surface parity", () => {
     );
 
     expect(layoutCss).toMatch(
-      /\.app-main\s*\{[^}]*background:\s*var\(--surface\)/s,
+      /\.app-main\s*\{[^}]*--bg:\s*var\(--document-bg\)[^}]*--surface:\s*var\(--document-surface\)[^}]*background:\s*var\(--surface\)/s,
     );
     expect(fileTreeCss).toMatch(
       /\.file-tree-sidebar\s*\{[^}]*background-color:\s*var\(--bg\)/s,
     );
     expect(commentPanelCss).toMatch(
-      /\.comment-panel\s*\{[^}]*background-color:\s*var\(--bg\)/s,
+      /\.comment-panel\s*\{[^}]*--bg:\s*var\(--panel-bg\)[^}]*--surface:\s*var\(--panel-surface\)[^}]*background-color:\s*var\(--bg\)/s,
     );
+    for (const context of ["document", "panel"]) {
+      for (const token of ["bg", "surface", "ink", "line"]) {
+        expect(tokensCss).toContain(`--${context}-${token}:`);
+      }
+    }
   });
 
   it("uses the dashed plus block-comment affordance", () => {
@@ -136,6 +142,8 @@ describe("Reading Room surface parity", () => {
     ]) {
       expect(landingCss).toContain(`var(--${themeToken})`);
     }
+    expect(landingCss).toContain("var(--document-surface)");
+    expect(landingCss).toContain("var(--document-ink)");
   });
 
   it("keeps the metadata title compact inside the document heading scope", () => {
