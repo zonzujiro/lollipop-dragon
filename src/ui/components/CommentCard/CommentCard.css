@@ -74,7 +74,7 @@
 
 .comment-card__confirm-yes {
   background: var(--c-red, #ef4444);
-  color: var(--on-accent);
+  color: var(--on-remove);
   border: none;
   border-radius: 4px;
   padding: 0.25rem 0.75rem;

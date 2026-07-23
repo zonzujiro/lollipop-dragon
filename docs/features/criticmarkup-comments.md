@@ -294,7 +294,19 @@ reattaches it. Host and peer comments share this model.
 
 ### 8.4 Design
 
-Typeform-inspired: the content is the interface. Light mode default with dark mode. Neutral palette — warm grays, off-white background, single accent color for interactive elements. The document pane uses the lighter raised reading surface, while both side rails use the warm page background; the darker sunken token is reserved for wells and secondary controls. The global header uses the Lollipop Dragon mark instead of repeating whether the active tab is a file or folder review; the tab bar and file tree already provide that context. Comment indicators are subtle until hovered. Focus mode — hide sidebar and comment margin, just the rendered document. Smooth transitions and micro-animations for comment interactions. Responsive layout for desktop and tablet.
+Typeform-inspired: the content is the interface. Light mode defaults to the
+Contrast Shell palette: a charcoal header and file rail, a light raised document
+surface, and a charcoal comment rail. Dark mode keeps the same hierarchy with a
+dark document surface. Coral-red identifies primary actions, yellow identifies
+agent-authored activity, and the comment taxonomy retains distinct semantic
+colors. All literal palette values live in `src/ui/styles/tokens.css`; shell,
+document, and panel token families let those regions maintain accessible
+foreground/background pairs. The global header uses the Lollipop Dragon mark
+instead of repeating whether the active tab is a file or folder review; the tab
+bar and file tree already provide that context. Comment indicators are subtle
+until hovered. Focus mode — hide sidebar and comment margin, just the rendered
+document. Smooth transitions and micro-animations for comment interactions.
+Responsive layout for desktop and tablet.
 
 ---
 

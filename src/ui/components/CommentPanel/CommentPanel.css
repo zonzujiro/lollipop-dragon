@@ -1,5 +1,14 @@
 /* ── Comment panel ───────────────────────────────────────────── */
 .comment-panel {
+  --bg: var(--panel-bg);
+  --bg-sunken: var(--panel-bg-sunken);
+  --surface: var(--panel-surface);
+  --surface-raised: var(--panel-surface-raised);
+  --ink: var(--panel-ink);
+  --ink-secondary: var(--panel-ink-secondary);
+  --ink-muted: var(--panel-ink-muted);
+  --line: var(--panel-line);
+  --line-strong: var(--panel-line-strong);
   width: 332px;
   flex-shrink: 0;
   display: flex;
@@ -117,7 +126,7 @@
 .comment-panel__danger-confirm-delete {
   border: 1px solid var(--c-red);
   background: var(--c-red);
-  color: var(--on-accent);
+  color: var(--on-remove);
 }
 
 .comment-panel__danger-confirm-cancel {

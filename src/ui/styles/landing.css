@@ -88,14 +88,14 @@
   fill: var(--ink);
 }
 .landing-fill-paper {
-  fill: var(--surface);
+  fill: var(--document-surface);
 }
 .landing-fill-muted {
   fill: var(--ink-muted);
 }
 .landing-page {
-  fill: var(--surface);
-  stroke: var(--ink);
+  fill: var(--document-surface);
+  stroke: var(--document-ink);
 }
 .landing-well {
   fill: var(--bg-sunken);
@@ -195,7 +195,7 @@
 }
 .landing-action--agent {
   background: var(--agent);
-  color: var(--on-accent);
+  color: var(--on-agent);
 }
 .landing-action kbd,
 .landing-action__note {
@@ -400,15 +400,17 @@
   box-shadow: 8px 8px 0 var(--ink);
 }
 .landing-panel--agent {
+  --landing-panel-ink: var(--on-agent);
   background: var(--agent);
 }
 .landing-panel--accent {
+  --landing-panel-ink: var(--on-accent);
   background: var(--accent);
   transform: translateY(26px);
 }
 .landing-panel h3 {
   margin: 0 0 18px;
-  color: var(--on-accent);
+  color: var(--landing-panel-ink);
   font-size: 25px;
   font-weight: 900;
   text-transform: lowercase;
@@ -426,7 +428,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  color: color-mix(in srgb, var(--on-accent) 95%, transparent);
+  color: color-mix(in srgb, var(--landing-panel-ink) 95%, transparent);
   font-size: 14.5px;
   font-weight: 650;
   text-transform: lowercase;
@@ -627,7 +629,7 @@
 
 .landing-link-dialog__join {
   background: var(--agent);
-  color: var(--on-accent);
+  color: var(--on-agent);
   box-shadow: 4px 4px 0 var(--ink);
 }
 
