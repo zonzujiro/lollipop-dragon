@@ -228,9 +228,12 @@ describe("MarkdownRenderer — commenting", () => {
     });
     expect(screen.queryByLabelText("Comment text")).not.toBeInTheDocument();
 
+    fireEvent.mouseDown(commentAction);
+    selection?.removeAllRanges();
     fireEvent.click(commentAction);
 
-    // Now the composer opens, anchored to the selected quote.
+    // Browsers may collapse the selection while activating the button. The
+    // activation click must not bubble into the outside-click dismiss handler.
     expect(screen.getByText("“this exact phrase”")).toBeInTheDocument();
     expect(screen.getByLabelText("Comment text")).toBeInTheDocument();
 
