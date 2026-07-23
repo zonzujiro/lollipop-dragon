@@ -271,7 +271,7 @@ rails shrinks the surface fluidly without horizontal overflow.
 
 Every rendered block (paragraph, heading, table, code block, diagram, list item) is commentable. On hover, a 26px dashed rounded-square `+` appears in the left margin; it uses the quiet paper surface until hover or keyboard focus applies the accent color. Selecting text inside a block preserves the browser selection for copying and exposes a floating **Comment** action. The range composer opens only after that explicit action, using the selected quote, range-safe CriticMarkup serialization, the four user comment types (question, clarify, rewrite, remove), and a clear notice that the comment is written into the file. Existing comments use 26px raised rounded-square markers with an 8px taxonomy-colored center; selecting one applies a taxonomy-colored border and soft focus ring. Marker stacks from adjacent blocks are collision-resolved in document order with a 4px gap, including mixed host and peer markers, and the hovered block's add button moves to the next free marker slot. Anchored ranges also render overlap-aware highlights and underline stripes. Clicking a shared highlight cycles through its comments. Clicking a marker opens the comment rail when needed, selects the matching rail card and highlight, and does not create a duplicate floating thread popup. Only the add-comment composer floats and remains draggable. The host right rail shows open comments in document order, exposes functional question, clarify, rewrite, and remove filters whenever those types are present, and exposes view-only resolved history for the current tab. Its shortcut footer renders `J`, `K`, `C`, and `⌘K` as individual bordered keycaps. Orphaned range comments keep their quote and display the anchor-released note. Bulk resolution requires confirmation.
 
-The click emitted by the browser after a drag selection must not dismiss the floating Comment action or collapse the browser selection. Clicking that action opens the range composer; starting a new selection, scrolling, or explicitly dismissing clears the pending action. These interactions are verified separately from block-level comment creation.
+The click emitted by the browser after a drag selection must not dismiss the floating Comment action or collapse the browser selection. Clicking that action opens the range composer, and its activation click must not reach the outside-click dismissal path even when the browser collapses the native selection during activation. Starting a new selection, scrolling, or explicitly dismissing clears the pending action. These interactions are verified separately from block-level comment creation. Inline code must resolve its background and foreground from the document context rather than inheriting shell compatibility aliases.
 
 Keyboard navigation follows the same ordering: `J`/`K` select the next or previous open comment across files, `C` opens a block composer, and `Cmd+K`/`Ctrl+K` opens the command palette. `Esc` closes the topmost palette, composer, or selection.
 
@@ -294,19 +294,19 @@ reattaches it. Host and peer comments share this model.
 
 ### 8.4 Design
 
-Typeform-inspired: the content is the interface. Light mode defaults to the
-Contrast Shell palette: a charcoal header and file rail, a light raised document
-surface, and a charcoal comment rail. Dark mode keeps the same hierarchy with a
-dark document surface. Coral-red identifies primary actions, yellow identifies
-agent-authored activity, and the comment taxonomy retains distinct semantic
-colors. All literal palette values live in `src/ui/styles/tokens.css`; shell,
-document, and panel token families let those regions maintain accessible
-foreground/background pairs. The global header uses the Lollipop Dragon mark
-instead of repeating whether the active tab is a file or folder review; the tab
-bar and file tree already provide that context. Comment indicators are subtle
-until hovered. Focus mode — hide sidebar and comment margin, just the rendered
-document. Smooth transitions and micro-animations for comment interactions.
-Responsive layout for desktop and tablet.
+Typeform-inspired: the content is the interface. Light mode defaults to the Mono
+Highlighter palette: neutral-gray chrome, a white document surface, near-black
+primary actions, and yellow agent-authored activity. Dark mode preserves the
+same monochrome hierarchy and lifts the primary action to paper-white. The
+comment taxonomy retains distinct semantic colors. All literal palette values
+live in `src/ui/styles/tokens.css`; shell, document, and panel token families let
+those regions maintain accessible foreground/background pairs. The global
+header uses the Lollipop Dragon mark instead of repeating whether the active tab
+is a file or folder review; the tab bar and file tree already provide that
+context. Comment indicators are subtle until hovered. Focus mode — hide sidebar
+and comment margin, just the rendered document. Smooth transitions and
+micro-animations for comment interactions. Responsive layout for desktop and
+tablet.
 
 ---
 

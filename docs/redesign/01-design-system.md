@@ -1,45 +1,45 @@
 # 01 — Design System "Reading Room"
 
-The shipped palette is **Sage** and lives in [`src/ui/styles/tokens.css`](../../src/ui/styles/tokens.css) — treat that file as authoritative; the values below are kept in sync with it. (The original warm scheme is preserved in [`reference-prototype/`](reference-prototype/) as a historical snapshot.) The repo themes via CSS custom properties + a `.dark` override class, and a palette swap is a pure value edit in that one file. This doc explains intent and the values that must not drift.
+The shipped palette is **Mono Highlighter** and lives in [`src/ui/styles/tokens.css`](../../src/ui/styles/tokens.css) — treat that file as authoritative; the values below are kept in sync with it. (The original warm scheme is preserved in [`reference-prototype/`](reference-prototype/) as a historical snapshot.) The repo themes via CSS custom properties + a `.dark` override class, and palette literals remain centralized in that one file. This doc explains intent and the values that must not drift.
 
 ## Identity
 
-The mascot logo (`src/assets/lollipop-dragon-logo.svg`) stays as the brand stamp, but the palette shipped as **Sage** — a warm, botanical register (oat paper, forest-green accent, clay agent) chosen to be the app's own identity, distinct from the logo's exact hues (palette decision 21.07.2026). Two registers coexist deliberately:
+The mascot logo (`src/assets/lollipop-dragon-logo.svg`) stays as the brand stamp, while **Mono Highlighter** gives the product a neutral reading environment with one fluorescent editorial signal: yellow for agent activity (palette decision 23.07.2026). Two registers coexist deliberately:
 
-- **The app (Reading Room)**: warm oat paper, serif documents, quiet chrome — title-case, restrained.
-- **The landing story (Bauhaus)**: lowercase display headings, geometric shapes (square/circle/triangle markers), flat color bands. Its layout language is landing-only, while its colors come from the same active Sage light/dark theme as the app shell.
+- **The app (Reading Room)**: white paper, near-black ink, neutral chrome, and a yellow agent highlighter — title-case, restrained.
+- **The landing story (Bauhaus)**: lowercase display headings, geometric shapes (square/circle/triangle markers), flat monochrome bands, and the same yellow highlight. Its layout language is landing-only, while its colors come from the active light/dark app theme.
 
 ## Color
 
-| Token                      | Light                 | Dark                  | Use                                                     |
-| -------------------------- | --------------------- | --------------------- | ------------------------------------------------------- |
-| `--bg`                     | `#F1F3EA`             | `#141711`             | app background ("oat paper" / "ink")                    |
-| `--bg-sunken`              | `#E7EBDD`             | `#0E100B`             | rails, wells, code blocks                               |
-| `--surface`                | `#FCFDF8`             | `#1D2016`             | document page, cards                                    |
-| `--surface-raised`         | `#FFFFFF`             | `#23271B`             | popovers, sheets                                        |
-| `--ink`                    | `#1E241C`             | `#E7E9DC`             | primary text                                            |
-| `--ink-secondary`          | `#4F5748`             | `#B0B3A2`             | secondary text                                          |
-| `--ink-muted`              | `#857F70`             | `#7C7A6C`             | hints, metadata                                         |
-| `--line` / `--line-strong` | `#DDE1D1` / `#CBD0BB` | `#2C3122` / `#3A4030` | hairlines                                               |
-| `--accent`                 | `#2F7A4F`             | `#5AA877`             | **the only accent**: primary actions, selection, unread |
-| `--agent`                  | `#B45F2E`             | `#D1834F`             | agent activity, live connection, success                |
-| `--avatar-neutral`         | `#6E6659`             | `#97907F`             | neutral reply avatars                                   |
-| `--on-accent`              | `#FFFFFF`             | `#14170F`             | glyphs and compact labels on colored controls           |
-| `--on-rewrite`             | `#14170F`             | `#14170F`             | compact labels on rewrite-colored controls              |
+| Token                      | Light                 | Dark                  | Use                                           |
+| -------------------------- | --------------------- | --------------------- | --------------------------------------------- |
+| `--bg`                     | `#F2F2F0`             | `#121212`             | neutral app chrome                            |
+| `--bg-sunken`              | `#E8E8E4`             | `#0B0B0B`             | rails, wells, code blocks                     |
+| `--surface`                | `#FFFFFF`             | `#1B1B1A`             | document page, cards                          |
+| `--surface-raised`         | `#FFFFFF`             | `#232322`             | popovers, sheets                              |
+| `--ink`                    | `#191919`             | `#F2F2EE`             | primary text                                  |
+| `--ink-secondary`          | `#555553`             | `#BCBCB6`             | secondary text                                |
+| `--ink-muted`              | `#6D6D69`             | `#90908A`             | hints, metadata                               |
+| `--line` / `--line-strong` | `#DCDCD8` / `#C4C4BF` | `#333330` / `#4A4A46` | hairlines                                     |
+| `--accent`                 | `#1B1B1B`             | `#F2F2EE`             | primary actions, selection, unread            |
+| `--agent`                  | `#DDB109`             | `#F3CF50`             | agent activity and the highlighter identity   |
+| `--avatar-neutral`         | `#6D6D69`             | `#6D6D69`             | neutral reply avatars                         |
+| `--on-accent`              | `#FFFFFF`             | `#171717`             | glyphs and compact labels on primary controls |
+| `--on-rewrite`             | `#191919`             | `#171717`             | compact labels on rewrite-colored controls    |
 
-Rules: never pure black/white; elevation in dark mode = lighter surface (4 levels), in light mode = hairline + subtle shadow; accent is reserved — everything else stays neutral.
+Rules: near-black carries primary actions; yellow is reserved for agent/highlighter activity; white is the light document and raised surface. Elevation in dark mode = lighter surface (4 levels), in light mode = hairline + subtle shadow.
 
 ### Comment taxonomy colors
 
 | Type     | Light     | Dark      | Meaning                                                             |
 | -------- | --------- | --------- | ------------------------------------------------------------------- |
-| fix      | `#D93030` | `#F07272` | something is wrong — correct it                                     |
-| rewrite  | `#BB7410` | `#E0A33E` | right idea, wrong words                                             |
-| expand   | `#2563EB` | `#6D9BF5` | true but incomplete — go deeper                                     |
-| clarify  | `#7C4FD0` | `#A98BE8` | ambiguous — make it precise                                         |
-| question | `#0E8A9E` | `#4FB8CB` | needs an answer, opens a thread                                     |
-| answer   | `#2E9678` | `#4CBA9A` | the reply — often from the agent                                    |
-| remove   | `#D93030` | `#F07272` | doesn't belong — cut it (destructive red; user decision 15.07.2026) |
+| fix      | `#B6322A` | `#FF7668` | something is wrong — correct it                                     |
+| rewrite  | `#A18100` | `#F3CF50` | right idea, wrong words                                             |
+| expand   | `#315FAE` | `#83A8FF` | true but incomplete — go deeper                                     |
+| clarify  | `#A34B69` | `#E08CAB` | ambiguous — make it precise                                         |
+| question | `#187582` | `#5AC1CB` | needs an answer, opens a thread                                     |
+| answer   | `#2D7659` | `#72CF9B` | the reply — often from the agent                                    |
+| remove   | `#B6322A` | `#FF7668` | doesn't belong — cut it (destructive red; user decision 15.07.2026) |
 
 Each has a `-soft` translucent variant (see tokens.css) used for text tints and badge backgrounds. Every type must hold ≥3:1 contrast against `--surface` in both themes — dark values are deliberately lifted/saturated. Color is never the only signal: type name always appears in the tag. New comments offer **question (default) · clarify · rewrite · remove**; legacy types stay readable. Contrast tests parse the actual `:root` and `.dark` declarations from `tokens.css`; they must never mirror a second literal palette in test code.
 

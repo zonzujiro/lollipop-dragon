@@ -4,7 +4,7 @@ Every surface, its layout and states. Pixel truth: `reference-prototype/` (open 
 
 ## 1. Landing (`FilePicker`)
 
-**Concept: a Bauhaus poster that works.** A ground-up redesign — do not port the old landing's sections. It keeps two ideas from it: the Bauhaus design language, and "what it does" feature storytelling. Landing-only visual rules: **sharp corners (no border-radius), 3px ink rules, flat color planes, hard offset shadows (`5px 5px 0 ink`), lowercase 800–900-weight display type, square/circle/triangle as the only ornament**. Colors come from the same Sage tokens as the app and follow the active light/dark theme: forest accent, clay agent, oat paper, and ink. The old `#E63946/#FFB800/#1D3557` palette is retired.
+**Concept: a Bauhaus poster that works.** A ground-up redesign — do not port the old landing's sections. It keeps two ideas from it: the Bauhaus design language, and "what it does" feature storytelling. Landing-only visual rules: **sharp corners (no border-radius), 3px ink rules, flat color planes, hard offset shadows (`5px 5px 0 ink`), lowercase 800–900-weight display type, square/circle/triangle as the only ornament**. Colors come from the same Mono Highlighter tokens as the app and follow the active light/dark theme: neutral paper, near-black primary actions, yellow agent highlights, and semantic comment colors. The old `#E63946/#FFB800/#1D3557` palette is retired.
 
 **Hero (100vh, asymmetric two-column grid):**
 

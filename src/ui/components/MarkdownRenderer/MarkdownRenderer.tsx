@@ -280,7 +280,10 @@ function MarkdownRendererContent({
               left: interactions.pendingSelection.left,
             }}
             onMouseDown={(event) => event.preventDefault()}
-            onClick={interactions.confirmPendingSelection}
+            onClick={(event) => {
+              event.stopPropagation();
+              interactions.confirmPendingSelection();
+            }}
           >
             Comment
           </button>

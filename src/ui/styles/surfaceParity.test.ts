@@ -46,6 +46,26 @@ describe("Reading Room surface parity", () => {
     }
   });
 
+  it("rebinds inherited compatibility aliases to the document context", () => {
+    const layoutCss = readStylesheet("src/ui/styles/app-layout.css");
+    const appMainBlock = layoutCss.match(/\.app-main\s*\{([^}]*)\}/s)?.[1];
+
+    expect(appMainBlock).toBeDefined();
+    for (const [alias, canonical] of [
+      ["surface-alt", "bg-sunken"],
+      ["border", "line"],
+      ["text", "ink"],
+      ["text-secondary", "ink-secondary"],
+      ["text-muted", "ink-muted"],
+      ["c-red", "c-fix"],
+      ["c-orange", "c-rewrite"],
+      ["c-purple", "c-clarify"],
+      ["c-cyan", "c-question"],
+    ]) {
+      expect(appMainBlock).toContain(`--${alias}: var(--${canonical});`);
+    }
+  });
+
   it("uses the dashed plus block-comment affordance", () => {
     const commentMarginCss = readStylesheet(
       "src/ui/components/CommentMargin/CommentMargin.css",
