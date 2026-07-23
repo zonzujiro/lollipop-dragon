@@ -13,7 +13,6 @@ import type {
 } from "../modules/agent-workflow";
 import {
   createAppShellActions,
-  createAppShellControllerActions,
   createAppShellState,
 } from "../modules/app-shell";
 import type {
@@ -155,7 +154,6 @@ export const useAppStore = create<AppState>()(
   persist(
     (set, get) => {
       const appShellActions = createAppShellActions(set);
-      const appShellControllerActions = createAppShellControllerActions(set);
       const workspaceActions = createWorkspaceActions({
         set,
         buildUpdatedActiveTabs,
@@ -239,7 +237,6 @@ export const useAppStore = create<AppState>()(
 
         // ── Global actions ────────────────────────────────────────────────
         ...appShellActions,
-        ...appShellControllerActions,
 
         // ── Sharing actions (tab-scoped) ──────────────────────────────────
         ...sharingActions,
@@ -330,7 +327,6 @@ export const useAppStore = create<AppState>()(
               theme: persisted.theme ?? "light",
               // Defaults for other global fields
               focusMode: false,
-              presentationMode: false,
               toast: null,
               ...peerReviewDefaults,
               peerName: persisted.peerName ?? peerReviewDefaults.peerName,

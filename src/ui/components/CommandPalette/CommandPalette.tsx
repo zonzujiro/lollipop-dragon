@@ -22,9 +22,6 @@ export function CommandPalette({ onShare }: Props) {
   const toggleSidebar = useAppStore((state) => state.toggleSidebar);
   const toggleCommentPanel = useAppStore((state) => state.toggleCommentPanel);
   const toggleFocusMode = useAppStore((state) => state.toggleFocusMode);
-  const enterPresentationMode = useAppStore(
-    (state) => state.enterPresentationMode,
-  );
   const openFileInNewTab = useAppStore((state) => state.openFileInNewTab);
   const openDirectoryInNewTab = useAppStore(
     (state) => state.openDirectoryInNewTab,
@@ -98,13 +95,6 @@ export function CommandPalette({ onShare }: Props) {
           run: toggleCommentPanel,
         },
         {
-          id: "presentation",
-          group: "View",
-          label: "Enter presentation mode",
-          hint: "⌘P",
-          run: enterPresentationMode,
-        },
-        {
           id: "focus",
           group: "View",
           label: "Toggle focus mode",
@@ -141,7 +131,6 @@ export function CommandPalette({ onShare }: Props) {
     );
     return nextActions;
   }, [
-    enterPresentationMode,
     navigateToComment,
     onShare,
     openAgentSettings,

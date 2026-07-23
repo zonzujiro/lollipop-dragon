@@ -9,7 +9,6 @@ Owns application-level shell state that is not specific to host review, peer rev
 - theme
 - toast
 - focus mode
-- presentation mode
 
 ## Does not own
 
@@ -24,20 +23,16 @@ Owns application-level shell state that is not specific to host review, peer rev
 - `theme`
 - `toast`
 - `focusMode`
-- `presentationMode`
 
 ## Public API
 
 - `createAppShellState()`
 - `createAppShellActions()`
-- `createAppShellControllerActions()`
 - shell selectors from `selectors.ts`
 
 ## Side Effects
 
-This module is mostly pure. Fullscreen entry is isolated behind
-`controller.ts`, so the root store no longer owns that DOM side effect
-directly.
+This module is pure and owns only serializable shell state.
 
 ## Related Docs
 
@@ -50,4 +45,4 @@ directly.
 ## Common Failure Modes
 
 - mixing shell concerns into feature modules
-- letting presentation or focus logic leak into the root store
+- letting focus logic leak into the root store

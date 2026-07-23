@@ -16,8 +16,12 @@ interface ThemeColors {
   avatarNeutral: string;
   document: ThemeContext;
   onAccent: string;
+  onAnswer: string;
   onAgent: string;
   onAvatar: string;
+  onClarify: string;
+  onExpand: string;
+  onQuestion: string;
   onRemove: string;
   onRewrite: string;
   panel: ThemeContext;
@@ -109,8 +113,12 @@ function buildThemeColors(
     avatarNeutral: value("--avatar-neutral"),
     document: buildThemeContext("document", "document", rootTokens, overrides),
     onAccent: value("--on-accent"),
+    onAnswer: value("--on-answer"),
     onAgent: value("--on-agent"),
     onAvatar: value("--on-avatar"),
+    onClarify: value("--on-clarify"),
+    onExpand: value("--on-expand"),
+    onQuestion: value("--on-question"),
     onRemove: value("--on-remove"),
     onRewrite: value("--on-rewrite"),
     panel: buildThemeContext("panel", "", rootTokens, overrides),
@@ -197,5 +205,13 @@ describe("Reading Room token contrast", () => {
     expect(
       contrastRatio(colors.onRewrite, colors.rewrite),
     ).toBeGreaterThanOrEqual(4.5);
+    for (const [foreground, background] of [
+      [colors.onClarify, colors.shell.taxonomy[3]],
+      [colors.onQuestion, colors.shell.taxonomy[4]],
+      [colors.onAnswer, colors.shell.taxonomy[5]],
+      [colors.onExpand, colors.shell.taxonomy[2]],
+    ]) {
+      expect(contrastRatio(foreground, background)).toBeGreaterThanOrEqual(4.5);
+    }
   });
 });

@@ -28,11 +28,6 @@ export function useKeyboardShortcuts() {
         state.toggleCommentPanel();
         return;
       }
-      if (meta && key === "p") {
-        e.preventDefault();
-        state.enterPresentationMode();
-        return;
-      }
       if (meta && key === "t") {
         e.preventDefault();
         void state.openFileInNewTab();

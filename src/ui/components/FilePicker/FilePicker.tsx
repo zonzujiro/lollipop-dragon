@@ -81,7 +81,7 @@ export function FilePicker() {
               title="yes, it’s a dragon"
             />
             <div className="landing-kicker">
-              <Mark shape="square" color="accent" />
+              <Mark shape="square" color="question" />
               local-first markdown review
             </div>
             <h1 className="landing-title" id="landing-title">
@@ -105,12 +105,12 @@ export function FilePicker() {
                 open a folder<kbd>⌘O</kbd>
               </button>
               <button
-                className="landing-action landing-action--line"
+                className="landing-action landing-action--question"
                 onClick={() => {
                   void openFile();
                 }}
               >
-                <Mark shape="circle" color="agent" />
+                <Mark shape="circle" color="cream" />
                 open a file<kbd>⌘⇧O</kbd>
               </button>
               <button
@@ -158,7 +158,7 @@ export function FilePicker() {
         </section>
 
         <section
-          className="landing-band landing-band--cream"
+          className="landing-band landing-band--reading"
           id="landing-features"
         >
           <div className="landing-band__inner">
@@ -173,27 +173,27 @@ export function FilePicker() {
               </p>
               <div className="landing-tiles">
                 <span>
-                  <Mark shape="square" color="accent" />
+                  <Mark shape="square" color="expand" />
                   mermaid diagrams
                 </span>
                 <span>
-                  <Mark shape="circle" color="agent" />
+                  <Mark shape="circle" color="question" />
                   highlighted code
                 </span>
                 <span>
-                  <Mark shape="triangle" color="rewrite" />
+                  <Mark shape="triangle" color="clarify" />
                   gfm tables &amp; task lists
                 </span>
                 <span>
-                  <Mark shape="square" color="agent" />
+                  <Mark shape="square" color="answer" />
                   tabs for files &amp; folders
                 </span>
                 <span>
-                  <Mark shape="circle" color="rewrite" />
-                  presentation mode
+                  <Mark shape="circle" color="fix" />
+                  criticmarkup round-trip
                 </span>
                 <span>
-                  <Mark shape="triangle" color="accent" />
+                  <Mark shape="triangle" color="agent" />
                   local &amp; offline
                 </span>
               </div>
@@ -202,7 +202,7 @@ export function FilePicker() {
           </div>
         </section>
 
-        <section className="landing-band landing-band--black">
+        <section className="landing-band landing-band--comments">
           <div className="landing-band__inner">
             <div className="landing-number landing-number--outline">02</div>
             <div className="landing-band__copy">
@@ -270,7 +270,7 @@ export function FilePicker() {
           </div>
         </section>
 
-        <section className="landing-band landing-band--black">
+        <section className="landing-band landing-band--privacy">
           <div className="landing-band__inner">
             <div className="landing-number landing-number--outline">04</div>
             <div className="landing-band__copy">
@@ -279,18 +279,18 @@ export function FilePicker() {
               </h2>
               <ul className="landing-locklist">
                 <li>
-                  <Mark shape="square" color="accent" />
+                  <Mark shape="square" color="agent" />
                   your files stay on this device — reviewing happens in your
                   browser, straight from disk. no upload, works offline.
                 </li>
                 <li>
-                  <Mark shape="circle" color="agent" />
+                  <Mark shape="circle" color="clarify" />
                   sharing is end-to-end encrypted — the key lives in the link
                   itself and is never sent to any server. storage sees only
                   noise, and purges it when the share expires.
                 </li>
                 <li>
-                  <Mark shape="triangle" color="rewrite" />
+                  <Mark shape="triangle" color="answer" />
                   no accounts, no telemetry — reviewers open a link, pick a
                   name, done.
                 </li>
@@ -320,7 +320,7 @@ export function FilePicker() {
             viewBox="0 0 120 40"
             aria-hidden="true"
           >
-            <circle cx="20" cy="20" r="16" className="landing-fill-accent" />
+            <circle cx="20" cy="20" r="16" className="landing-fill-question" />
             <circle cx="20" cy="20" r="7" className="landing-fill-pop" />
             <rect
               x="52"
@@ -332,7 +332,7 @@ export function FilePicker() {
             />
             <path
               d="M92 34 L106 8 L120 34 Z"
-              className="landing-fill-rewrite"
+              className="landing-fill-clarify"
             />
           </svg>
           <p className="landing-footer__label">dragon’s favorite lollipop</p>

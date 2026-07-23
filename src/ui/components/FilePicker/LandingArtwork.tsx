@@ -21,13 +21,13 @@ export function HeroArtwork() {
         y="320"
         width="26"
         height="360"
-        className="landing-fill-rewrite"
+        className="landing-fill-answer"
       />
       <circle cx="317" cy="220" r="180" className="landing-fill-agent" />
       <circle cx="317" cy="220" r="96" className="landing-fill-pop" />
-      <circle cx="317" cy="220" r="38" className="landing-fill-accent" />
-      <path d="M150 240 L18 150 L160 120 Z" className="landing-fill-accent" />
-      <path d="M484 240 L616 150 L474 120 Z" className="landing-fill-ink" />
+      <circle cx="317" cy="220" r="38" className="landing-fill-clarify" />
+      <path d="M150 240 L18 150 L160 120 Z" className="landing-fill-question" />
+      <path d="M484 240 L616 150 L474 120 Z" className="landing-fill-expand" />
       <rect
         x="392"
         y="470"
@@ -62,7 +62,7 @@ export function HeroArtwork() {
         y="576"
         width="160"
         height="16"
-        className="landing-fill-accent landing-opacity-mark"
+        className="landing-fill-question landing-opacity-mark"
       />
       <rect
         x="472"
@@ -76,7 +76,7 @@ export function HeroArtwork() {
         y="596"
         width="54"
         height="5"
-        className="landing-fill-accent"
+        className="landing-fill-question"
       />
       <rect
         x="472"
@@ -119,7 +119,7 @@ export function HeroArtwork() {
         y="576"
         width="18"
         height="18"
-        className="landing-fill-accent"
+        className="landing-fill-question"
       />
       <rect
         x="352"
@@ -135,9 +135,9 @@ export function HeroArtwork() {
         y="716"
         width="28"
         height="28"
-        className="landing-fill-rewrite"
+        className="landing-fill-fix"
       />
-      <path d="M150 744 L172 706 L194 744 Z" className="landing-fill-agent" />
+      <path d="M150 744 L172 706 L194 744 Z" className="landing-fill-answer" />
     </svg>
   );
 }
@@ -181,7 +181,7 @@ export function ReadingArtwork() {
         cy="134"
         r="14"
         fill="none"
-        className="landing-stroke-agent"
+        className="landing-stroke-question"
         strokeWidth="3"
       />
       <rect
@@ -190,13 +190,13 @@ export function ReadingArtwork() {
         width="24"
         height="24"
         fill="none"
-        className="landing-stroke-rewrite"
+        className="landing-stroke-clarify"
         strokeWidth="3"
       />
       <path
         d="M148 146 L160 124 L172 146 Z"
         fill="none"
-        className="landing-stroke-accent"
+        className="landing-stroke-expand"
         strokeWidth="3"
       />
       <rect
@@ -213,7 +213,7 @@ export function ReadingArtwork() {
         height="7"
         className="landing-fill-muted"
       />
-      <circle cx="236" cy="60" r="42" className="landing-fill-accent" />
+      <circle cx="236" cy="60" r="42" className="landing-fill-fix" />
       <rect
         x="212"
         y="170"
@@ -258,7 +258,7 @@ export function CommentArtwork() {
         y="72"
         width="150"
         height="26"
-        className="landing-fill-accent landing-opacity-comment"
+        className="landing-fill-expand landing-opacity-comment"
       />
       <rect
         x="96"
@@ -272,7 +272,7 @@ export function CommentArtwork() {
         y="104"
         width="76"
         height="4"
-        className="landing-fill-accent"
+        className="landing-fill-expand"
       />
       <rect
         x="96"
@@ -317,7 +317,7 @@ export function CommentArtwork() {
         height="6"
         className="landing-fill-muted"
       />
-      <circle cx="34" cy="228" r="10" className="landing-fill-accent" />
+      <circle cx="34" cy="228" r="10" className="landing-fill-expand" />
       <rect
         x="160"
         y="232"
@@ -344,15 +344,15 @@ export function PrivacyArtwork() {
         y="118"
         width="156"
         height="116"
-        className="landing-fill-pop"
+        className="landing-fill-paper"
       />
-      <circle cx="150" cy="164" r="17" className="landing-fill-accent" />
+      <circle cx="150" cy="164" r="17" className="landing-fill-agent" />
       <rect
         x="143"
         y="172"
         width="14"
         height="34"
-        className="landing-fill-accent"
+        className="landing-fill-agent"
       />
       <rect
         x="42"
@@ -375,7 +375,7 @@ export function PrivacyArtwork() {
         cy="60"
         r="13"
         fill="none"
-        className="landing-stroke-accent"
+        className="landing-stroke-clarify"
         strokeWidth="4"
       />
     </svg>

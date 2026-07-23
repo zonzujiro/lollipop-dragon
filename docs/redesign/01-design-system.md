@@ -70,7 +70,7 @@ The serif/sans split is semantic: serif = the document, sans = the tool, mono = 
 | popovers, cards, toasts  | 200ms    | emphasized-decelerate `(0.05, 0.7, 0.1, 1)` for entries |
 | panels, mode transitions | 300ms    | standard                                                |
 
-Nothing in the core loop exceeds 400ms. `prefers-reduced-motion: reduce` → panels/popovers crossfade or appear instantly; keep state feedback (e.g. progress bar width) but kill decorative movement (marker pulse, slide transitions).
+Nothing in the core loop exceeds 400ms. `prefers-reduced-motion: reduce` → panels/popovers crossfade or appear instantly; keep state feedback (e.g. progress bar width) but kill decorative movement (marker pulse, panel transitions).
 
 ## Iconography
 

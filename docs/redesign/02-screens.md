@@ -14,10 +14,10 @@ Every surface, its layout and states. Pixel truth: `reference-prototype/` (open 
 
 **"What it does" — numbered chapters (fresh copy, not the old feature list):**
 
-- **01 · reads like a book** (sunken band, giant ink numeral): rendering copy; six bordered feature tiles with shape markers — mermaid diagrams · highlighted code · gfm tables & task lists · tabs for files & folders · presentation mode · local & offline; geometric page art.
-- **02 · say it with types** (black band, outlined numeral): comments-as-instructions copy; two taxonomy chips as flat color blocks (clarify/rewrite); a second line selling range anchoring — "anchor to half a sentence… overlaps are welcome"; overlap art (two translucent bars crossing text bars, intersection reading darker). Threaded question/answer remains a separate collaboration flow rather than a general comment-type choice.
-- **03 · hand it off** (sunken band): two hard-shadow panels — agent-colored **to your agent** (one keystroke sends every open comment · watch edits stream back in, live · answers come back as threads) and accent **to your people** (one encrypted link, no accounts · comments land in your margin live · merge or dismiss with one click); the accent panel staggered lower for asymmetry.
-- **04 · private by construction** (black band, geometric padlock art): the privacy story in three shape-marked statements — your files stay on this device (in-browser, straight from disk, no upload, works offline) · sharing is end-to-end encrypted (key lives in the link, never sent to a server; storage sees only ciphertext and purges on expiry) · no accounts, no telemetry. The hero's ink strip also leads with "your files stay on this device".
+- **01 · reads like a book** (sunken band, giant ink numeral): rendering copy; six bordered feature tiles with shape markers — mermaid diagrams · highlighted code · gfm tables & task lists · tabs for files & folders · CriticMarkup round-trip · local & offline; geometric page art.
+- **02 · say it with types** (question-teal band, outlined numeral): comments-as-instructions copy; two taxonomy chips as flat color blocks (clarify/rewrite); a second line selling range anchoring — "anchor to half a sentence… overlaps are welcome"; overlap art (two translucent bars crossing text bars, intersection reading darker). Threaded question/answer remains a separate collaboration flow rather than a general comment-type choice.
+- **03 · hand it off** (clarify-tinted band): two hard-shadow panels — agent-yellow **to your agent** (one keystroke sends every open comment · watch edits stream back in, live · answers come back as threads) and clarify-pink **to your people** (one encrypted link, no accounts · comments land in your margin live · merge or dismiss with one click); the people panel is staggered lower for asymmetry.
+- **04 · private by construction** (expand-blue band, geometric padlock art): the privacy story in three shape-marked statements — your files stay on this device (in-browser, straight from disk, no upload, works offline) · sharing is end-to-end encrypted (key lives in the link, never sent to a server; storage sees only ciphertext and purges on expiry) · no accounts, no telemetry. The hero's ink strip also leads with "your files stay on this device".
 - **CTA band**: giant "start reading" + the accent open-a-folder button again.
 - **Footer** (ink): shape trio + "dragon's favorite lollipop" + the recipe easter egg in small mono.
 
@@ -27,7 +27,7 @@ later sections unreachable.
 
 ## 2. Host frame
 
-`Header` (52px): brand mark+wordmark (left) · **workspace tabs inline in the header** (replaces the separate `TabBar` strip) · right actions: peers-online chip + presence avatars (only when a share with connected peers exists), Share button, **Run agent** (primary, desktop runtime only; Copy prompt on web), Present icon, theme toggle, comment-rail toggle. Text actions and icon actions are 32px high. Share remains visible whenever a host document is open; missing relay configuration is reported inside the share flow rather than hiding the action. Tabs: folder/file icon, label, open-comment count badge (accent pill), ×, and a `+` tab. Active tab = raised surface + hairline.
+`Header` (52px): brand mark+wordmark (left) · **workspace tabs inline in the header** (replaces the separate `TabBar` strip) · right actions: peers-online chip + presence avatars (only when a share with connected peers exists), Share button, **Run agent** (primary, desktop runtime only; Copy prompt on web), theme toggle, comment-rail toggle. Text actions and icon actions are 32px high. Share remains visible whenever a host document is open; missing relay configuration is reported inside the share flow rather than hiding the action. Tabs: folder/file icon, label, open-comment count badge (accent pill), ×, and a `+` tab. Active tab = raised surface + hairline.
 
 Left **file rail** (248px, `FileTreeSidebar`): workspace name header + collapse control; 28px tree rows with directories bold, tiny directory chevrons, **no decorative file icons**, no legacy per-row share action, and files with open-comment count badges (accent-soft pill, hidden at zero). Tree rows carry no share indicator — sharing visibility lives in the header live chip and the Share sheet's “Active shares” list. The trailing badge/status area must never be covered by a hover control. Depth padding is 8px / 24px / 40px. Active file = raised row with a hairline and card shadow. Collapsed → slim restore button floats at the document's top-left edge (per `docs/features/multi-tab.md` §8). Hidden entirely for single-file workspaces.
 
@@ -53,25 +53,21 @@ Trigger: header Run agent, ⌘⏎, or palette. Run card pinned above the rail li
 
 ## 6. Command palette (new)
 
-⌘K over a blur scrim, 580px, top-aligned (~110px): search input; grouped fuzzy-filtered items (Review / Navigate / View / …): run agent with open-comment count (top hit), share, files with open counts, toggle theme/sidebar/rail, presentation. ↑↓ + ↵; Esc closes. Every user-reachable action must be registered here.
+⌘K over a blur scrim, 580px, top-aligned (~110px): search input; grouped fuzzy-filtered items (Review / Navigate / View / …): run agent with open-comment count (top hit), share, files with open counts, and toggles for theme/sidebar/rail. ↑↓ + ↵; Esc closes. Every user-reachable action must be registered here.
 
 ## 7. Peer mode (link takeover)
 
 First visit: name sheet ("Join the review", host name + workspace, single input, "Start reviewing", note: "No account is created…"). Then: 34px agent-soft **trust ribbon** — lock icon, "Shared by <host> · end-to-end encrypted · expires in N days · read & comment". Header: brand, workspace name · file count, connection chip (Live · host online / Offline — comments queue via `ConnectionStatus` states), identity chip ("Reviewing as <name>" + avatar), **Save copy**, theme. Left: shared-files tree (no badges). Document: same reading experience; commenting allowed (same composer, "Send comment"); no host powers (no resolve, no other reviewers' comments, no agent). Right rail = **"Your comments"** tray: sent cards (`✓ sent` after relay ACK, file path as subtitle) and dashed `draft` cards; empty state invites selection. Stale-content and auto-refresh behavior unchanged from `docs/features/realtime-comments/spec.md` (`ContentUpdateBanner`).
 
-## 8. Presentation mode (`PresentationMode`)
-
-Unchanged mechanics (split on `#`/`---`, fullscreen, arrows, wrap-none). Re-skinned: slides on `--bg` with serif display type (h1 52px), mono kicker "<file> · slide N", right-edge dot rail (active dot = accent 9×24 capsule), fading × (top-right) and theme fab (bottom-right), mono counter bottom-left, key hints bottom-center.
-
-## 9. Dark mode
+## 8. Dark mode
 
 Token swap only — no component-specific colors. Verify: Mermaid/code re-theme via tokens, taxonomy colors switch to lifted variants, logo legible on charcoal.
 
-## 10. Toasts (`Toast`)
+## 9. Toasts (`Toast`)
 
 Bottom-center ink-on-paper pills (inverted), agent-colored ✓ for confirmations, 200ms in / auto-dismiss ~2.5s, stack vertically. All texts in the prototype are copy-approved.
 
-## 11. Restore & degraded access (`RestoreError`)
+## 10. Restore & degraded access (`RestoreError`)
 
 For the state where a workspace's file-system handle can't be reused after a browser restart (behavioral rules in `docs/features/multi-tab.md` §10.1). Design stance: **this is a browser security feature, not an error** — rewrite (`--c-rewrite`), never remove red; name the workspace, say why, say what still works, offer the one-click fix. Prototype route: `#host-restore`.
 

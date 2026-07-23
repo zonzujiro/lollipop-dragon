@@ -4,7 +4,7 @@
 
 Rebuild Lollipop Dragon's UI from the ground up to the "Reading Room" design: an editorial, book-quality reading surface for AI-written markdown, with a developer-grade annotation layer of **typed comments** that anchor to **exact character ranges** (not blocks, not lines) and may **overlap freely**.
 
-This is a redesign of the presentation and interaction layer plus one behavioral upgrade (range anchoring). The product's existing capabilities — host/peer modes, CriticMarkup round-trip with agents, encrypted sharing, realtime comment relay, multi-tab, presentation mode, desktop agent runs — all remain, re-skinned and in places re-arranged as specified in `02-screens.md`.
+This is a redesign of the presentation and interaction layer plus one behavioral upgrade (range anchoring). The product's existing capabilities — host/peer modes, CriticMarkup round-trip with agents, encrypted sharing, realtime comment relay, multi-tab, and desktop agent runs — all remain, re-skinned and in places re-arranged as specified in `02-screens.md`.
 
 ## What is new behavior (not just visuals)
 

@@ -31,7 +31,7 @@ Web research, July 2026. Fetched sources listed at the end.
 - Canonical three-pane: left nav / center content / right context — Linear's "inverted L" of chrome around content.
 - Left sidebar ~256px (shadcn default; 240–280 range); right prose rail ~300–360px; content column keeps its `ch` measure.
 - Collapsible panels with shortcuts (Cmd+B convention; mirror for right rail); persist state.
-- Focus/presentation modes: keep a visible exit and contextual selection-triggered affordances (NN/g zen-mode warning).
+- Focus mode: keep a visible exit and contextual selection-triggered affordances (NN/g zen-mode warning).
 
 ## 5. Motion
 

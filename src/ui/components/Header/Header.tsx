@@ -30,7 +30,6 @@ import {
   AgentIcon,
   CommentRailIcon,
   FloppyDiskIcon,
-  PresentIcon,
   ShareFileIcon,
   SubmitIcon,
   SyncIcon,
@@ -72,14 +71,12 @@ interface Props {
   peerMode?: boolean;
   onShareFile?: () => void;
   onShareFolder?: () => void;
-  onPresent?: () => void;
 }
 
 export function Header({
   peerMode = false,
   onShareFile,
   onShareFolder,
-  onPresent,
 }: Props) {
   const tab = useActiveTab();
   const theme = useAppStore((s) => s.theme);
@@ -358,16 +355,6 @@ export function Header({
                   await handleReviewAction();
                 }}
               />
-            )}
-            {!peerMode && hasContent && onPresent && (
-              <button
-                onClick={onPresent}
-                aria-label="Enter presentation mode"
-                title="Enter presentation mode"
-                className="app-header__btn app-header__btn--icon"
-              >
-                <PresentIcon />
-              </button>
             )}
             <button
               onClick={() => setTheme(isDark ? "light" : "dark")}
