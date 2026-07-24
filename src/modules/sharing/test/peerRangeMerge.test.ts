@@ -18,9 +18,11 @@ describe("peer range comment merge", () => {
         },
       }),
     );
+    const parsed = parseCriticMarkup(result);
 
     expect(result).toContain("{==selected sentence==}");
-    expect(result).toContain("A comment — Alice");
+    expect(parsed.comments[0]?.text).toBe("A comment");
+    expect(parsed.comments[0]?.thread?.authorLabel).toBe("Alice");
   });
 
   it("keeps overlapping peer ranges as standalone anchored comments", () => {
@@ -43,6 +45,24 @@ describe("peer range comment merge", () => {
     expect(result.match(/\{==selected sentence==\}/g)).toHaveLength(1);
     expect(parsed.comments).toHaveLength(2);
     expect(parsed.comments[1].anchor?.quote).toBe("selected sentence");
-    expect(parsed.comments[1].text).toContain("Explain the wording — Alice");
+    expect(parsed.comments[1].text).toBe("Explain the wording");
+    expect(parsed.comments[1].thread?.authorLabel).toBe("Alice");
+  });
+
+  it("preserves reviewer names containing metadata delimiters", () => {
+    const result = buildMergedPeerCommentContent(
+      "A paragraph for review.\n",
+      makePeerComment({
+        peerName: 'Alice "QA" & Bob <ops>',
+      }),
+    );
+    const parsed = parseCriticMarkup(result);
+
+    expect(result).toContain(
+      'author="Alice &quot;QA&quot; &amp; Bob &lt;ops&gt;"',
+    );
+    expect(parsed.comments[0]?.thread?.authorLabel).toBe(
+      'Alice "QA" & Bob <ops>',
+    );
   });
 });

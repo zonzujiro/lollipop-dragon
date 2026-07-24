@@ -214,7 +214,7 @@ describe("CommentThreadCard", () => {
     ).toBeInTheDocument();
   });
 
-  it("edits the selected user-authored thread message", async () => {
+  it("changes the type while editing a user-authored thread message", async () => {
     const user = userEvent.setup();
     const onEdit = vi.fn();
 
@@ -229,13 +229,14 @@ describe("CommentThreadCard", () => {
 
     await user.click(screen.getByRole("button", { name: "Edit comment" }));
     const textarea = screen.getByDisplayValue("Why is this section needed?");
+    await user.click(screen.getByRole("button", { name: "rewrite" }));
     await user.clear(textarea);
     await user.type(textarea, "Updated question.");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     expect(onEdit).toHaveBeenCalledWith(
       "root-comment",
-      "question",
+      "rewrite",
       "Updated question.",
     );
   });

@@ -295,7 +295,10 @@ because the active tab's `shares`, `shareKeys`, or `activeDocId` changed.
 3. Host opens Comments. When incoming feedback exists, the panel initially
    opens **Incoming** and shows peer name, file path, quote, type, and comment
    text. Open-comment type filters keep their existing counts and selection.
-4. Host clicks "Merge" — app inserts CriticMarkup into the local files.
+   Long file names, comments, and links remain contained within both the normal
+   and narrow Comments panel widths, with review actions always reachable.
+4. Host clicks "Merge" — app inserts CriticMarkup into the local files and
+   preserves the reviewer's name as structured author metadata.
 5. Host tells LLM CLI: "Address the comments in this file."
 6. LLM reads CriticMarkup, makes fixes, removes the markup.
 7. Host clicks "Push update" in the header to push revised content to Worker. Obsolete flow: peers click "Get latest" to see the updates. Canonical flow: peers auto-refresh when it is safe, otherwise the app blocks on a refresh notice until they load the latest snapshot.

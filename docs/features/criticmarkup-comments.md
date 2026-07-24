@@ -158,7 +158,9 @@ MarkReview extends the plain comment protocol for threaded review questions.
 - Thread and sidebar comment editors keep their type chips, textarea, and
   actions aligned to the card edges without inheriting floating-composer
   margins. Save uses the accent treatment, while Cancel uses the same neutral
-  outlined treatment as confirmations.
+  outlined treatment as confirmations. Editable unanswered thread comments
+  expose the same user comment types as the sidebar editor, so the type can be
+  corrected before saving; answered threads remain immutable.
 - Threaded action replies are work instructions, not conversational answers. The review-agent prompt tells agents to apply the requested edit directly, remove the resolved thread after the edit, and avoid adding a confirmation `answer:` reply.
 - While an editable message in an unanswered thread is being edited or
   delete-confirmed, the composer is hidden so the user sees only one active input
