@@ -19,6 +19,22 @@ const COMMENT_TYPES: ReadonlySet<string> = new Set<CommentType>([
   "remove",
 ]);
 
+function escapeMetadataAuthor(authorLabel: string): string {
+  return authorLabel
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function decodeMetadataAuthor(authorLabel: string): string {
+  return authorLabel
+    .replaceAll("&quot;", '"')
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&amp;", "&");
+}
+
 export function isCommentType(value: string): value is CommentType {
   return COMMENT_TYPES.has(value);
 }
@@ -82,7 +98,7 @@ export function parseThreadMetadata(text: string): {
     thread.replyTo = attributes.replyTo;
   }
   if (attributes.author) {
-    thread.authorLabel = attributes.author;
+    thread.authorLabel = decodeMetadataAuthor(attributes.author);
   }
 
   return {
@@ -115,7 +131,7 @@ function serializeThreadMetadata(thread: CommentThreadMetadata): string {
     attributes.push(`replyTo="${thread.replyTo}"`);
   }
   if (thread.authorLabel) {
-    attributes.push(`author="${thread.authorLabel}"`);
+    attributes.push(`author="${escapeMetadataAuthor(thread.authorLabel)}"`);
   }
 
   return `[markreview ${attributes.join(" ")}]`;
@@ -144,12 +160,18 @@ function createRandomCommentId(): string {
   return `${THREAD_COMMENT_PREFIX}${timeSuffix}-${randomSuffix}`;
 }
 
-export function createQuestionThreadMetadata(): CommentThreadMetadata {
+export function createQuestionThreadMetadata(
+  authorLabel?: string,
+): CommentThreadMetadata {
   const commentId = createRandomCommentId();
-  return {
+  const thread: CommentThreadMetadata = {
     commentId,
     threadId: commentId,
   };
+  if (authorLabel) {
+    thread.authorLabel = authorLabel;
+  }
+  return thread;
 }
 
 export function createThreadReplyMetadata(input: {

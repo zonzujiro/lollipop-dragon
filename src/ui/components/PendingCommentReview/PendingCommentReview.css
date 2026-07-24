@@ -1,4 +1,9 @@
 /* ── Pending review toolbar ───────────────────────────────────── */
+.pending-review,
+.pending-review__list {
+  min-width: 0;
+}
+
 .pending-review__toolbar {
   display: flex;
   flex-wrap: wrap;

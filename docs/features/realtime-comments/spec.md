@@ -22,6 +22,8 @@ Host-authored local comments remain local-only. They are merged directly into th
 - As a host reviewing feedback, I want incoming peer comments in the normal
   Comments panel so review work is not hidden inside share management.
 - As a host reviewing incoming comments, I want merge and dismiss actions to remove the comment from reconnect snapshots so it does not come back later.
+- As a host merging incoming feedback, I want the reviewer's name to remain the
+  comment author so ownership does not change to me after the file is reparsed.
 - As a peer leaving feedback, I want submitted comments to be acknowledged only after the backend stores them durably.
 - As a peer with unsent feedback, I want Submit comments to remain a prominent,
   counted primary action until my feedback is sent.

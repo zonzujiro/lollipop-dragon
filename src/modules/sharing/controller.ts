@@ -362,7 +362,8 @@ export function buildMergedPeerCommentContent(
     cleanMarkdown: parsed.cleanMarkdown,
     blockIndex: comment.blockRef.blockIndex,
     type: comment.commentType,
-    text: `${comment.text} — ${comment.peerName}`,
+    text: comment.text,
+    authorLabel: comment.peerName,
     anchor: peerAnchor?.orphaned ? undefined : peerAnchor,
   });
   return rawContent.slice(0, document.bodyStart) + newBody;

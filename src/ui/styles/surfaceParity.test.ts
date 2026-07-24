@@ -65,6 +65,31 @@ describe("Reading Room surface parity", () => {
     );
   });
 
+  it("keeps incoming review cards inside the comment rail", () => {
+    const commentPanelCss = readStylesheet(
+      "src/ui/components/CommentPanel/CommentPanel.css",
+    );
+    const pendingReviewCss = readStylesheet(
+      "src/ui/components/PendingCommentReview/PendingCommentReview.css",
+    );
+    const peerCommentCardCss = readStylesheet(
+      "src/ui/components/PeerCommentCard/PeerCommentCard.css",
+    );
+
+    expect(commentPanelCss).toMatch(
+      /\.comment-panel__incoming\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)[^}]*min-width:\s*0/s,
+    );
+    expect(pendingReviewCss).toMatch(
+      /\.pending-review,\s*\.pending-review__list\s*\{[^}]*min-width:\s*0/s,
+    );
+    expect(peerCommentCardCss).toMatch(
+      /\.peer-card\s*\{[^}]*width:\s*100%[^}]*min-width:\s*0[^}]*max-width:\s*100%/s,
+    );
+    expect(peerCommentCardCss).toMatch(
+      /\.peer-card__text\s*\{[^}]*overflow-wrap:\s*anywhere/s,
+    );
+  });
+
   it("styles thread confirmation actions as compact app controls", () => {
     const commentThreadCss = readStylesheet(
       "src/ui/components/CommentThreadCard/CommentThreadCard.css",

@@ -107,9 +107,7 @@ function CommentEditForm({
   );
   const [editText, setEditText] = useState(comment.text);
   const availableTypes =
-    comment.thread || comment.type === "answer"
-      ? [comment.type]
-      : USER_COMMENT_TYPES;
+    comment.type === "answer" ? [comment.type] : USER_COMMENT_TYPES;
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();

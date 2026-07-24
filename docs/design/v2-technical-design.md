@@ -534,7 +534,8 @@ loadSharedContent: () => Promise<void>                       // peer mode init
 
 - "Merge" on a `PeerCommentCard`: find the target file and block in the local folder
 - Insert CriticMarkup at the correct block position using the existing `insertComment` service
-- Append peer attribution: ``
+- Store the peer's display name in escaped MarkReview `author` metadata while
+  keeping the original comment text unchanged
 - Write file back to disk, re-parse, update comment panel
 - Remove the merged comment from the pending review list
 - **Deliverable:** Host can merge a peer comment into the local file as CriticMarkup in one click
@@ -550,7 +551,8 @@ loadSharedContent: () => Promise<void>                       // peer mode init
 
 - Unit tests: `PeerComment` serialization, encryption round-trip for comments
 - Unit tests: comment merge → correct CriticMarkup inserted at correct block position
-- Unit tests: peer attribution suffix appended correctly
+- Unit tests: peer author metadata round-trips correctly, including names with
+  metadata delimiters
 - Integration test: peer posts comment → host fetches → host merges → verify CriticMarkup in file
 - Integration test: bulk merge writes all comments without corrupting file
 - Component tests: PeerCommentCard, PendingCommentReview, ShareDialog with badge
