@@ -8,6 +8,7 @@ import {
   setTestState,
   resetTestStore,
   makeComment as makeCommentBase,
+  makePeerComment,
 } from "../../../testing/testHelpers";
 import type { Comment } from "../../../types/criticmarkup";
 
@@ -173,6 +174,65 @@ describe("CommentPanel — filtering", () => {
     await user.click(screen.getAllByRole("button", { name: /^clarify/ })[0]);
     const tab = getActiveTab(useAppStore.getState());
     expect(tab?.commentFilter).toBe("all");
+  });
+});
+
+describe("CommentPanel — incoming host review", () => {
+  it("opens incoming feedback in the panel without replacing open type filters", async () => {
+    const user = userEvent.setup();
+    setTestState({
+      fileName: "readme.md",
+      activeFilePath: "readme.md",
+      comments: [
+        makeComment("open-question", "question", "local open question"),
+        makeComment("open-rewrite", "rewrite", "local open rewrite"),
+      ],
+      shares: [
+        {
+          docId: "doc-1",
+          hostSecret: "secret",
+          label: "readme.md",
+          createdAt: "2026-07-24T00:00:00.000Z",
+          expiresAt: "2099-07-24T00:00:00.000Z",
+          pendingCommentCount: 1,
+          keyB64: "share-key",
+          fileCount: 1,
+        },
+      ],
+      pendingComments: {
+        "doc-1": [
+          makePeerComment({
+            id: "incoming-1",
+            path: "readme.md",
+            commentType: "rewrite",
+            text: "incoming peer rewrite",
+          }),
+        ],
+      },
+    });
+
+    render(<CommentPanel />);
+
+    expect(screen.getByRole("button", { name: /^Incoming 1/ })).toHaveClass(
+      "comment-panel__filter--active",
+    );
+    expect(screen.getByText("incoming peer rewrite")).toBeInTheDocument();
+    expect(screen.queryByText("local open question")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^question 1/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^rewrite 1/ }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /^question 1/ }));
+
+    expect(screen.getByText("local open question")).toBeInTheDocument();
+    expect(screen.queryByText("local open rewrite")).not.toBeInTheDocument();
+    expect(screen.queryByText("incoming peer rewrite")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^Incoming 1/ }),
+    ).toBeInTheDocument();
   });
 });
 

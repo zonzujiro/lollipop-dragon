@@ -100,7 +100,12 @@ new comments and user-authored action replies support **question**, **clarify**,
 as a filter when it is present. Every visible filter must be functional and show
 the taxonomy color mark defined by the reference prototype. **All** still
 includes legacy comment types. Keyboard shortcuts follow the available composer
-actions.
+actions. Pending peer feedback appears in the same panel under a separate
+**Incoming** status view, grouped by active share and rendered with the existing
+comment-card language. Incoming and Resolved are independent of the open-comment
+type filters: switching status views does not replace their counts or selection.
+Incoming cards expose Merge and Dismiss, while open document comments retain
+their existing edit, resolve, and thread actions.
 
 ### 6.3 Threaded Question / Answer Extension
 
@@ -236,7 +241,7 @@ No server required. The editor runs as a client-side application in Chrome/Edge 
 - Header table-of-contents navigation for markdown headings, with the popover opening above the document surface rather than being clipped by header toolbar overflow
 - CriticMarkup parsing — annotations are hidden from the rendered view and displayed as margin comments
 - Block-level commenting UI — hover to reveal comment button, select type, write comment, and CriticMarkup is inserted into the file
-- Comment panel (right sidebar) showing all comments in document order with filtering by type and status. In folder mode, comments are grouped by file — file headers display the full relative path (not just the filename) to distinguish files with identical names in different directories
+- Comment panel (right sidebar) showing open, incoming peer, and resolved comments with filtering by type and status. In folder mode, comments are grouped by file — file headers display the full relative path (not just the filename) to distinguish files with identical names in different directories
 - Clean, Typeform-inspired reading-first design
 - Optional `.markreview/config.json` for editor preferences (theme, default comment types, file filters)
 

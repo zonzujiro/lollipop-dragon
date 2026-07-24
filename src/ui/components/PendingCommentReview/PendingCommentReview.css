@@ -1,15 +1,16 @@
 /* ── Pending review toolbar ───────────────────────────────────── */
 .pending-review__toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.375rem;
   margin-bottom: 0.5rem;
 }
 
 .pending-review__count {
+  flex: 1 0 100%;
   font-size: 0.75rem;
   color: var(--text-muted);
-  flex: 1;
 }
 
 .pending-review__btn {
@@ -38,7 +39,7 @@
   border-color: var(--c-red);
 }
 .pending-review__btn--clear:hover {
-  background: #fff5f5;
+  background: color-mix(in srgb, var(--c-red) 10%, var(--surface));
 }
 
 .pending-review__empty {

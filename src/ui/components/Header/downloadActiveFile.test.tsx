@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, it, expect, vi } from "vitest";
 
@@ -91,5 +91,40 @@ describe("Header — Save file button", () => {
     expect(
       screen.getByRole("button", { name: /Submit comments/i }),
     ).toBeDisabled();
+  });
+
+  it("makes pending comment submission a primary counted action", () => {
+    setTestState(
+      {},
+      {
+        isPeerMode: true,
+        peerFileName: "readme.md",
+        peerRawContent: "# Hi",
+        myPeerComments: [
+          {
+            id: "c-1",
+            peerName: "Alice",
+            path: "readme.md",
+            blockRef: { blockIndex: 0, contentPreview: "Hi" },
+            commentType: "note",
+            text: "Comment",
+            createdAt: new Date().toISOString(),
+          },
+        ],
+        submittedPeerCommentIds: [],
+      },
+    );
+
+    render(<Header peerMode />);
+
+    const submitButton = screen.getByRole("button", {
+      name: /Submit comments/i,
+    });
+    expect(submitButton).toHaveClass("app-header__btn--submit");
+    expect(
+      within(submitButton).getByText("1", {
+        selector: ".app-header__submit-count",
+      }),
+    ).toBeInTheDocument();
   });
 });

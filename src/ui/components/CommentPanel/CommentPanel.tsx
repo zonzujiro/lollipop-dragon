@@ -8,6 +8,9 @@ import { tabRequiresRestoreAccess } from "../../../types/tab";
 import { isUserCommentType, USER_COMMENT_TYPES } from "../../commentTypes";
 import { CrossFileList, SingleFileList } from "./CommentPanelEntries";
 import { CommentPanelAgentRuns } from "./CommentPanelAgentRuns";
+import { CommentPanelFilters } from "./CommentPanelFilters";
+import { IncomingCommentList } from "./IncomingCommentList";
+import { useHostCommentView } from "./useHostCommentView";
 import {
   EMPTY_ALL_FILE_COMMENTS,
   EMPTY_ANSWERED_COMMENT_IDS,
@@ -108,7 +111,23 @@ export function CommentPanel({ peerMode = false }: Props) {
     isUserCommentType(commentFilter) || commentFilter === "resolved"
       ? commentFilter
       : "all";
-  const resolvedView = !peerMode && effectiveCommentFilter === "resolved";
+  const pendingComments = tab?.pendingComments ?? {};
+  const incomingCount = Object.values(pendingComments).reduce(
+    (total, commentsForShare) => total + commentsForShare.length,
+    0,
+  );
+  const {
+    openAll: handleOpenAllComments,
+    selectType: handleSelectCommentType,
+    selectView: handleSelectHostView,
+    view: hostView,
+  } = useHostCommentView({
+    effectiveCommentFilter,
+    incomingCount,
+    peerMode,
+    setCommentFilter,
+  });
+  const resolvedView = !peerMode && hostView === "resolved";
   const activeFilePath = peerMode
     ? peerActiveFilePath
     : (tab?.activeFilePath ?? null);
@@ -320,14 +339,17 @@ export function CommentPanel({ peerMode = false }: Props) {
     : isFolderMode
       ? totalCrossFileCount
       : hostRootComments.length;
-  const showTypeFilters = !peerMode && activeTypes.length > 0;
-
   return (
     <aside className="comment-panel" aria-label="Comments">
       <div className="comment-panel__header">
         <span className="comment-panel__title">
           Comments
           <span className="comment-panel__open-count">{openCount} open</span>
+          {!peerMode && incomingCount > 0 && (
+            <span className="comment-panel__incoming-count">
+              · {incomingCount} incoming
+            </span>
+          )}
           {!peerMode && resolvedComments.length > 0 && (
             <span className="comment-panel__resolved-count">
               · {resolvedComments.length} resolved
@@ -352,44 +374,19 @@ export function CommentPanel({ peerMode = false }: Props) {
         </div>
       )}
 
-      {(showTypeFilters || (!peerMode && resolvedComments.length > 0)) && (
-        <div className="comment-panel__filters">
-          <button
-            className={`comment-panel__filter${effectiveCommentFilter === "all" || effectiveCommentFilter === "pending" ? " comment-panel__filter--active" : ""}`}
-            onClick={() => setCommentFilter("all")}
-          >
-            All <span className="comment-panel__filter-count">{openCount}</span>
-          </button>
-          {activeTypes.map((type) => (
-            <button
-              key={type}
-              className={`comment-panel__filter${effectiveCommentFilter === type ? " comment-panel__filter--active" : ""}`}
-              data-comment-type={type}
-              onClick={() =>
-                setCommentFilter(effectiveCommentFilter === type ? "all" : type)
-              }
-            >
-              <span className="comment-panel__filter-swatch" />
-              {type}{" "}
-              <span className="comment-panel__filter-count">
-                {counts[type]}
-              </span>
-            </button>
-          ))}
-          {!peerMode && resolvedComments.length > 0 && (
-            <button
-              className={`comment-panel__filter${resolvedView ? " comment-panel__filter--active" : ""}`}
-              onClick={() =>
-                setCommentFilter(resolvedView ? "all" : "resolved")
-              }
-            >
-              Resolved{" "}
-              <span className="comment-panel__filter-count">
-                {resolvedComments.length}
-              </span>
-            </button>
-          )}
-        </div>
+      {!peerMode && (
+        <CommentPanelFilters
+          activeTypes={activeTypes}
+          counts={counts}
+          effectiveCommentFilter={effectiveCommentFilter}
+          incomingCount={incomingCount}
+          openCount={openCount}
+          resolvedCount={resolvedComments.length}
+          view={hostView}
+          onOpenAll={handleOpenAllComments}
+          onSelectType={handleSelectCommentType}
+          onSelectView={handleSelectHostView}
+        />
       )}
 
       <CommentPanelAgentRuns
@@ -407,7 +404,12 @@ export function CommentPanel({ peerMode = false }: Props) {
       />
 
       <div className="comment-panel__list">
-        {resolvedView ? (
+        {!peerMode && hostView === "incoming" ? (
+          <IncomingCommentList
+            pendingComments={pendingComments}
+            shares={tab?.shares ?? []}
+          />
+        ) : resolvedView ? (
           <SingleFileList
             visible={visible}
             peerMode={false}
@@ -466,10 +468,10 @@ export function CommentPanel({ peerMode = false }: Props) {
           />
         )}
       </div>
-      {!peerMode && !resolvedView && resolvedComments.length > 0 && (
+      {!peerMode && hostView === "open" && resolvedComments.length > 0 && (
         <button
           className="comment-panel__resolved-strip"
-          onClick={() => setCommentFilter("resolved")}
+          onClick={() => handleSelectHostView("resolved")}
         >
           {resolvedComments.length} resolved — kept for history
         </button>

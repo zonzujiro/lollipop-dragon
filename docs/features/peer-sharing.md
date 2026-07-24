@@ -204,7 +204,10 @@ The app encrypts the block reference and optional durable range anchor, then
 POSTs the comment to the Worker's comment endpoint. No auth or account is
 needed.
 
-Next time the host opens the app, it fetches pending comments from the Worker, decrypts them, and offers to merge them into the local files as CriticMarkup. The host can accept or dismiss each comment.
+The host receives pending comments through the relay, decrypts them, and sees
+them in the **Incoming** view of the normal Comments panel. The Comments header
+and header-rail action show the incoming count. The host can navigate to,
+merge, or dismiss each comment without opening share management.
 
 Peers can always comment, regardless of whether the host is online.
 
@@ -229,9 +232,13 @@ Obsolete note:
 The host has one Share sheet for creation and management. It shows all active shares:
 
 - Document/folder name, creation date, expiry (TTL).
+- "Copy link" button — reconstructs and copies that existing share URL without
+  uploading content again or changing the selected creation scope.
 - "Revoke" button — deletes the content and comments from the Worker immediately.
-- "Check comments" button — fetches and displays pending async comments from the Worker.
 - Share metadata (doc-id, host-secret) is stored in the host's browser localStorage.
+
+Comment review is intentionally absent from the Share sheet. Incoming feedback
+belongs to the host Comments panel; the Share sheet only manages links.
 
 ---
 
@@ -283,9 +290,11 @@ because the active tab's `shares`, `shareKeys`, or `activeDocId` changed.
 
 ### 8.3 Host Receives Feedback
 
-1. Host opens MarkReview. App checks Worker for pending comments on all active shares.
-2. Badge appears on Shared panel: "3 new comments."
-3. Host clicks to review. Comments are decrypted and shown with peer name, file path, and block reference.
+1. Host opens MarkReview. The relay restores pending comments for active shares.
+2. A numeric incoming badge appears on the Comments header action, not Share.
+3. Host opens Comments. When incoming feedback exists, the panel initially
+   opens **Incoming** and shows peer name, file path, quote, type, and comment
+   text. Open-comment type filters keep their existing counts and selection.
 4. Host clicks "Merge" — app inserts CriticMarkup into the local files.
 5. Host tells LLM CLI: "Address the comments in this file."
 6. LLM reads CriticMarkup, makes fixes, removes the markup.
@@ -406,8 +415,8 @@ If the storage backend needs to change in the future, only the implementation of
 - Peers can post encrypted comments to the Worker.
 - Host can fetch, decrypt, review, and merge comments into local files.
 - Comment merge inserts CriticMarkup into the appropriate file locations.
-- "Check comments" workflow in the Shared panel.
-- Notification badge for pending comments.
+- Incoming review workflow in the host Comments panel.
+- Numeric incoming badge on the Comments header action.
 
 ---
 

@@ -286,10 +286,10 @@
 
 .share-dialog__share-item {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 0;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: start;
+  gap: 6px 10px;
+  padding: 10px 0;
   border-bottom: 1px dashed var(--line);
 }
 
@@ -298,6 +298,7 @@
 }
 
 .share-dialog__share-avatar {
+  grid-row: 1 / span 2;
   display: grid;
   width: 28px;
   height: 28px;
@@ -314,6 +315,7 @@
 
 .share-dialog__share-copy strong,
 .share-dialog__share-copy span {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -325,46 +327,37 @@
 }
 
 .share-dialog__share-copy span {
-  margin-left: 4px;
   color: var(--ink-muted);
   font: 400 11.5px/1.4 var(--font-ui);
 }
 
 .share-dialog__share-actions {
   display: flex;
+  grid-column: 2;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 
 .share-dialog__share-actions button {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--ink-muted);
-  font: 600 11.5px/1.3 var(--font-ui);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  height: 25px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-raised);
+  color: var(--ink-secondary);
+  font: 650 11.5px/1 var(--font-ui);
   cursor: pointer;
 }
 
-.share-dialog__pending {
-  padding: 3px 9px;
-  border-radius: 10px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font: 700 11px/1.2 var(--font-ui);
+.share-dialog__share-actions button:hover {
+  border-color: var(--line-strong);
+  background: var(--bg-sunken);
+  color: var(--ink);
 }
 
-.share-dialog__pending-review {
-  grid-column: 1 / -1;
-  padding-top: 9px;
-  border-top: 1px solid var(--line);
-}
-
-.share-dialog__pending-review p {
-  margin: 0;
-  color: var(--ink-muted);
-  font: 400 11.5px/1.5 var(--font-ui);
+.share-dialog__share-actions .share-dialog__danger {
+  color: var(--c-red);
 }
 
 @media (max-width: 640px) {
@@ -372,12 +365,7 @@
     font-size: 11.5px;
   }
 
-  .share-dialog__share-item {
-    grid-template-columns: 28px minmax(0, 1fr);
-  }
-
   .share-dialog__share-actions {
-    grid-column: 2;
     justify-content: flex-start;
   }
 }

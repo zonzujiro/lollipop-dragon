@@ -158,6 +158,39 @@
   color: var(--ink);
 }
 
+.app-header__btn--submit {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  box-shadow: var(--shadow-card);
+}
+
+.app-header__btn--submit:hover {
+  background: var(--accent-light);
+  border-color: var(--accent-light);
+  color: var(--on-accent);
+}
+
+.app-header__btn--submit:disabled,
+.app-header__btn--submit:disabled:hover {
+  background: var(--surface-alt);
+  border-color: var(--line);
+  color: var(--ink-muted);
+  box-shadow: none;
+}
+
+.app-header__submit-count {
+  display: inline-grid;
+  min-width: 18px;
+  height: 18px;
+  place-items: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--on-accent) 18%, transparent);
+  color: inherit;
+  font: 700 10.5px/1 var(--font-ui);
+}
+
 .app-header__btn--agent {
   justify-content: center;
   background: var(--accent);
@@ -190,6 +223,22 @@
   border-radius: 50%;
   background: var(--accent);
   box-shadow: 0 0 0 2px var(--bg);
+}
+
+.app-header__count-badge {
+  position: absolute;
+  top: -5px;
+  right: -6px;
+  display: inline-grid;
+  min-width: 18px;
+  height: 18px;
+  place-items: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--agent);
+  color: var(--on-agent);
+  box-shadow: 0 0 0 2px var(--bg);
+  font: 700 10.5px/1 var(--font-ui);
 }
 
 .app-header__btn--review {
@@ -305,12 +354,15 @@
   }
 
   .app-header__group--share .app-header__btn-label,
-  .app-header__group--peer .app-header__btn-label {
+  .app-header__group--peer
+    .app-header__btn--text:not(.app-header__btn--submit)
+    .app-header__btn-label {
     display: none;
   }
 
   .app-header__group--share .app-header__btn--text,
-  .app-header__group--peer .app-header__btn--text {
+  .app-header__group--peer
+    .app-header__btn--text:not(.app-header__btn--submit) {
     width: 2rem;
     justify-content: center;
     padding-inline: 0.45rem;
@@ -328,6 +380,10 @@
 
   .app-header__actions {
     flex: 1;
+  }
+
+  .app-header__btn--submit .app-header__btn-label {
+    display: none;
   }
 }
 .app-header__identity {

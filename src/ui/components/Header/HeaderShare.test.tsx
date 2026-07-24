@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -116,6 +116,35 @@ describe("Header share buttons", () => {
         screen.getByRole("button", { name: "Open comments panel" }),
       );
       expect(useAppStore.getState().tabs[0]?.commentPanelOpen).toBe(true);
+    });
+
+    it("shows incoming feedback on the Comments action instead of Share", () => {
+      setTestState({
+        fileName: "readme.md",
+        shares: [
+          {
+            docId: "doc-1",
+            hostSecret: "secret",
+            label: "readme.md",
+            createdAt: "2026-07-24T00:00:00.000Z",
+            expiresAt: "2099-07-24T00:00:00.000Z",
+            pendingCommentCount: 2,
+            keyB64: "share-key",
+            fileCount: 1,
+          },
+        ],
+      });
+
+      const { container } = render(
+        <Header onShareFile={vi.fn()} onShareFolder={vi.fn()} />,
+      );
+
+      expect(
+        within(screen.getByRole("button", { name: "Share" })).queryByText("2"),
+      ).not.toBeInTheDocument();
+      expect(
+        container.querySelector(".app-header__count-badge"),
+      ).toHaveTextContent("2");
     });
   });
 
