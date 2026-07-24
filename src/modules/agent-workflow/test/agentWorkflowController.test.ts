@@ -128,6 +128,9 @@ describe("address comments agent run context", () => {
     expect(request.prompt).toContain(
       "Do not add a new `answer:` or confirmation comment",
     );
+    expect(request.prompt).toContain(
+      "use short paragraphs separated by a blank line",
+    );
   });
 
   it("selects a bounded set of folder target files", () => {
@@ -285,6 +288,9 @@ describe("address comments agent run context", () => {
     expect(request.prompt).not.toContain("mr-question-a");
     expect(request.prompt).not.toContain("note-b");
     expect(request.prompt).not.toContain("Check B");
+    expect(request.prompt).toContain(
+      "use short paragraphs separated by a blank line",
+    );
   });
 });
 
@@ -360,6 +366,12 @@ describe("question thread agent run context", () => {
     });
     expect(request.prompt).toContain("Work only in docs/spec.md");
     expect(request.prompt).toContain("Read the entire existing thread");
+    expect(request.prompt).toContain(
+      "use short paragraphs separated by a blank line",
+    );
+    expect(request.prompt).toContain(
+      "do not add a line break after every sentence",
+    );
     expect(request.prompt).toContain("- mr-question-1");
     expect(request.prompt).toContain("- mr-question-2");
     expect(request.prompt).toContain("Do not edit unrelated files");

@@ -6,6 +6,7 @@ import { canEditComment } from "../../../utils/commentPermissions";
 import { CommentThreadCard } from "../CommentThreadCard";
 import {
   normalizeUserCommentType,
+  ORPHANED_COMMENT_MESSAGE,
   USER_COMMENT_TYPES,
 } from "../../commentTypes";
 import { formatRelativeTime } from "./commentPanelModel";
@@ -272,7 +273,7 @@ function CommentEntry({
       <span className="comment-panel__text">{displayText}</span>
       {isFullComment && comment.anchor?.orphaned ? (
         <span className="comment-panel__orphan">
-          ⚠ text changed underneath — anchor released, quote kept
+          ⚠ {ORPHANED_COMMENT_MESSAGE}
         </span>
       ) : null}
     </div>

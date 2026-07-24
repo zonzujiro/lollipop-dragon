@@ -39,6 +39,8 @@ function buildQuestionReplyRules(): string {
 - Set \`replyTo\` to the \`id\` of the question or follow-up message you are answering.
 - Give your reply its own unique \`id\`.
 - Add your agent name in \`author\` (for example \`Codex\` or \`Cursor\`).
+- For answers with more than one distinct idea, use short paragraphs separated by a blank line; do not pack the whole answer into one dense paragraph.
+- Keep a genuinely short answer as one paragraph, and do not add a line break after every sentence.
 - Keep answers concise, specific, and grounded in the referenced text.`;
 }
 

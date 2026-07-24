@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { getBlockPositions, assignBlockIndices } from "./blockIndex";
+import { parseCriticMarkup } from "./criticmarkup";
 import { makeComment as makeCommentBase } from "../testing/testHelpers";
 
 function makeComment(cleanStart: number, cleanEnd = cleanStart) {
@@ -111,6 +112,23 @@ describe("assignBlockIndices", () => {
     const zerolen = makeComment(positions[1].start, positions[1].start);
     const [c] = assignBlockIndices([zerolen], md);
     expect(c.blockIndex).toBe(1);
+  });
+
+  it("recovers a wrapped anchor that crosses markdown formatting boundaries", () => {
+    const quote =
+      "external-products/editor-elements/AGENTS.md (lean orientation + links, Harmony-owned). Contains only:";
+    const source =
+      "**`{==external-products/editor-elements/AGENTS.md` (lean orientation + links, Harmony-owned).** Contains only:==}{>>question: Explain this.<<}";
+    const parsed = parseCriticMarkup(source);
+    const [comment] = assignBlockIndices(parsed.comments, parsed.cleanMarkdown);
+
+    expect(comment.anchor).toMatchObject({
+      quote,
+      occurrence: 1,
+      start: 0,
+      end: quote.length,
+      orphaned: false,
+    });
   });
 });
 

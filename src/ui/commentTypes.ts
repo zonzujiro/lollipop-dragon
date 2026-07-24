@@ -9,6 +9,9 @@ export const USER_COMMENT_TYPES: readonly CommentType[] = [
 
 export const DEFAULT_USER_COMMENT_TYPE: CommentType = "question";
 
+export const ORPHANED_COMMENT_MESSAGE =
+  "We can’t find the text this comment refers to. The comment is still saved, but it’s no longer highlighted in the document.";
+
 export function normalizeUserCommentType(type: CommentType): CommentType {
   return USER_COMMENT_TYPES.includes(type) ? type : DEFAULT_USER_COMMENT_TYPE;
 }

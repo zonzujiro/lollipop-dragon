@@ -218,6 +218,9 @@ The generated prompt should state the target path, task, and out-of-scope files.
 It should not duplicate active-file or folder comment bodies because those
 comments are already embedded in the markdown. Pending peer comment prompts must
 still include comment details when they are not yet present in the markdown.
+Question-thread instructions must also require readable answer formatting:
+multi-idea answers use short paragraphs separated by blank lines, while genuinely
+short answers remain a single paragraph without sentence-by-sentence hard wraps.
 
 ## Desktop Agent Actions For V1
 

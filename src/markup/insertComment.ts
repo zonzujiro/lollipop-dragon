@@ -9,6 +9,7 @@ import {
   escapeAnchorQuote,
   findQuoteOccurrences,
   getBlockPlainTextMap,
+  getPlainText,
   plainRangeToMarkdownRange,
   resolveCommentAnchor,
 } from "./commentAnchor";
@@ -191,6 +192,16 @@ export function insertComment(input: {
           const rawStart = cleanToRaw(range.start, segments);
           const rawEnd = cleanToRaw(range.end, segments);
           const rawSlice = input.rawContent.slice(rawStart, rawEnd);
+          if (getPlainText(rawSlice) !== selectedQuote) {
+            return insertStandaloneAnchor({
+              rawContent: input.rawContent,
+              rawPosition: cleanToRaw(blockEnd, segments),
+              body,
+              quote: input.anchor.quote,
+              occurrence,
+              afterFence: false,
+            });
+          }
           const markup = `{==${rawSlice}==}{>>${body}<<}`;
           return (
             input.rawContent.slice(0, rawStart) +

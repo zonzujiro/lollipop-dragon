@@ -109,6 +109,9 @@ MarkReview extends the plain comment protocol for threaded review questions.
 - A `question:` comment can be a thread root.
 - MarkReview writes hidden `[markreview ...]` metadata into app-created `question:` comments so a raw markdown file still carries stable thread identifiers.
 - Agents reply with a separate inline `answer:` CriticMarkup comment near the same text block.
+- The review-agent prompt requires answers with multiple distinct ideas to use
+  short paragraphs separated by blank lines. A genuinely short answer stays one
+  paragraph, and agents do not hard-wrap after every sentence.
 - Users can also reply directly from the thread card; MarkReview writes the same linked `answer:` CriticMarkup reply with `author="You"`.
 - The thread composer shows action buttons for `clarify` and `rewrite`. With no action selected, the message is a normal `answer:` reply. Selecting an action writes that type as a linked threaded CriticMarkup comment with `author="You"`; selecting the active action again returns to reply behavior.
 - Every reply reuses the root `thread` value. Its `replyTo` can reference the
@@ -167,17 +170,22 @@ Example action reply:
 
 ### 6.4 Character-range anchors and overlaps
 
-Selecting 3–300 characters inside one rendered block opens a range-aware
-composer. The comment stores an exact quote, its 1-based occurrence within the
-block's rendered plain text, and derived start/end offsets. A clean range is
-serialized by wrapping the original markdown slice:
+Selecting at least 3 characters inside one rendered block opens a range-aware
+composer, with no maximum selection length. The comment stores an exact quote,
+its 1-based occurrence within the block's rendered plain text, and derived
+start/end offsets. DOM whitespace inserted between structural list, quote, and
+table children is excluded from those offsets so selecting a later list item
+does not shift or widen its anchor. A clean range is serialized by wrapping the
+original markdown slice:
 
 ```text
 {==selected text==}{>>fix: Tighten this claim.<<}
 ```
 
-If the selected range intersects existing CriticMarkup, nesting is avoided. The
-new comment is appended to the block with a durable standalone anchor:
+If the selected range intersects existing CriticMarkup, or its raw Markdown
+slice would cross formatting boundaries and become unbalanced when wrapped,
+nesting and broken Markdown are avoided. The new comment is appended to the
+block with a durable standalone anchor:
 
 ```text
 {>>clarify: Explain the distinction. @@ "selected text" @2<<}
@@ -185,9 +193,10 @@ new comment is appended to the block with a durable standalone anchor:
 
 The parser re-resolves anchors whenever file content changes. It first uses the
 stored occurrence, then another exact occurrence, then a whitespace-normalized
-match. If none matches, the comment remains open as an orphan with its quote and
-an “anchor released” note; no text is mis-highlighted. Returning the quote to the
-block reattaches it automatically.
+match. If none matches, the comment remains open with its quote and the note
+“We can’t find the text this comment refers to. The comment is still saved, but
+it’s no longer highlighted in the document.” No text is mis-highlighted.
+Returning the quote to the block reattaches it automatically.
 
 Intersecting ranges render as constant-coverage segments. Shared segments stack
 their tints and underline stripes, expose all comment IDs through `data-cids`,

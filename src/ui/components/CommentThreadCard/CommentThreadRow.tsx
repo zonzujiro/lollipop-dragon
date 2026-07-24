@@ -3,6 +3,7 @@ import type { Comment, CommentType } from "../../../types/criticmarkup";
 import { canEditComment } from "../../../utils/commentPermissions";
 import {
   normalizeUserCommentType,
+  ORPHANED_COMMENT_MESSAGE,
   USER_COMMENT_TYPES,
 } from "../../commentTypes";
 
@@ -77,7 +78,7 @@ function CommentBody({
       )}
       {comment.anchor?.orphaned && (
         <p className="comment-thread-card__orphan" role="note">
-          ⚠ text changed underneath — anchor released, quote kept
+          ⚠ {ORPHANED_COMMENT_MESSAGE}
         </p>
       )}
       {comment.text &&

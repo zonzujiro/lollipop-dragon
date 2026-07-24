@@ -419,12 +419,35 @@ function decorateMermaid(blk, comments) {
   });
 }
 
-// character offset of a DOM point within root
+const structuralTextContainers = new Set(["BLOCKQUOTE", "LI", "OL", "TABLE", "TBODY", "TFOOT", "THEAD", "TR", "UL"]);
+
+function ignoredStructuralWhitespace(node) {
+  return node.nodeType === Node.TEXT_NODE
+    && !node.textContent.trim()
+    && node.parentElement
+    && structuralTextContainers.has(node.parentElement.tagName);
+}
+
+function anchorText(node) {
+  if (node.nodeType === Node.TEXT_NODE) return ignoredStructuralWhitespace(node) ? "" : node.textContent;
+  return Array.from(node.childNodes).map(anchorText).join("");
+}
+
+// character offset of a DOM point within the Markdown anchor text
 function offsetIn(root, node, nodeOffset) {
-  const r = document.createRange();
-  r.selectNodeContents(root);
-  try { r.setEnd(node, nodeOffset); } catch { return null; }
-  return r.toString().length;
+  if (root === node) {
+    if (root.nodeType === Node.TEXT_NODE) return ignoredStructuralWhitespace(root) ? 0 : nodeOffset;
+    return Array.from(root.childNodes).slice(0, nodeOffset).map(anchorText).join("").length;
+  }
+  let offset = 0;
+  for (const child of root.childNodes) {
+    if (child === node || child.contains(node)) {
+      const nestedOffset = offsetIn(child, node, nodeOffset);
+      return nestedOffset === null ? null : offset + nestedOffset;
+    }
+    offset += anchorText(child).length;
+  }
+  return null;
 }
 
 function renderDoc(container, file, opts) {
@@ -487,7 +510,7 @@ function commentCard(c, opts) {
   let html = `<div class="top"><span class="type-tag">${c.type}</span><span class="who">${who}</span>${right}</div>`;
   if (c.quote) html += `<div class="quote">“${esc(c.quote)}”</div>`;
   if (c.state === "open" && isOrphan(c)) {
-    html += `<div class="orphan-note">text changed underneath — anchor released, quote kept</div>`;
+    html += `<div class="orphan-note">We can’t find the text this comment refers to. The comment is still saved, but it’s no longer highlighted in the document.</div>`;
   }
   html += `<div class="body">${esc(c.text)}</div>`;
   if (c.thread.length) {
@@ -1169,14 +1192,14 @@ document.addEventListener("mouseup", (e) => {
   let start = offsetIn(body, domRange.startContainer, domRange.startOffset);
   let end = body.contains(domRange.endContainer)
     ? offsetIn(body, domRange.endContainer, domRange.endOffset)
-    : body.textContent.length; // selection ran past the block — clamp to its end
+    : anchorText(body).length; // selection ran past the block — clamp to its end
   if (start === null || end === null) return;
   if (start > end) { [start, end] = [end, start]; }
-  const plain = body.textContent;
+  const plain = anchorText(body);
   // trim whitespace off the edges of the anchor
   while (start < end && /\s/.test(plain[start])) start++;
   while (end > start && /\s/.test(plain[end - 1])) end--;
-  if (end - start < 3 || end - start > 300) return;
+  if (end - start < 3) return;
   sel.removeAllRanges();
   const file = blk.dataset.file;
   const block = parseInt(blk.dataset.i, 10);

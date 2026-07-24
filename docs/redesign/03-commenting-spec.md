@@ -25,8 +25,8 @@ interface CommentAnchor {
 On `mouseup` with a non-collapsed selection inside a block:
 
 1. Resolve the block containing the selection start. If the selection crosses blocks, clamp `end` to that block's end.
-2. Compute `start`/`end` as character offsets within the block's content root (`Range.selectNodeContents(root); range.setEnd(node, offset); offset = range.toString().length` — see `offsetIn`).
-3. Trim whitespace inward from both edges. Reject spans < 3 chars (open a block-level composer instead is acceptable) or > 300 chars (treat as block-level).
+2. Compute `start`/`end` by walking the block's DOM text nodes in the same order as the Markdown plain-text model. Ignore renderer-inserted whitespace-only nodes between structural list, quote, and table children; they are not part of the Markdown anchor text.
+3. Trim whitespace inward from both edges. Reject spans < 3 chars (opening a block-level composer instead is acceptable). A selection contained in one rendered block has no maximum length.
 4. `quote = plain.slice(start, end)`; `occurrence` = which occurrence of `quote` in the block's plain text contains `start`.
 5. Open the composer anchored to the block, quote line shown. Existing highlights under the selection are irrelevant — **overlap is always allowed**.
 
@@ -54,13 +54,13 @@ Re-anchoring runs at every parse (file change, agent edit, refresh):
 1. Exact: `quote` found at `occurrence` → anchor at that position.
 2. Fallback: any exact occurrence of `quote` → first one (update `occurrence`).
 3. Whitespace-normalized match of `quote` → use it.
-4. Otherwise the comment is **orphaned**: no highlight, no mis-highlight; marker stays on the block; rail card keeps the quote and shows "⚠ text changed underneath — anchor released, quote kept". Orphans remain open, resolvable, and agent-addressable. If a later parse matches again (e.g. undo), the anchor silently re-attaches.
+4. Otherwise the comment is **orphaned**: no highlight, no mis-highlight; marker stays on the block; rail card keeps the quote and shows "⚠ We can’t find the text this comment refers to. The comment is still saved, but it’s no longer highlighted in the document." Orphans remain open, resolvable, and agent-addressable. If a later parse matches again (e.g. undo), the anchor silently re-attaches.
 
 ## 5. CriticMarkup serialization
 
 Files must remain valid CriticMarkup for any external tool. Two forms:
 
-**A. Wrapped (preferred)** — when the range does not intersect any existing CriticMarkup span in the raw markdown:
+**A. Wrapped (preferred)** — when the range does not intersect any existing CriticMarkup span in the raw markdown and the mapped raw slice independently renders to the selected plain-text quote:
 
 ```
 {==<raw slice of the range>==}{>>type: comment text — Author<<}
@@ -68,7 +68,7 @@ Files must remain valid CriticMarkup for any external tool. Two forms:
 
 Placed inline at the range position in the **raw** markdown (map plain-text offsets → raw offsets by walking the raw block and skipping markup syntax; the existing parser's position tracking already does the plain↔raw bookkeeping for extraction — reuse it for insertion).
 
-**B. Anchored standalone (overlap fallback)** — when the range intersects any existing `{== ==}`/`{>> <<}`/other CriticMarkup span, wrapping would produce invalid nested markup. Serialize as a standalone comment appended at the end of the block, carrying the anchor in a parsable suffix:
+**B. Anchored standalone (overlap or formatting-boundary fallback)** — when the range intersects any existing `{== ==}`/`{>> <<}`/other CriticMarkup span, wrapping would produce invalid nested markup. Use the same fallback when the mapped raw slice does not independently render to the selected plain-text quote, because the range crosses Markdown formatting boundaries and wrapping it would split delimiter pairs. Serialize as a standalone comment appended at the end of the block, carrying the anchor in a parsable suffix:
 
 ```
 {>>type: comment text — Author @@ "exact quote" @2<<}

@@ -96,11 +96,21 @@ export function assignBlockIndices(
     }
 
     if (comment.criticType === "highlight" && comment.highlightedText) {
-      const quote = getPlainText(comment.highlightedText);
-      const occurrences = findQuoteOccurrences(blockMap.plainText, quote);
       const expectedStart = blockMap.characters.findIndex(
         ({ rawStart }) => rawStart >= comment.cleanStart,
       );
+      const expectedEnd = blockMap.characters.findIndex(
+        ({ rawStart }, characterIndex) =>
+          characterIndex >= expectedStart && rawStart >= comment.cleanEnd,
+      );
+      const quoteEnd =
+        expectedEnd >= 0 ? expectedEnd : blockMap.characters.length;
+      const positionalQuote =
+        expectedStart >= 0
+          ? blockMap.plainText.slice(expectedStart, quoteEnd)
+          : "";
+      const quote = positionalQuote || getPlainText(comment.highlightedText);
+      const occurrences = findQuoteOccurrences(blockMap.plainText, quote);
       const nearestStart = occurrences.reduce<number | undefined>(
         (nearest, occurrence) => {
           if (nearest === undefined) {
