@@ -1,18 +1,10 @@
 import "./PeerCommentCard.css";
 import { useAppStore } from "../../../store";
-import { COMMENT_TYPE_COLOR } from "../../../types/criticmarkup";
 import type { PeerComment } from "../../../types/share";
 import { isCommentType } from "../../../markup/commentProtocol";
 
 function fileBaseName(path: string): string {
   return path.split("/").pop() ?? path;
-}
-
-function commentTypeColor(type: string): string {
-  if (isCommentType(type)) {
-    return COMMENT_TYPE_COLOR[type];
-  }
-  return "inherit";
 }
 
 interface Props {
@@ -35,11 +27,12 @@ export function PeerCommentCard({ docId, comment, currentPath }: Props) {
   return (
     <div
       className="peer-card"
+      data-comment-type={comment.commentType}
       role="button"
       tabIndex={0}
       onClick={handleNavigate}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
           handleNavigate();
         }
       }}
@@ -58,12 +51,8 @@ export function PeerCommentCard({ docId, comment, currentPath }: Props) {
         <span className="peer-card__path" title={comment.path}>
           {fileBaseName(comment.path)}
         </span>
-        <span
-          className="peer-card__type"
-          style={{ color: commentTypeColor(comment.commentType) }}
-        >
-          {comment.commentType}
-        </span>
+        <span className="peer-card__type">{comment.commentType}</span>
+        <span className="peer-card__status">incoming</span>
       </div>
 
       {comment.blockRef.contentPreview && (
@@ -74,7 +63,10 @@ export function PeerCommentCard({ docId, comment, currentPath }: Props) {
 
       <p className="peer-card__text">{comment.text}</p>
 
-      <div className="peer-card__actions" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="peer-card__actions"
+        onClick={(event) => event.stopPropagation()}
+      >
         <button
           className="peer-card__btn peer-card__btn--merge"
           onClick={() => {

@@ -1,30 +1,61 @@
 /* ── Peer comment card ────────────────────────────────────────── */
 .peer-card {
-  background: var(--surface-alt);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius);
-  padding: 0.75rem;
-  margin-bottom: 0.5rem;
+  --comment-color: var(--accent);
+  --comment-soft: var(--accent-bg);
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--comment-color);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-card);
   cursor: pointer;
 }
+
+.peer-card[data-comment-type="rewrite"] {
+  --comment-color: var(--c-rewrite);
+  --comment-soft: var(--c-rewrite-soft);
+}
+
+.peer-card[data-comment-type="question"] {
+  --comment-color: var(--c-question);
+  --comment-soft: var(--c-question-soft);
+}
+
+.peer-card[data-comment-type="clarify"] {
+  --comment-color: var(--c-clarify);
+  --comment-soft: var(--c-clarify-soft);
+}
+
+.peer-card[data-comment-type="remove"] {
+  --comment-color: var(--c-remove);
+  --comment-soft: var(--c-remove-soft);
+}
+
+.peer-card[data-comment-type="note"] {
+  --comment-color: var(--c-answer);
+  --comment-soft: var(--c-answer-soft);
+}
+
 .peer-card:hover {
-  border-color: var(--accent);
+  border-color: var(--line-strong);
 }
 
 .peer-card__meta {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.375rem;
-  font-size: 0.75rem;
+  margin-bottom: 6px;
+  font-size: 11.5px;
 }
 
 .peer-card__peer {
-  font-weight: 600;
-  color: var(--text);
+  color: var(--ink-secondary);
+  font-weight: 650;
 }
+
 .peer-card__path {
-  color: var(--text-muted);
+  color: var(--ink-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -33,63 +64,92 @@
   font-size: 0.6875rem;
 }
 .peer-card__type {
-  font-weight: 600;
+  order: -1;
   flex-shrink: 0;
+  padding: 2.5px 7px;
+  border-radius: 5px;
+  background: var(--comment-soft);
+  color: var(--comment-color);
+  font: 700 10px/1.2 var(--font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.peer-card__status {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--ink-muted);
+  font: 700 9.5px/1.2 var(--font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .peer-card__preview {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  border-left: 2px solid var(--border);
+  overflow: hidden;
+  margin: 0 0 7px;
   padding: 2px 8px;
-  margin: 0 0 0.375rem;
-  font-style: italic;
+  border-left: 2px solid var(--line-strong);
+  color: var(--ink-muted);
+  font: italic 12px/1.35 var(--font-doc);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .peer-card__text {
-  font-size: 0.8125rem;
-  color: var(--text);
-  line-height: 1.5;
-  margin-bottom: 0.5rem;
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-size: 12.5px;
+  line-height: 1.55;
 }
 
 .peer-card__actions {
   display: flex;
-  gap: 0.375rem;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 .peer-card__btn {
-  font-size: 0.75rem;
-  padding: 3px 10px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
   cursor: pointer;
-  background: var(--surface);
+  background: var(--surface-raised);
+  color: var(--ink-secondary);
+  font: 700 11.5px/1 var(--font-ui);
 }
+
 .peer-card__btn--merge {
-  color: var(--accent);
-  border-color: var(--accent);
-  background: var(--accent-bg);
-}
-.peer-card__btn--merge:hover {
   background: var(--accent);
+  border-color: var(--accent);
   color: var(--on-accent);
 }
+
+.peer-card__btn--merge:hover {
+  background: var(--accent-light);
+  border-color: var(--accent-light);
+}
+
 .peer-card__btn--merge:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
 .peer-card__btn--dismiss {
-  color: var(--text-muted);
+  color: var(--ink-muted);
 }
+
 .peer-card__btn--dismiss:hover {
-  background: var(--surface-alt);
-  color: var(--text);
+  border-color: var(--line-strong);
+  background: var(--bg-sunken);
+  color: var(--ink);
 }
 
 /* ── Dark mode ── */
 .dark .peer-card {
-  background: var(--surface-alt);
+  background: var(--surface);
 }
 .dark .peer-card__btn--merge:hover {
   background: var(--accent);

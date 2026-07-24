@@ -383,4 +383,43 @@ describe("ShareDialog - share flow", () => {
       expect.stringContaining("#s=abc123"),
     );
   });
+
+  it("copies a specific active share from its management row", async () => {
+    const shareContent = vi.fn();
+    useAppStore.setState({ shareContent });
+    setTestState({
+      fileName: "current.md",
+      activeFilePath: "current.md",
+      shares: [
+        {
+          docId: "doc-1",
+          hostSecret: "secret",
+          label: "long-existing-share.md",
+          createdAt: "2026-04-01T00:00:00.000Z",
+          expiresAt: "2099-04-01T00:00:00.000Z",
+          pendingCommentCount: 2,
+          keyB64: "existing-key",
+          fileCount: 1,
+          sharedPaths: ["long-existing-share.md"],
+        },
+      ],
+    });
+    const user = userEvent.setup();
+    render(<ShareDialog onClose={vi.fn()} />);
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Copy link for long-existing-share.md",
+      }),
+    );
+
+    expect(shareContent).not.toHaveBeenCalled();
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      expect.stringContaining("#s=existing-key"),
+    );
+    expect(
+      screen.queryByRole("button", { name: "Review comments" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Copied ✓")).toBeInTheDocument();
+  });
 });

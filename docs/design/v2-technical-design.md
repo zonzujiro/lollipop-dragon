@@ -345,7 +345,7 @@ interface ShareRecord {
   label: string; // human-readable file or folder name (display only)
   createdAt: string;
   expiresAt: string;
-  pendingCommentCount: number; // cached, refreshed on "Check comments"
+  pendingCommentCount: number; // cached from relay snapshots
   keyB64: string; // encryption key in base64url (for link reconstruction)
   fileCount: number; // number of files included in the share
   sharedPaths?: string[]; // relative paths of all files included in the share
@@ -474,10 +474,13 @@ loadSharedContent: () => Promise<void>                       // peer mode init
 
 - "Share" button in the header opens the management view in `ShareDialog`
 - Lists all active `ShareRecord` entries from localStorage
-- Each entry: label, created date, expiry countdown, "Revoke" and "Update" buttons
+- Each entry: bounded label/meta, expiry countdown, "Copy link", and "Revoke"
+  buttons
+- "Copy link": reconstructs the original URL from the stored key without
+  uploading again
 - "Revoke": calls `deleteContent()`, removes from localStorage, shows toast
-- "Update": re-encrypts current file state, calls `uploadContent()` with same expiry (new docId + new key → new link generated; old link stops working)
-- **Deliverable:** Host can see, revoke, and update all active shares in the share dialog
+- **Deliverable:** Host can copy or revoke any active share without row actions
+  overlapping long labels
 
 **2a.7 — Iteration 2a testing**
 
@@ -513,13 +516,16 @@ loadSharedContent: () => Promise<void>                       // peer mode init
 **2b.3 — Host: fetch and decrypt comments**
 
 - `fetchComments(docId)` in ShareStorage: GET all comment blobs, decrypt each, return `PeerComment[]`
-- "Check comments" button on each `ShareEntry` in `ShareDialog`
-- Shows pending count badge; updates `pendingCommentCount` in localStorage
-- **Deliverable:** Host can fetch and see all pending peer comments in the Shared panel
+- Relay snapshots update `pendingCommentCount` and the tab-scoped pending map.
+- The header Comments action shows the incoming count and opens the normal
+  Comments panel.
+- **Deliverable:** Host can see pending peer comments without entering share
+  management.
 
 **2b.4 — Peer comment review UI**
 
-- `PendingCommentReview` component inside `ShareDialog`
+- `PendingCommentReview` component inside the host Comments panel's Incoming
+  view
 - Each `PeerCommentCard` shows: peer name, file path, block content preview, comment type badge, comment text, "Merge" and "Dismiss" buttons
 - Dismiss: removes from pending list (no Worker call — the comment stays but is ignored)
 - **Deliverable:** Host can read all pending comments with full context before deciding
@@ -536,7 +542,8 @@ loadSharedContent: () => Promise<void>                       // peer mode init
 **2b.6 — Bulk merge / dismiss**
 
 - "Merge all" and "Dismiss all" buttons at the top of `PendingCommentReview`
-- "Clear comments" button on `ShareEntry` — calls `deleteComments()` on the Worker to clean up
+- Bulk review controls remain with each incoming share group in the Comments
+  panel; active-share rows remain limited to Copy link and Revoke.
 - **Deliverable:** Host can process all pending comments efficiently
 
 **2b.7 — Iteration 2b testing**

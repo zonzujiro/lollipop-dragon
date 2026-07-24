@@ -19,8 +19,12 @@ Host-authored local comments remain local-only. They are merged directly into th
 ## 2. User Stories
 
 - As a host sharing a document, I want peer comments to appear automatically so I do not need to click a manual fetch action.
+- As a host reviewing feedback, I want incoming peer comments in the normal
+  Comments panel so review work is not hidden inside share management.
 - As a host reviewing incoming comments, I want merge and dismiss actions to remove the comment from reconnect snapshots so it does not come back later.
 - As a peer leaving feedback, I want submitted comments to be acknowledged only after the backend stores them durably.
+- As a peer with unsent feedback, I want Submit comments to remain a prominent,
+  counted primary action until my feedback is sent.
 - As a host reconnecting after a disconnect, I want the current unresolved comment set restored from the backend without merge-by-ID heuristics.
 - As a peer reopening a shared document, I want the document content to reload cleanly and I want previously submitted comments to avoid duplicate submission.
 - As a peer reconnecting with unsent comments on multiple shared files, I want all unsent comments retried instead of only the currently open file.
@@ -165,13 +169,15 @@ Opening the host share dialog is not part of share creation itself. For folder s
 
 ### Host merge / dismiss
 
-1. Host merges or dismisses a peer comment in the review UI.
-2. Host removes it from current pending UI state.
-3. Host queues the resolve locally and flushes `comment:resolve`.
-4. DO deletes the comment row from SQLite.
-5. DO sends `comment:resolve:ack` to the host.
-6. DO broadcasts `comment:resolved` to subscribers.
-7. Peers remove the matching submitted comment from their local view.
+1. Host opens the Comments panel. Incoming feedback is the initial view when
+   unresolved peer comments exist.
+2. Host merges or dismisses a peer comment from its incoming card.
+3. Host removes it from current pending UI state.
+4. Host queues the resolve locally and flushes `comment:resolve`.
+5. DO deletes the comment row from SQLite.
+6. DO sends `comment:resolve:ack` to the host.
+7. DO broadcasts `comment:resolved` to subscribers.
+8. Peers remove the matching submitted comment from their local view.
 
 ### Document content update
 
@@ -198,6 +204,13 @@ Obsolete note:
 6. Host-only resolve authority is enforced by `hostSecret` on subscribe.
 7. Reconnect resend includes unsent peer comments across all shared files, not only the currently open peer file.
 8. Host-authored local comments are never inserted into Durable Object comment storage.
+9. Incoming counts appear on the Comments action and inside the Comments panel;
+   the Share sheet does not contain the review list.
+10. Open-comment type filters retain their counts and selection while the host
+    views Incoming or Resolved comments.
+11. When unsent peer comments exist, Submit comments uses the primary button
+    treatment, shows a separate count, and remains labeled through the tablet
+    header breakpoint.
 
 ## 9. Limitations
 

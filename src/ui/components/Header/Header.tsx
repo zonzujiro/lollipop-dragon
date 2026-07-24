@@ -262,11 +262,6 @@ export function Header({
                 >
                   <ShareFileIcon />
                   <span className="app-header__btn-label">Share</span>
-                  {totalPending > 0 && (
-                    <span className="app-header__badge app-header__badge--pending">
-                      {totalPending}
-                    </span>
-                  )}
                 </button>
               )}
               {hasActiveShares && (
@@ -315,12 +310,13 @@ export function Header({
                       ? "Refresh to the latest content before submitting comments"
                       : "Send your comments to the host"
                   }
-                  className="app-header__btn app-header__btn--text"
+                  className="app-header__btn app-header__btn--text app-header__btn--submit"
                   disabled={documentUpdateAvailable}
                 >
                   <SubmitIcon />
-                  <span className="app-header__btn-label">
-                    Submit comments ({unsubmittedPeerCount})
+                  <span className="app-header__btn-label">Submit comments</span>
+                  <span className="app-header__submit-count">
+                    {unsubmittedPeerCount}
                   </span>
                 </button>
               )}
@@ -368,20 +364,18 @@ export function Header({
             </button>
             <button
               onClick={toggleCommentPanel}
-              aria-label={
-                commentPanelOpen
-                  ? "Close comments panel"
-                  : "Open comments panel"
-              }
-              title={
-                commentPanelOpen
-                  ? "Close comments panel"
-                  : "Open comments panel"
-              }
+              aria-label={`${commentPanelOpen ? "Close comments panel" : "Open comments panel"}${!peerMode && totalPending > 0 ? `, ${totalPending} incoming comments` : ""}`}
+              title={`${commentPanelOpen ? "Close comments panel" : "Open comments panel"}${!peerMode && totalPending > 0 ? `, ${totalPending} incoming comments` : ""}`}
               className={`app-header__btn app-header__btn--icon app-header__btn--rail${commentPanelOpen ? " app-header__btn--active" : ""}`}
             >
               <CommentRailIcon />
-              {commentCount > 0 && <span className="app-header__dot-badge" />}
+              {!peerMode && totalPending > 0 ? (
+                <span className="app-header__count-badge" aria-hidden="true">
+                  {totalPending}
+                </span>
+              ) : (
+                commentCount > 0 && <span className="app-header__dot-badge" />
+              )}
             </button>
           </div>
         </div>

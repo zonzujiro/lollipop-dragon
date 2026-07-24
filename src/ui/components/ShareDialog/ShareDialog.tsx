@@ -5,7 +5,7 @@ import { useActiveTab } from "../../../store/selectors";
 import type { PreparedShareIdentity } from "../../../modules/sharing/types";
 import { prepareShareIdentity } from "../../../modules/sharing/shareIdentity";
 import { buildShareUrlFromOrigin } from "../../../utils/shareUrl";
-import { PendingCommentReview } from "../PendingCommentReview";
+import type { ShareRecord } from "../../../types/share";
 import {
   FileScopeIcon,
   FolderScopeIcon,
@@ -40,7 +40,6 @@ export function ShareDialog({ onClose, scope }: Props) {
   const fileName = tab?.fileName ?? "document";
   const directoryName = tab?.directoryName ?? null;
   const shares = tab?.shares ?? EMPTY_SHARES;
-  const pendingComments = tab?.pendingComments ?? {};
   const defaultScope: ShareDialogScope = directoryName
     ? { kind: "current-folder", label: directoryName, entityPath: "" }
     : { kind: "current-file", label: fileName };
@@ -59,8 +58,8 @@ export function ShareDialog({ onClose, scope }: Props) {
   >("preparing");
   const [identityAttempt, setIdentityAttempt] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
   const [revokeDocId, setRevokeDocId] = useState<string | null>(null);
+  const [copiedShareDocId, setCopiedShareDocId] = useState<string | null>(null);
   const [copiedAction, setCopiedAction] = useState<"link" | "slack" | null>(
     null,
   );
@@ -190,6 +189,19 @@ export function ShareDialog({ onClose, scope }: Props) {
       );
     } finally {
       setUploadingAction(null);
+    }
+  }
+
+  async function copyExistingShare(share: ShareRecord) {
+    const copied = await copyLink(
+      buildShareUrlFromOrigin({
+        keyB64: share.keyB64,
+        name: share.label,
+      }),
+      `Link copied for ${share.label}`,
+    );
+    if (copied) {
+      setCopiedShareDocId(share.docId);
     }
   }
 
@@ -371,10 +383,6 @@ export function ShareDialog({ onClose, scope }: Props) {
           ) : (
             <ul className="share-dialog__share-list">
               {shares.map((share) => {
-                const pending = pendingComments[share.docId] ?? [];
-                const canReview =
-                  share.pendingCommentCount > 0 || pending.length > 0;
-                const expanded = expandedDocId === share.docId;
                 const confirmingRevoke = revokeDocId === share.docId;
                 return (
                   <li key={share.docId} className="share-dialog__share-item">
@@ -393,20 +401,16 @@ export function ShareDialog({ onClose, scope }: Props) {
                       </span>
                     </div>
                     <div className="share-dialog__share-actions">
-                      {share.pendingCommentCount > 0 && (
-                        <span className="share-dialog__pending">
-                          {share.pendingCommentCount} pending
-                        </span>
-                      )}
-                      {canReview && (
-                        <button
-                          onClick={() =>
-                            setExpandedDocId(expanded ? null : share.docId)
-                          }
-                        >
-                          {expanded ? "Hide review" : "Review comments"}
-                        </button>
-                      )}
+                      <button
+                        onClick={() => {
+                          void copyExistingShare(share);
+                        }}
+                        aria-label={`Copy link for ${share.label}`}
+                      >
+                        {copiedShareDocId === share.docId
+                          ? "Copied ✓"
+                          : "Copy link"}
+                      </button>
                       {confirmingRevoke ? (
                         <>
                           <button
@@ -431,15 +435,6 @@ export function ShareDialog({ onClose, scope }: Props) {
                         </button>
                       )}
                     </div>
-                    {expanded && (
-                      <div className="share-dialog__pending-review">
-                        {pending.length > 0 ? (
-                          <PendingCommentReview docId={share.docId} />
-                        ) : (
-                          <p>No pending comments.</p>
-                        )}
-                      </div>
-                    )}
                   </li>
                 );
               })}
