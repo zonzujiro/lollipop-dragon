@@ -523,7 +523,7 @@ describe("CommentThreadCard", () => {
     expect(sendButton).toBeEnabled();
   });
 
-  it("renders a compact one-row composer with an in-field send control", () => {
+  it("starts the reply composer at three rows with an in-field send control", () => {
     render(
       <CommentThreadCard
         thread={makeQuestionThread().thread}
@@ -533,7 +533,7 @@ describe("CommentThreadCard", () => {
       />,
     );
 
-    expect(screen.getByLabelText("Answer text")).toHaveAttribute("rows", "1");
+    expect(screen.getByLabelText("Answer text")).toHaveAttribute("rows", "3");
     expect(
       screen.getByRole("button", { name: "Send reply" }),
     ).toHaveTextContent("↑");

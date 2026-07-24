@@ -9,7 +9,7 @@
   --ink-muted: var(--panel-ink-muted);
   --line: var(--panel-line);
   --line-strong: var(--panel-line-strong);
-  width: 332px;
+  width: clamp(332px, 28vw, 380px);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -672,18 +672,25 @@
 
 .comment-panel__inline-edit .comment-add-form__types {
   margin-bottom: 0.45rem;
-  padding: 0.12rem;
+  padding: 0;
   gap: 0.2rem;
 }
 
 .comment-panel__inline-edit .comment-add-form__input {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
   min-height: 5.5rem;
   font-size: 0.78rem;
   padding: 0.5rem 0.55rem;
 }
 
-.comment-panel__inline-edit .comment-add-form__actions {
-  margin-top: 0.45rem;
+.comment-panel__inline-edit-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .comment-panel__inline-edit .comment-add-form__type {
@@ -692,11 +699,54 @@
   font-size: 0.66rem;
 }
 
-.comment-panel__inline-edit .comment-add-form__save,
-.comment-panel__inline-edit .comment-add-form__cancel {
-  min-height: 1.75rem;
-  padding: 0.24rem 0.62rem;
-  font-size: 0.7rem;
+.comment-panel__inline-edit-save,
+.comment-panel__inline-edit-cancel {
+  box-sizing: border-box;
+  height: 30px;
+  padding: 0 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font: 700 12.5px/1 var(--font-ui);
+  transition:
+    background-color 0.12s,
+    border-color 0.12s,
+    color 0.12s,
+    box-shadow 0.12s,
+    opacity 0.12s;
+}
+
+.comment-panel__inline-edit-save {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.comment-panel__inline-edit-save:hover:not(:disabled) {
+  border-color: var(--accent-light);
+  background: var(--accent-light);
+}
+
+.comment-panel__inline-edit-save:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.comment-panel__inline-edit-cancel {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-secondary);
+}
+
+.comment-panel__inline-edit-cancel:hover {
+  border-color: var(--line-strong);
+  background: var(--bg-sunken);
+  color: var(--ink);
+}
+
+.comment-panel__inline-edit-save:focus-visible,
+.comment-panel__inline-edit-cancel:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .comment-panel__inline-confirm {

@@ -144,17 +144,17 @@ function CommentEditForm({
         rows={3}
         autoFocus
       />
-      <div className="comment-add-form__actions">
+      <div className="comment-thread-card__edit-actions">
         <button
           type="submit"
-          className="comment-add-form__save"
+          className="comment-thread-card__edit-save"
           disabled={!editText.trim()}
         >
           Save
         </button>
         <button
           type="button"
-          className="comment-add-form__cancel"
+          className="comment-thread-card__edit-cancel"
           onClick={onCancel}
         >
           Cancel
@@ -250,7 +250,7 @@ function CommentRowContent({
             ? "Resolve this question?"
             : "Delete this comment?"}
         </p>
-        <div className="comment-add-form__actions">
+        <div className="comment-thread-card__confirm-actions">
           <button
             className="comment-thread-card__confirm-yes"
             onClick={onConfirmDelete}
@@ -260,7 +260,10 @@ function CommentRowContent({
           >
             {resolvingThreadRoot ? "Resolve" : "Delete"}
           </button>
-          <button className="comment-add-form__cancel" onClick={onCancelDelete}>
+          <button
+            className="comment-thread-card__confirm-cancel"
+            onClick={onCancelDelete}
+          >
             Cancel
           </button>
         </div>

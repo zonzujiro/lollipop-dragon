@@ -212,21 +212,22 @@ export function CommentPanel({ peerMode = false }: Props) {
     );
   }, [isPeerMultiFile, myPeerComments.length, isFolderMode, crossFileComments]);
 
-  // All comments flat for counting types in folder/peer-multi-file mode
+  // Type filters always describe open comments, even while resolved history is
+  // visible.
   const allCommentsFlat = useMemo(() => {
-    if (isPeerMultiFile) {
+    if (peerMode) {
       return peerDisplayComments;
     }
-    if (!isFolderMode) {
-      return sourceComments;
+    if (isFolderMode) {
+      return crossFileComments.flatMap((entry) => entry.comments);
     }
-    return crossFileComments.flatMap((entry) => entry.comments);
+    return hostRootComments;
   }, [
-    isPeerMultiFile,
+    peerMode,
     peerDisplayComments,
     isFolderMode,
     crossFileComments,
-    sourceComments,
+    hostRootComments,
   ]);
 
   // Count per type
@@ -319,11 +320,6 @@ export function CommentPanel({ peerMode = false }: Props) {
     : isFolderMode
       ? totalCrossFileCount
       : hostRootComments.length;
-  const displayCount = resolvedView
-    ? resolvedComments.length
-    : isPeerMultiFile || isFolderMode
-      ? totalCrossFileCount
-      : sourceComments.length;
   const showTypeFilters = !peerMode && activeTypes.length > 0;
 
   return (
@@ -362,8 +358,7 @@ export function CommentPanel({ peerMode = false }: Props) {
             className={`comment-panel__filter${effectiveCommentFilter === "all" || effectiveCommentFilter === "pending" ? " comment-panel__filter--active" : ""}`}
             onClick={() => setCommentFilter("all")}
           >
-            All{" "}
-            <span className="comment-panel__filter-count">{displayCount}</span>
+            All <span className="comment-panel__filter-count">{openCount}</span>
           </button>
           {activeTypes.map((type) => (
             <button

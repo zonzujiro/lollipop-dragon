@@ -46,6 +46,87 @@ describe("Reading Room surface parity", () => {
     }
   });
 
+  it("gives long comment drafts more room without crowding narrow screens", () => {
+    const commentPanelCss = readStylesheet(
+      "src/ui/components/CommentPanel/CommentPanel.css",
+    );
+    const commentThreadCss = readStylesheet(
+      "src/ui/components/CommentThreadCard/CommentThreadCard.css",
+    );
+
+    expect(commentPanelCss).toMatch(
+      /\.comment-panel\s*\{[^}]*width:\s*clamp\(332px,\s*28vw,\s*380px\)/s,
+    );
+    expect(commentPanelCss).toMatch(
+      /@media\s*\(max-width:\s*920px\)\s*\{[\s\S]*?\.comment-panel\s*\{[^}]*width:\s*280px/s,
+    );
+    expect(commentThreadCss).toMatch(
+      /\.comment-thread-card__reply-input\s*\{[^}]*min-height:\s*72px[^}]*max-height:\s*10rem/s,
+    );
+  });
+
+  it("styles thread confirmation actions as compact app controls", () => {
+    const commentThreadCss = readStylesheet(
+      "src/ui/components/CommentThreadCard/CommentThreadCard.css",
+    );
+
+    expect(commentThreadCss).toMatch(
+      /\.comment-thread-card__confirm-actions\s*\{[^}]*display:\s*flex[^}]*gap:\s*8px/s,
+    );
+    expect(commentThreadCss).toMatch(
+      /\.comment-thread-card__confirm-yes,\s*\.comment-thread-card__confirm-cancel\s*\{[^}]*height:\s*30px[^}]*border-radius:\s*8px[^}]*font:\s*700 12\.5px\/1 var\(--font-ui\)/s,
+    );
+    expect(commentThreadCss).toMatch(
+      /\.comment-thread-card__confirm-yes\s*\{[^}]*border:\s*1px solid var\(--c-remove\)[^}]*background:\s*var\(--c-remove\)[^}]*color:\s*var\(--on-remove\)/s,
+    );
+    expect(commentThreadCss).toMatch(
+      /\.comment-thread-card__confirm-cancel\s*\{[^}]*border:\s*1px solid var\(--line\)[^}]*background:\s*var\(--surface\)[^}]*color:\s*var\(--ink-secondary\)/s,
+    );
+    expect(commentThreadCss).toMatch(
+      /\.comment-thread-card__confirm-yes:focus-visible,\s*\.comment-thread-card__confirm-cancel:focus-visible\s*\{[^}]*box-shadow:\s*0 0 0 3px color-mix\(in srgb, var\(--accent\) 22%, transparent\)/s,
+    );
+  });
+
+  it("keeps thread and sidebar edit forms aligned with app controls", () => {
+    const commentThreadCss = readStylesheet(
+      "src/ui/components/CommentThreadCard/CommentThreadCard.css",
+    );
+    const commentPanelCss = readStylesheet(
+      "src/ui/components/CommentPanel/CommentPanel.css",
+    );
+
+    expect(commentThreadCss).toMatch(
+      /\.comment-thread-card__edit-form \.comment-add-form__input\s*\{[^}]*width:\s*100%[^}]*margin:\s*0[^}]*min-height:\s*7rem/s,
+    );
+    expect(commentThreadCss).toMatch(
+      /\.comment-thread-card__edit-actions\s*\{[^}]*display:\s*flex[^}]*justify-content:\s*flex-end[^}]*gap:\s*8px/s,
+    );
+    expect(commentThreadCss).toMatch(
+      /\.comment-thread-card__edit-save,\s*\.comment-thread-card__edit-cancel\s*\{[^}]*height:\s*30px[^}]*border-radius:\s*8px[^}]*font:\s*700 12\.5px\/1 var\(--font-ui\)/s,
+    );
+    expect(commentThreadCss).toMatch(
+      /\.comment-thread-card__edit-save\s*\{[^}]*border:\s*1px solid var\(--accent\)[^}]*background:\s*var\(--accent\)[^}]*color:\s*var\(--on-accent\)/s,
+    );
+    expect(commentThreadCss).toMatch(
+      /\.comment-thread-card__edit-cancel\s*\{[^}]*border:\s*1px solid var\(--line\)[^}]*background:\s*var\(--surface\)[^}]*color:\s*var\(--ink-secondary\)/s,
+    );
+    expect(commentPanelCss).toMatch(
+      /\.comment-panel__inline-edit \.comment-add-form__input\s*\{[^}]*width:\s*100%[^}]*margin:\s*0[^}]*min-height:\s*5\.5rem/s,
+    );
+    expect(commentPanelCss).toMatch(
+      /\.comment-panel__inline-edit-actions\s*\{[^}]*display:\s*flex[^}]*justify-content:\s*flex-end[^}]*gap:\s*8px/s,
+    );
+    expect(commentPanelCss).toMatch(
+      /\.comment-panel__inline-edit-save,\s*\.comment-panel__inline-edit-cancel\s*\{[^}]*height:\s*30px[^}]*border-radius:\s*8px[^}]*font:\s*700 12\.5px\/1 var\(--font-ui\)/s,
+    );
+    expect(commentPanelCss).toMatch(
+      /\.comment-panel__inline-edit-save\s*\{[^}]*border:\s*1px solid var\(--accent\)[^}]*background:\s*var\(--accent\)[^}]*color:\s*var\(--on-accent\)/s,
+    );
+    expect(commentPanelCss).toMatch(
+      /\.comment-panel__inline-edit-cancel\s*\{[^}]*border:\s*1px solid var\(--line\)[^}]*background:\s*var\(--surface\)[^}]*color:\s*var\(--ink-secondary\)/s,
+    );
+  });
+
   it("rebinds inherited compatibility aliases to the document context", () => {
     const layoutCss = readStylesheet("src/ui/styles/app-layout.css");
     const appMainBlock = layoutCss.match(/\.app-main\s*\{([^}]*)\}/s)?.[1];

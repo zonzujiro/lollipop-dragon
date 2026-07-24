@@ -139,10 +139,21 @@ MarkReview extends the plain comment protocol for threaded review questions.
   available so the discussion can continue. Resolving the root removes the
   completed question and all of its linked replies.
 - Thread cards visually distinguish user-authored answers from external or agent-authored answers so ownership is clear at a glance.
-- The thread composer starts as a compact single-row field, grows up to four
-  lines as the user types, and keeps its submit arrow inside the field. Enter
-  submits, while Shift+Enter inserts a line break. A compact row of action
-  buttons sits above the field; no separate Reply/Action mode switch is shown.
+- The thread composer starts at three lines, grows to approximately eight lines
+  as the user types, then scrolls longer drafts. It keeps its submit arrow beside
+  the field, aligned to the bottom. Enter submits, while Shift+Enter inserts a
+  line break. A compact row of action buttons sits above the field; no separate
+  Reply/Action mode switch is shown. On larger screens, the Comments panel grows
+  responsively from 332px to 380px; the existing 280px narrow-screen fallback
+  remains.
+- Resolve and delete confirmations use the same compact 30px controls as the
+  rest of the review UI: the destructive action uses the remove color, while
+  Cancel is a neutral outlined action. Both expose matching hover and visible
+  keyboard-focus states.
+- Thread and sidebar comment editors keep their type chips, textarea, and
+  actions aligned to the card edges without inheriting floating-composer
+  margins. Save uses the accent treatment, while Cancel uses the same neutral
+  outlined treatment as confirmations.
 - Threaded action replies are work instructions, not conversational answers. The review-agent prompt tells agents to apply the requested edit directly, remove the resolved thread after the edit, and avoid adding a confirmation `answer:` reply.
 - While an editable message in an unanswered thread is being edited or
   delete-confirmed, the composer is hidden so the user sees only one active input
@@ -278,7 +289,7 @@ rails shrinks the surface fluidly without horizontal overflow.
 
 ### 8.3 Block and range commenting UI
 
-Every rendered block (paragraph, heading, table, code block, diagram, list item) is commentable. On hover, a 26px dashed rounded-square `+` appears in the left margin; it uses the quiet paper surface until hover or keyboard focus applies the accent color. Selecting text inside a block preserves the browser selection for copying and exposes a floating **Comment** action. The range composer opens only after that explicit action, using the selected quote, range-safe CriticMarkup serialization, the four user comment types (question, clarify, rewrite, remove), and a clear notice that the comment is written into the file. Existing comments use 26px raised rounded-square markers with an 8px taxonomy-colored center; selecting one applies a taxonomy-colored border and soft focus ring. Marker stacks from adjacent blocks are collision-resolved in document order with a 4px gap, including mixed host and peer markers, and the hovered block's add button moves to the next free marker slot. Anchored ranges also render overlap-aware highlights and underline stripes. Clicking a shared highlight cycles through its comments. Clicking a marker opens the comment rail when needed, selects the matching rail card and highlight, and does not create a duplicate floating thread popup. Only the add-comment composer floats and remains draggable. The host right rail shows open comments in document order, exposes functional question, clarify, rewrite, and remove filters whenever those types are present, and exposes view-only resolved history for the current tab. Its shortcut footer renders `J`, `K`, `C`, and `⌘K` as individual bordered keycaps. Orphaned range comments keep their quote and display the anchor-released note. Bulk resolution requires confirmation.
+Every rendered block (paragraph, heading, table, code block, diagram, list item) is commentable. On hover, a 26px dashed rounded-square `+` appears in the left margin; it uses the quiet paper surface until hover or keyboard focus applies the accent color. Selecting text inside a block preserves the browser selection for copying and exposes a floating **Comment** action. The range composer opens only after that explicit action, using the selected quote, range-safe CriticMarkup serialization, the four user comment types (question, clarify, rewrite, remove), and a clear notice that the comment is written into the file. Existing comments use 26px raised rounded-square markers with an 8px taxonomy-colored center; selecting one applies a taxonomy-colored border and soft focus ring. Marker stacks from adjacent blocks are collision-resolved in document order with a 4px gap, including mixed host and peer markers, and the hovered block's add button moves to the next free marker slot. Anchored ranges also render overlap-aware highlights and underline stripes. Clicking a shared highlight cycles through its comments. Clicking a marker opens the comment rail when needed, selects the matching rail card and highlight, and does not create a duplicate floating thread popup. Only the add-comment composer floats and remains draggable. The host right rail shows open comments in document order, exposes functional question, clarify, rewrite, and remove filters whenever those types are present, and exposes view-only resolved history for the current tab. Resolved history is an independent, unfiltered list: opening it does not replace the open-comment type chips or their counts, and choosing an open-comment type exits resolved history. Its shortcut footer renders `J`, `K`, `C`, and `⌘K` as individual bordered keycaps. Orphaned range comments keep their quote and display the anchor-released note. Bulk resolution requires confirmation.
 
 The click emitted by the browser after a drag selection must not dismiss the floating Comment action or collapse the browser selection. Clicking that action opens the range composer, and its activation click must not reach the outside-click dismissal path even when the browser collapses the native selection during activation. Starting a new selection, scrolling, or explicitly dismissing clears the pending action. These interactions are verified separately from block-level comment creation. Inline code must resolve its background and foreground from the document context rather than inheriting shell compatibility aliases.
 

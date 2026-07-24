@@ -77,17 +77,17 @@ function InlineEditForm({
         rows={2}
         autoFocus
       />
-      <div className="comment-add-form__actions">
+      <div className="comment-panel__inline-edit-actions">
         <button
           type="submit"
-          className="comment-add-form__save"
+          className="comment-panel__inline-edit-save"
           disabled={!editText.trim()}
         >
           Save
         </button>
         <button
           type="button"
-          className="comment-add-form__cancel"
+          className="comment-panel__inline-edit-cancel"
           onClick={onCancel}
         >
           Cancel
