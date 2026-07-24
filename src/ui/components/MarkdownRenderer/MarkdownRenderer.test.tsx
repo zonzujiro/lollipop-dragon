@@ -16,6 +16,21 @@ function setContent(raw: string) {
   setTestState({ rawContent: raw });
 }
 
+function findTextNode(root: Node, text: string): Text {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let currentNode = walker.nextNode();
+  while (currentNode) {
+    if (currentNode.textContent?.includes(text)) {
+      if (currentNode.nodeType !== Node.TEXT_NODE) {
+        throw new Error("Expected a text node");
+      }
+      return currentNode;
+    }
+    currentNode = walker.nextNode();
+  }
+  throw new Error(`Could not find text node containing "${text}"`);
+}
+
 beforeEach(() => {
   resetTestStore();
   setTestState({
@@ -239,6 +254,105 @@ describe("MarkdownRenderer — commenting", () => {
 
     fireEvent.click(document.body);
     expect(screen.queryByLabelText("Comment text")).not.toBeInTheDocument();
+  });
+
+  it("comments on a list-item selection longer than 300 characters", async () => {
+    const user = userEvent.setup();
+    const addComment = vi.fn();
+    useAppStore.setState({ addComment });
+    const selectedText =
+      "The example was wrong; the candidates are different. Anchor-first search of odeditor-packages found no component-specific Harmony coupling for Accordion or Tabs (they're handled generically). The evidenced, Harmony-coupled candidates are auto-panels/panel-service, Button, Menu, Text Effects, and Rich Text.";
+    const selectedMarkdown =
+      "**The example was wrong; the candidates are different.** Anchor-first search of `odeditor-packages` found **no** component-specific Harmony coupling for **Accordion or Tabs** (they're handled generically). The evidenced, Harmony-coupled candidates are **auto-panels/panel-service, Button, Menu, Text Effects, and Rich Text**.";
+    expect(selectedText).toHaveLength(307);
+    setContent(`- Earlier evidence.\n- ${selectedMarkdown}`);
+    render(<MarkdownRenderer />);
+    const selectedItem = screen.getAllByRole("listitem")[1];
+    const range = document.createRange();
+    range.selectNodeContents(selectedItem);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+
+    fireEvent.mouseUp(selectedItem);
+    const commentAction = await screen.findByRole("button", {
+      name: "Comment",
+    });
+    fireEvent.mouseDown(commentAction);
+    fireEvent.click(commentAction);
+
+    expect(
+      document.querySelector(".comment-add-form__quote"),
+    ).toHaveTextContent(selectedText);
+    await user.type(screen.getByLabelText("Comment text"), "Review this item.");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(addComment).toHaveBeenCalledWith(
+      0,
+      "question",
+      "Review this item.",
+      {
+        quote: selectedText,
+        occurrence: 1,
+        start: "Earlier evidence.".length,
+        end: "Earlier evidence.".length + selectedText.length,
+      },
+    );
+  });
+
+  it("keeps a partial second-list-item selection range-scoped", async () => {
+    const user = userEvent.setup();
+    const addComment = vi.fn();
+    useAppStore.setState({ addComment });
+    setContent(
+      "- Earlier evidence.\n- **The example was wrong.** Anchor-first search of `odeditor-packages` found no component-specific coupling.",
+    );
+    render(<MarkdownRenderer />);
+    const selectedItem = screen.getAllByRole("listitem")[1];
+    const startNode = findTextNode(selectedItem, "Anchor-first search of ");
+    const code = screen.getByText("odeditor-packages");
+    const codeNode = findTextNode(code, "odeditor-packages");
+    const selectedText = "Anchor-first search of odeditor-packa";
+    const range = document.createRange();
+    range.setStart(
+      startNode,
+      startNode.textContent?.indexOf("Anchor-first") ?? 0,
+    );
+    range.setEnd(codeNode, "odeditor-packa".length);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+
+    fireEvent.mouseUp(selectedItem);
+    const commentAction = await screen.findByRole("button", {
+      name: "Comment",
+    });
+    fireEvent.mouseDown(commentAction);
+    fireEvent.click(commentAction);
+
+    expect(
+      document.querySelector(".comment-add-form__quote"),
+    ).toHaveTextContent(selectedText);
+    await user.type(
+      screen.getByLabelText("Comment text"),
+      "Check the evidence.",
+    );
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(addComment).toHaveBeenCalledWith(
+      0,
+      "question",
+      "Check the evidence.",
+      {
+        quote: selectedText,
+        occurrence: 1,
+        start: "Earlier evidence.".length + "The example was wrong. ".length,
+        end:
+          "Earlier evidence.".length +
+          "The example was wrong. ".length +
+          selectedText.length,
+      },
+    );
   });
 });
 

@@ -29,11 +29,79 @@ interface HoveredBlock {
   top: number;
 }
 
-function offsetWithinBlock(root: HTMLElement, node: Node, offset: number) {
-  const range = document.createRange();
-  range.selectNodeContents(root);
-  range.setEnd(node, offset);
-  return range.toString().length;
+const STRUCTURAL_TEXT_CONTAINERS = new Set([
+  "BLOCKQUOTE",
+  "LI",
+  "OL",
+  "TABLE",
+  "TBODY",
+  "TFOOT",
+  "THEAD",
+  "TR",
+  "UL",
+]);
+
+function isIgnoredStructuralWhitespace(node: Node): boolean {
+  return (
+    node.nodeType === Node.TEXT_NODE &&
+    node.textContent?.trim() === "" &&
+    node.parentElement !== null &&
+    STRUCTURAL_TEXT_CONTAINERS.has(node.parentElement.tagName)
+  );
+}
+
+function getAnchorText(node: Node): string {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return isIgnoredStructuralWhitespace(node) ? "" : (node.textContent ?? "");
+  }
+  let text = "";
+  for (const childNode of node.childNodes) {
+    text += getAnchorText(childNode);
+  }
+  return text;
+}
+
+function getOffsetWithinNode(
+  currentNode: Node,
+  targetNode: Node,
+  targetOffset: number,
+): number | null {
+  if (currentNode === targetNode) {
+    if (currentNode.nodeType === Node.TEXT_NODE) {
+      return isIgnoredStructuralWhitespace(currentNode) ? 0 : targetOffset;
+    }
+    let offset = 0;
+    const childLimit = Math.min(targetOffset, currentNode.childNodes.length);
+    for (let childIndex = 0; childIndex < childLimit; childIndex += 1) {
+      const childNode = currentNode.childNodes.item(childIndex);
+      if (childNode) {
+        offset += getAnchorText(childNode).length;
+      }
+    }
+    return offset;
+  }
+
+  let offset = 0;
+  for (const childNode of currentNode.childNodes) {
+    if (childNode === targetNode || childNode.contains(targetNode)) {
+      const nestedOffset = getOffsetWithinNode(
+        childNode,
+        targetNode,
+        targetOffset,
+      );
+      return nestedOffset === null ? null : offset + nestedOffset;
+    }
+    offset += getAnchorText(childNode).length;
+  }
+  return null;
+}
+
+function offsetWithinBlock(
+  root: HTMLElement,
+  node: Node,
+  offset: number,
+): number | null {
+  return getOffsetWithinNode(root, node, offset);
 }
 
 function captureRangeCommentDraft(
@@ -56,15 +124,23 @@ function captureRangeCommentDraft(
   if (!anchorRoot.contains(range.startContainer)) {
     return null;
   }
-  let start = offsetWithinBlock(
+  const startOffset = offsetWithinBlock(
     anchorRoot,
     range.startContainer,
     range.startOffset,
   );
-  let end = anchorRoot.contains(range.endContainer)
+  if (startOffset === null) {
+    return null;
+  }
+  const plainText = getAnchorText(anchorRoot);
+  const endOffset = anchorRoot.contains(range.endContainer)
     ? offsetWithinBlock(anchorRoot, range.endContainer, range.endOffset)
-    : (anchorRoot.textContent?.length ?? 0);
-  const plainText = anchorRoot.textContent ?? "";
+    : plainText.length;
+  if (endOffset === null) {
+    return null;
+  }
+  let start = startOffset;
+  let end = endOffset;
   while (start < end && /\s/.test(plainText[start])) {
     start += 1;
   }
@@ -72,7 +148,7 @@ function captureRangeCommentDraft(
     end -= 1;
   }
   const quote = plainText.slice(start, end);
-  if (quote.length < 3 || quote.length > 300) {
+  if (quote.length < 3) {
     return null;
   }
   const occurrences = findQuoteOccurrences(plainText, quote);

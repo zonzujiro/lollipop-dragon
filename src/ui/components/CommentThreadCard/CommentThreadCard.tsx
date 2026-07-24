@@ -257,7 +257,7 @@ export function CommentThreadCard({
                   ? "Tell agent what to change..."
                   : "Reply — Enter to send"
               }
-              rows={1}
+              rows={3}
               value={replyText}
               onChange={(event) => setReplyText(event.target.value)}
               onKeyDown={handleReplyKeyDown}

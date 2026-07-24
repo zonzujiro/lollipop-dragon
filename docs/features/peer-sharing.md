@@ -198,9 +198,10 @@ Acceptance criteria:
 
 ### 7.3 Async Commenting
 
-Peers can comment on any block or a 3–300 character selection, just like the
-host. The app encrypts the block reference and optional durable range anchor,
-then POSTs the comment to the Worker's comment endpoint. No auth or account is
+Peers can comment on any block or a selection of at least 3 characters within
+one rendered block, just like the host. There is no maximum selection length.
+The app encrypts the block reference and optional durable range anchor, then
+POSTs the comment to the Worker's comment endpoint. No auth or account is
 needed.
 
 Next time the host opens the app, it fetches pending comments from the Worker, decrypts them, and offers to merge them into the local files as CriticMarkup. The host can accept or dismiss each comment.

@@ -565,6 +565,50 @@ describe("CommentPanel — agent prompt", () => {
 });
 
 describe("CommentPanel — resolved history", () => {
+  it("keeps open-comment type filters while browsing resolved history", async () => {
+    const user = userEvent.setup();
+    setTestState({
+      comments: [
+        makeComment("open-question-1", "question", "first open question"),
+        makeComment("open-question-2", "question", "second open question"),
+        makeComment("open-clarify", "clarify", "open clarification"),
+      ],
+      resolvedComments: [
+        makeComment("resolved-rewrite-1", "rewrite", "first resolved rewrite"),
+        makeComment("resolved-rewrite-2", "rewrite", "second resolved rewrite"),
+      ],
+    });
+
+    const { container } = render(<CommentPanel />);
+
+    await user.click(screen.getByRole("button", { name: /^Resolved 2/ }));
+
+    expect(screen.getByRole("button", { name: /^All 3/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^question 2/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^clarify 1/ }),
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector(
+        '.comment-panel__filter[data-comment-type="rewrite"]',
+      ),
+    ).toBeNull();
+    expect(screen.getByText("first resolved rewrite")).toBeInTheDocument();
+    expect(screen.getByText("second resolved rewrite")).toBeInTheDocument();
+    expect(screen.queryByText("first open question")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /^question 2/ }));
+
+    expect(screen.getByText("first open question")).toBeInTheDocument();
+    expect(screen.getByText("second open question")).toBeInTheDocument();
+    expect(screen.queryByText("open clarification")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("first resolved rewrite"),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows persisted resolved comments as view-only history", () => {
     setTestState({
       comments,

@@ -10,7 +10,7 @@ This is a redesign of the presentation and interaction layer plus one behavioral
 
 1. **Character-range comment anchoring** — a comment targets `{start, end}` character offsets inside a block's plain text. Users create one by selecting any span of text (a word, half a sentence). Block-level comments (no range) remain possible via the block's `+` affordance or the `C` key.
 2. **Overlapping comments are first-class** — two or more comments may cover intersecting ranges. Rendering, selection, resolution, and file serialization must all handle this. See `03-commenting-spec.md`.
-3. **Orphan grace** — when the text under an anchor changes (typically after an agent run), the comment keeps its quote, drops its highlight, and shows an "anchor released" note. It must never mis-highlight other text or silently disappear.
+3. **Orphan grace** — when the text under an anchor changes (typically after an agent run), the comment keeps its quote, drops its highlight, and clearly explains that the referenced text cannot be found while the comment remains saved. It must never mis-highlight other text or silently disappear.
 4. **Header-integrated workspace tabs** (replaces the separate TabBar strip below the header).
 5. **Command palette (⌘K)** and a **J/K keyboard triage model** for comments.
 

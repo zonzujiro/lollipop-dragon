@@ -160,6 +160,47 @@ describe("insertComment range anchors", () => {
     expect(comment.anchor?.quote).toBe("this exact text");
   });
 
+  it("uses a standalone anchor when the range crosses markdown formatting boundaries", () => {
+    const rawContent =
+      "**`external-products/editor-elements/AGENTS.md` (lean orientation + links, Harmony-owned).** Contains only:";
+    const quote =
+      "external-products/editor-elements/AGENTS.md (lean orientation + links, Harmony-owned). Contains only:";
+    const parsed = parseCriticMarkup(rawContent);
+    const result = insertComment({
+      rawContent,
+      existingComments: parsed.comments,
+      cleanMarkdown: parsed.cleanMarkdown,
+      blockIndex: 0,
+      type: "clarify",
+      text: "Explain how user stories work here.",
+      anchor: {
+        quote,
+        occurrence: 1,
+        start: 0,
+        end: quote.length,
+      },
+    });
+
+    expect(result).toBe(
+      `${rawContent}{>>clarify: Explain how user stories work here. @@ "${quote}"<<}`,
+    );
+    expect(result).not.toContain("{==");
+
+    const reparsed = parseCriticMarkup(result);
+    const [comment] = assignBlockIndices(
+      reparsed.comments,
+      reparsed.cleanMarkdown,
+    );
+    expect(reparsed.cleanMarkdown).toBe(rawContent);
+    expect(comment.anchor).toMatchObject({
+      quote,
+      occurrence: 1,
+      start: 0,
+      end: quote.length,
+      orphaned: false,
+    });
+  });
+
   it("uses anchored standalone form when ranges overlap", () => {
     const rawContent = "One {==shared range==}{>>fix: first<<} here.";
     const parsed = parseCriticMarkup(rawContent);

@@ -60,6 +60,29 @@ describe("CommentCard — content by criticType", () => {
     expect(screen.getByText("fix this")).toBeInTheDocument();
   });
 
+  it("explains an unavailable highlight without exposing anchor internals", () => {
+    render(
+      <CommentCard
+        comment={makeComment({
+          anchor: {
+            quote: "the original text",
+            occurrence: 1,
+            start: -1,
+            end: -1,
+            orphaned: true,
+          },
+        })}
+        top={0}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("note")).toHaveTextContent(
+      "We can’t find the text this comment refers to. The comment is still saved, but it’s no longer highlighted in the document.",
+    );
+    expect(screen.getByRole("note")).not.toHaveTextContent("anchor");
+  });
+
   it("shows added text with + prefix for criticType=addition", () => {
     render(
       <CommentCard
