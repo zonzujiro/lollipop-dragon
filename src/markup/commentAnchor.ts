@@ -3,6 +3,7 @@ import { unified } from "unified";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import type { CommentAnchor } from "../types/criticmarkup";
+import { findMarkdownAlert } from "./markdownAlerts";
 
 interface PlainCharacter {
   rawStart: number;
@@ -30,12 +31,14 @@ function findCharacterOffsets(value: string, raw: string, rawStart: number) {
   return characters;
 }
 
-function collectPlainText(
-  node: Nodes,
-  source: string,
-  values: string[],
-  characters: PlainCharacter[],
-) {
+interface PlainTextCollector {
+  characters: PlainCharacter[];
+  ignoredPrefix?: { node: Nodes; length: number };
+  source: string;
+  values: string[];
+}
+
+function collectPlainText(node: Nodes, collector: PlainTextCollector) {
   if (
     node.type === "text" ||
     node.type === "inlineCode" ||
@@ -46,11 +49,15 @@ function collectPlainText(
     if (rawStart === undefined || rawEnd === undefined) {
       return;
     }
-    values.push(node.value);
-    characters.push(
+    const value =
+      collector.ignoredPrefix?.node === node
+        ? node.value.slice(collector.ignoredPrefix.length)
+        : node.value;
+    collector.values.push(value);
+    collector.characters.push(
       ...findCharacterOffsets(
-        node.value,
-        source.slice(rawStart, rawEnd),
+        value,
+        collector.source.slice(rawStart, rawEnd),
         rawStart,
       ),
     );
@@ -60,14 +67,14 @@ function collectPlainText(
     const rawStart = node.position?.start.offset;
     const rawEnd = node.position?.end.offset;
     if (rawStart !== undefined && rawEnd !== undefined) {
-      values.push("\n");
-      characters.push({ rawStart, rawEnd });
+      collector.values.push("\n");
+      collector.characters.push({ rawStart, rawEnd });
     }
     return;
   }
   if ("children" in node) {
     for (const child of node.children) {
-      collectPlainText(child, source, values, characters);
+      collectPlainText(child, collector);
     }
   }
 }
@@ -111,7 +118,15 @@ export function getBlockPlainTextMap(
   const characters: PlainCharacter[] = [];
   const block = nodes[blockIndex];
   if (block) {
-    collectPlainText(block, markdown, values, characters);
+    const alert = findMarkdownAlert(block);
+    collectPlainText(block, {
+      values,
+      characters,
+      source: markdown,
+      ignoredPrefix: alert
+        ? { node: alert.firstText, length: alert.markerLength }
+        : undefined,
+    });
     return {
       plainText: values.join(""),
       characters,
@@ -121,7 +136,11 @@ export function getBlockPlainTextMap(
   // one virtual block past the rendered ones = the collected footnotes section
   if (blockIndex === nodes.length && footnoteDefinitions.length > 0) {
     for (const definition of footnoteDefinitions) {
-      collectPlainText(definition, markdown, values, characters);
+      collectPlainText(definition, {
+        characters,
+        source: markdown,
+        values,
+      });
     }
     return {
       plainText: values.join(""),
@@ -137,7 +156,15 @@ export function getPlainText(markdown: string): string {
   const values: string[] = [];
   const characters: PlainCharacter[] = [];
   for (const block of tree.children) {
-    collectPlainText(block, markdown, values, characters);
+    const alert = findMarkdownAlert(block);
+    collectPlainText(block, {
+      values,
+      characters,
+      source: markdown,
+      ignoredPrefix: alert
+        ? { node: alert.firstText, length: alert.markerLength }
+        : undefined,
+    });
   }
   return values.join("");
 }
