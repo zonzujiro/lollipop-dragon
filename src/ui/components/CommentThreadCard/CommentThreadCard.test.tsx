@@ -104,7 +104,18 @@ describe("CommentThreadCard", () => {
     expect(
       screen.queryByRole("button", { name: "Close comment" }),
     ).not.toBeInTheDocument();
-    expect(screen.getByText("✓ answered · 1")).toBeInTheDocument();
+    const answeredStatus = screen.getByText("✓ answered · 1");
+    const resolveAction = screen.getByRole("button", {
+      name: "Resolve question",
+    });
+    const trailingSlot = answeredStatus.closest(
+      ".comment-thread-card__trailing",
+    );
+
+    expect(trailingSlot).toBeInTheDocument();
+    expect(resolveAction.closest(".comment-thread-card__trailing")).toBe(
+      trailingSlot,
+    );
     expect(
       container.querySelector(".comment-thread-card__thread-list"),
     ).toBeInTheDocument();

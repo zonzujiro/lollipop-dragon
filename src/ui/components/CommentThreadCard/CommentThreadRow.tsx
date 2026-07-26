@@ -373,13 +373,17 @@ export function CommentThreadRow({
         <div className="comment-thread-card__meta">
           <span className="comment-thread-card__badge">{comment.type}</span>
           <span className="comment-thread-card__author">{authorLabel}</span>
-          {answeredCount > 0 && (
-            <span className="comment-thread-card__status">
-              ✓ answered · {answeredCount}
-            </span>
-          )}
         </div>
-        {actions}
+        {(answeredCount > 0 || actionsEnabled) && (
+          <div className="comment-thread-card__trailing">
+            {answeredCount > 0 && (
+              <span className="comment-thread-card__status">
+                ✓ answered · {answeredCount}
+              </span>
+            )}
+            {actions}
+          </div>
+        )}
       </div>
       <CommentRowContent
         comment={comment}

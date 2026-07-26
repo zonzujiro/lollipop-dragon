@@ -128,6 +128,10 @@ MarkReview extends the plain comment protocol for threaded review questions.
   of disappearing.
 - The reply can also include `author` so the UI can show `Codex`, `Cursor`, or a generic `Agent` label.
 - The Comments panel always renders linked replies beneath the root question and marks the root as `answered` once an `answer:` reply exists. Selecting the root keeps the complete conversation in place and adds the reply composer and comment actions, including in folder mode where the thread remains under its file-path header.
+- The root question's `answered` badge stays aligned to the card's trailing edge.
+  When root actions appear on hover or keyboard focus, they replace that badge
+  in the same trailing slot instead of reserving separate space and pushing the
+  status toward the card center.
 - Thread rail visuals follow `docs/redesign/reference-prototype/index.html`: the
   root and replies share one standard comment card, replies use compact avatar
   rows beneath a dashed divider and answer-colored left rule, and selected
