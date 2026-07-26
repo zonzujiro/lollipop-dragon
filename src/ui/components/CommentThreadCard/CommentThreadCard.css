@@ -123,6 +123,18 @@
   flex: 1;
 }
 
+.comment-thread-card__trailing {
+  display: grid;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.comment-thread-card__trailing > .comment-thread-card__status,
+.comment-thread-card__trailing > .comment-thread-card__actions {
+  grid-area: 1 / 1;
+  justify-self: end;
+}
+
 .comment-thread-card__badge {
   flex-shrink: 0;
   padding: 2.5px 7px;
@@ -144,7 +156,6 @@
 }
 
 .comment-thread-card__status {
-  margin-left: auto;
   padding: 2.5px 7px;
   border-radius: 5px;
   background: var(--c-answer-soft);
