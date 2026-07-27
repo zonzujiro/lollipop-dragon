@@ -1,5 +1,6 @@
 import { COMMENT_TYPE_COLOR } from "../types/criticmarkup";
 import type { Comment } from "../types/criticmarkup";
+import { getAnchorText, isIgnoredStructuralWhitespace } from "./domAnchorText";
 
 export interface CommentHighlightSegment {
   start: number;
@@ -52,7 +53,11 @@ export function buildCommentHighlightSegments(
 
 function shouldSkipTextNode(textNode: Text): boolean {
   const parent = textNode.parentElement;
-  return !parent || !!parent.closest("svg, button, .comment-highlight");
+  return (
+    !parent ||
+    isIgnoredStructuralWhitespace(textNode) ||
+    !!parent.closest("svg, button, .comment-highlight")
+  );
 }
 
 function buildHighlightSpan(
@@ -159,7 +164,7 @@ export function applyCommentHighlights(input: {
     const anchorRoot =
       block.querySelector<HTMLElement>("[data-anchor-root]") ?? block;
     const segments = buildCommentHighlightSegments(
-      anchorRoot.textContent?.length ?? 0,
+      getAnchorText(anchorRoot).length,
       blockComments,
     );
     if (segments.length === 0) {

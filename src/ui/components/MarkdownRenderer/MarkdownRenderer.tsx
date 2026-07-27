@@ -5,7 +5,11 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CommentMargin } from "../CommentMargin";
 import { DocumentOutline } from "../DocumentOutline";
-import { isCommentType, useShikiRehypePlugin } from "../../../markup";
+import {
+  isCommentType,
+  remarkMarkdownAlerts,
+  useShikiRehypePlugin,
+} from "../../../markup";
 import { useActiveTabField } from "../../../store/selectors";
 import {
   useMarkdownRendererStore,
@@ -301,7 +305,7 @@ function MarkdownRendererContent({
           <div className="markdown-content" key={contentKey}>
             <SpecialBlockProvider value={specialBlocks.contextValue}>
               <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
+                remarkPlugins={[remarkGfm, remarkMarkdownAlerts]}
                 rehypePlugins={rehypePlugins}
                 components={markdownComponents}
               >

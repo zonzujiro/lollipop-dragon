@@ -282,6 +282,20 @@ File tree sidebar showing the project structure with nested folders. Filters to 
 
 Standard markdown (CommonMark + GFM). Tables with proper alignment and clean styling. Fenced code blocks with syntax highlighting. Mermaid diagrams (flowcharts, sequence, ER, Gantt, mindmaps). KaTeX/LaTeX math — inline and block. Task lists, footnotes, admonitions/callouts. Article-quality typography: 16–18px body, 1.6–1.8 line height, clear heading hierarchy, comfortable paragraph spacing.
 
+GitHub-style alerts use the five documented markers: `NOTE`, `TIP`,
+`IMPORTANT`, `WARNING`, and `CAUTION`. A marker is recognized only when it is
+uppercase, exact, and starts a top-level blockquote. Lowercase, unknown,
+malformed, or nested markers remain ordinary blockquotes. Alerts preserve rich
+Markdown body content and use the app's document tokens, typography, outline
+icons, and dark-mode palette rather than GitHub's presentation.
+
+Alerts remain ordinary top-level Markdown blocks for review purposes. Host and
+peer reviewers can attach block comments or select alert body text for a range
+comment. The marker and rendered alert label are excluded from comment quotes
+and offsets, so writing CriticMarkup never changes the alert marker. Alert
+rendering does not enable raw HTML or relax the untrusted rich-rendering
+boundary.
+
 Markdown files may start with YAML-style frontmatter metadata. The rendered
 review surface hides the raw frontmatter from the document body and displays it
 as a quiet metadata panel before the first rendered heading. Its compact title
