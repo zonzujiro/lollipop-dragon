@@ -79,7 +79,17 @@ export function createPeerReviewActions<
 > {
   return {
     setPeerName: (name) => {
-      set({ peerName: name });
+      set((state) => {
+        const submittedCommentIds = new Set(state.submittedPeerCommentIds);
+        return {
+          peerName: name,
+          myPeerComments: state.myPeerComments.map((comment) =>
+            submittedCommentIds.has(comment.id)
+              ? comment
+              : { ...comment, peerName: name },
+          ),
+        };
+      });
     },
 
     setPeerDraftCommentOpen: (open) => {

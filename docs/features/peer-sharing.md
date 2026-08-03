@@ -187,8 +187,10 @@ Acceptance criteria:
 
 - Shared Markdown and Mermaid source are treated as untrusted input.
 - Mermaid loads only when a Mermaid block is rendered and runs with strict
-  security and HTML labels disabled.
+  security and both global and flowchart HTML labels disabled, preserving SVG
+  text labels across supported Mermaid versions.
 - The rendered SVG is sanitized before insertion into the DOM.
+- Diagram node and edge labels remain visible as SVG text after sanitization.
 - Scripts, embedded HTML, event-handler attributes, external resource URLs,
   unsafe CSS imports, expressions, and JavaScript URLs are removed.
 - Fragment-only SVG references remain available for local markers and fills.
@@ -210,6 +212,14 @@ and header-rail action show the incoming count. The host can navigate to,
 merge, or dismiss each comment without opening share management.
 
 Peers can always comment, regardless of whether the host is online.
+
+The peer header identity is interactive. Selecting it opens a compact reviewer
+name editor prefilled with the current browser-local name. Saving a trimmed,
+non-empty name updates the header immediately and applies across shared links in
+that browser. Existing unsent comments are renamed so they submit under the new
+identity; comments already acknowledged by the relay keep the author name they
+were submitted with. Cancel, Escape, or an outside click dismisses the editor
+without changing the name.
 
 ### 7.4 Push Updates to Peers
 
@@ -284,9 +294,12 @@ because the active tab's `shares`, `shareKeys`, or `activeDocId` changed.
 1. Peer opens link in browser. App prompts for their display name.
 2. App fetches encrypted blob from Worker, decrypts, renders.
 3. Peer reads the document in the clean rendered view.
-4. Peer hovers over a block, clicks comment icon, selects type, writes comment.
-5. Comment is encrypted and POSTed to the Worker.
-6. Peer sees confirmation: "Comment saved."
+4. If needed, the peer selects their header identity and changes the reviewer
+   name. The name persists across shared links in the same browser; unsent
+   comments adopt it and submitted comments retain their original author.
+5. Peer hovers over a block, clicks comment icon, selects type, writes comment.
+6. Comment is encrypted and POSTed to the Worker.
+7. Peer sees confirmation: "Comment saved."
 
 ### 8.3 Host Receives Feedback
 
@@ -399,7 +412,9 @@ If the storage backend needs to change in the future, only the implementation of
 - **Blob size limit.** KV values max out at 25MB. Sufficient for hundreds of markdown files. If exceeded, the app splits across multiple KV entries.
 - **Free tier limits.** 100K requests/day and 1K writes/day. More than enough for 2–5 peers. If exceeded, Cloudflare's paid tier is $5/month.
 - **No real-time sync.** Comments are async. Host must manually check for new comments. Acceptable for the review workflow. Real-time sync is planned for v3.
-- **No persistent identity.** Peers self-declare their name. No accounts. For 2–5 trusted peers this is acceptable.
+- **No authenticated identity.** Peers self-declare a browser-local display
+  name that persists in localStorage. There are no accounts. For 2–5 trusted
+  peers this is acceptable.
 
 ---
 

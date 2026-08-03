@@ -18,12 +18,12 @@ import { selectUnsubmittedPeerComments } from "../../../modules/peer-review";
 import { selectDocumentUpdateAvailable } from "../../../modules/relay";
 import { SunIcon, MoonIcon } from "../Icons";
 import { ConnectionStatus } from "../ConnectionStatus";
+import { ReviewerIdentity } from "../ReviewerIdentity";
 import { TabBar } from "../TabBar";
 import { syncActiveShares } from "../../../modules/sharing";
 import { canRunAgent } from "../../../runtime";
 import { downloadActiveFile } from "./downloadActiveFile";
 import { tabRequiresRestoreAccess } from "../../../types/tab";
-import { initials } from "../../../utils/peerDisplay";
 import type { Comment } from "../../../types/criticmarkup";
 import type { TabState } from "../../../types/tab";
 import {
@@ -283,21 +283,11 @@ export function Header({
           {peerMode && (
             <div className="app-header__group app-header__group--peer">
               {peerName && (
-                <div
-                  className="app-header__identity"
-                  title={`Reviewing as ${peerName}`}
-                >
-                  <span className="app-header__identity-avatar">
-                    {initials(peerName)}
-                  </span>
-                  <span>
-                    <strong>{peerName}</strong>
-                    <small>
-                      {Object.keys(sharedContent?.tree ?? {}).length} shared
-                      files
-                    </small>
-                  </span>
-                </div>
+                <ReviewerIdentity
+                  sharedFileCount={
+                    Object.keys(sharedContent?.tree ?? {}).length
+                  }
+                />
               )}
               {unsubmittedPeerCount > 0 && (
                 <button
