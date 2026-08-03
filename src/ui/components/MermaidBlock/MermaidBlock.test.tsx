@@ -47,6 +47,9 @@ describe("MermaidBlock", () => {
       expect(mermaid.initialize).toHaveBeenCalledWith(
         expect.objectContaining({
           htmlLabels: false,
+          flowchart: {
+            htmlLabels: false,
+          },
           suppressErrorRendering: true,
         }),
       );

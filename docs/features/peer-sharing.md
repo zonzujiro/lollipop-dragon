@@ -187,7 +187,8 @@ Acceptance criteria:
 
 - Shared Markdown and Mermaid source are treated as untrusted input.
 - Mermaid loads only when a Mermaid block is rendered and runs with strict
-  security and HTML labels disabled.
+  security and both global and flowchart HTML labels disabled, preserving SVG
+  text labels across supported Mermaid versions.
 - The rendered SVG is sanitized before insertion into the DOM.
 - Diagram node and edge labels remain visible as SVG text after sanitization.
 - Scripts, embedded HTML, event-handler attributes, external resource URLs,

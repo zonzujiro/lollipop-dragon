@@ -30,6 +30,9 @@ function loadMermaid(): Promise<MermaidApi> {
           securityLevel: "strict",
           suppressErrorRendering: true,
           htmlLabels: false,
+          flowchart: {
+            htmlLabels: false,
+          },
         });
         return module.default;
       })

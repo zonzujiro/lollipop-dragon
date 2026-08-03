@@ -45,6 +45,9 @@ describe("Mermaid SVG rendering", () => {
       securityLevel: "strict",
       suppressErrorRendering: true,
       htmlLabels: false,
+      flowchart: {
+        htmlLabels: false,
+      },
     });
 
     const { svg } = await mermaid.render(
