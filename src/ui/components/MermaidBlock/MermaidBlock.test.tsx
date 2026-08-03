@@ -35,7 +35,7 @@ describe("MermaidBlock", () => {
   // first render in this module. Suppressing mermaid's built-in error graphic
   // stops the default "Syntax error" bomb SVG from being orphaned in <body> on
   // a parse failure — the block shows its own source + error message instead.
-  it("initializes mermaid with its built-in error graphic suppressed", async () => {
+  it("initializes mermaid with safe SVG text labels", async () => {
     vi.mocked(mermaid.render).mockResolvedValue({
       svg: "<svg></svg>",
       bindFunctions: undefined,
@@ -45,7 +45,10 @@ describe("MermaidBlock", () => {
 
     await waitFor(() => {
       expect(mermaid.initialize).toHaveBeenCalledWith(
-        expect.objectContaining({ suppressErrorRendering: true }),
+        expect.objectContaining({
+          htmlLabels: false,
+          suppressErrorRendering: true,
+        }),
       );
     });
   });

@@ -60,6 +60,10 @@ Owns peer-mode shared content state and peer-authored draft/submission logic.
 
 - peer mode must not read host tab state as its source of truth
 - submitted IDs are ack-driven and must stay separate from local drafts
+- changing `peerName` renames unsent peer comments but preserves the author on
+  comments whose IDs have already been acknowledged as submitted
+- `peerName` is global peer state persisted through the root Zustand store, so
+  it applies across shared links in the same browser
 
 ## Common Failure Modes
 

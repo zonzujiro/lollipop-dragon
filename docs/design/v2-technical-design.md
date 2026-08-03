@@ -400,7 +400,7 @@ In **peer mode** (URL has `#share=...&key=...`):
 ```typescript
 // New state
 shares: ShareRecord[]              // persisted to localStorage
-peerName: string | null            // peer's self-declared name (sessionStorage)
+peerName: string | null            // peer's self-declared name (persisted to localStorage)
 isPeerMode: boolean                // true when viewing a shared link
 sharedContent: SharePayload | null // decrypted content in peer mode
 
@@ -464,7 +464,8 @@ loadSharedContent: () => Promise<void>                       // peer mode init
 
 - On app init, check `location.hash` for `share=` and `key=` params
 - If present: enter peer mode — fetch and decrypt content from Worker, reconstruct folder tree
-- Show `PeerNamePrompt` to collect display name (stored in sessionStorage)
+- Show `PeerNamePrompt` to collect the initial display name (stored in
+  localStorage); the peer header identity can reopen a compact editor later
 - Render decrypted content using the full v1 reading UI (sidebar + markdown renderer)
 - All write actions disabled silently
 - If fetch fails (expired/revoked): show "This document is no longer available"
