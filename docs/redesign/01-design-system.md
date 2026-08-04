@@ -39,9 +39,10 @@ Rules: near-black carries primary actions; yellow is reserved for agent/highligh
 | clarify  | `#A34B69` | `#E08CAB` | ambiguous — make it precise                                         |
 | question | `#187582` | `#5AC1CB` | needs an answer, opens a thread                                     |
 | answer   | `#2D7659` | `#72CF9B` | the reply — often from the agent                                    |
+| note     | `#2D7659` | `#72CF9B` | context that does not request a change or answer                    |
 | remove   | `#B6322A` | `#FF7668` | doesn't belong — cut it (destructive red; user decision 15.07.2026) |
 
-Each has a `-soft` translucent variant (see tokens.css) used for text tints and badge backgrounds. Every type must hold ≥3:1 contrast against `--surface` in both themes — dark values are deliberately lifted/saturated. Color is never the only signal: type name always appears in the tag. New comments offer **question (default) · clarify · rewrite · remove**; legacy types stay readable. Contrast tests parse the actual `:root` and `.dark` declarations from `tokens.css`; they must never mirror a second literal palette in test code.
+Each has a `-soft` translucent variant (see tokens.css) used for text tints and badge backgrounds. Every type must hold ≥3:1 contrast against `--surface` in both themes — dark values are deliberately lifted/saturated. Color is never the only signal: type name always appears in the tag. New comments offer **note (default) · question · clarify · rewrite · remove**; legacy types stay readable. Contrast tests parse the actual `:root` and `.dark` declarations from `tokens.css`; they must never mirror a second literal palette in test code.
 
 ## Typography
 

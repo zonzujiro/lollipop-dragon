@@ -113,7 +113,7 @@ describe("CommentCard — edit button", () => {
     await user.clear(textarea);
     await user.type(textarea, "updated text");
     await user.click(screen.getByRole("button", { name: "Save" }));
-    expect(onEdit).toHaveBeenCalledWith("question", "updated text");
+    expect(onEdit).toHaveBeenCalledWith("note", "updated text");
   });
 
   it("hides form when Cancel is clicked", async () => {

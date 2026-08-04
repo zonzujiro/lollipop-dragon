@@ -417,6 +417,10 @@
   --comment-color: var(--c-question);
 }
 
+.comment-panel__filter[data-comment-type="note"] {
+  --comment-color: var(--c-answer);
+}
+
 .comment-panel__filter[data-comment-type="clarify"] {
   --comment-color: var(--c-clarify);
 }
