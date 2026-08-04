@@ -13,6 +13,25 @@ function ChevronIcon({ expanded }: { expanded: boolean }) {
   );
 }
 
+function FolderIcon() {
+  return (
+    <svg
+      className="tree-item__folder-icon"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v7A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5z" />
+    </svg>
+  );
+}
+
 interface TreeItemProps {
   node: SidebarTreeNode;
   depth: number;
@@ -28,7 +47,7 @@ function TreeItem({
   onSelect,
   commentCounts,
 }: TreeItemProps) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const depthClass = `tree-item--depth-${Math.min(depth, 2)}`;
 
   if (node.kind === "file") {
@@ -40,6 +59,7 @@ function TreeItem({
           onClick={() => onSelect(node.path)}
           title={node.path}
         >
+          <span className="tree-item__file-spacer" aria-hidden="true" />
           <span className="tree-item__name">{node.name}</span>
           {(commentCounts[node.path] ?? 0) > 0 && (
             <span className="tree-item__comment-count">
@@ -57,8 +77,10 @@ function TreeItem({
         <button
           className={`tree-item tree-item--dir ${depthClass}`}
           onClick={() => setExpanded((e) => !e)}
+          aria-expanded={expanded}
         >
           <ChevronIcon expanded={expanded} />
+          <FolderIcon />
           <span className="tree-item__name">{node.name}</span>
         </button>
       </div>

@@ -136,7 +136,7 @@ describe("CommentMargin — add button", () => {
     );
     await user.click(screen.getByRole("button", { name: "Add comment" }));
     expect(
-      screen.getByPlaceholderText("needs an answer, opens a thread…"),
+      screen.getByPlaceholderText("add context for the reviewer…"),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Cancel" }),
@@ -200,15 +200,18 @@ describe("CommentMargin — AddCommentForm", () => {
   it("Save button enables after typing text", async () => {
     const { user } = await openForm();
     await user.type(
-      screen.getByPlaceholderText("needs an answer, opens a thread…"),
+      screen.getByPlaceholderText("add context for the reviewer…"),
       "hello",
     );
     expect(screen.getByRole("button", { name: "Save" })).not.toBeDisabled();
   });
 
-  it("offers question, clarify, rewrite, remove and submits the selected type", async () => {
+  it("offers note first with the full comment taxonomy", async () => {
     const onAddComment = vi.fn();
     const { user } = await openForm(onAddComment);
+    const noteButton = screen.getByRole("button", { name: /^note/ });
+    expect(noteButton).toHaveAttribute("aria-pressed", "true");
+    expect(noteButton).toHaveTextContent("1");
     expect(
       screen.getByRole("button", { name: /^question/ }),
     ).toBeInTheDocument();
@@ -226,7 +229,7 @@ describe("CommentMargin — AddCommentForm", () => {
       screen.queryByRole("button", { name: "expand" }),
     ).not.toBeInTheDocument();
     await user.type(
-      screen.getByPlaceholderText("needs an answer, opens a thread…"),
+      screen.getByPlaceholderText("add context for the reviewer…"),
       "rewrite this please",
     );
     await user.click(screen.getByRole("button", { name: /^rewrite/ }));
@@ -241,34 +244,59 @@ describe("CommentMargin — AddCommentForm", () => {
     );
   });
 
-  it('defaults to "question" type', async () => {
+  it('defaults host comments to "note" type', async () => {
     const onAddComment = vi.fn();
     const { user } = await openForm(onAddComment);
     await user.type(
-      screen.getByPlaceholderText("needs an answer, opens a thread…"),
+      screen.getByPlaceholderText("add context for the reviewer…"),
       "clarify this",
     );
     await user.click(screen.getByRole("button", { name: "Save" }));
-    expect(onAddComment).toHaveBeenCalledWith(2, "question", "clarify this");
+    expect(onAddComment).toHaveBeenCalledWith(2, "note", "clarify this");
+  });
+
+  it('defaults peer comments to "note" type', async () => {
+    const user = userEvent.setup();
+    const onPostPeerComment = vi.fn();
+    render(
+      <CommentMargin
+        containerRef={fakeContainerRef}
+        hoveredBlock={{ index: 2, top: 0 }}
+        onAddComment={vi.fn()}
+        onPostPeerComment={onPostPeerComment}
+        peerMode
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Add comment" }));
+    await user.type(screen.getByLabelText("Comment text"), "Peer context");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(onPostPeerComment).toHaveBeenCalledWith(
+      2,
+      "note",
+      "Peer context",
+      undefined,
+    );
   });
 
   it("hides the form when Escape is pressed", async () => {
     const { user } = await openForm();
     await user.keyboard("{Escape}");
     expect(
-      screen.queryByPlaceholderText("needs an answer, opens a thread…"),
+      screen.queryByPlaceholderText("add context for the reviewer…"),
     ).not.toBeInTheDocument();
   });
 
   it("hides the form after successful submit", async () => {
     const { user } = await openForm();
     await user.type(
-      screen.getByPlaceholderText("needs an answer, opens a thread…"),
+      screen.getByPlaceholderText("add context for the reviewer…"),
       "done",
     );
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(
-      screen.queryByPlaceholderText("needs an answer, opens a thread…"),
+      screen.queryByPlaceholderText("add context for the reviewer…"),
     ).not.toBeInTheDocument();
   });
 

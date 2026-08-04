@@ -287,17 +287,12 @@ describe("MarkdownRenderer — commenting", () => {
     await user.type(screen.getByLabelText("Comment text"), "Review this item.");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
-    expect(addComment).toHaveBeenCalledWith(
-      0,
-      "question",
-      "Review this item.",
-      {
-        quote: selectedText,
-        occurrence: 1,
-        start: "Earlier evidence.".length,
-        end: "Earlier evidence.".length + selectedText.length,
-      },
-    );
+    expect(addComment).toHaveBeenCalledWith(0, "note", "Review this item.", {
+      quote: selectedText,
+      occurrence: 1,
+      start: "Earlier evidence.".length,
+      end: "Earlier evidence.".length + selectedText.length,
+    });
   });
 
   it("keeps a partial second-list-item selection range-scoped", async () => {
@@ -339,20 +334,15 @@ describe("MarkdownRenderer — commenting", () => {
     );
     await user.click(screen.getByRole("button", { name: "Save" }));
 
-    expect(addComment).toHaveBeenCalledWith(
-      0,
-      "question",
-      "Check the evidence.",
-      {
-        quote: selectedText,
-        occurrence: 1,
-        start: "Earlier evidence.".length + "The example was wrong. ".length,
-        end:
-          "Earlier evidence.".length +
-          "The example was wrong. ".length +
-          selectedText.length,
-      },
-    );
+    expect(addComment).toHaveBeenCalledWith(0, "note", "Check the evidence.", {
+      quote: selectedText,
+      occurrence: 1,
+      start: "Earlier evidence.".length + "The example was wrong. ".length,
+      end:
+        "Earlier evidence.".length +
+        "The example was wrong. ".length +
+        selectedText.length,
+    });
   });
 });
 

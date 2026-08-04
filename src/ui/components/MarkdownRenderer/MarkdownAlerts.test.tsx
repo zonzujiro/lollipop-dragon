@@ -192,7 +192,7 @@ describe("MarkdownRenderer — GitHub alerts", () => {
     await user.type(screen.getByLabelText("Comment text"), "Review this.");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
-    expect(addComment).toHaveBeenCalledWith(0, "question", "Review this.", {
+    expect(addComment).toHaveBeenCalledWith(0, "note", "Review this.", {
       quote: selectedText,
       occurrence: 1,
       start: 0,

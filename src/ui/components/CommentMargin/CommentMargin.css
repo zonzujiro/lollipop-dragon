@@ -163,7 +163,7 @@
 
 /* ── Add comment form ────────────────────────────────────────── */
 .comment-add-form {
-  --comment-type-color: var(--c-question);
+  --comment-type-color: var(--c-answer);
   position: absolute;
   left: calc(100% + 0.75rem);
   z-index: 60;
@@ -179,6 +179,10 @@
   flex-direction: column;
   gap: 0;
   font: 14px/1.4 var(--font-ui);
+}
+
+.comment-add-form[data-comment-type="note"] {
+  --comment-type-color: var(--c-answer);
 }
 
 .comment-add-form[data-comment-type="clarify"] {
@@ -245,7 +249,7 @@
   --comment-chip-color: var(--ink-secondary);
   --comment-chip-soft: var(--surface);
   height: 26px;
-  padding: 0 10px;
+  padding: 0 7px;
   border-radius: 13px;
   border: 1px solid var(--line);
   background: var(--surface);
@@ -266,6 +270,11 @@
 .comment-add-form__type[data-comment-type="question"] {
   --comment-chip-color: var(--c-question);
   --comment-chip-soft: var(--c-question-soft);
+}
+
+.comment-add-form__type[data-comment-type="note"] {
+  --comment-chip-color: var(--c-answer);
+  --comment-chip-soft: var(--c-answer-soft);
 }
 
 .comment-add-form__type[data-comment-type="clarify"] {

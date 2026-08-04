@@ -209,10 +209,17 @@ describe("Reading Room surface parity", () => {
       "src/ui/components/CommentPanel/CommentPanel.css",
     );
 
-    for (const commentType of ["question", "clarify", "rewrite", "remove"]) {
+    const commentTypeColors = [
+      ["note", "answer"],
+      ["question", "question"],
+      ["clarify", "clarify"],
+      ["rewrite", "rewrite"],
+      ["remove", "remove"],
+    ];
+    for (const [commentType, colorToken] of commentTypeColors) {
       expect(commentPanelCss).toMatch(
         new RegExp(
-          `\\.comment-panel__filter\\[data-comment-type="${commentType}"\\]\\s*\\{[^}]*--comment-color:\\s*var\\(--c-${commentType}\\)`,
+          `\\.comment-panel__filter\\[data-comment-type="${commentType}"\\]\\s*\\{[^}]*--comment-color:\\s*var\\(--c-${colorToken}\\)`,
           "s",
         ),
       );
