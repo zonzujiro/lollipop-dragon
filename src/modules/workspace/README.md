@@ -14,6 +14,7 @@ Owns host-side tab lifecycle and file-session state.
 - file tree
 - active file path
 - restore and refresh orchestration
+- stable workspace identity and scoped document-content persistence
 
 ## Does not own
 
@@ -29,6 +30,7 @@ Owns host-side tab lifecycle and file-session state.
 - `history`
 - `historyDropdownOpen`
 - tab-level file session fields
+- per-tab `workspaceId`
 
 ## Public API
 
@@ -45,6 +47,7 @@ Current side effects:
 - directory open
 - file refresh
 - restore from persisted handles
+- per-workspace content-cache read/write
 
 File and folder operations should go through the runtime workspace capability
 boundary rather than importing browser filesystem services directly.
@@ -58,6 +61,8 @@ boundary rather than importing browser filesystem services directly.
 
 - workspace state is host-mode state
 - file-session orchestration must not leak peer-mode state into tabs
+- display names may collide; persistence and share ownership use `workspaceId`
+- document text must not be reserialized in the root state for unrelated inbox updates
 
 ## Common Failure Modes
 

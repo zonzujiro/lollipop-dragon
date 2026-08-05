@@ -39,4 +39,16 @@ describe("peer-review state actions", () => {
       expect.objectContaining({ id: "draft-1", peerName: "Bob" }),
     ]);
   });
+
+  it("rejects an edited peer comment that exceeds the input safety limit", () => {
+    useAppStore.setState({
+      myPeerComments: [makePeerComment({ id: "draft-1", text: "Original" })],
+    });
+
+    useAppStore
+      .getState()
+      .editPeerComment("draft-1", "fix", "x".repeat(400 * 1024 + 1));
+
+    expect(useAppStore.getState().myPeerComments[0]?.text).toBe("Original");
+  });
 });

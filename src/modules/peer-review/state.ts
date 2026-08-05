@@ -2,10 +2,13 @@ import type { StoreApi } from "zustand";
 import type { CommentType } from "../../types/criticmarkup";
 import type { PeerComment } from "../../types/share";
 import type { RelayState } from "../relay";
+import { getBlockPlainTextMap, parseCriticMarkup } from "../../markup";
 import type { PeerReviewActions, PeerReviewState } from "./types";
 
 type SetState<StoreState> = StoreApi<StoreState>["setState"];
 type GetState<StoreState> = StoreApi<StoreState>["getState"];
+
+const MAX_PEER_COMMENT_INPUT_LENGTH = 400 * 1024;
 
 function createPeerComment(input: {
   peerName: string | null;
@@ -17,14 +20,17 @@ function createPeerComment(input: {
     quote: string;
     occurrence: number;
   };
+  rawContent: string;
 }): PeerComment {
+  const parsed = parseCriticMarkup(input.rawContent);
+  const blockMap = getBlockPlainTextMap(parsed.cleanMarkdown, input.blockIndex);
   return {
     id: `c_${crypto.randomUUID()}`,
     peerName: input.peerName ?? "Anonymous",
     path: input.path,
     blockRef: {
       blockIndex: input.blockIndex,
-      contentPreview: "",
+      contentPreview: blockMap?.plainText.slice(0, 80) ?? "",
       ...(input.anchor
         ? {
             anchorVersion: 1,
@@ -57,6 +63,7 @@ export function createPeerReviewState(): PeerReviewState {
     peerComments: [],
     peerCommentPanelOpen: false,
     peerActiveCommentId: null,
+    peerSubmissionSubscription: null,
   };
 }
 
@@ -68,6 +75,7 @@ export function createPeerReviewActions<
   get: GetState<StoreState>,
 ): Pick<
   PeerReviewActions,
+  | "leavePeerMode"
   | "setPeerName"
   | "selectPeerFile"
   | "postPeerComment"
@@ -76,8 +84,15 @@ export function createPeerReviewActions<
   | "setPeerDraftCommentOpen"
   | "discardUnsubmittedPeerComments"
   | "confirmPeerCommentSubmitted"
+  | "setPeerSubmissionSubscription"
 > {
   return {
+    leavePeerMode: () => {
+      set({
+        isPeerMode: false,
+        peerSubmissionSubscription: null,
+      });
+    },
     setPeerName: (name) => {
       set((state) => {
         const submittedCommentIds = new Set(state.submittedPeerCommentIds);
@@ -118,16 +133,24 @@ export function createPeerReviewActions<
 
     postPeerComment: (input) => {
       if (get().documentUpdateAvailable) {
-        return;
+        return false;
+      }
+      if (
+        input.text.length > MAX_PEER_COMMENT_INPUT_LENGTH ||
+        (input.anchor?.quote.length ?? 0) > MAX_PEER_COMMENT_INPUT_LENGTH
+      ) {
+        return false;
       }
       const comment = createPeerComment({
         ...input,
         peerName: get().peerName,
+        rawContent: get().peerRawContent,
       });
       set((state) => ({
         myPeerComments: [comment, ...state.myPeerComments],
         peerDraftCommentOpen: false,
       }));
+      return true;
     },
 
     deletePeerComment: (commentId) => {
@@ -146,6 +169,9 @@ export function createPeerReviewActions<
     },
 
     editPeerComment: (commentId, type, text) => {
+      if (text.length > MAX_PEER_COMMENT_INPUT_LENGTH) {
+        return;
+      }
       set((state) => ({
         myPeerComments: state.myPeerComments.map((comment) =>
           comment.id === commentId
@@ -174,6 +200,9 @@ export function createPeerReviewActions<
           submittedPeerCommentIds: [...state.submittedPeerCommentIds, cmtId],
         };
       });
+    },
+    setPeerSubmissionSubscription: (subscription) => {
+      set({ peerSubmissionSubscription: subscription });
     },
   };
 }

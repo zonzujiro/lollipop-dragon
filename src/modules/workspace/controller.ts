@@ -3,8 +3,10 @@ import { findResolvedComments } from "../host-review";
 import { ensureRelaySubscriptions, unsubscribeFromDoc } from "../relay";
 import {
   loadAndCleanShares,
+  getUnboundLegacyShareKeys,
+  loadResolveOutbox,
+  mergeQueuedCommentIds,
   restoreShareKeys,
-  stableShareKey,
 } from "../sharing";
 import {
   findLiveFileInTree,
@@ -375,7 +377,8 @@ function createHistoryEntry(tab: TabState): HistoryEntry | null {
     id: crypto.randomUUID(),
     type: isDirectory ? "directory" : "file",
     name,
-    stableKey: stableShareKey(tab),
+    stableKey: tab.workspaceId,
+    workspaceId: tab.workspaceId,
     closedAt: new Date().toISOString(),
     activeFilePath: tab.activeFilePath,
     hasActiveShares,
@@ -678,6 +681,7 @@ export function createWorkspaceControllerActions<
         }
 
         const tab = createDefaultTab({
+          workspaceId: entry.workspaceId,
           label: entry.name,
           directoryHandle: handle,
           directoryName: entry.name,
@@ -723,6 +727,7 @@ export function createWorkspaceControllerActions<
 
         const rawContent = await readFile(handle);
         const tab = createDefaultTab({
+          workspaceId: entry.workspaceId,
           label: entry.name,
           fileHandle: handle,
           fileName: entry.name,
@@ -752,12 +757,13 @@ export function createWorkspaceControllerActions<
         return;
       }
 
-      const tabShares = allShares[stableShareKey(currentTab)] ?? [];
+      const tabShares = allShares[currentTab.workspaceId] ?? [];
       if (tabShares.length === 0) {
         return;
       }
 
       const restoredKeys = await restoreShareKeys(tabShares);
+      const resolveOutbox = loadResolveOutbox();
       set((state) => ({
         tabs: buildUpdatedActiveTabs(
           state.tabs,
@@ -765,6 +771,15 @@ export function createWorkspaceControllerActions<
           (tabState) => ({
             shares: tabShares,
             shareKeys: { ...tabState.shareKeys, ...restoredKeys },
+            pendingResolveCommentIds: Object.fromEntries(
+              tabShares.map((share) => [
+                share.docId,
+                mergeQueuedCommentIds(
+                  tabState.pendingResolveCommentIds[share.docId] ?? [],
+                  resolveOutbox[share.docId] ?? [],
+                ),
+              ]),
+            ),
           }),
         ),
       }));
@@ -1306,10 +1321,16 @@ export function createWorkspaceControllerActions<
       }
 
       const allShares = loadAndCleanShares(get().tabs);
+      if (getUnboundLegacyShareKeys(get().tabs).length > 0) {
+        showToast(
+          "Some older shares could not be matched safely. Recreate those links from the correct workspace.",
+        );
+      }
+      const resolveOutbox = loadResolveOutbox();
       const now = new Date();
 
       for (const tab of get().tabs) {
-        const tabShares = allShares[stableShareKey(tab)] ?? [];
+        const tabShares = allShares[tab.workspaceId] ?? [];
         if (tabShares.length === 0) {
           continue;
         }
@@ -1326,6 +1347,18 @@ export function createWorkspaceControllerActions<
           tabs: buildUpdatedTabs(state.tabs, tab.id, (tabState) => ({
             shares: activeShares,
             shareKeys: { ...tabState.shareKeys, ...restoredKeys },
+            pendingResolveCommentIds: {
+              ...tabState.pendingResolveCommentIds,
+              ...Object.fromEntries(
+                activeShares.map((share) => [
+                  share.docId,
+                  mergeQueuedCommentIds(
+                    tabState.pendingResolveCommentIds[share.docId] ?? [],
+                    resolveOutbox[share.docId] ?? [],
+                  ),
+                ]),
+              ),
+            },
           })),
         }));
       }

@@ -54,6 +54,10 @@ describe("peer range comment merge", () => {
       "A paragraph for review.\n",
       makePeerComment({
         peerName: 'Alice "QA" & Bob <ops>',
+        blockRef: {
+          blockIndex: 0,
+          contentPreview: "A paragraph for review.",
+        },
       }),
     );
     const parsed = parseCriticMarkup(result);

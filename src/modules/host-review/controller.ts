@@ -134,6 +134,44 @@ export async function writeAndUpdate<
   }
 }
 
+export async function writeAndUpdateTab<
+  StoreState extends ActiveTabStoreState,
+>(input: {
+  set: SetState<StoreState>;
+  buildUpdatedTabs: (
+    tabs: TabState[],
+    tabId: string,
+    updater: (tab: TabState) => Partial<TabState>,
+  ) => TabState[];
+  tabId: string;
+  fileHandle: FileTarget;
+  expectedRawContent: string;
+  newRawContent: string;
+}): Promise<boolean> {
+  try {
+    await writeFile(input.fileHandle, input.newRawContent);
+    input.set((state) => ({
+      tabs: input.buildUpdatedTabs(state.tabs, input.tabId, () => ({
+        rawContent: input.newRawContent,
+        writeAllowed: true,
+        undoState: { rawContent: input.expectedRawContent },
+      })),
+    }));
+    return true;
+  } catch (error) {
+    if (isPermissionError(error)) {
+      input.set((state) => ({
+        tabs: input.buildUpdatedTabs(state.tabs, input.tabId, () => ({
+          writeAllowed: false,
+        })),
+      }));
+    } else {
+      console.error("[writeAndUpdateTab] write failed:", error);
+    }
+    return false;
+  }
+}
+
 export async function scanAllTabFileComments(
   tab: TabState,
   getLiveFileTree: (tab: TabState) => FileTreeNode[],

@@ -28,6 +28,15 @@ Host-authored local comments remain local-only. They are merged directly into th
 - As a peer with unsent feedback, I want Submit comments to remain a prominent,
   counted primary action until my feedback is sent.
 - As a host reconnecting after a disconnect, I want the current unresolved comment set restored from the backend without merge-by-ID heuristics.
+- As a host receiving a snapshot while comments are also arriving live, I want
+  both inputs applied in relay order so a late snapshot cannot erase newer
+  feedback.
+- As a host with two workspaces that have the same display name, I want each
+  share to stay attached to the workspace that created it.
+- As a host merging feedback after the file changed, I want the merge to stop
+  instead of writing a comment onto the wrong text or wrong tab.
+- As a host receiving malformed or oversized feedback, I want that item isolated
+  while the rest of the review session remains usable.
 - As a peer reopening a shared document, I want the document content to reload cleanly and I want previously submitted comments to avoid duplicate submission.
 - As a peer reconnecting with unsent comments on multiple shared files, I want all unsent comments retried instead of only the currently open file.
 - As a peer viewing a shared document with no local comment work in progress, I want newer shared content to load automatically so I stay on the latest version.
@@ -118,11 +127,11 @@ Key decisions:
 
 ### Plaintext control frames
 
-- `subscribe { docId, role, hostSecret? }`
-- `unsubscribe { docId }`
+- `subscribe { docId, role, hostSecret?, subscriptionId? }`
+- `unsubscribe { docId, subscriptionId? }`
 - `ping`
-- `comment:add { docId, cmtId, payload }`
-- `comment:resolve { docId, cmtId }`
+- `comment:add { docId, cmtId, payload, subscriptionId? }`
+- `comment:resolve { docId, cmtId, subscriptionId? }`
 
 ### DO responses
 
@@ -134,6 +143,23 @@ Key decisions:
 - `comments:snapshot`
 - `comment:added`
 - `comment:resolved`
+
+`subscriptionId` identifies one client-side subscription generation. The DO
+echoes it on subscription responses, snapshots, acknowledgements, forwarded
+events, and subscription-scoped errors. Clients ignore responses for older
+generations. It remains optional so clients and Durable Objects can be deployed
+independently during the compatibility window.
+
+For generation-aware clients, `comments:snapshot` also carries `snapshotId`,
+`chunkIndex`, and `chunkCount`. The host buffers bounded chunks and applies the
+snapshot only after all chunks arrive. Legacy clients without a subscription ID
+continue to receive the original single-frame snapshot during the compatibility
+window.
+
+Errors distinguish `scope: "subscription"` from `scope: "operation"`.
+Subscription errors fail that document subscription. An operation error rejects
+only the referenced comment operation, is shown to the initiating user, and does
+not tear down an otherwise live subscription.
 
 ### Encrypted relay payloads
 
@@ -167,15 +193,20 @@ Opening the host share dialog is not part of share creation itself. For folder s
 2. DO verifies `hostSecret`.
 3. DO replies with `subscribe:ok`.
 4. DO sends `comments:snapshot` containing the full unresolved set for that `docId`.
-5. Host replaces pending comments for that share with the snapshot, filtered against locally queued resolves.
+5. Host applies the snapshot on the subscription's ordered event queue, filtered
+   against locally queued resolves. Later `comment:added` events cannot be
+   overtaken by a slow snapshot decrypt.
 
 ### Host merge / dismiss
 
 1. Host opens the Comments panel. Incoming feedback is the initial view when
    unresolved peer comments exist.
 2. Host merges or dismisses a peer comment from its incoming card.
-3. Host removes it from current pending UI state.
-4. Host queues the resolve locally and flushes `comment:resolve`.
+3. For a merge, the host verifies the owning workspace, file target, current
+   content hash, and anchor before writing. The deterministic embedded comment
+   ID makes retry idempotent.
+4. Host durably queues the resolve locally before removing it from current
+   pending UI state, then flushes `comment:resolve`.
 5. DO deletes the comment row from SQLite.
 6. DO sends `comment:resolve:ack` to the host.
 7. DO broadcasts `comment:resolved` to subscribers.
@@ -213,6 +244,22 @@ Obsolete note:
 11. When unsent peer comments exist, Submit comments uses the primary button
     treatment, shows a separate count, and remains labeled through the tablet
     header breakpoint.
+12. `ConnectionStatus` reports Live only after the visible document's current
+    subscription generation is confirmed; a connected socket alone is not Live.
+13. A slow snapshot cannot erase a later live comment from the same subscription.
+14. Two same-named workspaces keep distinct share ownership through stable
+    workspace IDs. An ambiguous legacy name-based share is left unbound.
+15. Merge targets the share-owning tab and fails closed if its file, content, or
+    anchor changed while the operation was pending. Retrying a completed merge
+    does not insert a duplicate comment.
+16. A resolve is persisted locally before its comment disappears from the UI, so
+    reload or reconnect cannot resurrect a locally completed review action.
+17. One invalid encrypted comment is quarantined and surfaced as a bounded
+    notice; valid comments and the rest of the application remain usable.
+18. Relay frames, IDs, encrypted payloads, comment text, and quote text are
+    bounded and malformed values are rejected at the network boundary.
+19. A reconnect snapshot larger than one safe relay frame is delivered in
+    ordered chunks and applied atomically before later live events.
 
 ## 9. Limitations
 
@@ -222,6 +269,15 @@ Obsolete note:
 - A single relay hub is sufficient for the current scale but not intended for large fan-out.
 - `document:updated` is a live notification, not a durable event log. Share content itself remains durable in KV.
 - Peer comment submission depends on relay connectivity. Unsynced peer drafts stay local until relay subscribe succeeds.
+- Plain relay frames are capped at 1.5 MiB and encrypted comment payloads at
+  1 MiB. New peer comment and quote fields are capped at 400 KiB each. The
+  earlier peer-sharing statement that selection length had no maximum is no
+  longer valid because an unbounded client payload can crash a host tab.
+- The relay rate-limits comment writes per socket. This is abuse containment,
+  not peer identity or account authentication.
+- Each document is bounded to 500 unresolved comments and 8 MiB of encoded
+  encrypted comment payloads. A peer receives an operation error when the inbox
+  is full; the confirmed subscription remains live.
 
 ## 10. Why This Replaced The Old Model
 

@@ -1,15 +1,33 @@
 import type { PeerComment, ShareRecord } from "../../../types/share";
+import type { SharingTabState } from "../../../modules/sharing";
 import { PendingCommentReview } from "../PendingCommentReview";
+import { ReviewErrorBoundary } from "../ReviewErrorBoundary";
 
 interface Props {
   pendingComments: Record<string, PeerComment[]>;
   shares: ShareRecord[];
+  sessions: SharingTabState["incomingReviewSessions"];
 }
 
-export function IncomingCommentList({ pendingComments, shares }: Props) {
-  const groups = Object.entries(pendingComments)
-    .filter(([, comments]) => comments.length > 0)
-    .map(([docId, comments]) => {
+export function IncomingCommentList({
+  pendingComments,
+  shares,
+  sessions,
+}: Props) {
+  const docIds = new Set([
+    ...Object.keys(pendingComments),
+    ...Object.entries(sessions)
+      .filter(([, session]) => session.quarantinedItems.length > 0)
+      .map(([docId]) => docId),
+  ]);
+  const groups = [...docIds]
+    .filter(
+      (docId) =>
+        (pendingComments[docId]?.length ?? 0) > 0 ||
+        (sessions[docId]?.quarantinedItems.length ?? 0) > 0,
+    )
+    .map((docId) => {
+      const comments = pendingComments[docId] ?? [];
       const share = shares.find((candidate) => candidate.docId === docId);
       return {
         docId,
@@ -35,7 +53,12 @@ export function IncomingCommentList({ pendingComments, shares }: Props) {
           aria-label={`Incoming comments for ${group.label}`}
         >
           <h3 title={group.label}>{group.label}</h3>
-          <PendingCommentReview docId={group.docId} />
+          <ReviewErrorBoundary
+            title="Incoming comments could not be displayed"
+            resetKey={pendingComments[group.docId]?.length ?? 0}
+          >
+            <PendingCommentReview docId={group.docId} />
+          </ReviewErrorBoundary>
         </section>
       ))}
     </div>

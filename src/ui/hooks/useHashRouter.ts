@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { useAppStore } from "../../store";
 import { isShareHash } from "../../utils/shareUrl";
 import { WORKER_URL } from "../../config";
+import { stopRelay } from "../../modules/relay";
 
 export function useHashRouter(): boolean {
   const loadSharedContent = useAppStore((s) => s.loadSharedContent);
   const restoreTabs = useAppStore((s) => s.restoreTabs);
+  const leavePeerMode = useAppStore((s) => s.leavePeerMode);
   const [peerModeChecked, setPeerModeChecked] = useState(false);
 
   useEffect(() => {
@@ -19,6 +21,9 @@ export function useHashRouter(): boolean {
 
     function checkHash() {
       if (isShareHash() && WORKER_URL) {
+        if (!useAppStore.getState().isPeerMode) {
+          stopRelay();
+        }
         loadSharedContent()
           .catch((error: unknown) => {
             console.warn(
@@ -28,6 +33,10 @@ export function useHashRouter(): boolean {
           })
           .finally(() => setPeerModeChecked(true));
       } else {
+        if (useAppStore.getState().isPeerMode) {
+          stopRelay();
+          leavePeerMode();
+        }
         setPeerModeChecked(true);
         void restoreWorkspace();
       }

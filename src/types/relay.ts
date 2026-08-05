@@ -9,6 +9,7 @@ export interface RelayFrame {
 export interface SubscribeFrame {
   type: "subscribe";
   docId: string;
+  subscriptionId?: string;
   role: "host" | "peer";
   hostSecret?: string;
 }
@@ -16,6 +17,7 @@ export interface SubscribeFrame {
 export interface UnsubscribeFrame {
   type: "unsubscribe";
   docId: string;
+  subscriptionId?: string;
 }
 
 export interface CommentAddFrame {
@@ -23,35 +25,43 @@ export interface CommentAddFrame {
   docId: string;
   cmtId: string;
   payload: string;
+  subscriptionId?: string;
 }
 
 export interface CommentResolveFrame {
   type: "comment:resolve";
   docId: string;
   cmtId: string;
+  subscriptionId?: string;
 }
 
 export interface ErrorFrame {
   type: "error";
   docId: string;
   message: string;
+  subscriptionId?: string;
+  scope?: "subscription" | "operation";
+  cmtId?: string;
 }
 
 export interface SubscribeOkFrame {
   type: "subscribe:ok";
   docId: string;
+  subscriptionId?: string;
 }
 
 export interface CommentAddAckFrame {
   type: "comment:add:ack";
   docId: string;
   cmtId: string;
+  subscriptionId?: string;
 }
 
 export interface CommentResolveAckFrame {
   type: "comment:resolve:ack";
   docId: string;
   cmtId: string;
+  subscriptionId?: string;
 }
 
 export interface CommentsSnapshotEntry {
@@ -63,6 +73,10 @@ export interface CommentsSnapshotFrame {
   type: "comments:snapshot";
   docId: string;
   comments: CommentsSnapshotEntry[];
+  subscriptionId?: string;
+  snapshotId?: string;
+  chunkIndex?: number;
+  chunkCount?: number;
 }
 
 export interface CommentAddedFrame {
@@ -70,12 +84,14 @@ export interface CommentAddedFrame {
   docId: string;
   cmtId: string;
   payload: string;
+  subscriptionId?: string;
 }
 
 export interface CommentResolvedFrame {
   type: "comment:resolved";
   docId: string;
   cmtId: string;
+  subscriptionId?: string;
 }
 
 export interface PingFrame {
@@ -118,6 +134,21 @@ export type RelayEvent =
   | { type: "comment:added"; cmtId: string; payload: string }
   | { type: "comment:resolved"; cmtId: string }
   | DocumentUpdatedMessage;
+
+export type RelaySubscriptionRole = "host" | "peer";
+
+export type RelaySubscriptionPhase =
+  | "idle"
+  | "subscribing"
+  | "syncing"
+  | "live"
+  | "failed";
+
+export interface RelaySubscriptionState {
+  subscriptionId: string;
+  phase: RelaySubscriptionPhase;
+  lastError: string | null;
+}
 
 export interface DecryptedCommentEvent {
   type: "comment:added";

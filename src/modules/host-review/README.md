@@ -43,6 +43,7 @@ Current side effects:
 
 - writing merged content to host files
 - comment scanning and refresh coordination
+- owner-tab-specific writes used by incoming peer-comment merge
 
 ## Related Docs
 
@@ -52,6 +53,8 @@ Current side effects:
 
 - host review state must remain separate from peer review state
 - merge logic must preserve current durable share update behavior
+- a delayed incoming merge must write only the captured owner tab and file
+  target; active-tab changes cannot retarget it
 
 ## Common Failure Modes
 

@@ -1,5 +1,6 @@
 import type { Comment, CommentType } from "../../types/criticmarkup";
 import type { PeerComment, SharePayload } from "../../types/share";
+import type { RelaySubscriptionState } from "../../types/relay";
 
 export interface PeerReviewState {
   isPeerMode: boolean;
@@ -18,9 +19,11 @@ export interface PeerReviewState {
   peerComments: Comment[];
   peerCommentPanelOpen: boolean;
   peerActiveCommentId: string | null;
+  peerSubmissionSubscription: RelaySubscriptionState | null;
 }
 
 export interface PeerReviewActions {
+  leavePeerMode: () => void;
   setPeerName: (name: string) => void;
   loadSharedContent: (options?: {
     discardUnsubmitted?: boolean;
@@ -35,11 +38,14 @@ export interface PeerReviewActions {
       quote: string;
       occurrence: number;
     };
-  }) => void;
+  }) => boolean;
   deletePeerComment: (commentId: string) => void;
   editPeerComment: (commentId: string, type: CommentType, text: string) => void;
   setPeerDraftCommentOpen: (open: boolean) => void;
   discardUnsubmittedPeerComments: () => void;
   syncPeerComments: () => Promise<void>;
   confirmPeerCommentSubmitted: (cmtId: string) => void;
+  setPeerSubmissionSubscription: (
+    subscription: RelaySubscriptionState | null,
+  ) => void;
 }

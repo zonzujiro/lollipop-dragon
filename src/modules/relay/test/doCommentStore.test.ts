@@ -101,6 +101,40 @@ class FakeSqlStorage implements SqlStorage {
       return new FakeSqlCursor(rows);
     }
 
+    if (
+      normalizedQuery.startsWith(
+        "SELECT 1 AS found FROM comments WHERE doc_id = ? AND cmt_id = ? LIMIT 1",
+      )
+    ) {
+      const docId = this.expectString(params[0]);
+      const cmtId = this.expectString(params[1]);
+      const found = this.commentRows.some(
+        (commentRow) =>
+          commentRow.docId === docId && commentRow.cmtId === cmtId,
+      );
+      return new FakeSqlCursor(found ? [{ found: 1 }] : []);
+    }
+
+    if (
+      normalizedQuery.startsWith(
+        "SELECT COUNT(*) AS comment_count, COALESCE(SUM(LENGTH(payload)), 0) AS payload_chars FROM comments WHERE doc_id = ?",
+      )
+    ) {
+      const docId = this.expectString(params[0]);
+      const rows = this.commentRows.filter(
+        (commentRow) => commentRow.docId === docId,
+      );
+      return new FakeSqlCursor([
+        {
+          comment_count: rows.length,
+          payload_chars: rows.reduce(
+            (total, commentRow) => total + commentRow.payload.length,
+            0,
+          ),
+        },
+      ]);
+    }
+
     if (normalizedQuery.startsWith("INSERT OR IGNORE INTO comments")) {
       const docId = this.expectString(params[0]);
       const cmtId = this.expectString(params[1]);
@@ -320,6 +354,10 @@ class FakeWebSocket extends EventTarget implements WebSocket {
 
   sentFrames(): Array<Record<string, unknown>> {
     return this.sentMessages.map(parseSocketFrame);
+  }
+
+  rawSentMessages(): string[] {
+    return [...this.sentMessages];
   }
 
   dispatchOpen(): void {
@@ -568,7 +606,11 @@ describe("RelayHubSqlite", () => {
     );
 
     expect(unsubscribedSocket.sentFrames()).toEqual([
-      { type: "error", docId: "doc-1", message: "Not subscribed" },
+      {
+        type: "error",
+        docId: "doc-1",
+        message: "Not subscribed as peer",
+      },
     ]);
     expect(state.sql.hasComment("doc-1", "c-1")).toBe(false);
   });
@@ -633,6 +675,301 @@ describe("RelayHubSqlite", () => {
       { type: "comment:resolved", docId: "doc-1", cmtId: "c-1" },
     ]);
   });
+
+  it("echoes each recipient subscription generation on snapshots and live events", async () => {
+    const { relayHub, kv, createSocket } = createRelayHarness();
+    const hostSecret = "host-secret";
+    kv.set(
+      "share:doc-1:meta",
+      createShareMetaJson(await sha256hex(hostSecret)),
+    );
+    const hostSocket = createSocket();
+    const peerSocket = createSocket();
+
+    await relayHub.webSocketMessage(
+      hostSocket,
+      JSON.stringify({
+        type: "subscribe",
+        docId: "doc-1",
+        role: "host",
+        hostSecret,
+        subscriptionId: "host-generation",
+      }),
+    );
+    expect(hostSocket.sentFrames()).toEqual([
+      {
+        type: "subscribe:ok",
+        docId: "doc-1",
+        subscriptionId: "host-generation",
+      },
+      {
+        type: "comments:snapshot",
+        docId: "doc-1",
+        comments: [],
+        subscriptionId: "host-generation",
+        snapshotId: expect.any(String),
+        chunkIndex: 0,
+        chunkCount: 1,
+      },
+    ]);
+    hostSocket.resetSentFrames();
+
+    await relayHub.webSocketMessage(
+      peerSocket,
+      JSON.stringify({
+        type: "subscribe",
+        docId: "doc-1",
+        role: "peer",
+        subscriptionId: "peer-generation",
+      }),
+    );
+    peerSocket.resetSentFrames();
+    await relayHub.webSocketMessage(
+      peerSocket,
+      JSON.stringify({
+        type: "comment:add",
+        docId: "doc-1",
+        cmtId: "c-generation",
+        payload: "ciphertext",
+        subscriptionId: "peer-generation",
+      }),
+    );
+
+    expect(peerSocket.sentFrames()).toEqual([
+      {
+        type: "comment:add:ack",
+        docId: "doc-1",
+        cmtId: "c-generation",
+        subscriptionId: "peer-generation",
+      },
+    ]);
+    expect(hostSocket.sentFrames()).toEqual([
+      {
+        type: "comment:added",
+        docId: "doc-1",
+        cmtId: "c-generation",
+        payload: "ciphertext",
+        subscriptionId: "host-generation",
+      },
+    ]);
+  });
+
+  it("chunks a generation-scoped snapshot below the inbound frame limit", async () => {
+    const { relayHub, state, kv, createSocket } = createRelayHarness();
+    const hostSecret = "host-secret";
+    kv.set(
+      "share:doc-1:meta",
+      createShareMetaJson(await sha256hex(hostSecret)),
+    );
+    const expiresAt = Date.now() + 60_000;
+    state.sql.seedComment({
+      docId: "doc-1",
+      cmtId: "large-1",
+      payload: "a".repeat(800_000),
+      createdAt: 1,
+      expiresAt,
+    });
+    state.sql.seedComment({
+      docId: "doc-1",
+      cmtId: "large-2",
+      payload: "b".repeat(800_000),
+      createdAt: 2,
+      expiresAt,
+    });
+    const hostSocket = createSocket();
+
+    await relayHub.webSocketMessage(
+      hostSocket,
+      JSON.stringify({
+        type: "subscribe",
+        docId: "doc-1",
+        role: "host",
+        hostSecret,
+        subscriptionId: "chunked-generation",
+      }),
+    );
+
+    const frames = hostSocket.sentFrames();
+    const snapshotFrames = frames.filter(
+      (frame) => frame["type"] === "comments:snapshot",
+    );
+    expect(snapshotFrames).toHaveLength(2);
+    expect(snapshotFrames.map((frame) => frame["chunkIndex"])).toEqual([0, 1]);
+    expect(snapshotFrames.every((frame) => frame["chunkCount"] === 2)).toBe(
+      true,
+    );
+    expect(
+      hostSocket
+        .rawSentMessages()
+        .slice(1)
+        .every((message) => {
+          return new TextEncoder().encode(message).byteLength < 1_500_000;
+        }),
+    ).toBe(true);
+  });
+
+  it("echoes a stale operation generation without failing the current one", async () => {
+    const { relayHub, state, kv, createSocket } = createRelayHarness();
+    kv.set(
+      "share:doc-1:meta",
+      createShareMetaJson(await sha256hex("host-secret")),
+    );
+    const peerSocket = createSocket();
+    await relayHub.webSocketMessage(
+      peerSocket,
+      JSON.stringify({
+        type: "subscribe",
+        docId: "doc-1",
+        role: "peer",
+        subscriptionId: "current-generation",
+      }),
+    );
+    peerSocket.resetSentFrames();
+
+    await relayHub.webSocketMessage(
+      peerSocket,
+      JSON.stringify({
+        type: "comment:add",
+        docId: "doc-1",
+        cmtId: "stale-comment",
+        payload: "ciphertext",
+        subscriptionId: "old-generation",
+      }),
+    );
+
+    expect(peerSocket.sentFrames()).toEqual([
+      {
+        type: "error",
+        docId: "doc-1",
+        cmtId: "stale-comment",
+        scope: "operation",
+        message: "Stale subscription generation",
+        subscriptionId: "old-generation",
+      },
+    ]);
+    expect(state.sql.hasComment("doc-1", "stale-comment")).toBe(false);
+  });
+
+  it("forwards encrypted document updates only from a subscribed host", async () => {
+    const { relayHub, kv, createSocket } = createRelayHarness();
+    const hostSecret = "host-secret";
+    kv.set(
+      "share:doc-1:meta",
+      createShareMetaJson(await sha256hex(hostSecret)),
+    );
+    const hostSocket = createSocket();
+    const peerSocket = createSocket();
+    await relayHub.webSocketMessage(
+      hostSocket,
+      JSON.stringify({
+        type: "subscribe",
+        docId: "doc-1",
+        role: "host",
+        hostSecret,
+        subscriptionId: "host-generation",
+      }),
+    );
+    await relayHub.webSocketMessage(
+      peerSocket,
+      JSON.stringify({
+        type: "subscribe",
+        docId: "doc-1",
+        role: "peer",
+        subscriptionId: "peer-generation",
+      }),
+    );
+    hostSocket.resetSentFrames();
+    peerSocket.resetSentFrames();
+
+    await relayHub.webSocketMessage(
+      hostSocket,
+      JSON.stringify({
+        version: 1,
+        docId: "doc-1",
+        payload: "encrypted-update",
+        subscriptionId: "host-generation",
+      }),
+    );
+
+    expect(hostSocket.sentFrames()).toEqual([]);
+    expect(peerSocket.sentFrames()).toEqual([
+      {
+        version: 1,
+        docId: "doc-1",
+        payload: "encrypted-update",
+        subscriptionId: "peer-generation",
+      },
+    ]);
+  });
+
+  it("rejects oversized encrypted comment payloads before persistence", async () => {
+    const { relayHub, state, kv, createSocket } = createRelayHarness();
+    kv.set(
+      "share:doc-1:meta",
+      createShareMetaJson(await sha256hex("host-secret")),
+    );
+    const peerSocket = createSocket();
+    await relayHub.webSocketMessage(
+      peerSocket,
+      JSON.stringify({ type: "subscribe", docId: "doc-1", role: "peer" }),
+    );
+    peerSocket.resetSentFrames();
+
+    await relayHub.webSocketMessage(
+      peerSocket,
+      JSON.stringify({
+        type: "comment:add",
+        docId: "doc-1",
+        cmtId: "c-oversized",
+        payload: "A".repeat(1_400_000),
+      }),
+    );
+
+    expect(state.sql.hasComment("doc-1", "c-oversized")).toBe(false);
+    expect(peerSocket.sentFrames()).toEqual([
+      {
+        type: "error",
+        docId: "doc-1",
+        cmtId: "c-oversized",
+        scope: "operation",
+        message: "Comment payload too large",
+      },
+    ]);
+  });
+
+  it("rate limits comment writes per socket", async () => {
+    const { relayHub, kv, createSocket } = createRelayHarness();
+    kv.set(
+      "share:doc-1:meta",
+      createShareMetaJson(await sha256hex("host-secret")),
+    );
+    const peerSocket = createSocket();
+    await relayHub.webSocketMessage(
+      peerSocket,
+      JSON.stringify({ type: "subscribe", docId: "doc-1", role: "peer" }),
+    );
+    peerSocket.resetSentFrames();
+
+    for (let commentIndex = 0; commentIndex < 61; commentIndex += 1) {
+      await relayHub.webSocketMessage(
+        peerSocket,
+        JSON.stringify({
+          type: "comment:add",
+          docId: "doc-1",
+          cmtId: `c-${commentIndex}`,
+          payload: "ciphertext",
+        }),
+      );
+    }
+
+    expect(peerSocket.sentFrames().at(-1)).toEqual({
+      type: "error",
+      docId: "doc-1",
+      cmtId: "c-60",
+      scope: "operation",
+      message: "Comment rate limit exceeded",
+    });
+  });
 });
 
 describe("relay client snapshot validation", () => {
@@ -675,6 +1012,9 @@ describe("relay client snapshot validation", () => {
         .getState()
         .tabs.find((tab) => tab.id === "test-tab");
       expect(activeTab?.pendingComments["doc-1"]).toBeUndefined();
+      expect(
+        activeTab?.incomingReviewSessions["doc-1"]?.quarantinedItems,
+      ).toHaveLength(1);
       expect(warnSpy).toHaveBeenCalledWith(
         "[relay] failed to decrypt snapshot comment:",
         expect.any(Error),

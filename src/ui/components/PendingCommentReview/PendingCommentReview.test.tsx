@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   makePeerComment,
+  makeShare,
   resetTestStore,
   setTestState,
 } from "../../../testing/testHelpers";
@@ -12,6 +13,7 @@ import { PendingCommentReview } from "./PendingCommentReview";
 beforeEach(() => {
   resetTestStore();
   setTestState({
+    shares: [makeShare()],
     pendingComments: {
       "doc-1": [
         makePeerComment({
@@ -74,5 +76,43 @@ describe("PendingCommentReview", () => {
         screen.queryByRole("button", { name: "Copy agent prompt" }),
       ).not.toBeInTheDocument();
     });
+  });
+
+  it("isolates and dismisses an incoming comment that could not be parsed", async () => {
+    const user = userEvent.setup();
+    setTestState({
+      incomingReviewSessions: {
+        "doc-1": {
+          ownerWorkspaceId: "test-workspace",
+          subscription: {
+            subscriptionId: "host-sub",
+            phase: "live",
+            lastError: null,
+          },
+          quarantinedItems: [
+            {
+              id: "issue-1",
+              cmtId: "bad-comment",
+              reason: "Invalid peer comment shape",
+              receivedAt: new Date().toISOString(),
+            },
+          ],
+        },
+      },
+    });
+
+    render(<PendingCommentReview docId="doc-1" />);
+
+    expect(
+      screen.getByText("One incoming comment couldn’t be loaded"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Fix the intro")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Dismiss notice" }));
+
+    expect(
+      screen.queryByText("One incoming comment couldn’t be loaded"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Fix the intro")).toBeInTheDocument();
   });
 });

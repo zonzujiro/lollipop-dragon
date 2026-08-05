@@ -20,6 +20,7 @@ import { findLiveFileInTree } from "../types/fileTree";
 import type { SidebarTreeNode } from "../types/fileTree";
 import { RestoreError } from "./components/RestoreError";
 import { ContentUpdateBanner } from "./components/ContentUpdateBanner";
+import { ReviewErrorBoundary } from "./components/ReviewErrorBoundary";
 import {
   getRestoreAccessActionLabel,
   getRestoreOpenOtherLabel,
@@ -111,6 +112,7 @@ function ShareUnavailable() {
 function PeerViewer() {
   const sharedContent = useAppStore((s) => s.sharedContent);
   const rawContent = useAppStore((s) => s.peerRawContent);
+  const activePath = useAppStore((s) => s.peerActiveFilePath);
 
   if (!sharedContent) {
     return <ShareUnavailable />;
@@ -119,7 +121,14 @@ function PeerViewer() {
     return <ShareUnavailable />;
   }
 
-  return <MarkdownRenderer />;
+  return (
+    <ReviewErrorBoundary
+      title="This shared document could not be displayed"
+      resetKey={activePath}
+    >
+      <MarkdownRenderer />
+    </ReviewErrorBoundary>
+  );
 }
 
 const FILE_OBSERVER_TYPES = ["modified", "appeared"];
@@ -421,7 +430,12 @@ function App() {
               }}
             />
           ) : tab?.fileName ? (
-            <MarkdownRenderer />
+            <ReviewErrorBoundary
+              title="This document could not be displayed"
+              resetKey={`${tab.id}:${tab.activeFilePath ?? tab.fileName}`}
+            >
+              <MarkdownRenderer />
+            </ReviewErrorBoundary>
           ) : (
             <NoFileSelected
               directoryName={tab?.directoryName ?? null}

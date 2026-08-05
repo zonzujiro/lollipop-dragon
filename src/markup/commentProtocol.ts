@@ -162,8 +162,9 @@ function createRandomCommentId(): string {
 
 export function createQuestionThreadMetadata(
   authorLabel?: string,
+  stableCommentId?: string,
 ): CommentThreadMetadata {
-  const commentId = createRandomCommentId();
+  const commentId = stableCommentId ?? createRandomCommentId();
   const thread: CommentThreadMetadata = {
     commentId,
     threadId: commentId,

@@ -13,7 +13,18 @@ beforeEach(() => {
 
 describe("ConnectionStatus - peer mode", () => {
   it("renders the healthy live state in peer mode", () => {
-    setTestState({}, { isPeerMode: true, relayStatus: "connected" });
+    setTestState(
+      {},
+      {
+        isPeerMode: true,
+        relayStatus: "connected",
+        peerSubmissionSubscription: {
+          subscriptionId: "peer-sub",
+          phase: "live",
+          lastError: null,
+        },
+      },
+    );
     render(<ConnectionStatus />);
     expect(screen.getByText("Live")).toBeInTheDocument();
   });
@@ -22,6 +33,13 @@ describe("ConnectionStatus - peer mode", () => {
     setTestState({}, { isPeerMode: true, relayStatus: "connecting" });
     render(<ConnectionStatus />);
     expect(screen.getByText("Connecting…")).toBeInTheDocument();
+  });
+
+  it("does not claim Live when the socket is open but the document is unconfirmed", () => {
+    setTestState({}, { isPeerMode: true, relayStatus: "connected" });
+    render(<ConnectionStatus />);
+    expect(screen.getByText("Connecting…")).toBeInTheDocument();
+    expect(screen.queryByText("Live")).not.toBeInTheDocument();
   });
 
   it('renders "Offline" when relayStatus is disconnected in peer mode', () => {
@@ -46,7 +64,20 @@ describe("ConnectionStatus - host mode with active shares", () => {
       expiresAt: new Date(Date.now() + 86400000).toISOString(),
     });
     setTestState(
-      { shares: [activeShare] },
+      {
+        shares: [activeShare],
+        incomingReviewSessions: {
+          [activeShare.docId]: {
+            ownerWorkspaceId: "test-workspace",
+            subscription: {
+              subscriptionId: "host-sub",
+              phase: "live",
+              lastError: null,
+            },
+            quarantinedItems: [],
+          },
+        },
+      },
       { isPeerMode: false, relayStatus: "connected" },
     );
     render(<ConnectionStatus />);

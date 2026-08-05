@@ -13,6 +13,7 @@ Owns peer-mode shared content state and peer-authored draft/submission logic.
 - peer draft comments
 - submitted peer comment IDs
 - peer comment panel state
+- peer submission subscription generation and phase
 
 ## Does not own
 
@@ -36,6 +37,7 @@ Owns peer-mode shared content state and peer-authored draft/submission logic.
 - `peerResolvedComments`
 - `peerComments`
 - `peerCommentPanelOpen`
+- `peerSubmissionSubscription`
 
 ## Public API
 
@@ -64,6 +66,8 @@ Owns peer-mode shared content state and peer-authored draft/submission logic.
   comments whose IDs have already been acknowledged as submitted
 - `peerName` is global peer state persisted through the root Zustand store, so
   it applies across shared links in the same browser
+- leaving a shared-link route clears peer-mode state and its relay subscription
+- newly authored comment and quote fields are bounded before encryption
 
 ## Common Failure Modes
 

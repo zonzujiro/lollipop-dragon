@@ -1,4 +1,5 @@
 import type { PeerReviewActions, PeerReviewState } from "../peer-review/types";
+import type { AppShellActions } from "../app-shell/types";
 import type { SharingActions } from "../sharing/types";
 import type { WorkspaceState } from "../workspace/types";
 import type { RelayActions, RelayState } from "./types";
@@ -19,6 +20,7 @@ export type RelayApplicationState = Pick<WorkspaceState, "tabs"> &
     | "confirmPeerCommentSubmitted"
     | "deletePeerComment"
     | "loadSharedContent"
+    | "setPeerSubmissionSubscription"
     | "syncPeerComments"
   > &
   Pick<
@@ -26,9 +28,12 @@ export type RelayApplicationState = Pick<WorkspaceState, "tabs"> &
     | "addPendingComment"
     | "confirmPendingResolve"
     | "flushPendingCommentResolves"
+    | "quarantinePendingComment"
     | "replaceCommentsSnapshot"
+    | "setIncomingReviewSubscription"
   > &
   Pick<RelayState, "documentUpdateAvailable"> &
+  Pick<AppShellActions, "showToast"> &
   RelayActions;
 
 export interface RelayApplicationPort {

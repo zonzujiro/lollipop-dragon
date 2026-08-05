@@ -9,13 +9,11 @@ import {
 import { WORKER_URL } from "../../config";
 import { base64urlToKey } from "../../services/crypto";
 import { readFile } from "../../runtime";
-import { isBrowserFileHandle } from "../../types/fileTree";
 import type { FileTreeNode } from "../../types/fileTree";
-import { isShareRecordArray } from "../../types/share";
 import type { PeerComment, ShareRecord } from "../../types/share";
 import type { TabState } from "../../types/tab";
 import { buildShareUrlFromOrigin } from "../../utils/shareUrl";
-import { writeAndUpdate } from "../host-review";
+import { writeAndUpdateTab } from "../host-review";
 import {
   ensureRelaySubscriptions,
   relayCommentResolve,
@@ -27,12 +25,11 @@ import {
 } from "./state";
 import { ShareStorage } from "./storage";
 import { prepareShareIdentity } from "./shareIdentity";
+import { saveShares } from "./registry";
 import type { ShareContentOptions, SharingActions } from "./types";
 
 type SetState<StoreState> = StoreApi<StoreState>["setState"];
 type GetState<StoreState> = StoreApi<StoreState>["getState"];
-
-const SHARES_KEY = "markreview-shares";
 
 interface SharingControllerStoreState {
   tabs: TabState[];
@@ -57,101 +54,6 @@ interface SharingControllerDeps<
     updater: (tab: TabState) => Partial<TabState>,
   ) => TabState[];
   getLiveFileTree: (tab: TabState) => FileTreeNode[];
-}
-
-function isShareRecordMap(
-  value: unknown,
-): value is Record<string, ShareRecord[]> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return false;
-  }
-  return Object.values(value).every(isShareRecordArray);
-}
-
-function loadAllShares(): Record<string, ShareRecord[]> {
-  try {
-    const raw = localStorage.getItem(SHARES_KEY);
-    if (!raw) {
-      return {};
-    }
-    const parsed: unknown = JSON.parse(raw);
-    if (isShareRecordMap(parsed)) {
-      return parsed;
-    }
-    return {};
-  } catch (error) {
-    console.warn("[sharing] failed to load persisted shares:", error);
-    return {};
-  }
-}
-
-function saveAllShares(allShares: Record<string, ShareRecord[]>) {
-  localStorage.setItem(SHARES_KEY, JSON.stringify(allShares));
-}
-
-export function stableShareKey(tab: {
-  directoryName: string | null;
-  fileName: string | null;
-  id: string;
-}): string {
-  return tab.directoryName ?? tab.fileName ?? tab.id;
-}
-
-export function saveShares(key: string, shares: ShareRecord[]) {
-  const allShares = loadAllShares();
-  allShares[key] = shares;
-  saveAllShares(allShares);
-}
-
-export function loadAndCleanShares(
-  tabs: {
-    id: string;
-    directoryName: string | null;
-    fileName: string | null;
-  }[],
-): Record<string, ShareRecord[]> {
-  const allShares = loadAllShares();
-  let changed = false;
-
-  for (const tab of tabs) {
-    const stableKey = stableShareKey(tab);
-    if (tab.id === stableKey) {
-      continue;
-    }
-    const oldShares = allShares[tab.id];
-    if (!oldShares || oldShares.length === 0) {
-      continue;
-    }
-    const existingShares = allShares[stableKey] ?? [];
-    const existingDocIds = new Set(existingShares.map((share) => share.docId));
-    const mergedShares = [
-      ...existingShares,
-      ...oldShares.filter((share) => !existingDocIds.has(share.docId)),
-    ];
-    allShares[stableKey] = mergedShares;
-    delete allShares[tab.id];
-    changed = true;
-  }
-
-  const now = new Date();
-  for (const key of Object.keys(allShares)) {
-    const liveShares = allShares[key].filter(
-      (share) => new Date(share.expiresAt) > now,
-    );
-    if (liveShares.length !== allShares[key].length) {
-      changed = true;
-    }
-    if (liveShares.length === 0) {
-      delete allShares[key];
-    } else {
-      allShares[key] = liveShares;
-    }
-  }
-
-  if (changed) {
-    saveAllShares(allShares);
-  }
-  return allShares;
 }
 
 export async function collectTreeContents(
@@ -298,10 +200,19 @@ function findSharingTabByDocId(
   tabs: TabState[],
   docId: string,
 ): TabState | null {
-  return (
-    tabs.find((tab) => tab.shares.some((share) => share.docId === docId)) ??
-    null
+  const owners = tabs.filter((tab) =>
+    tab.shares.some((share) => share.docId === docId),
   );
+  if (owners.length !== 1) {
+    if (owners.length > 1) {
+      console.warn("[sharing] share owner is ambiguous", {
+        docId,
+        ownerWorkspaceIds: owners.map((tab) => tab.workspaceId),
+      });
+    }
+    return null;
+  }
+  return owners[0];
 }
 
 type UpdateSharingTabStateOptions<StoreState extends { tabs: TabState[] }> = {
@@ -349,13 +260,35 @@ export function buildMergedPeerCommentContent(
     parsed.cleanMarkdown,
     comment.blockRef.blockIndex,
   );
+  if (!blockMap) {
+    throw new Error("The commented block no longer exists");
+  }
+  const stableCommentId = `mr-peer-${comment.id}`;
+  if (
+    parsed.comments.some(
+      (existingComment) =>
+        existingComment.thread?.commentId === stableCommentId,
+    )
+  ) {
+    return rawContent;
+  }
   const peerAnchor =
-    blockMap && comment.blockRef.quote && comment.blockRef.occurrence
+    comment.blockRef.quote && comment.blockRef.occurrence
       ? resolveCommentAnchor(blockMap.plainText, {
           quote: comment.blockRef.quote,
           occurrence: comment.blockRef.occurrence,
         })
       : undefined;
+  if (peerAnchor?.orphaned) {
+    throw new Error("The selected text changed since this comment was sent");
+  }
+  if (
+    !peerAnchor &&
+    comment.blockRef.contentPreview &&
+    !blockMap.plainText.startsWith(comment.blockRef.contentPreview)
+  ) {
+    throw new Error("The commented block changed since this comment was sent");
+  }
   const newBody = insertCommentService({
     rawContent: document.body,
     existingComments: parsed.comments,
@@ -364,9 +297,36 @@ export function buildMergedPeerCommentContent(
     type: comment.commentType,
     text: comment.text,
     authorLabel: comment.peerName,
-    anchor: peerAnchor?.orphaned ? undefined : peerAnchor,
+    stableCommentId,
+    anchor: peerAnchor,
   });
-  return rawContent.slice(0, document.bodyStart) + newBody;
+  const nextRawContent = rawContent.slice(0, document.bodyStart) + newBody;
+  if (nextRawContent === rawContent) {
+    throw new Error("The comment could not be inserted safely");
+  }
+  return nextRawContent;
+}
+
+async function hashContent(content: string): Promise<string> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(content),
+  );
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function isDeterministicallyMerged(
+  rawContent: string,
+  comment: PeerComment,
+): boolean {
+  const document = parseMarkdownFrontmatter(rawContent);
+  const parsed = parseCriticMarkup(document.body);
+  const stableCommentId = `mr-peer-${comment.id}`;
+  return parsed.comments.some(
+    (existingComment) => existingComment.thread?.commentId === stableCommentId,
+  );
 }
 
 export function createSharingControllerActions<
@@ -444,7 +404,19 @@ export function createSharingControllerActions<
       }
 
       const shares = [...currentTab.shares, record];
-      saveShares(stableShareKey(currentTab), shares);
+      if (!saveShares(currentTab.workspaceId, shares)) {
+        try {
+          await storage.deleteContent(docId, record.hostSecret);
+        } catch (cleanupError) {
+          console.warn(
+            "[sharing] failed to revoke an unpersisted share:",
+            cleanupError,
+          );
+        }
+        throw new Error(
+          "The share could not be saved in this browser. No review link was created.",
+        );
+      }
       updateSharingTabState({
         set,
         buildUpdatedTabs,
@@ -478,7 +450,7 @@ export function createSharingControllerActions<
       }
 
       const updatedShares = tab.shares.filter((share) => share.docId !== docId);
-      saveShares(stableShareKey(tab), updatedShares);
+      saveShares(tab.workspaceId, updatedShares);
       updateSharingTabState({
         set,
         buildUpdatedTabs,
@@ -508,7 +480,7 @@ export function createSharingControllerActions<
     },
 
     mergeComment: async (docId, comment) => {
-      const tab = getActiveTab(get);
+      const tab = findSharingTabByDocId(get().tabs, docId);
       if (!tab?.fileHandle) {
         console.error("[mergeComment] no active tab or fileHandle", {
           hasTab: !!tab,
@@ -522,7 +494,7 @@ export function createSharingControllerActions<
             hasHandle: !!currentTab.fileHandle,
           })),
         });
-        return;
+        return false;
       }
 
       const currentPath = tab.activeFilePath ?? tab.fileName ?? "";
@@ -531,97 +503,135 @@ export function createSharingControllerActions<
           commentPath: comment.path,
           currentPath,
         });
-        return;
+        return false;
       }
+      const ownerTabId = tab.id;
+      const expectedFileHandle = tab.fileHandle;
+      const expectedPath = currentPath;
+      const expectedRawContent = tab.rawContent;
 
-      const readPermission = isBrowserFileHandle(tab.fileHandle)
-        ? await tab.fileHandle.queryPermission({
-            mode: "read",
-          })
-        : "native";
-      const writePermission = isBrowserFileHandle(tab.fileHandle)
-        ? await tab.fileHandle.queryPermission({
-            mode: "readwrite",
-          })
-        : "native";
-      console.log("[mergeComment] proceeding", {
-        tabId: tab.id,
-        fileName: tab.fileName,
-        activeFilePath: tab.activeFilePath,
-        readPermission,
-        writePermission,
-        commentPath: comment.path,
-        blockIndex: comment.blockRef.blockIndex,
-      });
+      try {
+        const [expectedHash, liveRawContent] = await Promise.all([
+          hashContent(expectedRawContent),
+          readFile(expectedFileHandle),
+        ]);
+        const liveHash = await hashContent(liveRawContent);
+        const currentOwner = get().tabs.find(
+          (candidate) => candidate.id === ownerTabId,
+        );
+        const ownerStillMatches =
+          currentOwner?.fileHandle === expectedFileHandle &&
+          (currentOwner.activeFilePath ?? currentOwner.fileName ?? "") ===
+            expectedPath;
+        if (!ownerStillMatches || liveHash !== expectedHash) {
+          console.warn("[mergeComment] document changed before merge", {
+            docId,
+            cmtId: comment.id,
+            ownerTabId,
+          });
+          return false;
+        }
 
-      const newRaw = buildMergedPeerCommentContent(tab.rawContent, comment);
-      if (newRaw === tab.rawContent) {
-        console.error("[mergeComment] insert had no effect", {
-          blockIndex: comment.blockRef.blockIndex,
-          commentType: comment.commentType,
-          contentLength: tab.rawContent.length,
+        const alreadyMerged = isDeterministicallyMerged(
+          liveRawContent,
+          comment,
+        );
+        const newRawContent = alreadyMerged
+          ? liveRawContent
+          : buildMergedPeerCommentContent(liveRawContent, comment);
+        if (!alreadyMerged) {
+          const writeSucceeded = await writeAndUpdateTab({
+            set,
+            buildUpdatedTabs,
+            tabId: ownerTabId,
+            fileHandle: expectedFileHandle,
+            expectedRawContent,
+            newRawContent,
+          });
+          if (!writeSucceeded) {
+            return false;
+          }
+        }
+
+        if (!queuePendingResolve(docId, comment.id)) {
+          console.warn("[mergeComment] resolve outbox is unavailable", {
+            docId,
+            cmtId: comment.id,
+          });
+          return false;
+        }
+
+        const latestOwner = get().tabs.find(
+          (candidate) => candidate.id === ownerTabId,
+        );
+        if (!latestOwner) {
+          return false;
+        }
+        const nextTabState = removePendingCommentState(
+          latestOwner,
+          docId,
+          comment.id,
+        );
+        saveShares(latestOwner.workspaceId, nextTabState.shares);
+        updateSharingTabState({
+          set,
+          buildUpdatedTabs,
+          tabId: ownerTabId,
+          updater: () => nextTabState,
         });
+        flushPendingCommentResolvesForDoc(get().tabs, docId);
+        return true;
+      } catch (error) {
+        console.warn("[mergeComment] merge rejected:", error);
+        return false;
       }
-
-      const writeSucceeded = await writeAndUpdate({
-        set,
-        buildUpdatedActiveTabs,
-        fileHandle: tab.fileHandle,
-        newRawContent: newRaw,
-      });
-      if (!writeSucceeded) {
-        return;
-      }
-
-      const latestTab = getActiveTab(get);
-      if (!latestTab) {
-        return;
-      }
-
-      const nextTabState = removePendingCommentState(
-        latestTab,
-        docId,
-        comment.id,
-      );
-      saveShares(stableShareKey(latestTab), nextTabState.shares);
-      updateSharingTabState({
-        set,
-        buildUpdatedTabs,
-        tabId: latestTab.id,
-        updater: () => nextTabState,
-      });
-      queuePendingResolve(docId, comment.id);
-      flushPendingCommentResolvesForDoc(get().tabs, docId);
     },
 
     dismissComment: (docId, cmtId) => {
-      const tab = getActiveTab(get);
+      const tab = findSharingTabByDocId(get().tabs, docId);
       if (!tab) {
         return;
       }
 
-      const nextTabState = removePendingCommentState(tab, docId, cmtId);
-      saveShares(stableShareKey(tab), nextTabState.shares);
+      if (!queuePendingResolve(docId, cmtId)) {
+        return;
+      }
+
+      const queuedTab = get().tabs.find((candidate) => candidate.id === tab.id);
+      if (!queuedTab) {
+        return;
+      }
+      const nextTabState = removePendingCommentState(queuedTab, docId, cmtId);
+      saveShares(tab.workspaceId, nextTabState.shares);
       updateSharingTabState({
         set,
         buildUpdatedTabs,
         tabId: tab.id,
         updater: () => nextTabState,
       });
-      queuePendingResolve(docId, cmtId);
       flushPendingCommentResolvesForDoc(get().tabs, docId);
     },
 
     clearPendingComments: (docId) => {
-      const tab = getActiveTab(get);
+      const tab = findSharingTabByDocId(get().tabs, docId);
       if (!tab) {
         return;
       }
 
       const pendingForDoc = tab.pendingComments[docId] ?? [];
       const clearedIds = pendingForDoc.map((comment) => comment.id);
-      const nextTabState = replacePendingCommentsState(tab, docId, []);
-      saveShares(stableShareKey(tab), nextTabState.shares);
+      const allQueued = clearedIds.every((clearedId) =>
+        queuePendingResolve(docId, clearedId),
+      );
+      if (!allQueued) {
+        return;
+      }
+      const queuedTab = get().tabs.find((candidate) => candidate.id === tab.id);
+      if (!queuedTab) {
+        return;
+      }
+      const nextTabState = replacePendingCommentsState(queuedTab, docId, []);
+      saveShares(tab.workspaceId, nextTabState.shares);
       updateSharingTabState({
         set,
         buildUpdatedTabs,
@@ -629,9 +639,6 @@ export function createSharingControllerActions<
         updater: () => nextTabState,
       });
 
-      for (const clearedId of clearedIds) {
-        queuePendingResolve(docId, clearedId);
-      }
       flushPendingCommentResolvesForDoc(get().tabs, docId);
     },
 
@@ -655,13 +662,13 @@ export function createSharingControllerActions<
         ...existingComments,
         comment,
       ]);
-      saveShares(stableShareKey(targetTab), nextTabState.shares);
       updateSharingTabState({
         set,
         buildUpdatedTabs,
         tabId: targetTab.id,
         updater: () => nextTabState,
       });
+      saveShares(targetTab.workspaceId, nextTabState.shares);
     },
 
     replaceCommentsSnapshot: (docId, comments) => {
@@ -679,13 +686,13 @@ export function createSharingControllerActions<
         docId,
         filteredComments,
       );
-      saveShares(stableShareKey(targetTab), nextTabState.shares);
       updateSharingTabState({
         set,
         buildUpdatedTabs,
         tabId: targetTab.id,
         updater: () => nextTabState,
       });
+      saveShares(targetTab.workspaceId, nextTabState.shares);
     },
 
     flushPendingCommentResolves: (docId) => {

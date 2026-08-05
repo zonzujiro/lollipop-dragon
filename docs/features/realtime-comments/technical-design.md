@@ -116,27 +116,69 @@ This is lightweight role enforcement, not a full identity system.
 
 The relay also validates that the decrypted peer comment payload `id` matches the frame `cmtId`. That keeps frame identity authoritative and prevents ID drift.
 
+Every new client subscription has a generated `subscriptionId`. The client adds
+it to subscribe and comment operations; the Durable Object echoes the recipient's
+ID on responses, snapshots, and forwarded events. A response carrying an older
+ID is ignored. Missing IDs remain accepted for the deployment compatibility
+window.
+
+The client serializes all snapshot and live-event work per
+`(docId, subscriptionId)`. Decryption may be asynchronous, but later events do
+not commit before earlier ones. Worker errors are scoped to either the whole
+subscription or one operation so one rejected comment cannot falsely take the
+document offline.
+
+Generation-aware snapshots are chunked below the inbound frame ceiling. Each
+chunk carries `snapshotId`, `chunkIndex`, and `chunkCount`; the client applies
+the reassembled bounded snapshot atomically. The Durable Object also caps one
+document at 500 unresolved rows and 8 MiB of encoded payload text, preventing a
+valid collection of rows from becoming an unbounded reconnect allocation.
+
 ## 6. Client State Shape
 
 ### Host tab state
 
 Existing `TabState` fields remain the source of host review state:
 
+- `workspaceId`
 - `pendingComments`
 - `pendingResolveCommentIds`
 - `shares`
 - `shareKeys`
+- `incomingReviewSessions`
+
+`incomingReviewSessions[docId]` records the owning workspace, current host
+subscription generation and phase, and bounded quarantine notices. Share
+ownership is keyed by `workspaceId`, not a display name or whichever tab happens
+to be active.
 
 ### Global store state
 
 - `relayStatus`
 - `documentUpdateAvailable`
+- `peerSubmissionSubscription`
 - peer-mode share content fields
 - `peerDraftCommentOpen`
 - `myPeerComments`
 - `submittedPeerCommentIds`
 
-The WebSocket instance and timers stay in `src/services/relay.ts`, not in the Zustand store.
+The WebSocket instance, reconnect timer, ordered event queues, and bounded
+content-free diagnostics stay in `src/modules/relay/controller.ts` and
+`src/modules/relay/diagnostics.ts`, not in the Zustand store.
+
+### Local persistence boundaries
+
+- `markreview-shares-v2` binds each `docId` to its stable `workspaceId`. Legacy
+  name-based records are copied only when ownership is unambiguous; ambiguous
+  records remain unbound and the old registry is retained.
+- `markreview-resolve-outbox-v1` is a dedicated durable outbox. Merge, dismiss,
+  clear, and quarantine dismissal persist a resolve ID before hiding the item.
+- document text is stored in a per-workspace content cache instead of the root
+  Zustand blob. Relay inbox updates therefore do not rewrite every open
+  document's content.
+- all local-storage adapters contain quota and availability failures. A storage
+  exception becomes an explicit failed action or warning, not an uncaught render
+  failure.
 
 ## 7. Core Interaction Flows
 
@@ -161,21 +203,41 @@ The WebSocket instance and timers stay in `src/services/relay.ts`, not in the Zu
 
 1. Host opens relay and subscribes with `hostSecret`.
 2. DO verifies host role and responds `subscribe:ok`.
-3. DO immediately sends `comments:snapshot`.
-4. Client decrypts each entry and calls `replaceCommentsSnapshot`.
+3. DO immediately sends `comments:snapshot` carrying that subscription's ID.
+4. Client decrypts and applies it on that subscription's ordered queue before
+   processing later live events.
 5. Locally queued resolve IDs are filtered out so reconnect does not resurrect comments already removed in this session.
 
 ### 7.3 Host merge / dismiss
 
-1. Host removes the comment from pending review state.
-2. Host queues the comment ID in `pendingResolveCommentIds`.
-3. `flushPendingCommentResolves()` sends `comment:resolve` for queued IDs once the relay is confirmed.
-4. DO deletes the row from SQLite.
-5. DO replies with `comment:resolve:ack`.
-6. Client removes the queued resolve entry.
-7. DO broadcasts `comment:resolved` to subscribers.
+1. For merge, the client resolves the share's exact owning tab and captures its
+   file target, path, content, and SHA-256 hash.
+2. It builds a merge only if the current block/range anchor is still valid. A
+   deterministic `mr-peer-{commentId}` metadata ID makes retries idempotent.
+3. Immediately before writing, it rereads the file and rechecks the captured
+   owner/path/target and hash. Any mismatch fails closed.
+4. After a successful write, or before a dismiss/clear, the client persists the
+   comment ID to the resolve outbox. Only then does it remove the item from the
+   visible pending state.
+5. The ID is also represented in `pendingResolveCommentIds` for compatibility
+   with older persisted state.
+6. `flushPendingCommentResolves()` sends `comment:resolve` for queued IDs once the relay is confirmed.
+7. DO deletes the row from SQLite.
+8. DO replies with `comment:resolve:ack`.
+9. Client durably removes the outbox entry, then removes the compatibility queue entry.
+10. DO broadcasts `comment:resolved` to subscribers.
 
-### 7.4 Peer content refresh
+### 7.4 Invalid input containment
+
+1. The Worker rejects oversized frames, invalid IDs, unauthorized role actions,
+   and rate-limit excess before storage or fan-out.
+2. The client validates decrypted external data once at the relay boundary.
+3. An invalid host item becomes a bounded, content-free quarantine record for
+   its document; valid items in the same snapshot still apply.
+4. Review surfaces are wrapped per document/group so one render failure exposes
+   a retry fallback without replacing the whole tab.
+
+### 7.5 Peer content refresh
 
 1. Host updates encrypted share content through `updateShare()`.
 2. Host sends encrypted `document:updated`.
@@ -207,16 +269,22 @@ Obsolete note:
 
 ### Client
 
-- [src/services/relay.ts](../../../src/services/relay.ts)
+- [src/modules/relay/controller.ts](../../../src/modules/relay/controller.ts)
   - WebSocket lifecycle
   - subscribe resend
   - ping/pong
   - ACK handling
-  - snapshot decrypt / dispatch
+  - generation filtering and ordered snapshot/live dispatch
+- [src/modules/relay/diagnostics.ts](../../../src/modules/relay/diagnostics.ts)
+  - bounded content-free relay diagnostics
 - [src/store/index.ts](../../../src/store/index.ts)
-  - host pending comment state
-  - queued resolve state
-  - peer submission state
+  - module composition and compatible root-state migration
+- [src/modules/sharing/registry.ts](../../../src/modules/sharing/registry.ts)
+  - stable workspace-to-share ownership and additive legacy migration
+- [src/modules/sharing/resolveOutbox.ts](../../../src/modules/sharing/resolveOutbox.ts)
+  - durable resolve intent before UI removal
+- [src/modules/workspace/contentCache.ts](../../../src/modules/workspace/contentCache.ts)
+  - per-workspace document-content persistence
 - [src/services/shareStorage.ts](../../../src/services/shareStorage.ts)
   - share content CRUD only
 - [src/services/shareSync.ts](../../../src/services/shareSync.ts)
@@ -229,6 +297,11 @@ Obsolete note:
 - peer drafts remain local if relay subscribe is not yet confirmed
 - host-authored local comments stay outside this system entirely
 - WebSocket keep-alive is still application-level ping/pong every 30 seconds
+- plain WebSocket frames are capped at 1.5 MiB; encrypted comment payloads are
+  capped at 1 MiB; comment text and quote text are capped at 400 KiB each
+- comment writes are rate-limited per socket
+- generation-aware snapshots are chunked below the frame limit and one
+  document's unresolved inbox is capped at 500 rows / 8 MiB encoded payload
 
 ## 10. Non-Goals
 

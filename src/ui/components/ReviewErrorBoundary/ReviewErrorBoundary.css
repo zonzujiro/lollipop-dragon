@@ -1,0 +1,24 @@
+.review-error {
+  display: grid;
+  gap: 8px;
+  margin: 16px;
+  padding: 16px;
+  color: var(--text-primary);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.review-error span {
+  color: var(--text-secondary);
+}
+
+.review-error button {
+  justify-self: start;
+  padding: 6px 10px;
+  color: var(--on-accent);
+  background: var(--accent);
+  border: 0;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
