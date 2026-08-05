@@ -13,6 +13,13 @@ export interface ShareRecord {
   sharedPaths?: string[]; // original file paths included in the share
 }
 
+export interface QuarantinedPeerComment {
+  id: string;
+  cmtId: string;
+  reason: string;
+  receivedAt: string;
+}
+
 function isStringArray(value: unknown): value is string[] {
   return (
     Array.isArray(value) && value.every((entry) => typeof entry === "string")

@@ -18,10 +18,20 @@ export function PeerCommentCard({ docId, comment, currentPath }: Props) {
   const dismissComment = useAppStore((s) => s.dismissComment);
   const navigateToBlock = useAppStore((s) => s.navigateToBlock);
   const setHighlight = useAppStore((s) => s.setHoveredBlockHighlight);
+  const showToast = useAppStore((s) => s.showToast);
   const canMerge = comment.path === currentPath;
 
   function handleNavigate() {
     navigateToBlock(comment.path, comment.blockRef.blockIndex);
+  }
+
+  async function handleMerge() {
+    const merged = await mergeComment(docId, comment);
+    if (!merged) {
+      showToast(
+        "Comment could not be merged safely. Refresh the file and retry.",
+      );
+    }
   }
 
   return (
@@ -70,7 +80,7 @@ export function PeerCommentCard({ docId, comment, currentPath }: Props) {
         <button
           className="peer-card__btn peer-card__btn--merge"
           onClick={() => {
-            void mergeComment(docId, comment);
+            void handleMerge();
           }}
           disabled={!canMerge}
           title={

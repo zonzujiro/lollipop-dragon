@@ -84,20 +84,30 @@ describe("store.removeTab — history archival", () => {
 
   it("deduplicates by stableKey — keeps most recent", () => {
     // Close first tab
-    setTestState({ fileName: "doc.md" });
+    setTestState({ fileName: "doc.md", workspaceId: "same-workspace" });
     const tab1Id = getActiveTab(useAppStore.getState())!.id;
     useAppStore.getState().removeTab(tab1Id);
     expect(useAppStore.getState().history).toHaveLength(1);
     const firstEntryId = useAppStore.getState().history[0].id;
 
     // Close second tab with same name
-    setTestState({ fileName: "doc.md" });
+    setTestState({ fileName: "doc.md", workspaceId: "same-workspace" });
     const tab2Id = getActiveTab(useAppStore.getState())!.id;
     useAppStore.getState().removeTab(tab2Id);
 
     const { history } = useAppStore.getState();
     expect(history).toHaveLength(1);
     expect(history[0].id).not.toBe(firstEntryId);
+  });
+
+  it("keeps same-name workspaces distinct when their workspace identities differ", () => {
+    setTestState({ fileName: "doc.md", workspaceId: "workspace-a" });
+    useAppStore.getState().removeTab(getActiveTab(useAppStore.getState())!.id);
+
+    setTestState({ fileName: "doc.md", workspaceId: "workspace-b" });
+    useAppStore.getState().removeTab(getActiveTab(useAppStore.getState())!.id);
+
+    expect(useAppStore.getState().history).toHaveLength(2);
   });
 
   it("enforces 20-entry limit", () => {

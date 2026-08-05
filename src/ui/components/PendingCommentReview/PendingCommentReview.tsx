@@ -38,6 +38,12 @@ export function PendingCommentReview({ docId }: Props) {
   const clearPendingComments = useAppStore(
     (state) => state.clearPendingComments,
   );
+  const dismissQuarantinedComment = useAppStore(
+    (state) => state.dismissQuarantinedComment,
+  );
+  const flushPendingCommentResolves = useAppStore(
+    (state) => state.flushPendingCommentResolves,
+  );
   const showToast = useAppStore((state) => state.showToast);
   const openAgentSettings = useAppStore((state) => state.openAgentSettings);
   const agentSettingsOpen = useAppStore((state) => state.agentSettingsOpen);
@@ -54,6 +60,8 @@ export function PendingCommentReview({ docId }: Props) {
   );
 
   const comments = pendingComments[docId] ?? EMPTY_PEER_COMMENTS;
+  const quarantinedItems =
+    tab?.incomingReviewSessions[docId]?.quarantinedItems ?? [];
   const currentPath = activeFilePath ?? fileName ?? "";
   const pendingTargets = useMemo(
     () => getPendingPeerCommentTargets(comments),
@@ -133,53 +141,82 @@ export function PendingCommentReview({ docId }: Props) {
     };
   }, [agentSettingsOpen]);
 
-  if (comments.length === 0) {
+  if (comments.length === 0 && quarantinedItems.length === 0) {
     return <p className="pending-review__empty">No pending comments.</p>;
   }
 
   return (
     <div className="pending-review">
-      <div className="pending-review__toolbar">
-        <span className="pending-review__count">
-          {comments.length} comment{comments.length !== 1 ? "s" : ""}
-        </span>
-        {!canStopAgentRun && (
-          <button
-            className="pending-review__btn"
-            onClick={() => {
-              void handlePeerCommentsAgentAction();
-            }}
-            title={peerCommentsAgentAction.title}
-          >
-            {peerCommentsAgentAction.label}
-          </button>
-        )}
-        <button
-          className="pending-review__btn pending-review__btn--merge-all"
-          onClick={() => {
-            void handleMergeAll();
-          }}
-        >
-          Merge all
-        </button>
-        <button
-          className="pending-review__btn pending-review__btn--clear"
-          onClick={() => clearPendingComments(docId)}
-        >
-          Clear all
-        </button>
-      </div>
+      {quarantinedItems.length > 0 && (
+        <div className="pending-review__issues" role="status">
+          <strong>
+            {quarantinedItems.length === 1
+              ? "One incoming comment couldn’t be loaded"
+              : `${quarantinedItems.length} incoming comments couldn’t be loaded`}
+          </strong>
+          <span>
+            The invalid data was isolated so the rest of the review stays
+            available.
+          </span>
+          {quarantinedItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => {
+                if (dismissQuarantinedComment(docId, item.id)) {
+                  flushPendingCommentResolves(docId);
+                }
+              }}
+            >
+              Dismiss notice
+            </button>
+          ))}
+        </div>
+      )}
+      {comments.length > 0 && (
+        <>
+          <div className="pending-review__toolbar">
+            <span className="pending-review__count">
+              {comments.length} comment{comments.length !== 1 ? "s" : ""}
+            </span>
+            {!canStopAgentRun && (
+              <button
+                className="pending-review__btn"
+                onClick={() => {
+                  void handlePeerCommentsAgentAction();
+                }}
+                title={peerCommentsAgentAction.title}
+              >
+                {peerCommentsAgentAction.label}
+              </button>
+            )}
+            <button
+              className="pending-review__btn pending-review__btn--merge-all"
+              onClick={() => {
+                void handleMergeAll();
+              }}
+            >
+              Merge all
+            </button>
+            <button
+              className="pending-review__btn pending-review__btn--clear"
+              onClick={() => clearPendingComments(docId)}
+            >
+              Clear all
+            </button>
+          </div>
 
-      <div className="pending-review__list">
-        {comments.map((comment) => (
-          <PeerCommentCard
-            key={comment.id}
-            docId={docId}
-            comment={comment}
-            currentPath={currentPath}
-          />
-        ))}
-      </div>
+          <div className="pending-review__list">
+            {comments.map((comment) => (
+              <PeerCommentCard
+                key={comment.id}
+                docId={docId}
+                comment={comment}
+                currentPath={currentPath}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

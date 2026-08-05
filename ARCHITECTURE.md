@@ -84,6 +84,7 @@ Host mode state is tab-scoped.
 
 Each `TabState` may include:
 
+- a stable `workspaceId` independent of its display name
 - file or directory session handles
 - file tree and active file path
 - raw markdown content
@@ -105,6 +106,7 @@ This includes:
 - peer draft comments
 - submitted peer comment ids
 - peer name and panel state
+- the current peer submission subscription generation and phase
 
 Peer mode should read directly from root `peer*` fields, not from tabs.
 
@@ -235,6 +237,8 @@ Owns host-side sharing lifecycle:
 - active share selection
 - pending incoming peer comments
 - queued resolve ids
+- stable share-to-workspace ownership
+- per-share incoming subscription and quarantine state
 
 ### `peer-review`
 
@@ -254,6 +258,8 @@ Owns relay transport runtime:
 - document update availability
 - subscribe and unsubscribe orchestration
 - reconnect and resend behavior
+- subscription-generation filtering and ordered event application
+- external payload validation and bounded content-free diagnostics
 
 ## Controller vs State
 
@@ -349,14 +355,20 @@ entire store.
 
 ## Persistence
 
-Persistence remains centralized in the root store for now.
+Serializable UI/session metadata remains in the root store. Large document text
+is persisted separately per stable workspace, so an inbox update does not
+serialize every open document. Share ownership has its own registry keyed by
+workspace ID, and resolve intent has a dedicated outbox that is written before
+an incoming item is hidden.
 
-The persisted store contains app state and migrations, while mutable runtime
-objects such as WebSocket instances, timers, and DOM references stay outside the
-store.
+Mutable runtime objects such as WebSocket instances, event queues, timers, and
+DOM references stay outside the store. Local persistence adapters contain
+storage availability and quota failures at their boundary instead of allowing
+them to crash relay processing or rendering.
 
-Modules may own their own local persistence adapters when the persistence is
-part of the feature itself, such as share records or file-session handles.
+The share-registry migration is additive: a legacy display-name binding is
+copied only when exactly one workspace matches. Ambiguous records stay unbound,
+and the legacy registry remains available during the compatibility window.
 
 Backward-compatibility logic for persisted state should stay intentional.
 Migrations and legacy restore behavior should not be removed casually.

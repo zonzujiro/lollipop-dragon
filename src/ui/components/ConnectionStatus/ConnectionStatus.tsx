@@ -1,22 +1,52 @@
 import type { TabState } from "../../../types/tab";
-import { selectRelayStatus } from "../../../modules/relay";
+import type { RelayStatus } from "../../../modules/relay";
 import { useAppStore } from "../../../store";
 import "./ConnectionStatus.css";
 
-function selectActiveTabHasShares(state: {
+function selectVisibleConnectionStatus(state: {
   isPeerMode: boolean;
   tabs: TabState[];
   activeTabId: string | null;
-}): boolean {
+  relayStatus: RelayStatus;
+  peerSubmissionSubscription: {
+    phase: "idle" | "subscribing" | "syncing" | "live" | "failed";
+  } | null;
+}): RelayStatus | null {
   if (state.isPeerMode) {
-    return false;
+    const phase = state.peerSubmissionSubscription?.phase;
+    if (phase === "live") {
+      return "connected";
+    }
+    if (phase === "subscribing" || phase === "syncing") {
+      return "connecting";
+    }
+    return state.relayStatus === "disconnected" ? "disconnected" : "connecting";
   }
   const activeTab = state.tabs.find((tab) => tab.id === state.activeTabId);
   if (!activeTab) {
-    return false;
+    return null;
   }
   const now = new Date();
-  return activeTab.shares.some((share) => new Date(share.expiresAt) > now);
+  const activeShares = activeTab.shares.filter(
+    (share) => new Date(share.expiresAt) > now,
+  );
+  if (activeShares.length === 0) {
+    return null;
+  }
+  const phases = activeShares.map(
+    (share) =>
+      activeTab.incomingReviewSessions[share.docId]?.subscription.phase,
+  );
+  if (phases.every((phase) => phase === "live")) {
+    return "connected";
+  }
+  if (
+    phases.some((phase) => phase === "subscribing" || phase === "syncing") ||
+    state.relayStatus !== "disconnected"
+  ) {
+    return "connecting";
+  }
+  return "disconnected";
 }
 
 const statusLabels: Record<string, string> = {
@@ -26,11 +56,9 @@ const statusLabels: Record<string, string> = {
 };
 
 export function ConnectionStatus() {
-  const relayStatus = useAppStore(selectRelayStatus);
-  const isPeerMode = useAppStore((state) => state.isPeerMode);
-  const activeTabHasShares = useAppStore(selectActiveTabHasShares);
+  const relayStatus = useAppStore(selectVisibleConnectionStatus);
 
-  if (!isPeerMode && !activeTabHasShares) {
+  if (!relayStatus) {
     return null;
   }
 

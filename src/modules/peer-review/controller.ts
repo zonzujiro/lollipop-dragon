@@ -64,7 +64,7 @@ export async function loadPeerSharedContent<StoreState extends PeerReviewState>(
         : state.myPeerComments,
     }));
 
-    startRelayForDoc(docId);
+    startRelayForDoc(docId, "peer");
   } catch (error) {
     if (!hadLoadedContent) {
       set({

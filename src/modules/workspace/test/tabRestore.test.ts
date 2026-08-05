@@ -370,6 +370,30 @@ describe("store.restoreTabs", () => {
     expect(persistedBrowserTab["directoryHandle"]).toBeNull();
   });
 
+  it("stores document content in a workspace-scoped cache instead of the root state blob", () => {
+    localStorage.removeItem("markreview-store");
+    const tab = createDefaultTab({
+      id: "cached-tab",
+      workspaceId: "cached-workspace",
+      label: "notes.md",
+      fileName: "notes.md",
+      rawContent: "# Cached document\n",
+    });
+
+    useAppStore.setState({ tabs: [tab], activeTabId: tab.id });
+
+    const persistedState = getPersistedStoreState();
+    const persistedTabs = persistedState["tabs"];
+    if (!isUnknownArray(persistedTabs)) {
+      throw new Error("Expected persisted tabs array");
+    }
+    const persistedTab = findRecordById(persistedTabs, tab.id);
+    expect(persistedTab["rawContent"]).toBeUndefined();
+    expect(
+      localStorage.getItem("markreview-workspace-content-v1:cached-workspace"),
+    ).toBe("# Cached document\n");
+  });
+
   it("sets restoreError on file tab when handle is missing from IndexedDB", async () => {
     const fileTab = createDefaultTab({
       id: "file-tab",

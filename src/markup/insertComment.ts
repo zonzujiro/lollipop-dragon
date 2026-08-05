@@ -116,6 +116,7 @@ export function insertComment(input: {
   type: CommentType;
   text: string;
   authorLabel?: string;
+  stableCommentId?: string;
   anchor?: Pick<CommentAnchor, "quote" | "occurrence" | "start" | "end">;
 }): string {
   const blocks = getBlockPositions(input.cleanMarkdown);
@@ -133,7 +134,7 @@ export function insertComment(input: {
 
   const thread =
     input.type === "question" || input.authorLabel
-      ? createQuestionThreadMetadata(input.authorLabel)
+      ? createQuestionThreadMetadata(input.authorLabel, input.stableCommentId)
       : undefined;
   const body = serializeCommentBody({
     type: input.type,

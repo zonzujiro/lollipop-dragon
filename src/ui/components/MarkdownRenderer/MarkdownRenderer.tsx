@@ -214,7 +214,7 @@ function MarkdownRendererContent({
       if (!isCommentType(type)) {
         return;
       }
-      void postPeerCommentAction({
+      const posted = postPeerCommentAction({
         blockIndex,
         type,
         text,
@@ -223,8 +223,13 @@ function MarkdownRendererContent({
           ? { quote: anchor.quote, occurrence: anchor.occurrence }
           : undefined,
       });
+      if (!posted) {
+        showToast(
+          "Comment is too large to send safely, or this document needs refresh.",
+        );
+      }
     },
-    [activeFilePath, fileName, postPeerCommentAction],
+    [activeFilePath, fileName, postPeerCommentAction, showToast],
   );
   const handleRestoreAccess = useCallback(() => {
     if (hostTabId) {

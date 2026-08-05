@@ -1,8 +1,8 @@
-# MarkReview v2 — Peer Sharing & Async Collaboration
+# MarkReview v2 — Peer Sharing & Durable Review
 
 ## 1. Overview
 
-MarkReview v2 adds the ability to share documents with 2–5 remote peers for review and commenting. The architecture uses a single Cloudflare Worker + KV as an encrypted blob store for both content delivery and comment collection. All content is encrypted client-side before leaving the browser. Peers need nothing but a browser and a link.
+MarkReview v2 adds the ability to share documents with 2–5 remote peers for review and commenting. A Cloudflare Worker stores encrypted document content in KV and routes encrypted unresolved comments through a SQLite-backed Durable Object. All content is encrypted client-side before leaving the browser. Peers need nothing but a browser and a link.
 
 ---
 
@@ -31,45 +31,45 @@ v1 is single-user. This release adds peer sharing.
 
 ```
 ┌─────────────────────────────────────────────────┐
-│            Cloudflare Worker + KV                │
-│        (async encrypted blob storage)            │
+│      Cloudflare Worker + KV + Durable Object     │
 │                                                  │
 │  Content:                                        │
 │  - Host encrypts files client-side (AES-256)     │
-│  - Uploads encrypted blob → Worker stores in KV  │
+│  - Uploads encrypted blob → KV                   │
 │  - Peers fetch blob, decrypt in browser          │
 │  - Works anytime, host doesn't need to be online │
 │                                                  │
 │  Comments:                                       │
 │  - Peers encrypt comments client-side            │
-│  - POST to Worker → stored in KV                 │
-│  - Host fetches and merges into local files      │
+│  - WebSocket relay → Durable Object SQLite       │
+│  - Host receives live, then merges locally       │
 │  - No auth needed from peers                     │
 │                                                  │
-│  Auto-purge via KV TTL (default 7 days)          │
+│  KV TTL + Durable Object alarms purge expired data│
 └─────────────────────────────────────────────────┘
 ```
 
-The entire sharing flow is async. Host uploads, peers read and comment on their own time, host checks comments when ready. No one needs to be online simultaneously.
+Document access and unresolved comments are durable, so host and peers do not
+need to be online simultaneously. When they are online, WebSocket subscriptions
+deliver comment and document-update notifications immediately.
 
 ### 4.2 Cloudflare Worker API
 
-A single Cloudflare Worker (~30 lines) backed by one KV namespace. Six endpoints:
+A single Cloudflare Worker exposes encrypted share-content endpoints and a
+WebSocket relay:
 
 ```
-POST   /share                 ← host uploads encrypted content blob → returns doc-id
+POST   /share/{doc-id}        ← host uploads encrypted content
+HEAD   /share/{doc-id}        ← client checks whether content changed
 GET    /share/{doc-id}        ← anyone fetches encrypted content (no auth)
-DELETE /share/{doc-id}        ← host deletes content (requires host-secret header)
-
-POST   /comments/{doc-id}    ← anyone posts encrypted comment blob (no auth)
-GET    /comments/{doc-id}    ← anyone fetches all pending comments (no auth)
-DELETE /comments/{doc-id}    ← host clears comments (requires host-secret header)
+DELETE /share/{doc-id}        ← host revokes content and comments
+GET    /relay                 ← host/peer WebSocket transport
 ```
 
-- All blobs are opaque encrypted binary. The Worker never sees plaintext.
+- Content and comment payloads are opaque encrypted values. The Worker never sees plaintext.
 - `doc-id` is a random UUID generated client-side.
 - `host-secret` is a random token generated at share time, stored only in the host's browser. Used for delete operations.
-- KV TTL handles auto-expiry. Default: 7 days. Configurable per share.
+- KV TTL and Durable Object alarms handle auto-expiry. Default: 7 days.
 - No authentication, no accounts, no user data stored.
 
 ### 4.3 Shareable Link Structure
@@ -100,7 +100,8 @@ The URL fragment (`#`) is never sent in HTTP requests. GitHub Pages, Cloudflare,
 
 - Comments are encrypted with the same AES-256-GCM key as the content.
 - Peers have the key from the URL fragment.
-- Each comment is a separate encrypted blob stored under the doc-id.
+- Each unresolved comment is an encrypted payload stored under the document and
+  comment IDs in Durable Object SQLite.
 - Cloudflare cannot read comment content.
 
 ---
@@ -198,13 +199,13 @@ Acceptance criteria:
 - Hostile SVG fixtures cover script, event, URL, embedded-content, and CSS
   payloads.
 
-### 7.3 Async Commenting
+### 7.3 Durable Commenting
 
 Peers can comment on any block or a selection of at least 3 characters within
-one rendered block, just like the host. There is no maximum selection length.
-The app encrypts the block reference and optional durable range anchor, then
-POSTs the comment to the Worker's comment endpoint. No auth or account is
-needed.
+one rendered block, just like the host. Comment and quote fields are bounded at
+400 KiB each so a malicious or accidental payload cannot exhaust a receiving
+tab. The app encrypts the block reference and optional durable range anchor,
+then sends the comment through the relay. No account is needed.
 
 The host receives pending comments through the relay, decrypts them, and sees
 them in the **Incoming** view of the normal Comments panel. The Comments header
@@ -245,7 +246,8 @@ The host has one Share sheet for creation and management. It shows all active sh
 - "Copy link" button — reconstructs and copies that existing share URL without
   uploading content again or changing the selected creation scope.
 - "Revoke" button — deletes the content and comments from the Worker immediately.
-- Share metadata (doc-id, host-secret) is stored in the host's browser localStorage.
+- Share metadata is bound to a stable workspace ID in the host's browser. A
+  same-named workspace cannot silently claim another workspace's link.
 
 Comment review is intentionally absent from the Share sheet. Incoming feedback
 belongs to the host Comments panel; the Share sheet only manages links.
@@ -324,6 +326,8 @@ because the active tab's `shares`, `shareKeys`, or `activeDocId` changed.
 
 - One Cloudflare Worker (free tier: 100K requests/day).
 - One KV namespace (free tier: 10GB storage, 100K reads/day, 1K writes/day).
+- One SQLite-backed Durable Object relay for unresolved comments and live
+  routing.
 - Deployed once via `wrangler deploy`. No ongoing maintenance.
 
 ### 9.2 KV Key Schema
@@ -331,19 +335,26 @@ because the active tab's `shares`, `shareKeys`, or `activeDocId` changed.
 ```
 share:{doc-id}                    → encrypted content blob (TTL: 7 days default)
 share:{doc-id}:meta               → { host_secret_hash, created_at, ttl } (plaintext metadata)
-comments:{doc-id}:{comment-id}    → encrypted comment blob (TTL: 7 days)
 ```
+
+Unresolved encrypted comments live in the Durable Object's `comments` table,
+keyed by `(doc_id, cmt_id)`. `doc_meta` carries the verified host-secret hash
+and expiry used by relay subscriptions.
 
 ### 9.3 Security
 
 - `host-secret` is generated client-side at share time and hashed (SHA-256) before storing in KV metadata.
-- DELETE operations require the raw `host-secret` in a header. The Worker hashes it and compares.
+- Host relay subscriptions and delete operations require the raw `host-secret`.
+  The Worker hashes it and compares it with stored metadata.
 - No other authentication exists. Content security relies entirely on client-side encryption.
 - The Worker never decrypts anything. It is a dumb blob store.
 
 ### 9.4 Rate Limiting
 
-- The Worker should enforce basic rate limiting to prevent abuse: max 100 writes per IP per hour, max 10MB per blob.
+- Relay comment writes are limited to 60 per socket per minute. Plain relay
+  frames are limited to 1.5 MiB and encrypted comment payloads to 1 MiB.
+- Reconnect snapshots are chunked below the frame limit. One document can hold
+  at most 500 unresolved comments and 8 MiB of encoded encrypted payloads.
 - Cloudflare's free tier limits provide a natural ceiling.
 
 ### 9.5 CORS
@@ -355,20 +366,22 @@ comments:{doc-id}:{comment-id}    → encrypted comment blob (TTL: 7 days)
 ## 10. Technical Stack
 
 - **Encryption:** Web Crypto API (AES-256-GCM, native browser implementation)
-- **Async storage:** Cloudflare Worker + KV (encrypted blob store)
+- **Durable storage:** Cloudflare KV for encrypted content; Durable Object
+  SQLite for encrypted unresolved comments
+- **Live transport:** Durable Object WebSocket relay
 - **Hosting:** GitHub Pages (static site)
 
 ---
 
 ## 11. Security Model
 
-| Layer                 | What's protected               | How                                   |
-| --------------------- | ------------------------------ | ------------------------------------- |
-| Content at rest (KV)  | File content                   | AES-256-GCM, key in URL fragment only |
-| Comments at rest (KV) | Peer comments                  | AES-256-GCM, same key                 |
-| Content in transit    | Worker requests                | TLS (Cloudflare)                      |
-| Cloudflare Worker/KV  | Cannot read anything           | Only stores encrypted blobs           |
-| Delete operations     | Prevents unauthorized deletion | host-secret header, hashed in KV      |
+| Layer                 | What's protected            | How                                   |
+| --------------------- | --------------------------- | ------------------------------------- |
+| Content at rest (KV)  | File content                | AES-256-GCM, key in URL fragment only |
+| Comments at rest (DO) | Unresolved peer comments    | AES-256-GCM, same key                 |
+| Content in transit    | Worker and relay requests   | TLS (Cloudflare)                      |
+| Cloudflare services   | Cannot read review content  | Only store/route encrypted payloads   |
+| Host operations       | Resolve, update, and revoke | Verified host secret                  |
 
 **What an attacker would need to compromise content:** The full URL including the fragment. The fragment is never logged by any server, never appears in HTTP requests, and is only shared directly between host and peers.
 
@@ -376,11 +389,12 @@ comments:{doc-id}:{comment-id}    → encrypted comment blob (TTL: 7 days)
 
 ## 12. Purge & Lifecycle
 
-- Every blob in KV has a TTL (default 7 days, configurable at share time).
-- KV auto-deletes expired blobs. No cron jobs, no manual cleanup.
+- Every content blob in KV has a TTL (default 7 days, configurable at share time).
+- Durable Object alarms remove expired comment rows and metadata.
 - Host can manually revoke any share via the "Revoke" button, which calls DELETE on the Worker.
 - After deletion, peers with the link see: "This document is no longer available."
-- No data persists anywhere after purge. Cloudflare deletes the encrypted blobs. The decryption key only existed in the URL and the host's browser.
+- No review data persists after both stores complete purge. The decryption key
+  only existed in the URL and the host's browser.
 
 ---
 
@@ -395,13 +409,11 @@ interface ShareStorage {
   ): Promise<{ docId: string; hostSecret: string }>;
   fetchContent(docId: string): Promise<ArrayBuffer>;
   deleteContent(docId: string, hostSecret: string): Promise<void>;
-  postComment(docId: string, blob: ArrayBuffer): Promise<string>;
-  fetchComments(docId: string): Promise<ArrayBuffer[]>;
-  deleteComments(docId: string, hostSecret: string): Promise<void>;
 }
 ```
 
-If the storage backend needs to change in the future, only the implementation of this interface changes. The rest of the app is unaffected.
+Comment persistence and delivery are a separate relay module contract rather
+than methods on content storage.
 
 ---
 
@@ -411,7 +423,9 @@ If the storage backend needs to change in the future, only the implementation of
 - **Worker is a single point of failure for sharing.** If Cloudflare is down, sharing doesn't work. Local editing is unaffected.
 - **Blob size limit.** KV values max out at 25MB. Sufficient for hundreds of markdown files. If exceeded, the app splits across multiple KV entries.
 - **Free tier limits.** 100K requests/day and 1K writes/day. More than enough for 2–5 peers. If exceeded, Cloudflare's paid tier is $5/month.
-- **No real-time sync.** Comments are async. Host must manually check for new comments. Acceptable for the review workflow. Real-time sync is planned for v3.
+- **Relay dependency for new submissions.** A peer draft stays local until its
+  document subscription is confirmed. Previously stored unresolved comments
+  remain durable during disconnects.
 - **No authenticated identity.** Peers self-declare a browser-local display
   name that persists in localStorage. There are no accounts. For 2–5 trusted
   peers this is acceptable.
@@ -428,19 +442,27 @@ If the storage backend needs to change in the future, only the implementation of
 - Shared panel for host to manage, update, and revoke shares.
 - Auto-purge via KV TTL.
 
-### Phase 2b — Async Commenting
+### Phase 2b — Durable Commenting
 
-- Peers can post encrypted comments to the Worker.
-- Host can fetch, decrypt, review, and merge comments into local files.
+- Peers can post encrypted comments through the relay.
+- Host receives, decrypts, reviews, and merges comments into local files.
 - Comment merge inserts CriticMarkup into the appropriate file locations.
 - Incoming review workflow in the host Comments panel.
 - Numeric incoming badge on the Comments header action.
 
+### Phase 2c — Review Reliability
+
+- Generation-scoped, ordered relay subscriptions.
+- Stable workspace ownership and additive legacy registry migration.
+- Durable resolve outbox and scoped document-content persistence.
+- Fail-closed, idempotent merge with anchor and content checks.
+- Payload validation, rate limits, quarantine, and per-document render recovery.
+
 ---
 
-## 16. Future (v3) — Real-Time Collaboration
+## 16. Future (v3) — Collaborative Editing
 
-If the async workflow proves insufficient, v3 adds real-time sync:
+Live comment delivery exists in v2. A future collaborative-editing phase may add:
 
 - WebRTC via Trystero for peer discovery and direct browser-to-browser connections.
 - Yjs + y-webrtc-trystero for CRDT-based conflict-free comment sync.

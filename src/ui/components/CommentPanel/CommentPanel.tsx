@@ -81,7 +81,6 @@ export function CommentPanel({ peerMode = false }: Props) {
     () => getActiveRootCommentId(comments, activeCommentId),
     [activeCommentId, comments],
   );
-  // The selected question thread, expanded inline in the panel (host mode).
   const activeHostThread = useMemo(() => {
     if (peerMode || !activeRootCommentId) {
       return null;
@@ -112,10 +111,16 @@ export function CommentPanel({ peerMode = false }: Props) {
       ? commentFilter
       : "all";
   const pendingComments = tab?.pendingComments ?? {};
-  const incomingCount = Object.values(pendingComments).reduce(
+  const incomingReviewSessions = tab?.incomingReviewSessions ?? {};
+  const pendingIncomingCount = Object.values(pendingComments).reduce(
     (total, commentsForShare) => total + commentsForShare.length,
     0,
   );
+  const quarantinedIncomingCount = Object.values(incomingReviewSessions).reduce(
+    (total, session) => total + session.quarantinedItems.length,
+    0,
+  );
+  const incomingCount = pendingIncomingCount + quarantinedIncomingCount;
   const {
     openAll: handleOpenAllComments,
     selectType: handleSelectCommentType,
@@ -408,6 +413,7 @@ export function CommentPanel({ peerMode = false }: Props) {
           <IncomingCommentList
             pendingComments={pendingComments}
             shares={tab?.shares ?? []}
+            sessions={incomingReviewSessions}
           />
         ) : resolvedView ? (
           <SingleFileList

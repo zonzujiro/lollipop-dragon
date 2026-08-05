@@ -13,6 +13,7 @@ export type { FileCommentEntry } from "../modules/host-review/types";
 
 export interface TabState extends SharingTabState, HostReviewTabState {
   id: string;
+  workspaceId: string;
   label: string;
 
   fileHandle: FileTarget | null;
@@ -33,6 +34,7 @@ export function createDefaultTab(
 ): TabState {
   return {
     id: crypto.randomUUID(),
+    workspaceId: overrides.workspaceId ?? crypto.randomUUID(),
     label: overrides.label,
     fileHandle: null,
     fileName: null,

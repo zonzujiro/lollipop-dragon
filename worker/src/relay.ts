@@ -8,9 +8,16 @@ interface RelayShareMeta {
   ttl: number;
 }
 
+interface SocketSubscription {
+  docId: string;
+  role: "host" | "peer";
+  subscriptionId?: string;
+}
+
 interface SocketAttachment {
-  subscriptions: string[];
-  hostDocs: string[];
+  subscriptions: SocketSubscription[];
+  writeWindowStartedAt: number;
+  writesInWindow: number;
 }
 
 interface ClearDocRequest {
@@ -69,15 +76,88 @@ function getStringArray(
   return value.filter((entry): entry is string => typeof entry === "string");
 }
 
+const MAX_RELAY_FRAME_BYTES = 1_500_000;
+const MAX_ENCRYPTED_COMMENT_BYTES = 1024 * 1024;
+const COMMENT_RATE_WINDOW_MS = 60_000;
+const MAX_COMMENT_WRITES_PER_WINDOW = 60;
+const MAX_IDENTIFIER_LENGTH = 256;
+const MAX_PENDING_COMMENTS_PER_DOC = 500;
+const MAX_PENDING_PAYLOAD_CHARS_PER_DOC = 8 * 1024 * 1024;
+const MAX_SNAPSHOT_CHUNK_BYTES = 1_450_000;
+const COMMENT_ID_RE = /^[A-Za-z0-9_-]+$/;
+
+function isValidIdentifier(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= MAX_IDENTIFIER_LENGTH &&
+    COMMENT_ID_RE.test(value)
+  );
+}
+
+function getOptionalSubscriptionId(
+  frame: Record<string, unknown>,
+): string | undefined {
+  const value = frame["subscriptionId"];
+  if (!isValidIdentifier(value)) {
+    return undefined;
+  }
+  return value;
+}
+
+function hasInvalidSubscriptionId(frame: Record<string, unknown>): boolean {
+  return (
+    "subscriptionId" in frame && !isValidIdentifier(frame["subscriptionId"])
+  );
+}
+
+function isSocketSubscription(value: unknown): value is SocketSubscription {
+  if (!isRecord(value)) {
+    return false;
+  }
+  const role = value["role"];
+  const subscriptionId = value["subscriptionId"];
+  return (
+    typeof value["docId"] === "string" &&
+    (role === "host" || role === "peer") &&
+    (subscriptionId === undefined || typeof subscriptionId === "string")
+  );
+}
+
+function parseSubscriptions(
+  record: Record<string, unknown>,
+): SocketSubscription[] {
+  const value = record["subscriptions"];
+  if (Array.isArray(value) && value.every(isSocketSubscription)) {
+    return value;
+  }
+
+  const legacySubscriptions = getStringArray(record, "subscriptions");
+  const legacyHostDocs = new Set(getStringArray(record, "hostDocs"));
+  return legacySubscriptions.map((docId) => ({
+    docId,
+    role: legacyHostDocs.has(docId) ? "host" : "peer",
+  }));
+}
+
 function getAttachment(ws: WebSocket): SocketAttachment {
   const raw = ws.deserializeAttachment();
   if (isRecord(raw)) {
     return {
-      subscriptions: getStringArray(raw, "subscriptions"),
-      hostDocs: getStringArray(raw, "hostDocs"),
+      subscriptions: parseSubscriptions(raw),
+      writeWindowStartedAt:
+        typeof raw["writeWindowStartedAt"] === "number"
+          ? raw["writeWindowStartedAt"]
+          : Date.now(),
+      writesInWindow:
+        typeof raw["writesInWindow"] === "number" ? raw["writesInWindow"] : 0,
     };
   }
-  return { subscriptions: [], hostDocs: [] };
+  return {
+    subscriptions: [],
+    writeWindowStartedAt: Date.now(),
+    writesInWindow: 0,
+  };
 }
 
 function setAttachment(ws: WebSocket, attachment: SocketAttachment): void {
@@ -102,6 +182,16 @@ function parseMessage(
   try {
     const text =
       typeof message === "string" ? message : new TextDecoder().decode(message);
+    if (new TextEncoder().encode(text).byteLength > MAX_RELAY_FRAME_BYTES) {
+      ws.send(
+        JSON.stringify({
+          type: "error",
+          docId: "",
+          message: "Frame too large",
+        }),
+      );
+      return null;
+    }
     data = JSON.parse(text);
   } catch (parseError) {
     console.error("[RelayHubSqlite] invalid JSON from client:", parseError);
@@ -117,6 +207,82 @@ function parseMessage(
     return null;
   }
   return data;
+}
+
+function findSubscription(
+  attachment: SocketAttachment,
+  docId: string,
+): SocketSubscription | undefined {
+  return attachment.subscriptions.find(
+    (subscription) => subscription.docId === docId,
+  );
+}
+
+function withSubscriptionId(
+  message: Record<string, unknown>,
+  subscription: SocketSubscription | undefined,
+): Record<string, unknown> {
+  if (!subscription?.subscriptionId) {
+    return message;
+  }
+  return { ...message, subscriptionId: subscription.subscriptionId };
+}
+
+function sendDocFrame(
+  ws: WebSocket,
+  docId: string,
+  message: Record<string, unknown>,
+): void {
+  const subscription = findSubscription(getAttachment(ws), docId);
+  ws.send(JSON.stringify(withSubscriptionId(message, subscription)));
+}
+
+function sendRequestFrame(
+  ws: WebSocket,
+  requestFrame: Record<string, unknown>,
+  responseFrame: Record<string, unknown>,
+): void {
+  const subscriptionId = getOptionalSubscriptionId(requestFrame);
+  ws.send(
+    JSON.stringify(
+      subscriptionId ? { ...responseFrame, subscriptionId } : responseFrame,
+    ),
+  );
+}
+
+function subscriptionMatchesFrame(
+  subscription: SocketSubscription | undefined,
+  frame: Record<string, unknown>,
+): boolean {
+  if (!subscription) {
+    return false;
+  }
+  const frameSubscriptionId = getOptionalSubscriptionId(frame);
+  return (
+    !frameSubscriptionId ||
+    !subscription.subscriptionId ||
+    frameSubscriptionId === subscription.subscriptionId
+  );
+}
+
+function consumeCommentWrite(ws: WebSocket): boolean {
+  const attachment = getAttachment(ws);
+  const now = Date.now();
+  if (now - attachment.writeWindowStartedAt >= COMMENT_RATE_WINDOW_MS) {
+    attachment.writeWindowStartedAt = now;
+    attachment.writesInWindow = 0;
+  }
+  if (attachment.writesInWindow >= MAX_COMMENT_WRITES_PER_WINDOW) {
+    return false;
+  }
+  attachment.writesInWindow += 1;
+  setAttachment(ws, attachment);
+  return true;
+}
+
+function encryptedPayloadByteLength(payload: string): number {
+  const padding = payload.endsWith("==") ? 2 : payload.endsWith("=") ? 1 : 0;
+  return Math.floor((payload.length * 3) / 4) - padding;
 }
 
 export class RelayHubSqlite implements DurableObject {
@@ -172,7 +338,11 @@ export class RelayHubSqlite implements DurableObject {
       const client = pair[0];
       const server = pair[1];
       this.state.acceptWebSocket(server);
-      setAttachment(server, { subscriptions: [], hostDocs: [] });
+      setAttachment(server, {
+        subscriptions: [],
+        writeWindowStartedAt: Date.now(),
+        writesInWindow: 0,
+      });
       return new Response(null, { status: 101, webSocket: client });
     }
 
@@ -204,6 +374,21 @@ export class RelayHubSqlite implements DurableObject {
       return;
     }
     const frameType = typeof frame.type === "string" ? frame.type : "";
+    if (hasInvalidSubscriptionId(frame)) {
+      ws.send(
+        JSON.stringify({
+          type: "error",
+          docId: isValidIdentifier(frame.docId) ? frame.docId : "",
+          scope: "operation",
+          message: "Invalid subscription id",
+        }),
+      );
+      return;
+    }
+    if (frame.version === 1) {
+      this.handleRelayBroadcast(ws, frame);
+      return;
+    }
     const handler = this.frameHandlers[frameType];
     if (!handler) {
       ws.send(
@@ -223,39 +408,47 @@ export class RelayHubSqlite implements DurableObject {
     ws: WebSocket,
     frame: Record<string, unknown>,
   ): Promise<void> {
-    if (typeof frame.docId !== "string") {
+    if (!isValidIdentifier(frame.docId)) {
+      sendRequestFrame(ws, frame, {
+        type: "error",
+        docId: "",
+        message: "Invalid document id",
+      });
       return;
     }
 
     const docId = frame.docId;
     const role = frame.role === "host" ? "host" : "peer";
+    const subscriptionId = getOptionalSubscriptionId(frame);
     const metaJson = await this.env.LOLLIPOP_DRAGON.get(`share:${docId}:meta`);
     if (!metaJson) {
       this.clearDoc(docId);
-      ws.send(
-        JSON.stringify({ type: "error", docId, message: "Doc not found" }),
-      );
+      sendRequestFrame(ws, frame, {
+        type: "error",
+        docId,
+        message: "Doc not found",
+      });
       return;
     }
 
     const meta = parseShareMeta(metaJson);
     if (!meta) {
-      ws.send(
-        JSON.stringify({
-          type: "error",
-          docId,
-          message: "Invalid share metadata",
-        }),
-      );
+      sendRequestFrame(ws, frame, {
+        type: "error",
+        docId,
+        message: "Invalid share metadata",
+      });
       return;
     }
 
     const expiresAt = new Date(meta.createdAt).getTime() + meta.ttl * 1000;
     if (expiresAt <= Date.now()) {
       this.clearDoc(docId);
-      ws.send(
-        JSON.stringify({ type: "error", docId, message: "Share expired" }),
-      );
+      sendRequestFrame(ws, frame, {
+        type: "error",
+        docId,
+        message: "Share expired",
+      });
       return;
     }
 
@@ -263,7 +456,11 @@ export class RelayHubSqlite implements DurableObject {
     if (role === "host") {
       isHost = await this.verifyHostRole(frame, meta.hostSecretHash);
       if (!isHost) {
-        ws.send(JSON.stringify({ type: "error", docId, message: "Forbidden" }));
+        sendRequestFrame(ws, frame, {
+          type: "error",
+          docId,
+          message: "Forbidden",
+        });
         return;
       }
     }
@@ -280,15 +477,17 @@ export class RelayHubSqlite implements DurableObject {
     );
 
     const attachment = getAttachment(ws);
-    if (!attachment.subscriptions.includes(docId)) {
-      attachment.subscriptions.push(docId);
-    }
-    if (isHost && !attachment.hostDocs.includes(docId)) {
-      attachment.hostDocs.push(docId);
-    }
+    attachment.subscriptions = attachment.subscriptions.filter(
+      (subscription) => subscription.docId !== docId,
+    );
+    attachment.subscriptions.push({
+      docId,
+      role: isHost ? "host" : "peer",
+      ...(subscriptionId ? { subscriptionId } : {}),
+    });
     setAttachment(ws, attachment);
 
-    ws.send(JSON.stringify({ type: "subscribe:ok", docId }));
+    sendDocFrame(ws, docId, { type: "subscribe:ok", docId });
     if (isHost) {
       this.sendSnapshot(ws, docId);
     }
@@ -309,16 +508,20 @@ export class RelayHubSqlite implements DurableObject {
     ws: WebSocket,
     frame: Record<string, unknown>,
   ): void {
-    if (typeof frame.docId !== "string") {
+    if (!isValidIdentifier(frame.docId)) {
       return;
     }
     const docId = frame.docId;
+    const subscriptionId = getOptionalSubscriptionId(frame);
     const attachment = getAttachment(ws);
     attachment.subscriptions = attachment.subscriptions.filter(
-      (subscriptionId) => subscriptionId !== docId,
-    );
-    attachment.hostDocs = attachment.hostDocs.filter(
-      (hostDocId) => hostDocId !== docId,
+      (subscription) =>
+        subscription.docId !== docId ||
+        Boolean(
+          subscriptionId &&
+          subscription.subscriptionId &&
+          subscription.subscriptionId !== subscriptionId,
+        ),
     );
     setAttachment(ws, attachment);
   }
@@ -338,7 +541,49 @@ export class RelayHubSqlite implements DurableObject {
       cmtId: String(row.cmt_id),
       payload: String(row.payload),
     }));
-    ws.send(JSON.stringify({ type: "comments:snapshot", docId, comments }));
+    const subscription = findSubscription(getAttachment(ws), docId);
+    if (!subscription?.subscriptionId) {
+      sendDocFrame(ws, docId, {
+        type: "comments:snapshot",
+        docId,
+        comments,
+      });
+      return;
+    }
+    const chunks: Array<typeof comments> = [];
+    let currentChunk: typeof comments = [];
+    for (const comment of comments) {
+      const candidate = [...currentChunk, comment];
+      const candidateBytes = new TextEncoder().encode(
+        JSON.stringify({
+          type: "comments:snapshot",
+          docId,
+          comments: candidate,
+          subscriptionId: subscription.subscriptionId,
+        }),
+      ).byteLength;
+      if (
+        candidateBytes > MAX_SNAPSHOT_CHUNK_BYTES &&
+        currentChunk.length > 0
+      ) {
+        chunks.push(currentChunk);
+        currentChunk = [comment];
+      } else {
+        currentChunk = candidate;
+      }
+    }
+    chunks.push(currentChunk);
+    const snapshotId = crypto.randomUUID();
+    for (const [chunkIndex, chunk] of chunks.entries()) {
+      sendDocFrame(ws, docId, {
+        type: "comments:snapshot",
+        docId,
+        comments: chunk,
+        snapshotId,
+        chunkIndex,
+        chunkCount: chunks.length,
+      });
+    }
   }
 
   private handleCommentAdd(
@@ -346,10 +591,20 @@ export class RelayHubSqlite implements DurableObject {
     frame: Record<string, unknown>,
   ): void {
     if (
-      typeof frame.docId !== "string" ||
+      !isValidIdentifier(frame.docId) ||
       typeof frame.cmtId !== "string" ||
       typeof frame.payload !== "string"
     ) {
+      return;
+    }
+    if (!isValidIdentifier(frame.cmtId)) {
+      sendDocFrame(ws, frame.docId, {
+        type: "error",
+        docId: frame.docId,
+        cmtId: frame.cmtId,
+        scope: "operation",
+        message: "Invalid comment id",
+      });
       return;
     }
 
@@ -357,10 +612,89 @@ export class RelayHubSqlite implements DurableObject {
     const cmtId = frame.cmtId;
     const payload = frame.payload;
     const attachment = getAttachment(ws);
-    if (!attachment.subscriptions.includes(docId)) {
+    const subscription = findSubscription(attachment, docId);
+    const frameSubscriptionId = getOptionalSubscriptionId(frame);
+    if (
+      frameSubscriptionId &&
+      subscription?.subscriptionId &&
+      frameSubscriptionId !== subscription.subscriptionId
+    ) {
+      sendRequestFrame(ws, frame, {
+        type: "error",
+        docId,
+        cmtId,
+        scope: "operation",
+        message: "Stale subscription generation",
+      });
+      return;
+    }
+    if (
+      !subscriptionMatchesFrame(subscription, frame) ||
+      subscription?.role !== "peer"
+    ) {
       ws.send(
-        JSON.stringify({ type: "error", docId, message: "Not subscribed" }),
+        JSON.stringify(
+          withSubscriptionId(
+            { type: "error", docId, message: "Not subscribed as peer" },
+            subscription,
+          ),
+        ),
       );
+      return;
+    }
+    if (encryptedPayloadByteLength(payload) > MAX_ENCRYPTED_COMMENT_BYTES) {
+      sendDocFrame(ws, docId, {
+        type: "error",
+        docId,
+        cmtId,
+        scope: "operation",
+        message: "Comment payload too large",
+      });
+      return;
+    }
+    const existingRows = this.sql
+      .exec(
+        "SELECT 1 AS found FROM comments WHERE doc_id = ? AND cmt_id = ? LIMIT 1",
+        docId,
+        cmtId,
+      )
+      .toArray();
+    if (existingRows.length > 0) {
+      sendDocFrame(ws, docId, { type: "comment:add:ack", docId, cmtId });
+      return;
+    }
+    const usageRows = this.sql
+      .exec(
+        `SELECT COUNT(*) AS comment_count,
+                COALESCE(SUM(LENGTH(payload)), 0) AS payload_chars
+         FROM comments
+         WHERE doc_id = ?`,
+        docId,
+      )
+      .toArray();
+    const commentCount = Number(usageRows[0]?.comment_count ?? 0);
+    const payloadChars = Number(usageRows[0]?.payload_chars ?? 0);
+    if (
+      commentCount >= MAX_PENDING_COMMENTS_PER_DOC ||
+      payloadChars + payload.length > MAX_PENDING_PAYLOAD_CHARS_PER_DOC
+    ) {
+      sendDocFrame(ws, docId, {
+        type: "error",
+        docId,
+        cmtId,
+        scope: "operation",
+        message: "Review inbox capacity exceeded",
+      });
+      return;
+    }
+    if (!consumeCommentWrite(ws)) {
+      sendDocFrame(ws, docId, {
+        type: "error",
+        docId,
+        cmtId,
+        scope: "operation",
+        message: "Comment rate limit exceeded",
+      });
       return;
     }
 
@@ -391,7 +725,7 @@ export class RelayHubSqlite implements DurableObject {
       expiresAt,
     );
 
-    ws.send(JSON.stringify({ type: "comment:add:ack", docId, cmtId }));
+    sendDocFrame(ws, docId, { type: "comment:add:ack", docId, cmtId });
     this.forwardToHostSockets(ws, docId, {
       type: "comment:added",
       docId,
@@ -405,14 +739,50 @@ export class RelayHubSqlite implements DurableObject {
     ws: WebSocket,
     frame: Record<string, unknown>,
   ): void {
-    if (typeof frame.docId !== "string" || typeof frame.cmtId !== "string") {
+    if (!isValidIdentifier(frame.docId) || typeof frame.cmtId !== "string") {
+      return;
+    }
+    if (!isValidIdentifier(frame.cmtId)) {
+      sendDocFrame(ws, frame.docId, {
+        type: "error",
+        docId: frame.docId,
+        cmtId: frame.cmtId,
+        scope: "operation",
+        message: "Invalid comment id",
+      });
       return;
     }
 
     const docId = frame.docId;
     const cmtId = frame.cmtId;
-    if (!this.isHostSocketForDoc(ws, docId)) {
-      ws.send(JSON.stringify({ type: "error", docId, message: "Forbidden" }));
+    const subscription = findSubscription(getAttachment(ws), docId);
+    const frameSubscriptionId = getOptionalSubscriptionId(frame);
+    if (
+      frameSubscriptionId &&
+      subscription?.subscriptionId &&
+      frameSubscriptionId !== subscription.subscriptionId
+    ) {
+      sendRequestFrame(ws, frame, {
+        type: "error",
+        docId,
+        cmtId,
+        scope: "operation",
+        message: "Stale subscription generation",
+      });
+      return;
+    }
+    if (
+      !subscriptionMatchesFrame(subscription, frame) ||
+      subscription?.role !== "host"
+    ) {
+      ws.send(
+        JSON.stringify(
+          withSubscriptionId(
+            { type: "error", docId, message: "Forbidden" },
+            subscription,
+          ),
+        ),
+      );
       return;
     }
 
@@ -421,7 +791,11 @@ export class RelayHubSqlite implements DurableObject {
       docId,
       cmtId,
     );
-    ws.send(JSON.stringify({ type: "comment:resolve:ack", docId, cmtId }));
+    sendDocFrame(ws, docId, {
+      type: "comment:resolve:ack",
+      docId,
+      cmtId,
+    });
     this.forwardToSubscribers(ws, docId, {
       type: "comment:resolved",
       docId,
@@ -430,9 +804,39 @@ export class RelayHubSqlite implements DurableObject {
     void this.scheduleNextAlarm();
   }
 
-  private isHostSocketForDoc(ws: WebSocket, docId: string): boolean {
-    const attachment = getAttachment(ws);
-    return attachment.hostDocs.includes(docId);
+  private handleRelayBroadcast(
+    ws: WebSocket,
+    frame: Record<string, unknown>,
+  ): void {
+    if (!isValidIdentifier(frame.docId) || typeof frame.payload !== "string") {
+      return;
+    }
+    const docId = frame.docId;
+    const subscription = findSubscription(getAttachment(ws), docId);
+    const frameSubscriptionId = getOptionalSubscriptionId(frame);
+    if (
+      frameSubscriptionId &&
+      subscription?.subscriptionId &&
+      frameSubscriptionId !== subscription.subscriptionId
+    ) {
+      return;
+    }
+    if (
+      !subscriptionMatchesFrame(subscription, frame) ||
+      subscription?.role !== "host"
+    ) {
+      sendDocFrame(ws, docId, {
+        type: "error",
+        docId,
+        message: "Forbidden",
+      });
+      return;
+    }
+    this.forwardToSubscribers(ws, docId, {
+      version: 1,
+      docId,
+      payload: frame.payload,
+    });
   }
 
   private forwardToHostSockets(
@@ -441,14 +845,14 @@ export class RelayHubSqlite implements DurableObject {
     message: Record<string, unknown>,
   ): void {
     const sockets = this.state.getWebSockets();
-    const serialized = JSON.stringify(message);
     for (const peer of sockets) {
       if (peer === sender) {
         continue;
       }
       const attachment = getAttachment(peer);
-      if (attachment.hostDocs.includes(docId)) {
-        peer.send(serialized);
+      const subscription = findSubscription(attachment, docId);
+      if (subscription?.role === "host") {
+        peer.send(JSON.stringify(withSubscriptionId(message, subscription)));
       }
     }
   }
@@ -459,14 +863,14 @@ export class RelayHubSqlite implements DurableObject {
     message: Record<string, unknown>,
   ): void {
     const sockets = this.state.getWebSockets();
-    const serialized = JSON.stringify(message);
     for (const peer of sockets) {
       if (peer === sender) {
         continue;
       }
       const attachment = getAttachment(peer);
-      if (attachment.subscriptions.includes(docId)) {
-        peer.send(serialized);
+      const subscription = findSubscription(attachment, docId);
+      if (subscription) {
+        peer.send(JSON.stringify(withSubscriptionId(message, subscription)));
       }
     }
   }

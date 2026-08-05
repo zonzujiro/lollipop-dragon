@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
 import {
   createAgentWorkflowActions,
   createAgentWorkflowControllerActions,
@@ -52,6 +52,8 @@ import {
   getActiveTab as getWorkspaceActiveTab,
   getLiveFileTree,
   loadWorkspaceHistory,
+  loadWorkspaceContent,
+  saveWorkspaceContent,
 } from "../modules/workspace";
 import type { WorkspaceActions, WorkspaceState } from "../modules/workspace";
 import { toPersistedTree } from "../types/fileTree";
@@ -69,6 +71,31 @@ import { isShareRecordArray } from "../types/share";
 import type { ShareRecord } from "../types/share";
 
 const SHARES_KEY = "markreview-shares";
+
+const safeLocalStorage = {
+  getItem: (name: string): string | null => {
+    try {
+      return localStorage.getItem(name);
+    } catch (error) {
+      console.warn("[store] failed to read persisted state:", error);
+      return null;
+    }
+  },
+  setItem: (name: string, value: string): void => {
+    try {
+      localStorage.setItem(name, value);
+    } catch (error) {
+      console.warn("[store] failed to persist state:", error);
+    }
+  },
+  removeItem: (name: string): void => {
+    try {
+      localStorage.removeItem(name);
+    } catch (error) {
+      console.warn("[store] failed to remove persisted state:", error);
+    }
+  },
+};
 
 interface AppState
   extends
@@ -252,7 +279,8 @@ export const useAppStore = create<AppState>()(
     },
     {
       name: "markreview-store",
-      version: 2,
+      storage: createJSONStorage(() => safeLocalStorage),
+      version: 3,
       migrate: (persisted, version) => {
         if (version === 0 || version === 1) {
           // Old flat format → wrap into single tab
@@ -265,6 +293,7 @@ export const useAppStore = create<AppState>()(
               ? [
                   {
                     id: tabId,
+                    workspaceId: crypto.randomUUID(),
                     label:
                       persisted.directoryName ??
                       persisted.fileName ??
@@ -292,6 +321,7 @@ export const useAppStore = create<AppState>()(
                     shareKeys: {},
                     activeDocId: null,
                     pendingResolveCommentIds: {},
+                    incomingReviewSessions: {},
                     restoreError: null,
                   },
                 ]
@@ -338,10 +368,10 @@ export const useAppStore = create<AppState>()(
       partialize: (s) => ({
         tabs: s.tabs.map((t) => ({
           id: t.id,
+          workspaceId: t.workspaceId,
           label: t.label,
           fileHandle: getPersistedNativeFileTarget(t),
           fileName: t.fileName,
-          rawContent: t.rawContent,
           directoryHandle: getPersistedNativeDirectoryTarget(t),
           directoryName: t.directoryName,
           activeFilePath: t.activeFilePath,
@@ -366,13 +396,17 @@ export const useAppStore = create<AppState>()(
         const p: Partial<AppState> = persisted;
         // Tabs need special handling: fill in defaults for non-persisted fields
         const tabs = Array.isArray(p.tabs)
-          ? p.tabs.map((t) =>
-              createDefaultTab({
+          ? p.tabs.map((t) => {
+              const workspaceId = t.workspaceId ?? crypto.randomUUID();
+              return createDefaultTab({
                 ...t,
+                workspaceId,
                 label: t.label ?? "document",
                 fileTree: getPersistedTabFileTree(t),
-              }),
-            )
+                rawContent:
+                  loadWorkspaceContent(workspaceId) ?? t.rawContent ?? "",
+              });
+            })
           : current.tabs;
         const relayDefaults = createRelayState();
         const peerReviewDefaults = createPeerReviewState();
@@ -409,5 +443,16 @@ useAppStore.subscribe((state) => {
   const title = name ? `${name} — ${APP_TITLE}` : APP_TITLE;
   if (document.title !== title) {
     document.title = title;
+  }
+});
+
+const cachedRawContentByWorkspace = new Map<string, string>();
+useAppStore.subscribe((state) => {
+  for (const tab of state.tabs) {
+    if (cachedRawContentByWorkspace.get(tab.workspaceId) === tab.rawContent) {
+      continue;
+    }
+    cachedRawContentByWorkspace.set(tab.workspaceId, tab.rawContent);
+    saveWorkspaceContent(tab.workspaceId, tab.rawContent);
   }
 });
