@@ -240,7 +240,7 @@ function MarkdownRendererContent({
   }, [openDirectoryInNewTab, openFileInNewTab, restoreTabState.directoryName]);
 
   const rehypePlugins: PluggableList = shikiPlugin
-    ? [rehypeBlockIndex, shikiPlugin]
+    ? [shikiPlugin, rehypeBlockIndex]
     : [rehypeBlockIndex];
 
   return (
