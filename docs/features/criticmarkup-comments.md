@@ -226,6 +226,16 @@ Intersecting ranges render as constant-coverage segments. Shared segments stack
 their tints and underline stripes, expose all comment IDs through `data-cids`,
 and cycle the selected comment when activated repeatedly.
 
+Fenced code blocks retain their line-comment gutter after asynchronous syntax
+highlighting completes. Hovering or focusing the block reveals its line
+numbers; hovering or focusing a non-empty line changes its number to `+`, and
+activating it opens the range-aware composer for that exact line. This behavior
+applies to every supported highlighted language and to unlabelled code fences.
+Syntax-highlighted tokens carry paired light and dark palettes; the active app
+theme selects the matching foreground colors while the code container continues
+to use the semantic document background. Dark mode must not reuse light-theme
+inline token colors.
+
 ### 6.5 Why This Works
 
 For standard comments, the LLM reads the file and sees comments as part of the content — no separate protocol to learn. CriticMarkup is well-represented in LLM training data, so models already understand it. For threaded `question:` comments, MarkReview adds a small metadata extension plus the unified review prompt so replies stay linked without introducing sidecar files. Comments and content still stay in sync because everything lives in the same file. Any text editor can view and edit the annotations. No sidecar files, no sync issues, no export/import steps.

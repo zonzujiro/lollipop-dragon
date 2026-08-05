@@ -16,7 +16,11 @@ function getHighlighter(): Promise<HighlighterCore> {
 type RehypePlugin = [
   typeof rehypeShikiFromHighlighter,
   HighlighterCore,
-  { theme: string; missingLang: string },
+  {
+    themes: { light: string; dark: string };
+    defaultColor: boolean;
+    missingLang: string;
+  },
 ];
 
 export function useShikiRehypePlugin(): RehypePlugin | null {
@@ -46,6 +50,10 @@ export function useShikiRehypePlugin(): RehypePlugin | null {
   return [
     rehypeShikiFromHighlighter,
     highlighter,
-    { theme: "github-light", missingLang: "ignore" },
+    {
+      themes: { light: "github-light", dark: "github-dark" },
+      defaultColor: false,
+      missingLang: "ignore",
+    },
   ];
 }

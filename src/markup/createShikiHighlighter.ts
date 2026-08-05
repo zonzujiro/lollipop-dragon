@@ -1,5 +1,6 @@
 import { createHighlighterCore } from "shiki/core";
 import { createOnigurumaEngine } from "shiki/engine/oniguruma";
+import githubDark from "@shikijs/themes/github-dark";
 import githubLight from "@shikijs/themes/github-light";
 import bash from "@shikijs/langs/bash";
 import c from "@shikijs/langs/c";
@@ -21,7 +22,7 @@ import yaml from "@shikijs/langs/yaml";
 
 export async function createApplicationHighlighter() {
   return createHighlighterCore({
-    themes: [githubLight],
+    themes: [githubLight, githubDark],
     langs: [
       ...bash,
       ...c,

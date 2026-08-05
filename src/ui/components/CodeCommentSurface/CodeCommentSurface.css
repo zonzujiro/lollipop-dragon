@@ -76,6 +76,15 @@
 .code-comment-surface__pre code {
   display: block;
   min-height: 1.65em;
+  color: var(--ink);
   font-family: var(--font-mono);
   line-height: 1.65;
+}
+
+.code-comment-surface__pre code span {
+  color: var(--shiki-light, inherit);
+}
+
+.dark .code-comment-surface__pre code span {
+  color: var(--shiki-dark, inherit);
 }
